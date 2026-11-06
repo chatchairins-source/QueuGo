@@ -1,3 +1,11 @@
+## Renderer compatibility and delivery (6 November 2026)
+
+The exact01bbbb24 run42177292596 installs the combined national Rider APK, passes661JVM tests and both cold native-routing runs, then compares two real software graphics drivers. Original SwiftShader drops symbol pixels; ANGLE displays real Thai street names, POIs and the Rider arrow in the actual Bangkok screenshot. Both use the same app/style/data and no default network route. The symptom matches upstream MapLibre4625 (uniform-block ordering), not a missing font. This does not certify physical hardware, authentication or delivery completion.
+
+The reviewed shader fix is built from official SDK13.7.1 source4cf121e515d8d065b57cd555a0b231ea27ff0e5d with exact vendored patch9d3ff4ac5d6ae1c6e74b0f5dead516d9e32d540b6ed7f5d8cb63fd2b76bc8af0. CI42177808701 builds x86_64 and arm64-v8a and verifies16KiB ELF alignment. The prepared dependency keeps every official Java/resource/unpatched-ABI byte unchanged, substitutes the complete compiled libraries, and records every input/output checksum. Runtime gates must verify those native bytes in both APKs and inspect actual pixels; a dependency build alone is not acceptance. Customer/Merchant builds without the explicit repository environment keep their original SDK.
+
+National screenshots must wait for a fully loaded stable viewport near the requested coordinate. APK transfer uses checksummed400MiB chunks only after runtime gates, with reconstruction and whole-file signature verification required before owner delivery. No Production mutations or main merge.
+
 # Rider in-process routing implementation — NOT release acceptance
 
 Based on PR #872 `859e1d33fcbdc8a84983a1e023b3d63dcd38c01d`; integrates #866 without dropping #872 metrics validation. Ancestry checked locally: #736/#824/#867/#871 are ancestors of #872; #866 was not. None of those PRs was merged into main at inspection. Main was `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`.

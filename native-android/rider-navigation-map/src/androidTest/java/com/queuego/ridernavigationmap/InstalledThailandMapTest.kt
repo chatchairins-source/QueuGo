@@ -93,21 +93,42 @@ class InstalledThailandMapTest {
                 if (offlineRequired) assertNull(context.getSystemService(android.net.ConnectivityManager::class.java).activeNetwork)
                 scenario.onActivity { it.showCountryPosition(lat, lon) }
                 var paintedRoads = 0
+                var viewportReady = false
+                var previousPose: List<Double>? = null
+                var stableSince = android.os.SystemClock.elapsedRealtime()
                 val deadline = android.os.SystemClock.elapsedRealtime() + 45_000
-                while (paintedRoads == 0 && android.os.SystemClock.elapsedRealtime() < deadline) {
+                while (!viewportReady && android.os.SystemClock.elapsedRealtime() < deadline) {
                     scenario.onActivity { it.inspectMap { map ->
                         val style = requireNotNull(map.style)
                         assertNull(style.getLayer("queuego-web-basemap-layer"))
-                        val target = map.cameraPosition.target
-                        if (target != null && kotlin.math.abs(target.latitude - lat) < 0.01 && kotlin.math.abs(target.longitude - lon) < 0.01) paintedRoads = map.queryRenderedFeatures(
+                        val camera = map.cameraPosition
+                        val target = camera.target ?: return@inspectMap
+                        val idle = it.latestCountryIdleCamera ?: return@inspectMap
+                        val idlePoint = idle.target ?: return@inspectMap
+                        val pose = listOf(target.latitude, target.longitude, camera.zoom, camera.bearing, camera.tilt)
+                        val previous = previousPose
+                        if (previous == null || pose.zip(previous).any { pair -> kotlin.math.abs(pair.first - pair.second) > 0.000001 }) {
+                            stableSince = android.os.SystemClock.elapsedRealtime()
+                            previousPose = pose
+                        }
+                        val atDestination = kotlin.math.abs(target.latitude - lat) < 0.0005 && kotlin.math.abs(target.longitude - lon) < 0.0005
+                        val fullyIdle = kotlin.math.abs(target.latitude - idlePoint.latitude) < 0.000001 &&
+                            kotlin.math.abs(target.longitude - idlePoint.longitude) < 0.000001 &&
+                            kotlin.math.abs(camera.zoom - idle.zoom) < 0.001 &&
+                            kotlin.math.abs(camera.tilt - idle.tilt) < 0.001
+                        if (atDestination && fullyIdle) paintedRoads = map.queryRenderedFeatures(
                             android.graphics.RectF(0f, 0f, 1080f, 2280f),
                             "queuego-road-residential", "queuego-road-primary",
                             "queuego-road-secondary", "queuego-road-tertiary", "queuego-road-service"
                         ).size
+                        viewportReady = atDestination && fullyIdle && paintedRoads > 0 &&
+                            android.os.SystemClock.elapsedRealtime() - stableSince >= 750
+                        if (viewportReady) android.util.Log.i("QueueGoMapFrameQA",
+                            "region=$name expected=$lat,$lon actual=${target.latitude},${target.longitude} zoom=${camera.zoom} tilt=${camera.tilt} bearing=${camera.bearing} fully_idle=true")
                     } }
                     Thread.sleep(200)
                 }
-                assertTrue("No painted vector roads: $name", paintedRoads > 0)
+                assertTrue("No fully loaded stable country viewport at expected location: $name", viewportReady)
                 // Geometry can paint before glyph requests and symbol placement finish.
                 // The named Bangkok streets are the label acceptance sample; do not
                 // certify an empty label layer merely because roads have rendered.

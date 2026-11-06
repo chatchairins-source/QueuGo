@@ -6,6 +6,9 @@ on:
       - 'native-android/rider-navigation-map/**'
       - 'native-android/rider/**'
       - 'native-android/qa/run-rider-offline-routing.py'
+      - 'native-android/qa/maplibre-swiftshader/**'
+      - 'native-android/build.gradle.kts'
+      - 'native-android/settings.gradle.kts'
       - 'ops/maps/**'
       - '.github/workflows/rider-offline-routing.yml'
 permissions:
@@ -29,6 +32,23 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: '9.6.0'
+      - name: Prepare audited source-built MapLibre component
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          inputs="$RUNNER_TEMP/maplibre-compat-inputs"
+          repository="$RUNNER_TEMP/maplibre-compat-repository"
+          mkdir -p "$inputs"
+          timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13484815852/zip" > "$inputs/x86_64.zip"
+          timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13485115419/zip" > "$inputs/arm64-v8a.zip"
+          base='https://repo.maven.apache.org/maven2/org/maplibre/gl/android-sdk-opengl/13.7.1/android-sdk-opengl-13.7.1'
+          curl --fail --location --retry 2 --max-time 180 "$base.aar" -o "$inputs/baseline.aar"
+          curl --fail --location --retry 2 --max-time 60 "$base.pom" -o "$inputs/baseline.pom"
+          python3 native-android/qa/maplibre-swiftshader/prepare-repository.py prepare \
+            --baseline-aar "$inputs/baseline.aar" --baseline-pom "$inputs/baseline.pom" \
+            --x86-zip "$inputs/x86_64.zip" --arm64-zip "$inputs/arm64-v8a.zip" --repository "$repository"
+          echo "QG_MAPLIBRE_COMPAT_REPOSITORY=$repository" >> "$GITHUB_ENV"
       - name: Restore immutable routing graph data
         id: routing_cache
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
@@ -125,6 +145,9 @@ jobs:
           stat -c %s native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk-size-bytes.txt
           sha256sum native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk.sha256
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk-signature.txt
+          python3 native-android/qa/maplibre-swiftshader/prepare-repository.py verify-apk \
+            --repository "$QG_MAPLIBRE_COMPAT_REPOSITORY" --apk native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          cp "$QG_MAPLIBRE_COMPAT_REPOSITORY/component.json" artifacts/rider-offline-routing/maplibre-component.json
           cp "$QG_OFFLINE_ROUTING_ASSETS/routing/manifest.json" artifacts/rider-offline-routing/graph-manifest.json
           cp "$QG_OFFLINE_MAP_ASSETS/maps/thailand-shortbread.json" artifacts/rider-offline-routing/rendering-manifest.json
           cp "$QG_OFFLINE_MAP_ASSETS/maps/thailand-shortbread-recovery.json" artifacts/rider-offline-routing/rendering-recovery.json
@@ -149,11 +172,48 @@ jobs:
           # Real alternative Android Emulator graphics driver; no product style/text changes.
           python3 native-android/qa/run-rider-navigation-map-runtime.py
           sha256sum -c artifacts/rider-offline-routing/apk.sha256
-      - name: Retain the installed internal Rider candidate after runtime gates
+      - name: Split the exact installed internal candidate for verified transfer
+        id: candidate_parts
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/rider-candidate-parts
+          sha256sum -c artifacts/rider-offline-routing/apk.sha256
+          split --bytes=400M --numeric-suffixes=0 --suffix-length=2 native-android/rider/build/outputs/apk/debug/rider-debug.apk artifacts/rider-candidate-parts/rider-debug.apk.part
+          count=$(find artifacts/rider-candidate-parts -name 'rider-debug.apk.part*' -type f | wc -l)
+          test "$count" -ge 1 && test "$count" -le 3
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          cd artifacts/rider-candidate-parts
+          sha256sum rider-debug.apk.part* > parts.sha256
+          cp ../rider-offline-routing/apk.sha256 whole-apk.sha256
+          cp ../rider-offline-routing/build-commit.txt build-commit.txt
+      - name: Retain internal candidate part 00 and exact manifest
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: rider-unreleased-country-candidate-${{ github.event.pull_request.head.sha || github.sha }}
-          path: native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          name: rider-unreleased-country-part00-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            artifacts/rider-candidate-parts/rider-debug.apk.part00
+            artifacts/rider-candidate-parts/parts.sha256
+            artifacts/rider-candidate-parts/whole-apk.sha256
+            artifacts/rider-candidate-parts/build-commit.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Retain internal candidate part 01
+        if: success() && steps.candidate_parts.outputs.count != '' && fromJSON(steps.candidate_parts.outputs.count) > 1
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rider-unreleased-country-part01-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/rider-candidate-parts/rider-debug.apk.part01
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Retain internal candidate part 02
+        if: success() && steps.candidate_parts.outputs.count != '' && fromJSON(steps.candidate_parts.outputs.count) > 2
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rider-unreleased-country-part02-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/rider-candidate-parts/rider-debug.apk.part02
+          if-no-files-found: error
           compression-level: 0
           retention-days: 14
       - name: Retain exact-source internal QA evidence

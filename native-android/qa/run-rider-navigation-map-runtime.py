@@ -204,6 +204,14 @@ with (log_dir / "emulator.log").open("w") as log:
             (log_dir / "offline-connectivity-after-tests.txt").write_text(connectivity.stdout)
         if result.returncode != 0:
             raise SystemExit("Navigation-map connected Android test failed")
+        component_repository = os.environ.get("QG_MAPLIBRE_COMPAT_REPOSITORY")
+        if component_repository:
+            apks = list((repo / "native-android/rider-navigation-map/build/outputs/apk/androidTest/debug").glob("*.apk"))
+            assert len(apks) == 1, "Expected one installed navigation-map test APK"
+            with (log_dir / "source-built-sdk.txt").open("w") as evidence:
+                run([sys.executable, str(repo / "native-android/qa/maplibre-swiftshader/prepare-repository.py"),
+                     "verify-apk", "--repository", component_repository, "--apk", str(apks[0])], stdout=evidence)
+            shutil.copyfile(Path(component_repository) / "component.json", log_dir / "maplibre-component.json")
         run([sys.executable, str(report_verifier), "--results", str(connected_reports)] + (["--offline-required"] if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1" else []))
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
             images = list((log_dir / "country-screenshots").rglob("*.png"))

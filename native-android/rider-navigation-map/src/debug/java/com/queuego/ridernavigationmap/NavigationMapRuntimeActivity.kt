@@ -17,6 +17,9 @@ import org.maplibre.android.maps.MapLibreMap
 
 class NavigationMapRuntimeActivity : ComponentActivity() {
     val mapReady = CountDownLatch(1)
+    @Volatile
+    var latestCountryIdleCamera: org.maplibre.android.camera.CameraPosition? = null
+        private set
 
     @Volatile
     var latestDiagnostics = NavigationMapDiagnostics(0, 0, 0, 0)
@@ -43,6 +46,14 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                     onMapReady = { if (it) {
                         if (intent.getBooleanExtra("installedThailandMap", false)) {
                             findMapView(window.decorView)?.apply {
+                                val countryView = this
+                                addOnDidBecomeIdleListener {
+                                    runOnUiThread {
+                                        if (!isDestroyed && !isFinishing) {
+                                            countryView.getMapAsync { map -> latestCountryIdleCamera = map.cameraPosition }
+                                        }
+                                    }
+                                }
                                 addOnGlyphsRequestedListener { stack, first, last ->
                                     android.util.Log.d("QueueGoLabelQA", "glyph_requested stack=${stack.joinToString("|")} range=$first-$last")
                                 }

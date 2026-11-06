@@ -30,6 +30,18 @@ val verifyNativeReleaseGate = tasks.register<Exec>("verifyNativeReleaseGate") {
 }
 
 subprojects {
+    // Only the explicitly prepared Rider QA/release build selects the audited
+    // source-built component. Existing Customer/Merchant builds keep their SDK.
+    if (providers.environmentVariable("QG_MAPLIBRE_COMPAT_REPOSITORY").isPresent) {
+        configurations.configureEach {
+            resolutionStrategy.eachDependency {
+                if (requested.group == "org.maplibre.gl" && requested.name == "android-sdk-opengl") {
+                    require(requested.version == "13.7.1") { "Review MapLibre compatibility patch before changing SDK version" }
+                    useVersion("13.7.1-qg4625.1")
+                }
+            }
+        }
+    }
     pluginManager.withPlugin("com.android.application") {
         extensions.configure<ApplicationExtension> {
             // PMTiles uses random byte-range reads from the APK. Compressing a
