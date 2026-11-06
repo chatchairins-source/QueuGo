@@ -52,7 +52,41 @@ jobs:
           echo "QG_OFFLINE_ROUTING_ASSETS=$RUNNER_TEMP/routing-assets" >> "$GITHUB_ENV"
           python3 ops/maps/probe_android_routing.py --assets "$RUNNER_TEMP/routing-assets" --output artifacts/rider-offline-routing/country-linux-probes.json
           # Retain the immutable extract, not multi-GB temporary graph-builder indexes.
-          rm -rf "$RUNNER_TEMP/routing-graph/tiles" "$RUNNER_TEMP/routing-source"
+          rm -rf "$RUNNER_TEMP/routing-graph"
+      - name: Bundle the matching real Thailand rendering archive
+        env:
+          QG_MAP_DATA_DIR: ${{ runner.temp }}/routing-source
+          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261104.osm.pbf
+        run: |
+          set -euo pipefail
+          ln -s thailand.osm.pbf "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
+          bash native-android/qa/build-thailand-shortbread-pmtiles.sh
+          archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
+          python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/country-map-assets" \
+            --expected-sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
+            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-11-04
+          echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/country-map-assets" >> "$GITHUB_ENV"
+          rm -rf "$RUNNER_TEMP/routing-source"
+      - name: Prepare Rider Firebase configuration when available
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          encoded = os.environ.get('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64', '')
+          if not encoded:
+              print('::warning::Firebase configuration absent; push acceptance remains blocked')
+          else:
+              raw = base64.b64decode(''.join(encoded.split()), validate=True)
+              data = json.loads(raw)
+              packages = {c.get('client_info', {}).get('android_client_info', {}).get('package_name') for c in data.get('client', [])}
+              assert 'com.queuego.rider' in packages, 'Firebase has no Rider client'
+              target = Path('native-android/rider/google-services.json')
+              target.write_bytes(raw)
+              target.chmod(0o600)
+              print('Rider Firebase client configured; this is not push-delivery certification')
+          PY
       - name: Install Android build and runtime tools
         run: |
           set +o pipefail
@@ -62,6 +96,7 @@ jobs:
           gradle -p native-android :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest :rider:testDebugUnitTest :rider:assembleDebug :rider:assembleDebugAndroidTest --no-daemon --stacktrace
           mkdir -p artifacts/rider-offline-routing
           git rev-parse HEAD > artifacts/rider-offline-routing/build-commit.txt
+          stat -c %s native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk-size-bytes.txt
           sha256sum native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk.sha256
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk-signature.txt
           cp "$QG_OFFLINE_ROUTING_ASSETS/routing/manifest.json" artifacts/rider-offline-routing/graph-manifest.json
@@ -71,6 +106,20 @@ jobs:
           if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then sudo chown "$(id -u):$(id -g)" /dev/kvm; fi
       - name: Run actual installed Rider offline routing and cold process restart
         run: python3 native-android/qa/run-rider-offline-routing.py
+      - name: Run actual offline country rendering and GPS-camera instrumentation
+        env:
+          QG_NAV_RUNTIME_OFFLINE: '1'
+        run: |
+          python3 native-android/qa/run-rider-navigation-map-runtime.py
+          # The module instrumentation must not replace the APK that routing tested.
+          sha256sum -c artifacts/rider-offline-routing/apk.sha256
+      - name: Retain the installed internal Rider candidate after runtime gates
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rider-unreleased-country-candidate-${{ github.event.pull_request.head.sha || github.sha }}
+          path: native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          compression-level: 0
+          retention-days: 14
       - name: Retain exact-source internal QA evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -78,9 +127,12 @@ jobs:
           name: rider-offline-routing-${{ github.event.pull_request.head.sha || github.sha }}
           path: |
             artifacts/rider-offline-routing/
+            artifacts/rider-navigation-map-runtime/
+            native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
             native-android/rider-navigation-map/build/test-results/
             native-android/rider-maplibre-osm/build/test-results/
             native-android/rider/build/test-results/
           if-no-files-found: warn
-      # This is a routing gate, not the country-rendering/authentication/release gate.
+      # Retained pixels must still be visually reviewed, particularly Issue #750 labels.
+      # Neither routing nor country-rendering instrumentation certifies authentication/release.
       # No owner APK publication and no Production deployment are performed here.

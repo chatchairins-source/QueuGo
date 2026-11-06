@@ -37,6 +37,15 @@ class InstalledThailandMapTest {
         }
         // Existing fixture-only CI remains separate. A skipped test is not an offline PASS.
         assumeTrue(context.assets.list("maps")?.contains("thailand-shortbread.pmtiles") == true)
+        // Observe actual glyph resource URLs without rewriting them or drawing labels.
+        // Feature-index counts alone cannot establish visible text (Issue #750).
+        org.maplibre.android.MapLibre.getInstance(context)
+        org.maplibre.android.storage.FileSource.getInstance(context).setResourceTransform { kind, url ->
+            if (url.startsWith("asset://fonts/")) {
+                android.util.Log.d("QueueGoLabelQA", "glyph_resource kind=$kind url=$url")
+            }
+            url
+        }
         val intent = Intent(context, NavigationMapRuntimeActivity::class.java)
             .putExtra("installedThailandMap", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         ActivityScenario.launch<NavigationMapRuntimeActivity>(intent).use { scenario ->
@@ -74,6 +83,13 @@ class InstalledThailandMapTest {
                 // certify an empty label layer merely because roads have rendered.
                 var paintedLabels = 0
                 if (name == "bangkok") {
+                    scenario.onActivity { it.inspectMap { map ->
+                        for (id in listOf("queuego-label-street_labels", "queuego-label-place_labels", "queuego-label-pois")) {
+                            val layer = map.style?.getLayerAs<org.maplibre.android.style.layers.SymbolLayer>(id)
+                            val fonts = layer?.textFont?.value?.joinToString("|") ?: "expression-or-missing"
+                            android.util.Log.d("QueueGoLabelQA", "live_layer=$id fontstack=$fonts")
+                        }
+                    } }
                     val labelDeadline = android.os.SystemClock.elapsedRealtime() + 30_000
                     while (paintedLabels == 0 && android.os.SystemClock.elapsedRealtime() < labelDeadline) {
                         scenario.onActivity { it.inspectMap { map ->
