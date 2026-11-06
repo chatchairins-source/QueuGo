@@ -5,7 +5,8 @@ on:
     paths:
       - 'native-android/rider-navigation-map/**'
       - 'native-android/rider/**'
-      - 'native-android/qa/run-rider-offline-routing.py'\n      - 'native-android/qa/run-rider-fused-gps.py'
+      - 'native-android/qa/run-rider-offline-routing.py'
+      - 'native-android/qa/run-rider-fused-gps.py'
       - 'native-android/qa/maplibre-swiftshader/**'
       - 'native-android/build.gradle.kts'
       - 'native-android/settings.gradle.kts'
@@ -228,7 +229,8 @@ jobs:
           path: |
             artifacts/rider-offline-routing/
             artifacts/rider-navigation-map-runtime/
-            artifacts/rider-navigation-map-runtime-swangle/\n            artifacts/rider-fused-gps/
+            artifacts/rider-navigation-map-runtime-swangle/
+            artifacts/rider-fused-gps/
             native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
             native-android/rider-navigation-map/build/test-results/
             native-android/rider-maplibre-osm/build/test-results/
