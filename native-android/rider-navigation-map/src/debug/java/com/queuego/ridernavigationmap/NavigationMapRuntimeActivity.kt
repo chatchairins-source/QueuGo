@@ -34,15 +34,22 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val installedSource = queueGoMapVectorSourceUri(this)
+        val hasLocalArchive = installedSource?.let {
+            it.startsWith("pmtiles://asset://") || it.startsWith("pmtiles://file://")
+        } == true
+        // Country CI stages the real archive for every camera/gesture test, too.
+        // Keep the small fixture only for ordinary runs without a local archive.
+        val runtimeMapSource = if (intent.getBooleanExtra("installedThailandMap", false) || hasLocalArchive) {
+            installedSource
+        } else "asset://queuego-nav-runtime-tilejson.json"
         setContent {
             if (mapMounted.value) {
                 RiderNavigationMap(
                     stateKey = "runtime-session",
                     state = mapState.value,
                     modifier = Modifier.fillMaxSize(),
-                    mapSourceUri = if (intent.getBooleanExtra("installedThailandMap", false)) {
-                        queueGoMapVectorSourceUri(this)
-                    } else "asset://queuego-nav-runtime-tilejson.json",
+                    mapSourceUri = runtimeMapSource,
                     onMapReady = { if (it) {
                         if (intent.getBooleanExtra("installedThailandMap", false)) {
                             findMapView(window.decorView)?.apply {

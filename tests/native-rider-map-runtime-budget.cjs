@@ -27,8 +27,10 @@ assert(runtime.includes('manualDragReportsGestureButTapDoesNot'));
 assert(runtime.includes('activityRecreationCreatesFreshMapViewForFreshActivityContext'));
 assert(host.includes('intent.getBooleanExtra("installedThailandMap", false)') &&
   host.includes('queueGoMapVectorSourceUri(this)') &&
-  host.includes('else "asset://queuego-nav-runtime-tilejson.json"'),
-  'Runtime fixtures must stay the default; installed-country source requires explicit opt-in');
+  host.includes('else "asset://queuego-nav-runtime-tilejson.json"') &&
+  host.includes('|| hasLocalArchive') &&
+  host.includes('mapSourceUri = runtimeMapSource'),
+  'Camera tests must use a staged local archive; small fixtures remain for runs without one');
 assert(fs.existsSync('native-android/rider-navigation-map/src/debug/assets/queuego-nav-runtime-tilejson.json'));
 assert(fs.existsSync('native-android/rider-navigation-map/src/debug/assets/queuego-nav-runtime.mvt'));
 

@@ -919,7 +919,9 @@ private class RiderNavigationMapHolder {
             viewportHeightPx = view?.height ?: 0,
             speedMetersPerSecond = state.rider?.speedMetersPerSecond
         )
-        activeMap.animateCamera(
+        // FOLLOW matches Web easeTo: interpolate to the requested speed zoom directly.
+        // animateCamera uses flyTo, which introduces a flight zoom arc on GPS updates.
+        activeMap.easeCamera(
             CameraUpdateFactory.newCameraPosition(
                 CameraPosition.Builder()
                     .target(LatLng(cameraCenter.latitude, cameraCenter.longitude))
