@@ -40,7 +40,22 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
                     mapSourceUri = if (intent.getBooleanExtra("installedThailandMap", false)) {
                         queueGoMapVectorSourceUri(this)
                     } else "asset://queuego-nav-runtime-tilejson.json",
-                    onMapReady = { if (it) mapReady.countDown() },
+                    onMapReady = { if (it) {
+                        if (intent.getBooleanExtra("installedThailandMap", false)) {
+                            findMapView(window.decorView)?.apply {
+                                addOnGlyphsRequestedListener { stack, first, last ->
+                                    android.util.Log.d("QueueGoLabelQA", "glyph_requested stack=${stack.joinToString("|")} range=$first-$last")
+                                }
+                                addOnGlyphsLoadedListener { stack, first, last ->
+                                    android.util.Log.d("QueueGoLabelQA", "glyph_loaded stack=${stack.joinToString("|")} range=$first-$last")
+                                }
+                                addOnGlyphsErrorListener { stack, first, last ->
+                                    android.util.Log.e("QueueGoLabelQA", "glyph_error stack=${stack.joinToString("|")} range=$first-$last")
+                                }
+                            }
+                        }
+                        mapReady.countDown()
+                    } },
                     onUserGesture = { userGestureCount += 1 },
                     onDiagnostics = { latestDiagnostics = it }
                 )

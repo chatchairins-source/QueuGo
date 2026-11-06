@@ -86,6 +86,8 @@ class InstalledThailandMapTest {
                 var paintedLabels = 0
                 if (name == "bangkok") {
                     scenario.onActivity { it.inspectMap { map ->
+                        val liveStyle = org.json.JSONObject(requireNotNull(map.style).json)
+                        android.util.Log.d("QueueGoLabelQA", "live_glyphs=${liveStyle.optString("glyphs", "missing")}")
                         for (id in listOf("queuego-label-street_labels", "queuego-label-place_labels", "queuego-label-pois")) {
                             val layer = map.style?.getLayerAs<org.maplibre.android.style.layers.SymbolLayer>(id)
                             val fonts = layer?.textFont?.value?.joinToString("|") ?: "expression-or-missing"
@@ -103,6 +105,13 @@ class InstalledThailandMapTest {
                         Thread.sleep(200)
                     }
                 }
+                scenario.onActivity { it.inspectMap { map ->
+                    val labels = map.queryRenderedFeatures(
+                        android.graphics.RectF(0f, 0f, 1080f, 2280f),
+                        "queuego-label-street_labels", "queuego-label-place_labels", "queuego-label-pois"
+                    )
+                    android.util.Log.d("QueueGoLabelQA", "region=$name indexed_labels=${labels.size} properties=${labels.take(3).map { feature -> feature.properties() }}")
+                } }
                 // A symbol may enter the rendered-feature index before its fade-in
                 // reaches visible opacity. Retain the settled frame as evidence.
                 if (name == "bangkok" && paintedLabels > 0) Thread.sleep(1_000)
