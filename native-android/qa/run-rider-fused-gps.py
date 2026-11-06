@@ -97,36 +97,45 @@ def main():
     call([AVDMANAGER, "create", "avd", "-n", name, "-k",
           "system-images;android-30;google_apis;x86_64", "-d", "pixel_4"],
          input="no\n", text=True, env=env, timeout=60)
-    with (OUT / "emulator.log").open("w") as log:
-        emulator = subprocess.Popen([EMULATOR, "-avd", name, "-port", "5556",
-            "-no-window", "-no-snapshot", "-no-audio", "-gpu", "swiftshader",
-            "-memory", "2048", "-cores", "2", "-accel", "on"],
-            stdout=log, stderr=subprocess.STDOUT, env=env)
-        try:
-            wait_boot(emulator)
-            adb("install", "-r", str(APK), timeout=240)
-            adb("install", "-r", str(TEST_APK), timeout=120)
-            adb("shell", "pm", "grant", PACKAGE, "android.permission.ACCESS_FINE_LOCATION")
-            adb("shell", "pm", "grant", PACKAGE, "android.permission.ACCESS_COARSE_LOCATION")
-            provider = adb("shell", "pm", "list", "packages", "com.google.android.gms",
-                           capture_output=True, text=True).stdout
-            assert "com.google.android.gms" in provider, "Google Play services absent"
-            run_case("bangkok", 100.5018, 13.7563)
-            run_case("buriram", 103.1029, 14.9930)
-            assert sha(APK) == expected, "APK changed during Fused GPS gate"
-            (OUT / "result.json").write_text(json.dumps({
-                "apk_sha256": expected, "system_image": "android-30;google_apis;x86_64",
-                "debug_store_injection": False, "incomplete_tiles_allowed": False,
-                "cases": ["bangkok", "buriram"], "physical_road_test": False
-            }, indent=2) + "\n")
-            print("QUEUEGO_REAL_FUSED_GPS_PASS")
-        finally:
-            subprocess.run([*ADB_TARGET, "emu", "kill"], capture_output=True, timeout=15)
-            emulator.terminate()
+    # A second region in the same emulator can inherit a cached Fused fix from
+    # the first region. The Rider correctly rejects an implausible 300+ km
+    # instantaneous jump; it must not be weakened to accommodate a test fixture.
+    # Boot a fresh, wiped Google APIs device for each regional scenario instead.
+    # This also proves cold-start behavior with a new Play Services location cache.
+    for label, longitude, latitude in (
+        ("bangkok", 100.5018, 13.7563),
+        ("buriram", 103.1029, 14.9930),
+    ):
+        with (OUT / (label + "-emulator.log")).open("w") as log:
+            emulator = subprocess.Popen([EMULATOR, "-avd", name, "-port", "5556",
+                "-wipe-data", "-no-window", "-no-snapshot", "-no-audio",
+                "-gpu", "swiftshader", "-memory", "2048", "-cores", "2",
+                "-accel", "on"], stdout=log, stderr=subprocess.STDOUT, env=env)
             try:
-                emulator.wait(timeout=15)
-            except subprocess.TimeoutExpired:
-                emulator.kill()
+                wait_boot(emulator)
+                adb("install", "-r", str(APK), timeout=240)
+                adb("install", "-r", str(TEST_APK), timeout=120)
+                adb("shell", "pm", "grant", PACKAGE, "android.permission.ACCESS_FINE_LOCATION")
+                adb("shell", "pm", "grant", PACKAGE, "android.permission.ACCESS_COARSE_LOCATION")
+                provider = adb("shell", "pm", "list", "packages", "com.google.android.gms",
+                               capture_output=True, text=True).stdout
+                assert "com.google.android.gms" in provider, "Google Play services absent"
+                run_case(label, longitude, latitude)
+            finally:
+                subprocess.run([*ADB_TARGET, "emu", "kill"], capture_output=True, timeout=15)
+                emulator.terminate()
+                try:
+                    emulator.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    emulator.kill()
+    assert sha(APK) == expected, "APK changed during Fused GPS gate"
+    (OUT / "result.json").write_text(json.dumps({
+        "apk_sha256": expected, "system_image": "android-30;google_apis;x86_64",
+        "debug_store_injection": False, "incomplete_tiles_allowed": False,
+        "fresh_wiped_emulator_per_region": True,
+        "cases": ["bangkok", "buriram"], "physical_road_test": False
+    }, indent=2) + "\n")
+    print("QUEUEGO_REAL_FUSED_GPS_PASS")
 
 if __name__ == "__main__":
     main()
