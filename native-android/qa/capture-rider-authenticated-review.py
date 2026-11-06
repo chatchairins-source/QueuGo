@@ -165,8 +165,20 @@ def capture_rider_earnings_period(label, filename):
 def tap_label(ns,label):
     choices=[n for n in ns if n.get("text","").strip()==label and rect(n)]
     assert choices, "Rider tab missing: "+label
-    clickable=[n for n in choices if n.get("clickable")=="true"]
-    tap(clickable[-1] if clickable else choices[-1])
+    # Compose may expose the label as a non-clickable child of a clickable
+    # setting row. Tap the smallest clickable ancestor containing its centre,
+    # rather than assuming a text node is itself a reliable hit target.
+    target=choices[-1]
+    b=rect(target)
+    cx,cy=(b[0]+b[2])//2,(b[1]+b[3])//2
+    parents=[]
+    for n in ns:
+        r=rect(n)
+        if n.get("clickable")=="true" and r and r[0]<=cx<=r[2] and r[1]<=cy<=r[3]:
+            parents.append(((r[2]-r[0])*(r[3]-r[1]),n))
+    if parents:
+        target=min(parents,key=lambda pair:pair[0])[1]
+    tap(target)
 
 def shot(name):
     p=OUT/(name+".png")
