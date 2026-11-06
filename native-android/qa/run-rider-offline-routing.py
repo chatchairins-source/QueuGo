@@ -59,10 +59,35 @@ with (output/'emulator.log').open('w') as log:
             text=True, timeout=30).strip()
         assert airplane == '1' and wifi == '0', (
             f'Offline test setup failed: airplane_mode_on={airplane}, wifi_on={wifi}')
-        # Airplane mode does not necessarily disable the emulator's virtual
-        # Ethernet interface. A surviving default route makes an alleged
-        # offline test capable of reaching the network through eth0.
-        # Fail closed instead of reporting a false offline acceptance.
+        # Android emulators may retain host-backed Ethernet even in airplane
+        # mode. Isolate the emulator network namespace rather than treating
+        # the airplane-mode setting alone as proof of offline operation.
+        # The default (non-Play) AVD is debuggable; if root is unavailable,
+        # fail closed at the default-route assertion below.
+        before = {}
+        for family in ('-4', '-6'):
+            before[family] = subprocess.check_output(
+                [str(a) for a in adb + ['shell', 'ip', family, 'route', 'show', 'default']],
+                text=True, timeout=30).strip()
+        if any(before.values()):
+            root = subprocess.run([str(sdk/'platform-tools/adb'), '-s', 'emulator-5554', 'root'],
+                                  capture_output=True, text=True, timeout=30)
+            assert root.returncode == 0, 'Cannot isolate emulator Ethernet: adb root failed: ' + root.stderr
+            run(adb + ['wait-for-device'], timeout=60)
+            # Bring down only interfaces explicitly carrying default routes;
+            # never fabricate a route or alter the tested APK/graph.
+            interfaces = set()
+            for route in before.values():
+                for line in route.splitlines():
+                    parts = line.split()
+                    if 'dev' in parts:
+                        interfaces.add(parts[parts.index('dev') + 1])
+            for interface in sorted(interfaces):
+                assert interface not in ('lo', ''), 'Refusing to disable loopback'
+                run(adb + ['shell', 'ip', 'link', 'set', 'dev', interface, 'down'])
+            (output/'network-isolation.txt').write_text(
+                'before=' + repr(before) + '\\ninterfaces_disabled=' + repr(sorted(interfaces)) + '\\n')
+        # Fail closed if any IPv4/IPv6 default route survived isolation.
         routes = {}
         for family in ('-4', '-6'):
             route = subprocess.check_output(
