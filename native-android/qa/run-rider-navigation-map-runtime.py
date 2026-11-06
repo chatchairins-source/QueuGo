@@ -137,10 +137,47 @@ with (log_dir / "emulator.log").open("w") as log:
         # Exercise actual Android interpolation; animator_duration_scale=0 would
         # bypass the marker animation and conceal overlap/jank regressions.
         if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1":
-            run(adb + ["shell", "settings", "put", "global", "airplane_mode_on", "1"])
+            # Changing the setting alone does not toggle ConnectivityService.
+            # Match the routing gate: isolate emulator Ethernet too, and fail
+            # closed if either IPv4 or IPv6 still has a default route.
+            run(adb + ["shell", "cmd", "connectivity", "airplane-mode", "enable"])
             run(adb + ["shell", "svc", "wifi", "disable"])
             run(adb + ["shell", "svc", "data", "disable"])
-            state = subprocess.run(adb + ["shell", "dumpsys", "connectivity"], capture_output=True, text=True, check=True)
+            airplane = run(adb + ["shell", "settings", "get", "global", "airplane_mode_on"],
+                           capture_output=True, text=True).stdout.strip()
+            wifi = run(adb + ["shell", "settings", "get", "global", "wifi_on"],
+                       capture_output=True, text=True).stdout.strip()
+            assert airplane == "1" and wifi == "0", (
+                f"Offline country-render setup failed: airplane={airplane}, wifi={wifi}")
+            def default_routes():
+                return {family: run(adb + ["shell", "ip", family, "route", "show", "default"],
+                                    capture_output=True, text=True).stdout.strip()
+                        for family in ("-4", "-6")}
+            before = default_routes()
+            disabled = []
+            if any(before.values()):
+                run([adb_bin, "-s", "emulator-5554", "root"])
+                run(adb + ["wait-for-device"], timeout=60)
+                interfaces = set()
+                for route in before.values():
+                    for line in route.splitlines():
+                        parts = line.split()
+                        if "dev" in parts:
+                            interfaces.add(parts[parts.index("dev") + 1])
+                for interface in sorted(interfaces):
+                    assert interface and interface != "lo", "Refusing to disable loopback"
+                    run(adb + ["shell", "ip", "link", "set", "dev", interface, "down"])
+                    disabled.append(interface)
+            after = default_routes()
+            (log_dir / "offline-network-isolation.json").write_text(json.dumps({
+                "airplane_mode_on": airplane, "wifi_on": wifi,
+                "default_routes_before": before, "interfaces_disabled": disabled,
+                "default_routes_after": after
+            }, indent=2) + "\n")
+            assert not any(after.values()), (
+                f"Emulator still has a default network route; offline render gate invalid: {after}")
+            state = subprocess.run(adb + ["shell", "dumpsys", "connectivity"],
+                                   capture_output=True, text=True, check=True)
             (log_dir / "offline-connectivity.txt").write_text(state.stdout)
         staged_map_dir = stage_verified_map_for_isolated_debug_runtime()
         # Reject stale XML from an earlier emulator run or Gradle invocation.
