@@ -1,3 +1,8 @@
+## 2026-11-06 Authenticated UI executed; bind next run to the offline APK
+
+- Exact8236b49b NativePilot42226097095,MapEngine42226097452,Offline42226097202 andAuthenticated42226097421 SUCCESS. Both credential and actual capture jobs executed, not skipped. Downloaded Rider artifact13505319764 and inspected metadata: source8236, standard APK009af332d0dea4eef42021f0c3e50ac22620ce25fd11c544a49a51c44392b5c2, actual authenticated screens retained. This standard build is NOT the national field APK; no same-binary claim.
+- Remove Rider rebuild from Auth workflow; wait for successful exact-head offline run, verify immutable ZIP artifact digests, part hashes/buildcommit and whole APK SHA, then install that exact existing candidate. Merchant remains standard online build; shared test-account lock retained. Disable regional debug-map provisioning for Rider. Keep candidate identity metadata with screenshots. Auth workflow receives actions:read; trigger offline gate on candidate-helper/Auth-workflow edits to prevent deadlock. New runtime pending; no Production schema/RLS/order writes, no main merge or push-delivery claim.
+
 ## 2026-11-06 Connect authenticated Rider review to current Native PR
 
 - Owner explicitly requested field-test APK before physical-road acceptance. Delivered reconstructed06595fda APK1004252483bytes SHA d785114dd90fe2aa5f4b5ffddc05a01cc3492538a9edbc378ab625c080f3c4b8; all3parts and whole SHA verified against successful42212253582. Local file QueueGo-Rider-FieldTest-06595fda.apk; Library save failed, scratch link only. This is field-test software, not service release.

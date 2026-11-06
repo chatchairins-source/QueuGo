@@ -3,6 +3,8 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - '.github/workflows/rider-android-authenticated-review.yml'
+      - 'native-android/qa/fetch-rider-offline-candidate.py'
       - 'native-android/rider-navigation-map/**'
       - 'native-android/rider/**'
       - 'native-android/qa/run-rider-offline-routing.py'
