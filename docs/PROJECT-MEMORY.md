@@ -1,3 +1,8 @@
+## 2026-11-07 Exact country APK authenticated; enable real Google Play services
+
+- Refreshed Native8728ea8a70e. All exact-head runs SUCCESS: Offline42298940215,Auth42298939455,Native42298939453,Map42298939686. Downloaded Auth artifact13543214764 SHA7584c21882897e977a2fd63c34bed79edce9982ad68d8c9bd8aac83ee71f83d8; candidate.json AND metadata.json match source8ea8 and actualAPK1998ac68d062b76727dfb6e6aa33bac2eb4360b085cd42ca24ea9b4b023a158d. Same offline-tested APK login/UI evidence now exists. Actual diagnostics screenshot reviewed: location permission denied; notification permission checked, not proof FCM delivery.
+- Auth AOSP default image has no Google Play services. Switch the existing authenticated runner to Google APIs API30 and require installed real com.google.android.gms before login when QG_REQUIRE_PLAY_SERVICES=1. Record prerequisite only (never tokens or false push-delivery PASS), retain its JSON. Preserve denied-location capture, business workflows and account serialization. New exact-head hosted capture needed; physical road and actual push delivery/full delivery remain open. No Production schema/RLS/order mutations or main merge.
+
 ## 2026-11-06 Authenticated UI executed; bind next run to the offline APK
 
 - Exact8236b49b NativePilot42226097095,MapEngine42226097452,Offline42226097202 andAuthenticated42226097421 SUCCESS. Both credential and actual capture jobs executed, not skipped. Downloaded Rider artifact13505319764 and inspected metadata: source8236, standard APK009af332d0dea4eef42021f0c3e50ac22620ce25fd11c544a49a51c44392b5c2, actual authenticated screens retained. This standard build is NOT the national field APK; no same-binary claim.

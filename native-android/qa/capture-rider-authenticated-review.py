@@ -323,6 +323,15 @@ def main():
     assert apk.is_file(), "Build Rider debug APK first"
     install_verified_apk(ADB, apk, PKG)
     run(["shell","pm","clear",PKG],timeout=60)
+    if os.environ.get("QG_REQUIRE_PLAY_SERVICES") == "1":
+        installed = run(["shell","pm","path","com.google.android.gms"],
+                        capture_output=True,text=True).stdout.strip()
+        assert installed.startswith("package:"), "Authenticated push-capable review requires real Google Play services"
+        # Presence enables real FCM registration; it does not prove delivery.
+        (OUT/"play-services.json").write_text(json.dumps({
+            "installed": True, "push_delivery_certified": False,
+            "system_image": "android-30;google_apis;x86_64"
+        },indent=2)+"\n")
     provision_map()
     run(["shell","am","start","-W","-n",PKG+"/.MainActivity"],capture_output=True,text=True,timeout=60)
     ns=wait(lambda xs:any("เข้าสู่ระบบ" in (n.get("text","")+n.get("content-desc","")) for n in xs))
