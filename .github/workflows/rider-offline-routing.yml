@@ -245,3 +245,76 @@ jobs:
       # Retained pixels must still be visually reviewed, particularly Issue #750 labels.
       # Neither routing nor country-rendering instrumentation certifies authentication/release.
       # No owner APK publication and no Production deployment are performed here.
+
+  publish-verified-field-apk:
+    # Publish only the byte-identical APK from the successful installed offline gate.
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix-rider-invalid-step-metrics-20261106' }}
+    needs: [offline-routing]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Reconstruct and verify exact offline-tested Rider APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p parts
+          for index in 00 01; do
+            gh run download "$GITHUB_RUN_ID" --name "rider-unreleased-country-part${index}-${EXPECTED_SHA}" --dir parts
+          done
+          # Optional third part is present only for APKs exceeding 800 MiB.
+          if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" --jq '.artifacts[].name' | grep -Fxq "rider-unreleased-country-part02-${EXPECTED_SHA}"; then
+            gh run download "$GITHUB_RUN_ID" --name "rider-unreleased-country-part02-${EXPECTED_SHA}" --dir parts
+          fi
+          test "$(cat parts/build-commit.txt)" = "$EXPECTED_SHA"
+          (cd parts && sha256sum -c parts.sha256)
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, zipfile
+          root=Path("parts")
+          files=sorted(root.glob("rider-debug.apk.part[0-9][0-9]"))
+          assert 1 <= len(files) <= 3
+          assert [f.name for f in files] == [f"rider-debug.apk.part{i:02d}" for i in range(len(files))]
+          target=Path("QueueGo-Rider-FieldTest.apk")
+          digest=hashlib.sha256()
+          with target.open("wb") as out:
+              for part in files:
+                  with part.open("rb") as src:
+                      while chunk:=src.read(8*1024*1024):
+                          digest.update(chunk)
+                          out.write(chunk)
+          expected=(root/"whole-apk.sha256").read_text().split()[0]
+          assert digest.hexdigest()==expected, "whole installed APK SHA mismatch"
+          with zipfile.ZipFile(target) as z:
+              assert z.testzip() is None, "APK ZIP integrity failed"
+              names=z.namelist()
+              assert "assets/maps/thailand-shortbread.pmtiles" in names
+              assert "assets/maps/thailand-shortbread.json" in names
+              entry=z.getinfo("assets/maps/thailand-shortbread.pmtiles")
+              assert entry.compress_type == zipfile.ZIP_STORED
+              assert any(n.startswith("assets/routing/") for n in names), "routing payload missing"
+          Path("SHA256SUMS.txt").write_text(f"{expected}  {target.name}\n")
+          PY
+          mv QueueGo-Rider-FieldTest.apk "QueueGo-Rider-FieldTest-${EXPECTED_SHA:0:8}.apk"
+          sed -i "s/QueueGo-Rider-FieldTest.apk/QueueGo-Rider-FieldTest-${EXPECTED_SHA:0:8}.apk/" SHA256SUMS.txt
+          sha256sum -c SHA256SUMS.txt
+          printf 'Source: %s\nOffline installed-test run: %s\nField-test only. Physical road, full order E2E and FCM delivery remain independent gates.\n' "$EXPECTED_SHA" "$GITHUB_RUN_ID" > SOURCE.txt
+      - name: Publish verified single APK as prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          tag="rider-country-field-${EXPECTED_SHA:0:8}"
+          apk="QueueGo-Rider-FieldTest-${EXPECTED_SHA:0:8}.apk"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$apk" SHA256SUMS.txt SOURCE.txt --clobber
+          else
+            gh release create "$tag" "$apk" SHA256SUMS.txt SOURCE.txt --target "$EXPECTED_SHA" --prerelease --title "QueueGo verified offline Rider field test ${EXPECTED_SHA:0:8}" --notes-file SOURCE.txt
+          fi
