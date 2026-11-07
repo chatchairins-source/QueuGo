@@ -1,3 +1,6 @@
+import java.net.URI
+import java.util.Base64
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -10,7 +13,7 @@ if (debugBackendUrl.isNotEmpty() || debugBackendPublicKey.isNotEmpty()) {
     require(debugBackendUrl.isNotEmpty() && debugBackendPublicKey.isNotEmpty()) {
         "Debug backend URL and public key must be supplied together"
     }
-    val uri = runCatching { java.net.URI(debugBackendUrl) }.getOrNull()
+    val uri = runCatching { URI(debugBackendUrl) }.getOrNull()
     require(uri != null && uri.host != null && uri.userInfo == null && uri.query == null &&
         uri.fragment == null && (uri.port == -1 || uri.port in 1..65535) &&
         (uri.path.isNullOrEmpty() || uri.path == "/")) { "Invalid isolated debug backend origin" }
@@ -23,7 +26,7 @@ if (debugBackendUrl.isNotEmpty() || debugBackendPublicKey.isNotEmpty()) {
     val anon = runCatching {
         val parts = debugBackendPublicKey.split('.')
         val payload = if (parts.size == 3 && parts.all { it.isNotEmpty() })
-            groovy.json.JsonSlurper().parseText(String(java.util.Base64.getUrlDecoder().decode(parts[1]), Charsets.UTF_8)) as? Map<*, *> else null
+            groovy.json.JsonSlurper().parseText(String(Base64.getUrlDecoder().decode(parts[1]), Charsets.UTF_8)) as? Map<*, *> else null
         payload?.get("role") == "anon"
     }.getOrDefault(false)
     require(publishable || anon) { "Debug backend key must be public; server keys cannot enter APKs" }
