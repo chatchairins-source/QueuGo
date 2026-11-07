@@ -1,0 +1,33 @@
+{
+  "format_version": 1,
+  "engine": "valhalla",
+  "engine_version": "3.9.1",
+  "android_runtime": "io.github.rallista:valhalla-mobile:0.6.4",
+  "profile": "motorcycle",
+  "licence": "ODbL-1.0",
+  "source": {
+    "source": "OpenStreetMap via Geofabrik Thailand extract",
+    "download_url": "https://download.geofabrik.de/asia/thailand-261104.osm.pbf",
+    "extract_sha256": "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457",
+    "attribution": "© OpenStreetMap contributors",
+    "licence": "ODbL-1.0",
+    "source_replication_timestamp": "2026-11-04T21:21:03Z",
+    "region": "Thailand",
+    "bounds": [
+      97.135615,
+      5.597877,
+      105.63921,
+      20.468752
+    ]
+  },
+  "graph": {
+    "bytes": 1114777600,
+    "sha256": "4e333c442483acd22963601d421fd08c7342f753304b53fd2af09978d201f8c0"
+  },
+  "config": {
+    "bytes": 9511,
+    "sha256": "a3ca9884f276c3a85ff942329805d3805f2be07bf8cd16a3d523ca4eedf848fe"
+  },
+  "emulator_qa_passed": false,
+  "physical_road_qa_passed": false
+}

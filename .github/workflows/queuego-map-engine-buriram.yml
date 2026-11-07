@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
@@ -94,18 +96,19 @@ jobs:
             fi
             echo "QG_MAP_BOOTSTRAP_PACKAGE=0" >> "${GITHUB_ENV}"
           else
-            echo "Pinned Geofabrik source is no longer available; restoring the exact verified package from successful Map Engine run 39873313811."
+            echo "Pinned Geofabrik source is no longer available; restoring the exact verified package from successful Map Engine run 41269446553."
             BOOTSTRAP_ZIP="$(mktemp --suffix=.zip)"
             BOOTSTRAP_DIR="$(mktemp -d)"
             curl --fail --location --retry 3 \
               -H "Authorization: Bearer ${GITHUB_TOKEN}" \
               -H "Accept: application/vnd.github+json" \
               -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/12468116823/zip" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/13067984492/zip" \
               --output "${BOOTSTRAP_ZIP}"
+            echo "2e9ead0cdeccac8c510e667989f6c3f61456d088c477dea6eb134966a78a9d88  ${BOOTSTRAP_ZIP}" | sha256sum --check
             unzip -q "${BOOTSTRAP_ZIP}" -d "${BOOTSTRAP_DIR}"
             echo "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d  ${BOOTSTRAP_DIR}/map-data/buriram.osm.pbf" | sha256sum --check
-            echo "9af9999583518c32177231826252d24883a6842960c9224faea100ff1685fc31  ${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz" | sha256sum --check
+            echo "7aed87146e5cceeab9a63fe733ada87daf6065be634a7b24a7fc6f925110ff9d  ${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz" | sha256sum --check
             python -c "import json,sys; m=json.load(open(sys.argv[1],encoding='utf-8')); assert m['source_sha256']=='02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf'; assert m['extract_sha256']=='426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d'; assert m['source_replication_timestamp']=='2026-10-15T20:21:00Z'" "${BOOTSTRAP_DIR}/map-data/buriram.osm.manifest.json"
             cp "${BOOTSTRAP_DIR}/map-data/buriram.osm.pbf" map-data/buriram.osm.pbf
             cp "${BOOTSTRAP_DIR}/map-data/buriram.osm.manifest.json" map-data/buriram.osm.manifest.json
@@ -113,10 +116,10 @@ jobs:
             cp "${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz.sha256" map-data/buriram-map-v1.tar.gz.sha256
             cp "${BOOTSTRAP_DIR}/map-data/places-generated.json" map-data/places-generated.json
             rm -rf map-data/bootstrap-store
-            python ops/maps/offline_package.py install --archive map-data/buriram-map-v1.tar.gz --sha256 9af9999583518c32177231826252d24883a6842960c9224faea100ff1685fc31 --store map-data/bootstrap-store
+            python ops/maps/offline_package.py install --archive map-data/buriram-map-v1.tar.gz --sha256 7aed87146e5cceeab9a63fe733ada87daf6065be634a7b24a7fc6f925110ff9d --store map-data/bootstrap-store
             python ops/maps/offline_package.py activate --store map-data/bootstrap-store --version buriram-map-v1
             python ops/maps/offline_package.py resolve --store map-data/bootstrap-store > map-data/bootstrap-resolved.json
-            python -c "import json,shutil; from pathlib import Path; r=json.load(open('map-data/bootstrap-resolved.json',encoding='utf-8')); db=Path(r['database']); cfg=Path(r['config']); vector=Path(r['vector']); root=db.parent; shutil.copy2(db,'map-data/roads.sqlite'); Path('map-data/valhalla').mkdir(parents=True,exist_ok=True); shutil.copytree(root/'tiles','map-data/valhalla/tiles'); config=json.load(open(cfg,encoding='utf-8')); config['mjolnir']['tile_dir']=str(Path('map-data/valhalla/tiles').resolve()); Path('map-data/valhalla/valhalla.json').write_text(json.dumps(config,indent=2)+'\\n'); manifest=json.load(open(root/'manifest.json',encoding='utf-8')); Path('map-data/valhalla/build-report.json').write_text(json.dumps({'dataset_sha256':manifest['dataset']['extract_sha256'],'bootstrap_package_sha256':'9af9999583518c32177231826252d24883a6842960c9224faea100ff1685fc31'},indent=2)+'\\n'); shutil.copy2(vector,'map-data/vector.pmtiles')"
+            python -c "import json,shutil; from pathlib import Path; r=json.load(open('map-data/bootstrap-resolved.json',encoding='utf-8')); db=Path(r['database']); cfg=Path(r['config']); vector=Path(r['vector']); root=db.parent; shutil.copy2(db,'map-data/roads.sqlite'); Path('map-data/valhalla').mkdir(parents=True,exist_ok=True); shutil.copytree(root/'tiles','map-data/valhalla/tiles'); config=json.load(open(cfg,encoding='utf-8')); config['mjolnir']['tile_dir']=str(Path('map-data/valhalla/tiles').resolve()); Path('map-data/valhalla/valhalla.json').write_text(json.dumps(config,indent=2)+'\\n'); manifest=json.load(open(root/'manifest.json',encoding='utf-8')); Path('map-data/valhalla/build-report.json').write_text(json.dumps({'dataset_sha256':manifest['dataset']['extract_sha256'],'bootstrap_package_sha256':'7aed87146e5cceeab9a63fe733ada87daf6065be634a7b24a7fc6f925110ff9d'},indent=2)+'\\n'); shutil.copy2(vector,'map-data/vector.pmtiles')"
             echo "QG_MAP_BOOTSTRAP_PACKAGE=1" >> "${GITHUB_ENV}"
             rm -f "${BOOTSTRAP_ZIP}"
             rm -rf "${BOOTSTRAP_DIR}"

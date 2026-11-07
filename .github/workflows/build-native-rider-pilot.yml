@@ -13,6 +13,8 @@ on:
   pull_request:
     branches:
       - 'work-native-**'
+      - 'fix-rider-**'
+      - 'test-rider-**'
   push:
     branches:
       - queuego-native-android-v1
@@ -419,7 +421,7 @@ jobs:
         run: node tests/native-rpc-catalog-postgres.cjs
 
   continuous-dispatch-races:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -438,6 +440,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
@@ -449,7 +453,7 @@ jobs:
         run: node tests/rider-continuous-dispatch-races.cjs
 
   route-bundle-stack-races:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -468,6 +472,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
@@ -479,7 +485,7 @@ jobs:
         run: node tests/route-bundle-stack-races.cjs
 
   passenger-ride-races:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -509,7 +515,7 @@ jobs:
         run: node tests/passenger-ride-races.cjs
 
   credit-races:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -540,7 +546,7 @@ jobs:
 
 
   express-races:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 6
     services:
@@ -559,6 +565,8 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '22'
@@ -570,7 +578,7 @@ jobs:
         run: node tests/express-races.cjs
 
   map-display-only:
-    if: ${{ github.head_ref == 'fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.head_ref == 'fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -612,7 +620,7 @@ jobs:
           retention-days: 14
 
   navigation-map-runtime:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.head_ref, 'work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-map-runtime-xml-') || startsWith(github.head_ref, 'work-native-rider-map-runtime-xml-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.head_ref, 'work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-map-runtime-xml-') || startsWith(github.head_ref, 'work-native-rider-map-runtime-xml-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -647,7 +655,7 @@ jobs:
           retention-days: 14
 
   maplibre-osm-runtime:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -683,7 +691,7 @@ jobs:
 
 
   publish-rider-road-test:
-    if: ${{ github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' && github.event_name == 'push' }}
+    if: ${{ (github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106') && github.event_name == 'push' }}
     needs: [native-pilot, map-display-only, navigation-map-runtime, maplibre-osm-runtime, continuous-dispatch-races, passenger-ride-races, credit-races]
     runs-on: ubuntu-latest
     timeout-minutes: 10

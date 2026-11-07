@@ -31,10 +31,10 @@ private fun InputStream.readNativeAuthResponseBounded(
 }
 
 class NativeAuthApi(
-    private val baseUrl: String = "https://pkypiqhlrmzocysgeqew.supabase.co"
+    private val baseUrl: String = QueueGoBackendEnvironment.baseUrl
 ) {
     companion object {
-        private const val KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
+        private val KEY: String get() = QueueGoBackendEnvironment.publishableKey
         private const val TIMEOUT = 15000
     }
 

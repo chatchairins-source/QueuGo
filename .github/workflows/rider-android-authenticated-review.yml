@@ -2,6 +2,12 @@ name: QueueGo Rider Android Authenticated Review
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/rider-android-authenticated-review.yml'
+      - 'native-android/rider/**'
+      - 'native-android/qa/capture-rider-authenticated-review.py'
+      - 'native-android/qa/fetch-rider-offline-candidate.py'
   push:
     branches:
       - work-native-rider-auth-review-20261024
@@ -18,6 +24,7 @@ concurrency:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   credential-check:
@@ -51,7 +58,7 @@ jobs:
           ready = roles["merchant" if merchant_only else "rider"]["ready"]
           with open(os.environ["GITHUB_OUTPUT"], "a") as output:
               output.write("ready=" + str(ready).lower() + "\n")
-          capture_requested = (os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch"
+          capture_requested = (os.environ.get("GITHUB_EVENT_NAME") in ("workflow_dispatch", "pull_request")
               or os.environ.get("GITHUB_REF_NAME") in ("work-native-rider-auth-review-20261024", "work-rider-diagnostics-visual-gate-20261102") or merchant_only)
           report = {"status": "ready" if ready else "skipped",
               "scope": "credential presence only; not authenticated visual acceptance",
@@ -70,11 +77,13 @@ jobs:
 
   capture:
     needs: credential-check
-    if: needs.credential-check.outputs.ready == 'true' && (github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-diagnostics-visual-gate-20261102' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
+    if: needs.credential-check.outputs.ready == 'true' && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-diagnostics-visual-gate-20261102' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -86,7 +95,7 @@ jobs:
           set +o pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             "platforms;android-36" "build-tools;36.0.0" "emulator" "platform-tools" \
-            "system-images;android-30;default;x86_64" >/dev/null
+            "system-images;android-30;google_apis;x86_64" >/dev/null
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
@@ -129,8 +138,12 @@ jobs:
           rm -f "$tmp"
       - name: Verify Rider diagnostics visual gate regression
         run: python3 native-android/qa/test_rider_diagnostics_visual_gate.py
-      - name: Build actual Rider and Merchant debug APKs
-        run: gradle -p native-android :rider:assembleDebug :merchant:assembleDebug --no-build-cache --stacktrace
+      - name: Build Merchant debug APK
+        run: gradle -p native-android :merchant:assembleDebug --no-build-cache --stacktrace
+      - name: Fetch the exact offline-tested Rider candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 native-android/qa/fetch-rider-offline-candidate.py
       - name: Enable runner-only Android acceleration
         run: |
           set -euo pipefail
@@ -144,7 +157,7 @@ jobs:
           set -euo pipefail
           mkdir -p "$ANDROID_AVD_HOME"
           "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
-            -n queuego_rider_review -k "system-images;android-30;default;x86_64" \
+            -n queuego_rider_review -k "system-images;android-30;google_apis;x86_64" \
             --device pixel_4 -p "$ANDROID_AVD_HOME/queuego_rider_review" <<< "no"
           "$ANDROID_HOME/platform-tools/adb" start-server
           adb="$ANDROID_HOME/platform-tools/adb"
@@ -173,10 +186,24 @@ jobs:
       - name: Capture authenticated Rider views on Android Emulator
         if: ${{ !contains(github.event.head_commit.message, '[merchant-visual-review]') }}
         env:
-          QG_DEBUG_MAP_ARCHIVE: '1'
+          QG_DEBUG_MAP_ARCHIVE: '0'
+          QG_REQUIRE_PLAY_SERVICES: '1'
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
           QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
         run: python3 native-android/qa/capture-rider-authenticated-review.py
+      - name: Verify actual background FCM on the same authenticated Rider candidate
+        if: ${{ !contains(github.event.head_commit.message, '[merchant-visual-review]') }}
+        run: |
+          set -euo pipefail
+          adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" -s emulator-5554 install -r native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk
+          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.rider.RiderPushRuntimeTest com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner > artifacts/rider-authenticated-review/background-fcm.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("artifacts/rider-authenticated-review/background-fcm.txt").read_text()
+          assert "OK (1 test)" in text and "FAILURES" not in text, "Actual background FCM test failed; inspect retained instrumentation"
+          print("QUEUEGO_REAL_BACKGROUND_FCM_PASS")
+          PY
       - name: Capture authenticated Merchant views on Android Emulator
         if: always() && steps.boot_emulator.outcome == 'success'
         env:
@@ -231,5 +258,8 @@ jobs:
           path: |
             artifacts/rider-authenticated-review/*.png
             artifacts/rider-authenticated-review/metadata.json
+            artifacts/rider-authenticated-review/candidate.json
+            artifacts/rider-authenticated-review/play-services.json
+            artifacts/rider-authenticated-review/background-fcm.txt
           if-no-files-found: warn
           retention-days: 7

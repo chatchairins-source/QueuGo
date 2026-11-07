@@ -115,4 +115,23 @@ await db.query(`SELECT qg_rider_action_once('${id(73)}','order','${completePaylo
 assert.equal((await db.query(`SELECT count(*)::int n FROM audit_logs WHERE entity_id='${id(70)}' AND description='complete'`)).rows[0].n,1);checks++;
 assert.equal((await db.query(`SELECT status FROM payments WHERE order_id='${id(70)}'`)).rows[0].status,'paid');checks++;
 await reject(`SELECT qg_rider_action_once('${id(74)}','order','{"p_order_id":"${id(999)}","p_action":"pickup_cash"}')`,/order unavailable/).catch(e=>{throw e});
+// Execute the current Android photo-only completion RPC from canonical source.
+const photoSql=fs.readFileSync(path.resolve(__dirname,'../supabase/migrations/20261006150500_rider_photo_only_flow.sql'),'utf8');
+const photoFunction=photoSql.match(/CREATE OR REPLACE FUNCTION public\.qg_complete_with_photo\([\s\S]*?\$function\$;/);
+assert(photoFunction,'canonical photo-only completion RPC missing');checks++;
+await db.exec('ALTER TABLE qg_delivery_proofs ADD COLUMN extra_photo_path text, ADD COLUMN verified_at timestamptz');
+await db.exec(photoFunction[0]);
+await seed(80);
+await reject(`SELECT qg_complete_with_photo('${id(80)}',NULL)`,/valid delivery photo/);
+await reject(`SELECT qg_complete_with_photo('${id(80)}','${id(4)}/foreign.jpg')`,/valid delivery photo/);
+await db.query('INSERT INTO storage.objects VALUES($1,$2)',['qg-evidence',id(2)+'/delivery.jpg']);
+await db.query(`SELECT set_config('test.uid','${id(4)}',false)`);
+await reject(`SELECT qg_complete_with_photo('${id(80)}','${id(2)}/delivery.jpg')`,/not ready/);
+await db.query(`SELECT set_config('test.uid','${id(2)}',false)`);
+await reject(`SELECT qg_complete_with_photo('${id(80)}','${id(2)}/delivery.jpg',91,103)`,/invalid GPS/);
+assert.equal((await db.query(`SELECT count(*)::int n FROM qg_delivery_proofs WHERE order_id='${id(80)}'`)).rows[0].n,0);checks++;
+assert.equal((await db.query(`SELECT qg_complete_with_photo('${id(80)}','${id(2)}/delivery.jpg',15,103) result`)).rows[0].result,'completed');checks++;
+assert.equal((await db.query(`SELECT status FROM payments WHERE order_id='${id(80)}'`)).rows[0].status,'paid');checks++;
+assert.equal((await db.query(`SELECT qg_complete_with_photo('${id(80)}','${id(2)}/delivery.jpg',15,103) result`)).rows[0].result,'completed');checks++;
+assert.equal((await db.query(`SELECT count(*)::int n FROM qg_delivery_proofs WHERE order_id='${id(80)}'`)).rows[0].n,1);checks++;
 console.log(JSON.stringify({checks,failures:0,scope:'PGlite isolated SQL with synthetic rows; no live RLS/concurrency certification'},null,2));await db.close();})().catch(e=>{console.error(e);process.exit(1)});

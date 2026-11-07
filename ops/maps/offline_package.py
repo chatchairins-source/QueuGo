@@ -2,7 +2,7 @@
 """Immutable regional packages: verify every file, atomic activation and explicit rollback.
 The package contains data, not the Android routing runtime. No delta format is claimed.
 """
-import argparse,hashlib,json,os,re,shutil,tarfile,tempfile,urllib.request
+import argparse,hashlib,json,os,re,shutil,subprocess,sys,tarfile,tempfile,urllib.request
 from pathlib import Path
 
 def checksum(path):
@@ -97,8 +97,65 @@ def resolve(store,runtime_directory=None):
     runtime=Path(runtime_directory or store)/('runtime-'+version+'.json');runtime.parent.mkdir(parents=True,exist_ok=True);runtime.write_text(json.dumps(config))
     return {'database':str(root/'roads.sqlite'),'config':str(runtime),'vector':str(root/'vector.pmtiles')}
 
+def build_android_routing(graph, source_manifest, destination):
+    """Package the existing Valhalla build for Rider's in-process Android actor.
+
+    This does not label a dataset as QA-passed or include rendering PMTiles.
+    Source and graph must be the exact same immutable OSM snapshot.
+    """
+    import valhalla
+    graph = Path(graph).resolve()
+    destination = Path(destination).resolve()
+    source = json.loads(Path(source_manifest).read_text())
+    report = json.loads((graph / 'build-report.json').read_text())
+    if report['engine'] != 'valhalla' or report['dataset_sha256'] != source['extract_sha256']:
+        raise ValueError('Graph and source snapshot do not match')
+    if not re.fullmatch('[a-f0-9]{64}', source['extract_sha256']):
+        raise ValueError('Source SHA-256 is invalid')
+    if source['licence'] != 'ODbL-1.0' or not source['download_url'].startswith('https://'):
+        raise ValueError('Licensed source provenance is required')
+    if destination.exists():
+        raise ValueError('Refuse to overwrite an immutable routing asset package')
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.routing-', dir=destination.parent) as temporary:
+        root = Path(temporary)
+        config = json.loads((graph / 'valhalla.json').read_text())
+        config['mjolnir']['tile_dir'] = str(graph / 'tiles')
+        config['mjolnir']['tile_extract'] = str(root / 'tiles.tar')
+        # No remote data dependency in an offline package or its installed runtime.
+        config['mjolnir']['tile_url'] = ''
+        config['mjolnir']['traffic_extract'] = ''
+        config['mjolnir']['admin'] = ''
+        config['mjolnir']['max_cache_size'] = 64 * 1024 * 1024
+        config.get('additional_data', {})['elevation'] = ''
+        config['service_limits']['motorcycle']['max_distance'] = 2_000_000.0
+        build_config = root / 'build-config.json'
+        build_config.write_text(json.dumps(config))
+        subprocess.run([sys.executable, '-m', 'valhalla.valhalla_build_extract', '-c', str(build_config)], check=True)
+        build_config.unlink()
+        config['mjolnir']['tile_dir'] = ''
+        config['mjolnir']['tile_extract'] = 'tiles.tar'
+        (root / 'valhalla.json').write_text(json.dumps(config, indent=2) + '\n')
+        def entry(name):
+            path = root / name
+            size = path.stat().st_size
+            if not 0 < size <= 2 * 1024**3:
+                raise ValueError('Android graph package file exceeds device budget')
+            return {'bytes': size, 'sha256': checksum(path)}
+        manifest = {'format_version': 1, 'engine': 'valhalla', 'engine_version': report['version'],
+                    'android_runtime': 'io.github.rallista:valhalla-mobile:0.6.4',
+                    'profile': 'motorcycle', 'licence': 'ODbL-1.0',
+                    'source': source, 'graph': entry('tiles.tar'), 'config': entry('valhalla.json'),
+                    'emulator_qa_passed': False, 'physical_road_qa_passed': False}
+        (root / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')
+        # Destination is an assets root, with a fixed routing/ namespace.
+        destination.mkdir()
+        shutil.copytree(root, destination / 'routing')
+    return manifest
+
 def main():
     p=argparse.ArgumentParser();sub=p.add_subparsers(dest='action',required=True)
+    a=sub.add_parser('android-routing');a.add_argument('--graph',required=True);a.add_argument('--source-manifest',required=True);a.add_argument('--destination',required=True)
     b=sub.add_parser('build');b.add_argument('--database',required=True);b.add_argument('--graph',required=True);b.add_argument('--vector',required=True);b.add_argument('--destination',required=True);b.add_argument('--version',required=True)
     for action in ('activate','rollback','resolve'):
         q=sub.add_parser(action);q.add_argument('--store',required=True)
@@ -106,7 +163,8 @@ def main():
     i=sub.add_parser('install');i.add_argument('--archive',required=True);i.add_argument('--sha256',required=True);i.add_argument('--store',required=True)
     d=sub.add_parser('download');d.add_argument('--url',required=True);d.add_argument('--sha256',required=True);d.add_argument('--store',required=True)
     a=p.parse_args();values=vars(a);action=values.pop('action')
-    if action=='build':result=build(**values)
+    if action=='android-routing':result=build_android_routing(**values)
+    elif action=='build':result=build(**values)
     elif action=='install':result=install(a.archive,a.store,a.sha256)
     elif action=='activate':result=activate(a.store,a.version)
     elif action=='resolve':result=resolve(a.store)
