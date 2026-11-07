@@ -1,3 +1,8 @@
+## 2026-11-07 Activate isolated backend acceptance on current Native successor
+
+- Exactf891e1be all4 CI passed, including actual QUEUEGO_REAL_BACKGROUND_FCM_PASS in42325887125. No false push claim from permission alone.
+- Existing continuous-dispatch-races,route-bundle-stack-races,express-races were SKIPPED on872 due old-branch filters. Enable all3 actual PostgreSQL migration/RPC jobs on this successor, checkout explicit PRHEAD, retain strict isolated loopback database guards and pinned service containers. No Production write/schema deploy/main merge. Express actual request/claim/proof/completion/races plus dispatch/bundle locks are useful backend evidence; fixture schemas do NOT certify full Production schema/RLS or food Customer→Merchant→Rider Android/Web end-to-end. New exact-head results pending.
+
 ## 2026-11-07 Execute actual background FCM acceptance
 
 - Refreshed Native2949578c: all exact-head runs passed including Auth42310708488,Offline42310708438,Native42310708480,Map42310708439. Actual Auth job Firebase client configuration valid, Google APIs prerequisite enforced. Presence/permission is not push delivery.
