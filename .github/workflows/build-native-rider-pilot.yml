@@ -712,6 +712,14 @@ jobs:
           asset="QueueGo-Rider-RoadTest-${GITHUB_SHA:0:8}.apk"
           tag="rider-road-test-${GITHUB_SHA:0:8}"
           cp "${rider_apks[0]}" "$asset"
+          # This pilot job does not bundle the Valhalla graph or the verified
+          # country rendering archive on this branch. Never publish its small
+          # build as a nationwide offline Rider field-test candidate.
+          # The offline-routing workflow owns the fully installed/tested APK.
+          test "$(stat -c %s "$asset")" -ge 400000000 || {
+            echo "::error::Pilot Rider APK lacks the expected nationwide offline payload; refusing road-test publication. Publish only the exact offline-routing tested candidate."
+            exit 1
+          }
           unzip -t "$asset" >/dev/null
           sha256sum "$asset" > SHA256SUMS.txt
           printf 'Source HEAD: %s\nPilot run: %s\nAll seven automated gates passed. Physical road test remains pending. Test APK only.\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > SOURCE.txt
