@@ -259,6 +259,7 @@ jobs:
       - name: Reconstruct and verify exact offline-tested Rider APK
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
