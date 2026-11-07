@@ -1,3 +1,9 @@
+## 2026-11-07 Execute actual background FCM acceptance
+
+- Refreshed Native2949578c: all exact-head runs passed including Auth42310708488,Offline42310708438,Native42310708480,Map42310708439. Actual Auth job Firebase client configuration valid, Google APIs prerequisite enforced. Presence/permission is not push delivery.
+- Add installed RiderPushRuntimeTest to matching source-built instrumentation. After real UI login, register real FCM token through existing API, put actual app in background, invoke existing testNativePush for the owner review account and require a fresh matching Android active notification. No simulated RemoteMessage/local notify, no token/session output, no customer order/payment/schema/RLS changes. Existing backend test action creates only an account-scoped test notification and may notify this review account's other registered devices; within explicitly requested push QA. Guard active Rider session; bounded registration/request/delivery waits; keep global review-account lock.
+- Auth uses checksum-verified same offline-tested app AND instrumentation already retained by latest fetch helper. Require actual OK(1 test), retain instrumentation result even on failure. New CI pending; no FCM acceptance claimed until real delivery succeeds. Full delivery flow/physical-road remain open.
+
 ## 2026-11-07 Exact country APK authenticated; enable real Google Play services
 
 - Refreshed Native8728ea8a70e. All exact-head runs SUCCESS: Offline42298940215,Auth42298939455,Native42298939453,Map42298939686. Downloaded Auth artifact13543214764 SHA7584c21882897e977a2fd63c34bed79edce9982ad68d8c9bd8aac83ee71f83d8; candidate.json AND metadata.json match source8ea8 and actualAPK1998ac68d062b76727dfb6e6aa33bac2eb4360b085cd42ca24ea9b4b023a158d. Same offline-tested APK login/UI evidence now exists. Actual diagnostics screenshot reviewed: location permission denied; notification permission checked, not proof FCM delivery.

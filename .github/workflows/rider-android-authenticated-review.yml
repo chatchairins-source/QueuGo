@@ -191,6 +191,19 @@ jobs:
           QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
           QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
         run: python3 native-android/qa/capture-rider-authenticated-review.py
+      - name: Verify actual background FCM on the same authenticated Rider candidate
+        if: ${{ !contains(github.event.head_commit.message, '[merchant-visual-review]') }}
+        run: |
+          set -euo pipefail
+          adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" -s emulator-5554 install -r native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk
+          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.rider.RiderPushRuntimeTest com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner > artifacts/rider-authenticated-review/background-fcm.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("artifacts/rider-authenticated-review/background-fcm.txt").read_text()
+          assert "OK (1 test)" in text and "FAILURES" not in text, "Actual background FCM test failed; inspect retained instrumentation"
+          print("QUEUEGO_REAL_BACKGROUND_FCM_PASS")
+          PY
       - name: Capture authenticated Merchant views on Android Emulator
         if: always() && steps.boot_emulator.outcome == 'success'
         env:
@@ -247,5 +260,6 @@ jobs:
             artifacts/rider-authenticated-review/metadata.json
             artifacts/rider-authenticated-review/candidate.json
             artifacts/rider-authenticated-review/play-services.json
+            artifacts/rider-authenticated-review/background-fcm.txt
           if-no-files-found: warn
           retention-days: 7
