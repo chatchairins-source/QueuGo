@@ -35,7 +35,7 @@ class NativeVoiceRealtime internal constructor(
     private val client: OkHttpClient
 ) {
     constructor() : this(
-        QueueGoNativeApi.BASE_URL.replace("https://", "wss://") +
+        QueueGoBackendEnvironment.websocketOrigin +
             "/realtime/v1/websocket?apikey=" + QueueGoNativeApi.PUBLISHABLE_KEY + "&vsn=1.0.0",
         OkHttpClient.Builder().pingInterval(20, TimeUnit.SECONDS).build()
     )
