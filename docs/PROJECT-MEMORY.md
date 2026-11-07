@@ -1,3 +1,8 @@
+## 2026-11-07 Exercise current photo-only completion rather than only legacy PIN
+
+- Existing completion runtime suite loaded old PIN/action migrations; Android now calls qg_complete_with_photo. Execute exact canonical function body from20261006150500 migration in existing isolated SQL fixture. Added missing/foreign photo, wrong Rider, invalid GPS/no partial proof, paid completion and repeated completion/exactly one proof assertions. Actual local node tests/rider-completion.cjs PASS58/0 (was48), synthetic PGlite fixture only; not fullfoodE2E/JWT/RLS/concurrency certification. No Production or product-code mutation.
+- Previous7e8fd094 exact backend3gates PASS25+100+45. Fullfood single-database Customer→Merchant→Rider flow and Android/Web acceptance remain open; do not claim legacy tests prove that path. New exact-head CI pending.
+
 ## 2026-11-07 Activate isolated backend acceptance on current Native successor
 
 - Exactf891e1be all4 CI passed, including actual QUEUEGO_REAL_BACKGROUND_FCM_PASS in42325887125. No false push claim from permission alone.
