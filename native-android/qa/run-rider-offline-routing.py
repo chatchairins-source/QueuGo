@@ -125,6 +125,21 @@ with (output/'emulator.log').open('w') as log:
             with (output/f'routing-memory-cold-{attempt}.json').open('w') as memory:
                 run(adb + ['exec-out', 'run-as', 'com.queuego.rider', 'cat',
                            'files/offline-routing-memory.json'], stdout=memory)
+            # Bound the measured routing-process PSS in the actual installed APK.
+            # This is a routing-process budget, NOT whole-app peak or low-RAM device certification.
+            samples = json.loads((output/f'routing-memory-cold-{attempt}.json').read_text())
+            assert len(samples) == 6, f'Expected six real regional route memory samples, got {len(samples)}'
+            pss = [int(sample['total_pss_kib']) for sample in samples]
+            assert all(value > 0 for value in pss), 'Missing Android Debug.MemoryInfo samples'
+            budget_kib = 450 * 1024
+            report = {'cold_process': attempt, 'sample_count': len(pss),
+                      'max_routing_process_pss_kib': max(pss),
+                      'budget_kib': budget_kib, 'passed': max(pss) <= budget_kib,
+                      'scope': 'routing instrumentation process only; not whole-app or physical RAM'}
+            (output/f'routing-memory-budget-cold-{attempt}.json').write_text(
+                json.dumps(report, indent=2) + '\\n')
+            assert report['passed'], (
+                f'Routing process PSS {max(pss)} KiB exceeds {budget_kib} KiB')
             if attempt == 2:
                 run(adb + ['shell', 'run-as', 'com.queuego.rider', 'test', '!', '-e', partial])
                 (output/'interrupted-part-recovery.txt').write_text(
