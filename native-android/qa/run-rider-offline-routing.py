@@ -137,7 +137,7 @@ with (output/'emulator.log').open('w') as log:
                       'budget_kib': budget_kib, 'passed': max(pss) <= budget_kib,
                       'scope': 'routing instrumentation process only; not whole-app or physical RAM'}
             (output/f'routing-memory-budget-cold-{attempt}.json').write_text(
-                json.dumps(report, indent=2) + '\\n')
+                json.dumps(report, indent=2) + '\n')
             assert report['passed'], (
                 f'Routing process PSS {max(pss)} KiB exceeds {budget_kib} KiB')
             if attempt == 2:
