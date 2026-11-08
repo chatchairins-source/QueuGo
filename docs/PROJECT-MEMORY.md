@@ -1,3 +1,9 @@
+## 2026-11-08 Restore Customer installed picker API matrix on Native PR872
+
+- Refreshed main2c44d6f9 and Native56ceb44d; current four workflows succeeded, with actual authenticated Rider/Merchant capture and background FCM step executed. Native Pilot deliberately skips country packaging; separate Offline42410606530 is the country gate. Release rider-country-field-56ceb44d targets this source and GitHub reports APK1004253063 bytes digest3ee3352465ba0ad753a3b996b8cd676d775a9181d2c67bd4c9c8d2f9d21003c5. Binary has not been downloaded/rehashed in this session.
+- Found Customer P0 installed matrix only triggered obsolete branches, leaving API26/30/33/35 picker/recreation coverage absent on current successor. Enable existing matrix on872 pushes and relevant PR changes; checkout explicit PR HEAD. Harness records actual checked-out Git commit rather than merge-event GITHUB_SHA. Existing real Android tests, 30 picker cycles, screenshots, crash checks and no-account/no-backend-write isolation retained.
+- Local Python compile, YAML trigger/exact-source/API-matrix checks, native-integration-ci86 checks and git diff check PASS. Android SDK/Gradle unavailable locally; actual new matrix execution pending hosted CI. This is runtime QA wiring, not full delivery UI E2E, physical GPS or Production readiness. No main merge or Production mutation.
+
 ## 2026-11-07 Isolated-backend prerequisite wiring for Native UI QA
 
 - Separate lane work-native-local-backend-20261107 based on refreshed de147818. Shared API/Auth and Rider API (including Storage) now use one paired backend configuration; both Realtime clients derive ws/wss from it. Explicit QG_DEBUG_BACKEND_URL and QG_DEBUG_BACKEND_PUBLISHABLE_KEY apply only to shared DEBUG BuildConfig. Unset values preserve existing Production defaults. Release BuildConfig contains empty override fields and always resolves Production.

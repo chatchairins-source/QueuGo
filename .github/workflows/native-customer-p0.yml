@@ -1,13 +1,19 @@
 name: Customer P0 Android runtime matrix
 on:
   push:
-    branches: [work-native-credit-live-enablement-20261016, work-native-customer-longdo-location-runtime-fix-20261016]
+    branches: [work-native-credit-live-enablement-20261016, work-native-customer-longdo-location-runtime-fix-20261016, fix-rider-invalid-step-metrics-20261106]
     paths:
       - 'native-android/customer/**'
       - 'native-android/shared/**'
       - 'native-android/qa/run-customer-p0.py'
       - '.github/workflows/native-customer-p0.yml'
       - '.github/workflows/build-native-rider-pilot.yml'
+  pull_request:
+    paths:
+      - 'native-android/customer/**'
+      - 'native-android/shared/**'
+      - 'native-android/qa/run-customer-p0.py'
+      - '.github/workflows/native-customer-p0.yml'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,6 +30,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin

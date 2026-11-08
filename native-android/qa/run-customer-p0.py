@@ -28,7 +28,8 @@ log = (out / 'emulator.log').open('w')
 emulator = subprocess.Popen([str(sdk / 'emulator/emulator'), '-avd', name, '-port', '5554', '-no-window', '-no-audio', '-no-boot-anim', '-no-snapshot', '-gpu', 'swiftshader_indirect', '-accel', 'on'], stdout=log, stderr=subprocess.STDOUT)
 log_process = None
 log_stream = (out / 'runtime-logcat.txt').open('w')
-summary = {'source_commit': os.environ['GITHUB_SHA'], 'api': int(api), 'result': 'FAIL', 'authenticated_online_tested': False, 'physical_device_tested': False, 'release_gate': 'BLOCKED'}
+source_commit = run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True).stdout.strip()
+summary = {'source_commit': source_commit, 'api': int(api), 'result': 'FAIL', 'authenticated_online_tested': False, 'physical_device_tested': False, 'release_gate': 'BLOCKED'}
 try:
     run(adb + ['wait-for-device'], timeout=180)
     deadline = time.monotonic() + 180
