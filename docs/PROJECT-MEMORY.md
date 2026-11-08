@@ -1,3 +1,9 @@
+## 2026-11-08 Unblock Merchant POS authenticated visual review
+
+- Exact POS successor `96dc1bbf19dc94f4e166d19f852442a2acd76881` has Native Pilot SUCCESS, including all three APK builds, packaging and emulator/runtime checks; Merchant Kotlin/JVM + Debug APK and authenticated Merchant hierarchy/tab visual regressions passed.
+- Found the Merchant visual-review path still unconditionally fetched the nationwide offline Rider candidate before booting its emulator. That made a Merchant-only screenshot job wait on an unrelated Rider artifact/workflow. Add the PR branch to the push trigger, add the `[merchant-visual-review]` branch gate, and skip only the Rider fetch in Merchant-only mode; retain the Rider path for Rider review. Add a native-source regression guard.
+- Next: publish with `[merchant-visual-review]`, inspect exact-head authenticated Merchant POS screenshots and Web comparison, then fix any concrete POS regression. No real sale/payment or Production mutation is part of visual review.
+
 ## 2026-11-08 Remove duplicate barcode/SKU lookup from POS counter
 
 - Owner-provided POS screenshot showed the counter's inline barcode/SKU scanner and search duplicated the dedicated `บาร์โค้ด/SKU` tab. Removed the inline counter field/result/lookup callback and the now-unused Native `lookupProductCode` client model/method. Kept the dedicated permission-gated barcode/SKU management tab, table QR generation, counter menu search, product selection, and all server RPCs used by those flows unchanged.

@@ -1969,4 +1969,11 @@ ok(merchantPosScreen.indexOf('amount > 999999999.0') >= 0 &&
   merchantPosScreen.indexOf('amount > 999999999.0') < merchantPosScreen.indexOf('!cashMovementStore.save(request)'),
   'Cashier must reject amounts outside RPC bounds before persisting an unreplayable cash intent');
 
+const authenticatedReviewWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/rider-android-authenticated-review.yml'),'utf8');
+ok(authenticatedReviewWorkflow.includes("- name: Fetch the exact offline-tested Rider candidate\n        if: ${{ !contains(github.event.head_commit.message, '[merchant-visual-review]') }}") &&
+  authenticatedReviewWorkflow.includes('      - fix-rider-invalid-step-metrics-20261106') &&
+  authenticatedReviewWorkflow.includes("github.ref_name == 'fix-rider-invalid-step-metrics-20261106') && contains(github.event.head_commit.message, '[merchant-visual-review]')") &&
+  authenticatedReviewWorkflow.includes('Capture authenticated Merchant views on Android Emulator'),
+  'Merchant-only visual review must trigger on the POS successor and skip the unrelated nationwide Rider artifact');
+
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
