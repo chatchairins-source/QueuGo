@@ -116,8 +116,8 @@ ok(/targetSdk\s*=\s*36/.test(gradle),'targetSdk 36');
 
 const riderIcon=read('rider/src/main/res/drawable/ic_queuego_foreground.xml');
 const riderAdaptive33=read('rider/src/main/res/mipmap-anydpi-v33/ic_queuego_launcher.xml');
-ok(riderIcon.includes('#E6002D')&&riderIcon.includes('fillType="evenOdd"')&&!riderIcon.includes('strokeColor="#EF3340"'),
-   'Rider launcher must use the simplified bold QueueGo red Q mark');
+ok(riderIcon.includes('#FFFFFFFF')&&riderIcon.includes('fillType="evenOdd"')&&read('rider/src/main/res/drawable/ic_queuego_background.xml').includes('#EF1717'),
+   'Rider launcher must use the approved white circular Q on red');
 ok(riderAdaptive33.includes('<monochrome android:drawable="@drawable/ic_queuego_monochrome"'),
    'Rider launcher must expose Android 13+ monochrome icon support');
 for(const density of ['mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi']){

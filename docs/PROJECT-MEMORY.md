@@ -1,3 +1,9 @@
+## 2026-11-08 Owner-approved connected-symbol red launcher family
+
+- Owner explicitly selected the latest image: all-red backgrounds, white thick circular Q, short low tail, and bag/storefront/road joined to the lower Q rim. Names: Customer QueueGo, Merchant QueueMarket, Rider Queue Rider. This supersedes the earlier Rider Q-only/red-on-white rule.
+- Native launcher generator now produces shared white Q geometry and role-specific connected symbols, outlined English wordmarks, red adaptive backgrounds, density/store PNGs and Android13 monochrome icons for all roles. Preserve native family preview; Android vectors reproduce selected design and selected image remains in the conversation. Package IDs, POS, navigation and backend unchanged.
+- Local native-launcher-assets72/0 and native-android-source489/0 PASS; geometry actual alpha radii Customer30.98dp/Merchant32.05dp/Rider31.07dp within33dp safe circle. SVG/PNG generation and diff checks pass. Existing launcher tests updated to selected requirements, not discarded. No Android build/device launcher certification or updated APK claimed from asset checks. Existing installed APKs keep previous artwork until a new build is installed. No main merge or Production mutation.
+
 ## 2026-11-08 Customer installed matrix current-runtime corrections
 
 - Concurrent source6891f529 directly descends from9f04c802 and already fixes stale picker compilation; preserved without duplicate push. Actual API30 artifact13599834280 from42437149316 shows five tests:30 open/GPS/manual-save/close/background cycles and build-info PASS, three failures from obsolete expectations. Pan does not select by current Web-parity policy; location implementation now uses Android LocationManager, not removed Longdo Google classes; populated address hides placeholder.

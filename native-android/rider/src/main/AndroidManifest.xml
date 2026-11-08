@@ -18,7 +18,7 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
 
     <application
-        android:label="QueueGo Rider"
+        android:label="Queue Rider"
         tools:replace="android:label,android:allowBackup,android:fullBackupContent,android:dataExtractionRules"
         android:icon="@mipmap/ic_queuego_launcher"
         android:roundIcon="@mipmap/ic_queuego_launcher"
