@@ -51,7 +51,7 @@ try:
     # Keep the strict Android result gate, but surface the real instrumentation
     # failure in Actions logs so a failing API matrix can be fixed from evidence
     # instead of repeating four opaque "inspect artifact" failures.
-    if not re.search(r'OK \\(\\d+ tests?\\)', result.stdout):
+    if not re.search(r'OK \(\d+ tests?\)', result.stdout):
         failure_lines = [line for line in result.stdout.splitlines() if (
             'FAILURES!!!' in line or 'There were ' in line or 'java.lang.' in line
             or 'INSTRUMENTATION_STATUS: stack=' in line or 'INSTRUMENTATION_CODE:' in line
