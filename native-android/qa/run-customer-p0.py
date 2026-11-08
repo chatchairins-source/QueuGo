@@ -80,7 +80,7 @@ try:
     evidence = {}
     for index in (0, 29):
         metrics = (out / f'road-detail-{index}.txt').read_text().strip()
-        match = re.fullmatch(r'colors=(\\d+) edges=(\\d+) samples=(\\d+)', metrics)
+        match = re.fullmatch(r'colors=(\d+) edges=(\d+) samples=(\d+)', metrics)
         assert match, f'Invalid map pixel evidence at cycle {index}: {metrics!r}'
         colors, edges, samples = map(int, match.groups())
         assert colors >= 16 and samples > 0 and edges > samples // 1000, (
@@ -88,7 +88,7 @@ try:
         evidence[str(index)] = {'colors': colors, 'edges': edges, 'samples': samples}
         for filename in (f'road-detail-{index}.png', f'picker-{index}.png'):
             data = (out / filename).read_bytes()
-            assert data[:8] == b'\\x89PNG\\r\\n\\x1a\\n', f'Invalid PNG signature: {filename}'
+            assert data[:8] == b'\x89PNG\r\n\x1a\n', f'Invalid PNG signature: {filename}'
             evidence[str(index)][filename] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
     summary['rendered_map_evidence'] = evidence
     summary['result'] = 'PASS'
