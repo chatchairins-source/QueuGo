@@ -2364,3 +2364,7 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Exact-head authenticated review `42474427032` captured Merchant Android APK SHA-256 `7d2b778d394128fe4a26ab062c82324463b1c3dafe9bc71377bc7a217c92d768` on API 30 / 1080×2280, plus deployed Merchant Web phone/tablet screenshots. Review was read-only; no sale/payment mutation. Merchant background FCM passed `OK (1 test)`.
 - Visual comparison showed Android no longer had the duplicate inline scanner while Production Web still did. Remove the Web counter scanner and its now-unused lookup queue/guards; keep dedicated barcode/SKU administration and table QR. POS runtime regression now asserts scanner absence and code-management tab presence.
 - Verified locally against exact-head source: JavaScript syntax passes; `tests/pos-runtime.cjs` passes 102 checks / 0 failures. Exact-head CI still running for APKs and offline navigation; no purchase/payment flow or physical POS hardware has been certified.
+
+## 2026-11-08 POS review routing and stale scanner styles
+
+- Removed unused counter-scanner CSS and added a runtime source guard that the POS stylesheet has no scanner selectors while the dedicated SKU/barcode tab remains. The authenticated review head must carry `[merchant-visual-review]` so PR events select Merchant-only capture and skip the unrelated Rider archive.
