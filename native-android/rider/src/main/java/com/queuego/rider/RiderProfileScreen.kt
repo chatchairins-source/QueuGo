@@ -114,8 +114,8 @@ fun RiderProfileScreen(
                 Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text("โปรไฟล์", fontWeight = FontWeight.Bold, fontSize = 26.sp)
                 }
-                Box(Modifier.width(64.dp), contentAlignment = Alignment.CenterEnd) {
-                    Text("QueueGo", color = QgRed, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                Box(Modifier.widthIn(min = 80.dp), contentAlignment = Alignment.CenterEnd) {
+                    Text("Queue Rider", color = QgRed, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 }
             }
             Card(

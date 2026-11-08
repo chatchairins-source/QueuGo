@@ -168,7 +168,9 @@ fun CustomerAuthenticationScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    Row {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.queuego.shared.QueueGoBrandMark("customer", Modifier.size(28.dp))
+                        Spacer(Modifier.size(6.dp))
                         Text("Queue", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,
                             letterSpacing = (-0.4).sp, color = QgInk)
                         Text("Go", fontSize = 18.sp, fontWeight = FontWeight.ExtraBold,

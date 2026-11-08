@@ -520,7 +520,9 @@ private fun GuestCustomerTopBar(
             ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(Modifier.clickable(onClick = onHome)) {
+            Row(Modifier.clickable(onClick = onHome), verticalAlignment = Alignment.CenterVertically) {
+                com.queuego.shared.QueueGoBrandMark("customer", Modifier.size(28.dp))
+                Spacer(Modifier.size(6.dp))
                 Text(
                     "Queue",
                     color = Color(0xFF17191D),

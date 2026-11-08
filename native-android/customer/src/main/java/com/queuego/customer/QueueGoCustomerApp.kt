@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.key
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -1495,7 +1496,9 @@ private fun CustomerTopBar(
                 .padding(horizontal = horizontalPadding, vertical = verticalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(Modifier.clickable(onClick = onHome)) {
+            Row(Modifier.clickable(onClick = onHome), verticalAlignment = Alignment.CenterVertically) {
+                com.queuego.shared.QueueGoBrandMark("customer", Modifier.size(28.dp))
+                Spacer(Modifier.size(6.dp))
                 Text(
                     "Queue",
                     color = androidx.compose.ui.graphics.Color(0xFF17191D),
