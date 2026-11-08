@@ -52,7 +52,7 @@ class CustomerLocationP0RuntimeTest {
             com.queuego.shared.QgLocationPickerMap(
                 initialPoint = null, recenterPoint = target.value, recenterToken = token.value,
                 modifier = Modifier.fillMaxSize().testTag("camera-owner-map"),
-                onCenterChanged = { selections.incrementAndGet() }, onReady = { ready.set(it) })
+                onPointSelected = { selections.incrementAndGet() }, onReady = { ready.set(it) })
         }
         compose.waitUntil(30_000) { ready.get() }
         compose.waitForIdle()
@@ -76,6 +76,7 @@ class CustomerLocationP0RuntimeTest {
         compose.setContent {
             if (visible.value) CustomerLocationPickerScreen(
                 location = gps.value, address = "", busy = false,
+                searchPlaces = { emptyList() },
                 readGps = { CustomerLocation(14.995, 103.103, "") },
                 resolveAddress = { _, _ -> "Isolated Android test address" },
                 onSave = { saved.set(it); visible.value = false },
@@ -129,6 +130,7 @@ class CustomerLocationP0RuntimeTest {
             CustomerLocationPickerScreen(
                 location = CustomerLocation(14.995, 103.103, "Original"),
                 address = "Original", busy = false,
+                searchPlaces = { emptyList() },
                 readGps = { CustomerLocation(14.995, 103.103, "") },
                 resolveAddress = { _, _ -> "Generated" },
                 onSave = {}, onBack = {})
