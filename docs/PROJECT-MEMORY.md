@@ -1,3 +1,10 @@
+## 2026-11-08 Remove retired SDK checksum from Android test workflows
+
+- Exact-head Customer P0 run `42483395923` completed 3/4 API jobs successfully; API 33 failed before Gradle execution because `curl` downloaded a different SHA-256 for Longdo Android SDK AAR v0.1.8 than the hard-coded `0918c236...` pin. This is an external artifact-integrity failure, not a Customer UI test failure.
+- Confirmed by source search that current Customer, Merchant and Rider Gradle source no longer references the Longdo AAR; Native Rider uses the in-house MapLibre module, and release-gate tests explicitly forbid the retired SDK. The Customer P0 and Merchant grocery workflows still fetched the obsolete AAR for no build dependency.
+- Remove only those stale Longdo download/hash steps; retain Android SDK provisioning. Add a regression test preventing either workflow from reintroducing that dependency. Do not update the expected hash to accept an unverified binary. Re-run source/release/workflow tests and push a fix; trigger a new exact-head Customer P0 run to verify the actual matrix.
+- No application source, Production data/schema, or financial records were changed by this workflow correction.
+
 ## 2026-11-08 Retail POS counter scanner and real best sellers
 
 - Owner clarified that barcode/SKU scanning is required during checkout for non-restaurant shops; it should not be confused with barcode/SKU management. Restore a real counter scan flow only for non-food shops in Web and Native Merchant POS. It uses the authenticated, shop-scoped `pos_product_code_lookup` RPC, checks current shop/user/bill context, POS availability and inventory, then requires cashier confirmation before adding the item. Supports keyboard-wedge USB/Bluetooth scanners and manual code entry; camera scanning is not implemented.

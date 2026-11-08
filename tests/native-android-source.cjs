@@ -5,6 +5,11 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const nativePilotWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/build-native-rider-pilot.yml'),'utf8');
 const mapEngineWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/queuego-map-engine-buriram.yml'),'utf8');
+for (const workflowPath of ['native-customer-p0.yml', 'native-merchant-grocery.yml']) {
+  const workflow = fs.readFileSync(path.join(__dirname, '../.github/workflows', workflowPath), 'utf8');
+  ok(workflow.includes('sdkmanager') && !/LongdoMapAndroidSDK|api\.longdo\.com\/map-android-SDK|0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c/.test(workflow),
+    workflowPath + ' must provision Android SDK without downloading the retired Longdo artifact');
+}
 const rideReleaseCandidateBranch = 'work-native-rider-nav-unified-offline-20261030';
 const requiredFullNativeGates = [
   'continuous-dispatch-races', 'route-bundle-stack-races',
