@@ -2,7 +2,7 @@
 
 - Exact-head Customer P0 run `42483395923` completed 3/4 API jobs successfully; API 33 failed before Gradle execution because `curl` downloaded a different SHA-256 for Longdo Android SDK AAR v0.1.8 than the hard-coded `0918c236...` pin. This is an external artifact-integrity failure, not a Customer UI test failure.
 - Confirmed by source search that current Customer, Merchant and Rider Gradle source no longer references the Longdo AAR; Native Rider uses the in-house MapLibre module, and release-gate tests explicitly forbid the retired SDK. The Customer P0 and Merchant grocery workflows still fetched the obsolete AAR for no build dependency.
-- Remove only those stale Longdo download/hash steps; retain Android SDK provisioning. Add a regression test preventing either workflow from reintroducing that dependency. Do not update the expected hash to accept an unverified binary. Re-run source/release/workflow tests and push a fix; trigger a new exact-head Customer P0 run to verify the actual matrix.
+- Removed only those stale Longdo download/hash steps; retained Android SDK provisioning. Added regression guards preventing either workflow from reintroducing the dependency; did not update the expected hash. Local source (492/0), workflow pinning (118/0), POS runtime (115/0), release packaging guard, YAML parsing, JS syntax and diff checks pass. Published as `eee556b8dc49782705f09848231b1f0928827967` to both stacked Rider branches. The branch push triggers a new exact-head workflow run; its result has not been polled or claimed.
 - No application source, Production data/schema, or financial records were changed by this workflow correction.
 
 ## 2026-11-08 Retail POS counter scanner and real best sellers
