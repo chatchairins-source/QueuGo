@@ -276,3 +276,10 @@
 .qg-pos-categories::-webkit-scrollbar{display:none}
 .qg-pos-categories .qg-pos-category{flex:0 0 auto;min-height:34px;padding:6px 11px;border:1px solid #e7e9ee;border-radius:999px;background:#fff;color:#59616d;font-size:12px;font-weight:700}
 .qg-pos-categories .qg-pos-category.selected{border-color:#f1b4c0;background:#fff5f7;color:#cf1235}
+/* Retail POS barcode input: USB/Bluetooth scanners send keyboard events into this field. */
+.qg-pos-scan{display:grid;gap:8px;margin:12px 0;padding:12px;border:1px solid #e8ebef;border-radius:14px;background:#fff}
+.qg-pos-scan>label{font-weight:800}.qg-pos-scan>small{color:#6e7782;font-size:12px;line-height:1.5}
+.qg-pos-scan-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.qg-pos-scan-row button{min-height:44px;padding:8px 14px;border:0;border-radius:10px;background:#ed163d;color:#fff;font-weight:800}
+.qg-pos-scan [role=status]{min-height:18px;color:#45515d;font-size:13px}
+@media(max-width:480px){.qg-pos-scan-row button{min-width:86px;padding-inline:10px}}

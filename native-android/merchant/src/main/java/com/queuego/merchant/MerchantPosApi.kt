@@ -59,6 +59,13 @@ data class PosProduct(
     val category: String? = null
 )
 
+data class PosCodeLookup(
+    val productId: String,
+    val name: String,
+    val available: Boolean,
+    val posAvailable: Boolean
+)
+
 internal fun posProductInventoryTracked(product: PosProduct): Boolean =
     product.inventoryStockTracking ||
         (!product.groceryMasterId.isNullOrBlank() && product.groceryStockTracking)
@@ -811,6 +818,23 @@ class MerchantPosApi(
                 ))
             }
         }
+    }
+
+    // Same authenticated, shop-scoped lookup used by Web POS barcode entry.
+    suspend fun lookupProductCode(auth: NativeAuth, rawCode: String): PosCodeLookup? {
+        val code = rawCode.trim().uppercase(java.util.Locale.ROOT)
+        require(code.length in 1..64) { "รหัสสินค้าต้องยาว 1–64 ตัวอักษร" }
+        val raw = http.rpc("pos_product_code_lookup", auth.session.accessToken,
+            JSONObject().put("p_code", code))
+        if (raw == JSONObject.NULL) return null
+        val obj = objectValue(raw)
+        if (obj.length() == 0) return null
+        val productId = obj.optString("product_id")
+        require(productId.isNotBlank() && obj.optString("code") == code) {
+            "Server ส่งรหัสสินค้าไม่ตรงกับที่ค้นหา"
+        }
+        return PosCodeLookup(productId, obj.optString("name"),
+            obj.optBoolean("available", false), obj.optBoolean("pos_available", false))
     }
 
     suspend fun saveProductCode(auth: NativeAuth, productId: String, type: String, code: String): String {
