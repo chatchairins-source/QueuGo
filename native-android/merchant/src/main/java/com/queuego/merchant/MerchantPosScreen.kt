@@ -1011,7 +1011,7 @@ fun MerchantPosScreen(
         bestSellerNames = emptySet()
     }
     LaunchedEffect(snap?.shopId, view, auth.session.accessToken) {
-        if (view == "counter" && snap != null && can("view_sales")) {
+        if (view == "counter" && snap?.owner == true && can("view_sales")) {
             bestSellerNames = runCatching { api.ownerItemSales(auth, 7).items
                 .filter { it.quantity > 0 }.map { it.name.trim() }.filter { it.isNotEmpty() }.toSet() }
                 .getOrElse { emptySet() }

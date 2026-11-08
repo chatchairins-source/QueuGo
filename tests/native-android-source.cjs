@@ -1640,6 +1640,7 @@ ok(
   merchantPosScreen.includes('api.lookupProductCode(auth, code)') &&
   merchantPosScreen.includes('selectedCategory == "__best_seller__"') &&
   merchantPosScreen.includes('api.ownerItemSales(auth, 7)') &&
+  merchantPosScreen.includes('snap?.owner == true && can("view_sales")') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('.put("category", p.category ?: JSONObject.NULL)') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('!p.has("category") || p.isNull("category")'),
   'Native FULL POS must preserve Production product categories across filtering, identity switches and offline cache'
