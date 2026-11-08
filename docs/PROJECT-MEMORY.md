@@ -1,3 +1,10 @@
+## 2026-11-08 Customer installed matrix current-runtime corrections
+
+- Concurrent source6891f529 directly descends from9f04c802 and already fixes stale picker compilation; preserved without duplicate push. Actual API30 artifact13599834280 from42437149316 shows five tests:30 open/GPS/manual-save/close/background cycles and build-info PASS, three failures from obsolete expectations. Pan does not select by current Web-parity policy; location implementation now uses Android LocationManager, not removed Longdo Google classes; populated address hides placeholder.
+- Update existing instrumentation to require pan produces no selection and actual tap produces exactly one; retain programmatic-camera no-selection assertions. Resolve editable address through its unique set-text semantics before/after saved-state restore. Verify current MapLibre/platform location runtime classes, without adding obsolete SDK dependencies. No product behavior or Production changes. New exact-head Android execution required.
+- Supabase inventory only Production/default branch; development branch request returned confirmation expired, no isolated UI backend exists yet. Physical-device/road/full three-role delivery E2E remain open.
+- Downloaded published56ceb44d Rider APK1004253063bytes and recomputed SHA2563ee3352465ba0ad753a3b996b8cd676d775a9181d2c67bd4c9c8d2f9d21003c5 equal GitHub asset digest; full ZIP CRC check PASS. Stored404204685byte country map and1114767360byte uncompressed routing-tar entries present. Signature and current successor APK acceptance remain separate; no Production-ready claim.
+
 ## 2026-11-08 Restore Customer installed picker API matrix on Native PR872
 
 - Refreshed main2c44d6f9 and Native56ceb44d; current four workflows succeeded, with actual authenticated Rider/Merchant capture and background FCM step executed. Native Pilot deliberately skips country packaging; separate Offline42410606530 is the country gate. Release rider-country-field-56ceb44d targets this source and GitHub reports APK1004253063 bytes digest3ee3352465ba0ad753a3b996b8cd676d775a9181d2c67bd4c9c8d2f9d21003c5. Binary has not been downloaded/rehashed in this session.

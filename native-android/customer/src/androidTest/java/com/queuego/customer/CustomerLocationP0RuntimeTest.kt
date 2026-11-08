@@ -27,19 +27,21 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.hasSetTextAction
 
-/** Isolated Android UI harness: real picker/Longdo GL, no account, backend writes or orders. */
+/** Isolated Android UI harness: real picker/MapLibre GL, no account, backend writes or orders. */
 class CustomerLocationP0RuntimeTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun longdoGoogleLocationRuntimeClassesArePackaged() {
+    @Test fun currentNativeMapAndPlatformLocationRuntimeClassesArePackaged() {
         listOf(
-            "com.google.android.gms.location.LocationServices",
-            "com.google.android.gms.location.LocationRequest",
-            "com.google.android.gms.location.LocationListener",
-            "com.google.android.gms.location.FusedLocationProviderApi"
+            "org.maplibre.android.MapLibre",
+            "org.maplibre.android.maps.MapView",
+            "android.location.LocationManager",
+            "android.location.LocationListener"
         ).forEach { className ->
-            assertNotNull("Missing runtime class required by Longdo: $className", Class.forName(className))
+            assertNotNull("Missing current native map/location runtime: $className", Class.forName(className))
         }
     }
 
@@ -66,7 +68,12 @@ class CustomerLocationP0RuntimeTest {
             assertEquals("App GPS recenter echoed as a user pan", 0, selections.get())
         }
         compose.onNodeWithTag("camera-owner-map").performTouchInput { swipeLeft(durationMillis = 300) }
-        compose.waitUntil(10_000) { selections.get() > 0 }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals("Panning must not choose a delivery stop", 0, selections.get())
+        }
+        compose.onNodeWithTag("camera-owner-map").performTouchInput { click(center) }
+        compose.waitUntil(10_000) { selections.get() == 1 }
     }
 
     @Test fun thirtyOpenGpsSaveCloseCyclesAndEarlyBackground() {
@@ -95,7 +102,7 @@ class CustomerLocationP0RuntimeTest {
                 compose.onAllNodes(androidx.compose.ui.test.hasText("กำลังอ่านตำแหน่ง GPS…"))
                     .fetchSemanticsNodes().isEmpty()
             }
-            compose.onNodeWithText("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต")
+            compose.onNode(hasSetTextAction())
                 .performScrollTo().performTextReplacement("Cycle $index manual address")
             if (index == 0 || index == 29) {
                 compose.waitUntil(30_000) {
@@ -135,10 +142,10 @@ class CustomerLocationP0RuntimeTest {
                 resolveAddress = { _, _ -> "Generated" },
                 onSave = {}, onBack = {})
         }
-        compose.onNodeWithText("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต")
+        compose.onNode(hasSetTextAction())
             .performScrollTo().performTextReplacement("Restored manual address")
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithText("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต")
+        compose.onNode(hasSetTextAction())
             .assertTextContains("Restored manual address")
     }
 
