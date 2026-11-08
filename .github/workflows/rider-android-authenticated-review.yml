@@ -139,7 +139,7 @@ jobs:
       - name: Verify Rider diagnostics visual gate regression
         run: python3 native-android/qa/test_rider_diagnostics_visual_gate.py
       - name: Build Merchant debug APK
-        run: gradle -p native-android :merchant:assembleDebug --no-build-cache --stacktrace
+        run: gradle -p native-android :merchant:assembleDebug :merchant:assembleDebugAndroidTest --no-build-cache --stacktrace
       - name: Fetch the exact offline-tested Rider candidate
         env:
           GH_TOKEN: ${{ github.token }}
@@ -205,12 +205,26 @@ jobs:
           print("QUEUEGO_REAL_BACKGROUND_FCM_PASS")
           PY
       - name: Capture authenticated Merchant views on Android Emulator
+        id: merchant_review
         if: always() && steps.boot_emulator.outcome == 'success'
         env:
           QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
           QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
           QG_MERCHANT_VISUAL_PARITY: ${{ contains(github.event.head_commit.message, '[merchant-visual-review]') && '1' || '0' }}
         run: python3 native-android/qa/capture-merchant-authenticated-review.py
+      - name: Verify actual background FCM for authenticated Merchant
+        if: always() && steps.merchant_review.outcome == 'success'
+        run: |
+          set -euo pipefail
+          adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" -s emulator-5554 install -r native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk
+          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.merchant.MerchantPushRuntimeTest com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner > artifacts/merchant-authenticated-review/background-fcm.txt
+          python3 - <<'PYFCM'
+          from pathlib import Path
+          text = Path("artifacts/merchant-authenticated-review/background-fcm.txt").read_text()
+          assert "OK (1 test)" in text and "FAILURES" not in text, "Actual Merchant background FCM failed; inspect instrumentation"
+          print("QUEUEGO_MERCHANT_REAL_BACKGROUND_FCM_PASS")
+          PYFCM
       - name: Set up Web visual review dependencies
         if: always() && contains(github.event.head_commit.message, '[merchant-visual-review]')
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -248,6 +262,7 @@ jobs:
             artifacts/merchant-authenticated-review/*.png
             artifacts/merchant-authenticated-review/metadata.json
             artifacts/merchant-authenticated-review/hierarchy-status.json
+            artifacts/merchant-authenticated-review/background-fcm.txt
           if-no-files-found: warn
           retention-days: 7
       - name: Save authenticated Rider screenshots

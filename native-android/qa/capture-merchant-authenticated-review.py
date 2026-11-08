@@ -152,6 +152,24 @@ def capture_pos(screens, prefix):
         screens.append({"screen":prefix+"pos_"+name,"account":"merchant-test","read_only":True,
                         **shot(prefix+"pos-"+name)})
 
+def recover_merchant_session(screens):
+    """Require actual process death and authenticated server-backed home recovery."""
+    run(["shell", "am", "force-stop", PKG])
+    stopped = subprocess.run(ADB + ["shell", "pidof", PKG],
+                             capture_output=True, text=True, timeout=15)
+    assert not stopped.stdout.strip(), "Merchant process survived force-stop"
+    run(["shell", "am", "start", "-W", "-n", PKG + "/.MainActivity"],
+        capture_output=True, text=True, timeout=60)
+    ns = wait(lambda xs: any(has_label(n, "หน้าหลัก") for n in xs), 90)
+    assert ns, "Merchant did not restore authenticated navigation after process death"
+    tap_label(ns, "หน้าหลัก")
+    for _ in range(3):
+        swipe_vertical("down")
+    assert wait(home_ready, 90), "Merchant recovered session but not server-backed home summary"
+    screens.append({"screen": "recovered-home", "account": "merchant-test",
+                    "read_only": True, **shot("06-recovered-home")})
+    return {"process_stop_verified": True, "authenticated_home_reloaded": True}
+
 def input_credential(value):
     try:
         subprocess.run(ADB+["shell","input","text",value],check=True,timeout=30,
@@ -192,8 +210,9 @@ def main():
         name = ("orders" if label == "คำสั่งซื้อ" else "products" if label == "สินค้า"
                 else "promotions" if label == "โปรโมชั่น" else "profile")
         capture_primary_tab(screens, label, f"{i:02d}-" + name, label)
+    recovery = recover_merchant_session(screens)
+    capture_pos(screens,"phone-")
     if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1":
-        capture_pos(screens,"phone-")
         run(["shell","wm","size","1600x2560"])
         run(["shell","wm","density","240"])
         # Start a fresh Activity/window after the display configuration changes.
@@ -215,7 +234,7 @@ def main():
             capture_primary_tab(screens, label, "tablet-" + name, "tablet-" + name)
         capture_pos(screens,"tablet-")
     meta={
-      "source_head":os.environ.get("GITHUB_SHA",""),
+      "source_head":subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip(),
       "workflow_run":os.environ.get("GITHUB_RUN_ID",""),
       "captured_at_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
       "package":PKG,"apk_sha256":hashlib.sha256(apk.read_bytes()).hexdigest(),
@@ -224,8 +243,9 @@ def main():
       "login_screen":login_screen,
       "visual_viewports": {"phone":{"px":"1080x2280","density":440},"tablet":{"px":"1600x2560","density":240}} if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1" else None,
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
-      "scope":"Authenticated Merchant dashboard and primary tabs; read-only review",
-      "expected_screens":["home","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี"],
+      "cold_session_recovery": recovery,
+      "scope":"Authenticated Merchant primary tabs, process-death session recovery and POS views; read-only review",
+      "expected_screens":["home","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี","recovered-home","phone-pos_counter","phone-pos_tables","phone-pos_cashier"],
       "missing_screens":[],"review_complete":True
     }
     (OUT/"metadata.json").write_text(json.dumps(meta,ensure_ascii=False,indent=2)+"\n")
