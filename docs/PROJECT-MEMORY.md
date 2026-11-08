@@ -1,3 +1,9 @@
+## 2026-11-08 Release-name and Customer field-targeting failures corrected
+
+- Refreshed main2c44d6f9/Native9ff8c4d7. Actual NativePilot42444232757: all three role JVM/Debug jobs and independent backend/map jobs passed, native-pilot failed because native-release-gate still required old Merchant/Rider launcher labels. Update label expectations and Play draft naming to owner-selected QueueMarket/Queue Rider; package IDs and reviewed specialUse subtype unchanged.
+- Actual API30 artifact13602868461 from Customer42444236016: five installed tests, two failures because hasSetTextAction matched both place-search and delivery-address inputs. Add a stable semantic test tag on actual delivery address field and target it throughout 30 save/background cycles and saved-state restoration. Retain original map/pan/tap, coordinates, manual text, lifecycle and screenshot assertions. No mocked E2E claim.
+- Local launcher72 and native-source489 checks PASS. Release gate needs clean committed checkout and is rerun after commit; hosted matrix still required. Supabase list_branches again contains only Production/default main; no isolated authenticated backend or physical-device certification exists. No Production mutation or main merge.
+
 ## 2026-11-08 Owner-approved connected-symbol red launcher family
 
 - Owner explicitly selected the latest image: all-red backgrounds, white thick circular Q, short low tail, and bag/storefront/road joined to the lower Q rim. Names: Customer QueueGo, Merchant QueueMarket, Rider Queue Rider. This supersedes the earlier Rider Q-only/red-on-white rule.

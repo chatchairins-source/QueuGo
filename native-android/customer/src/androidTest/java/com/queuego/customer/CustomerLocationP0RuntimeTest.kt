@@ -28,7 +28,6 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.click
-import androidx.compose.ui.test.hasSetTextAction
 
 /** Isolated Android UI harness: real picker/MapLibre GL, no account, backend writes or orders. */
 class CustomerLocationP0RuntimeTest {
@@ -102,7 +101,7 @@ class CustomerLocationP0RuntimeTest {
                 compose.onAllNodes(androidx.compose.ui.test.hasText("กำลังอ่านตำแหน่ง GPS…"))
                     .fetchSemanticsNodes().isEmpty()
             }
-            compose.onNode(hasSetTextAction())
+            compose.onNodeWithTag("customer-delivery-address")
                 .performScrollTo().performTextReplacement("Cycle $index manual address")
             if (index == 0 || index == 29) {
                 compose.waitUntil(30_000) {
@@ -142,10 +141,10 @@ class CustomerLocationP0RuntimeTest {
                 resolveAddress = { _, _ -> "Generated" },
                 onSave = {}, onBack = {})
         }
-        compose.onNode(hasSetTextAction())
+        compose.onNodeWithTag("customer-delivery-address")
             .performScrollTo().performTextReplacement("Restored manual address")
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNode(hasSetTextAction())
+        compose.onNodeWithTag("customer-delivery-address")
             .assertTextContains("Restored manual address")
     }
 

@@ -11,7 +11,7 @@ for(const p of [
   '.github/workflows/release-secret-readiness.yml'
 ])ok(fs.existsSync(p),'Play readiness source missing: '+p);
 const listing=read('docs/play-store-listing-draft.md');
-for(const app of ['QueueGo','QueueGo Merchant','QueueGo Rider'])ok(listing.includes(app),'Store listing must cover '+app);
+for(const app of ['QueueGo','QueueMarket','Queue Rider'])ok(listing.includes(app),'Store listing must cover '+app);
 const access=read('docs/play-app-access-content-rating.md');
 const readiness=read('docs/play-closed-beta-readiness.md');
 const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
@@ -58,11 +58,11 @@ ok(access.includes('native-android/rider/src/main/java/com/queuego/rider/RiderCh
 ok(/actual current Native Android app/i.test(listing)&&!/Screenshots must be from the actual current app, not mock UI/.test(listing),'Store screenshot guidance must target Native Android, not legacy build wording');
 ok(/Contains ads.*RESOLVED FOR CURRENT BUILD/is.test(access),'Contains Ads decision must remain resolved for current build');
 ok(/QueueGo Customer[\s\S]*Yes — Contains ads/i.test(access),'Customer app must declare Contains ads = Yes');
-ok(/QueueGo Merchant[\s\S]*No\./i.test(access),'Merchant app must declare Contains ads = No');
-ok(/QueueGo Rider[\s\S]*No\./i.test(access),'Rider app must declare Contains ads = No');
+ok(/QueueMarket[\s\S]*No\./i.test(access),'Merchant app must declare Contains ads = No');
+ok(/Queue Rider[\s\S]*No\./i.test(access),'Rider app must declare Contains ads = No');
 ok(manifest?.play?.contains_ads?.customer==='YES'&&manifest?.play?.contains_ads?.merchant==='NO'&&manifest?.play?.contains_ads?.rider==='NO','Manifest must lock per-app Contains Ads answers');
 ok(/Target Audience decision.*CLOSED BETA/is.test(access),'Target Audience decision must remain explicit for Closed Beta');
-ok(/QueueGo Customer[\s\S]*Ages 18 and over only/i.test(access)&&/QueueGo Merchant[\s\S]*Ages 18 and over only/i.test(access)&&/QueueGo Rider[\s\S]*Ages 18 and over only/i.test(access),'All three Play apps must remain 18+ only for Closed Beta');
+ok(/QueueGo Customer[\s\S]*Ages 18 and over only/i.test(access)&&/QueueMarket[\s\S]*Ages 18 and over only/i.test(access)&&/Queue Rider[\s\S]*Ages 18 and over only/i.test(access),'All three Play apps must remain 18+ only for Closed Beta');
 ok(manifest?.play?.target_audience?.customer==='18_PLUS_ONLY'&&manifest?.play?.target_audience?.merchant==='18_PLUS_ONLY'&&manifest?.play?.target_audience?.rider==='18_PLUS_ONLY','Target Audience must remain 18+ only for all apps');
 ok(manifest?.play?.restrict_minor_access==='ENABLE_FOR_CLOSED_BETA','Restrict Minor Access must remain enabled for Closed Beta');
 ok(/Longdo[\s\S]*Shared\s*=\s*Yes for location/i.test(readiness),'Data Safety must conservatively declare Longdo location sharing');

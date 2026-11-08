@@ -3,6 +3,7 @@ package com.queuego.customer
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.rememberCoroutineScope
@@ -359,7 +360,7 @@ internal fun CustomerLocationPickerScreen(
             onValueChange = {
                 draft = draft.edit(it)
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag("customer-delivery-address"),
             minLines = 3,
             placeholder = { Text(
                 if (rideStop != null) "ที่อยู่หรือจุดสังเกต"

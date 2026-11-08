@@ -428,8 +428,8 @@ assert(!/signingConfigs.getByName\("debug"\)/.test(gradle),'release must not use
 
 const roles=[
   ['customer','QueueGo'],
-  ['merchant','QueueGo Merchant'],
-  ['rider','QueueGo Rider'],
+  ['merchant','QueueMarket'],
+  ['rider','Queue Rider'],
 ];
 for(const [role,label] of roles){
   const appGradle=fs.readFileSync(`native-android/${role}/build.gradle.kts`,'utf8');
