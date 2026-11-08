@@ -1,6 +1,7 @@
 """Real Android picker harness; isolated fixtures, no authenticated/backend writes."""
 from pathlib import Path
 import json
+import hashlib
 import os
 import re
 import subprocess
@@ -73,6 +74,23 @@ try:
         with (out / name).open('wb') as image_out:
             run(adb + ['exec-out', 'run-as', 'com.queuego.customer', 'cat', 'files/p0-evidence/' + name], stdout=image_out)
         assert (out / name).stat().st_size > (1024 if name.endswith('.png') else 10), 'Android map evidence is missing or empty'
+    # Validate and fingerprint the actual installed MapLibre screenshots on the host.
+    # This does not infer road coverage from a screenshot alone: the Android test
+    # independently enforces pixel diversity and geographic edge thresholds.
+    evidence = {}
+    for index in (0, 29):
+        metrics = (out / f'road-detail-{index}.txt').read_text().strip()
+        match = re.fullmatch(r'colors=(\\d+) edges=(\\d+) samples=(\\d+)', metrics)
+        assert match, f'Invalid map pixel evidence at cycle {index}: {metrics!r}'
+        colors, edges, samples = map(int, match.groups())
+        assert colors >= 16 and samples > 0 and edges > samples // 1000, (
+            f'Insufficient geographic map detail at cycle {index}: {metrics}')
+        evidence[str(index)] = {'colors': colors, 'edges': edges, 'samples': samples}
+        for filename in (f'road-detail-{index}.png', f'picker-{index}.png'):
+            data = (out / filename).read_bytes()
+            assert data[:8] == b'\\x89PNG\\r\\n\\x1a\\n', f'Invalid PNG signature: {filename}'
+            evidence[str(index)][filename] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+    summary['rendered_map_evidence'] = evidence
     summary['result'] = 'PASS'
 finally:
     try:
