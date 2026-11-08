@@ -115,6 +115,7 @@ class CustomerLocationP0RuntimeTest {
                 }
                 compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "แผนที่พร้อมใช้งาน"))
                     .performScrollTo()
+                assertRenderedRoadDetail(index)
                 val directory = File(compose.activity.filesDir, "p0-evidence").apply { mkdirs() }
                 requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()) { "Android screenshot was unavailable" }.let { bitmap ->
                     File(directory, "picker-$index.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -128,6 +129,50 @@ class CustomerLocationP0RuntimeTest {
                 assertEquals(14.995, requireNotNull(saved.get()).latitude, 0.000001)
             }
         }
+    }
+
+    /** Inspect MapLibre's actual rendered pixels, excluding controls and the center pin.
+     * A gray canvas or a single pin must never pass merely because semantics say ready.
+     */
+    private fun assertRenderedRoadDetail(index: Int) {
+        val completed = java.util.concurrent.CountDownLatch(1)
+        val rendered = AtomicReference<Bitmap?>()
+        fun findMap(view: android.view.View): org.maplibre.android.maps.MapView? {
+            if (view is org.maplibre.android.maps.MapView) return view
+            if (view is android.view.ViewGroup) for (i in 0 until view.childCount) {
+                findMap(view.getChildAt(i))?.let { return it }
+            }
+            return null
+        }
+        compose.activityRule.scenario.onActivity { activity ->
+            requireNotNull(findMap(activity.window.decorView)).getMapAsync { map ->
+                map.snapshot { bitmap -> rendered.set(bitmap); completed.countDown() }
+            }
+        }
+        assertTrue("Rendered map snapshot timed out", completed.await(30, java.util.concurrent.TimeUnit.SECONDS))
+        val bitmap = requireNotNull(rendered.get())
+        try {
+            val colors = mutableSetOf<Int>()
+            var edges = 0
+            var samples = 0
+            for (y in bitmap.height / 10 until bitmap.height * 9 / 10 step 3) {
+                for (x in bitmap.width / 10 until bitmap.width * 9 / 10 step 3) {
+                    if (kotlin.math.abs(x - bitmap.width / 2) < 30 && kotlin.math.abs(y - bitmap.height / 2) < 30) continue
+                    val pixel = bitmap.getPixel(x, y)
+                    colors.add(pixel and 0x00F8F8F8)
+                    val next = bitmap.getPixel((x + 3).coerceAtMost(bitmap.width - 1), y)
+                    if (kotlin.math.abs(android.graphics.Color.red(pixel) - android.graphics.Color.red(next)) +
+                        kotlin.math.abs(android.graphics.Color.green(pixel) - android.graphics.Color.green(next)) +
+                        kotlin.math.abs(android.graphics.Color.blue(pixel) - android.graphics.Color.blue(next)) > 40) edges++
+                    samples++
+                }
+            }
+            val directory = File(compose.activity.filesDir, "p0-evidence").apply { mkdirs() }
+            File(directory, "road-detail-$index.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            File(directory, "road-detail-$index.txt").writeText("colors=${colors.size} edges=$edges samples=$samples")
+            assertTrue("Map has no rendered geographic detail: ${colors.size} colors", colors.size >= 16)
+            assertTrue("Map has insufficient geographic edges: $edges/$samples", edges > samples / 1000)
+        } finally { bitmap.recycle() }
     }
 
     @Test fun selectedDraftSurvivesSavedStateRestore() {

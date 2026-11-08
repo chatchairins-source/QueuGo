@@ -30,6 +30,9 @@ for(const role of Object.keys(symbols)) {
  fs.writeFileSync(path.join(__dirname,`${role}-play-store.svg`),svg(role));
  if(!process.argv.includes('--integrate'))continue;
  const res=path.join(root,role,'src/main/res');
+ // Reuse the approved geometry inside the app, excluding tiny launcher wordmarks.
+ const markPaths=paths(role).slice(0,-1).map(p=>`    <path android:pathData="${p.d}" android:fillColor="${p.fill?'#FFFFFFFF':'#00000000'}"${p.even?' android:fillType="evenOdd"':''}${p.stroke?` android:strokeColor="#FFFFFFFF" android:strokeWidth="${p.stroke}" android:strokeLineCap="round" android:strokeLineJoin="round"`:''}/>`).join('\n');
+ fs.writeFileSync(path.join(root,'shared/src/main/res/drawable',`qg_brand_${role}.xml`),`<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="56" android:viewportHeight="56">\n    <path android:fillColor="${red}" android:pathData="M0,0 H56 V56 H0 Z"/>\n    <group android:translateX="-26" android:translateY="-17">\n${markPaths}\n    </group>\n</vector>\n`);
  const vectorPaths=paths(role).map(p=>`    <path android:pathData="${p.d}" android:fillColor="${p.fill?'#FFFFFFFF':'#00000000'}"${p.even?' android:fillType="evenOdd"':''}${p.stroke?` android:strokeColor="#FFFFFFFF" android:strokeWidth="${p.stroke}" android:strokeLineCap="round" android:strokeLineJoin="round"`:''}/>`).join('\n');
  const vector=`<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n${vectorPaths}\n</vector>\n`;
  fs.writeFileSync(path.join(res,'drawable/ic_queuego_foreground.xml'),vector);

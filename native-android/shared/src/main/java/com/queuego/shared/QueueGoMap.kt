@@ -459,9 +459,13 @@ private class QueueGoLocationPickerHolder {
     var started = false
     var resumed = false
     var destroyed = false
+    var styleReady = false
+    var fullyRendered = false
+    var readyReported = false
     var lastRecenterToken: Int? = null
     var selectedPoint: QgMapPoint? = null
     var onPointSelected: (QgMapPoint) -> Unit = {}
+    var onReady: (Boolean) -> Unit = {}
 
     fun renderSelectedPoint(point: QgMapPoint?) {
         selectedPoint = point?.takeIf { it.valid }
@@ -494,6 +498,9 @@ private class QueueGoLocationPickerHolder {
         renderSelectedPoint(point)
         if (lastRecenterToken == token) return
         lastRecenterToken = token
+        readyReported = false
+        fullyRendered = false
+        onReady(false)
         active.animateCamera(
             CameraUpdateFactory.newLatLngZoom(
                 LatLng(point.latitude, point.longitude),
@@ -555,6 +562,7 @@ fun QgLocationPickerMap(
     val currentReady = rememberUpdatedState(onReady)
     val holder = remember { QueueGoLocationPickerHolder() }
     holder.onPointSelected = { currentPointSelected.value(it) }
+    holder.onReady = { currentReady.value(it) }
     val sourceUri = remember(context.packageName) { queueGoMapVectorSourceUri(context) }
 
     Box(modifier) {
@@ -572,6 +580,19 @@ fun QgLocationPickerMap(
                     MapView(ctx).also { view ->
                         holder.view = view
                         view.onCreate(null)
+                        // A loaded style can still show only a background or ancestor tiles.
+                        // Readiness requires a fully rendered frame followed by map idle.
+                        view.addOnDidFinishRenderingFrameListener(
+                            MapView.OnDidFinishRenderingFrameListener { fully, _, _ ->
+                                if (!holder.destroyed && holder.styleReady) holder.fullyRendered = fully
+                            }
+                        )
+                        view.addOnDidBecomeIdleListener {
+                            if (!holder.destroyed && holder.styleReady && holder.fullyRendered && !holder.readyReported) {
+                                holder.readyReported = true
+                                currentReady.value(true)
+                            }
+                        }
                         view.getMapAsync { map ->
                             if (holder.destroyed) return@getMapAsync
                             holder.map = map
@@ -607,7 +628,7 @@ fun QgLocationPickerMap(
                             map.setStyle(queueGoMapStyle(sourceUri)) {
                                 holder.lastRecenterToken = recenterToken
                                 holder.renderSelectedPoint(initialPoint?.takeIf { it.valid })
-                                currentReady.value(true)
+                                holder.styleReady = true
                             }
                         }
                         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) holder.start()

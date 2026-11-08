@@ -62,10 +62,10 @@ ok(riderLogin.includes('verticalArrangement = Arrangement.Center')&&
    riderLogin.includes('vertical = if (wide) 32.dp else 24.dp')&&
    !riderLogin.includes('brandWidth')&&!riderLogin.includes('รับงานง่าย\\nเห็นข้อมูลชัด\\nทำงานได้เร็ว'),
    'Rider login group must remain centered on phone, small-phone, tablet and landscape without the old split brand panel');
-ok(riderLogin.includes('Text("Queue"')&&riderLogin.includes('Text("Go"')&&
-   riderLogin.includes('Text("Rider"')&&riderLogin.includes('Text("Q", color = Color.White')&&
+ok(riderLogin.includes('Text("Queue Rider"')&&
+   riderLogin.includes('QueueGoBrandMark("rider", Modifier.size(58.dp))')&&
    riderLogin.includes('widthIn(max = if (wide) 480.dp else 430.dp)'),
-   'Every Rider login viewport must keep the QueueGo Rider brand inside the centered auth group');
+   'Every Rider login viewport must keep the approved Queue Rider name and mark inside the centered auth group');
 
 const riderHome=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/QueueGoRiderApp.kt','utf8');
 const merchantHome=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt','utf8');

@@ -100,23 +100,9 @@ internal fun RiderLoginScreen(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Surface(
-                            shape = RoundedCornerShape(18.dp),
-                            color = AuthRed,
-                            shadowElevation = 8.dp
-                        ) {
-                            Box(Modifier.size(58.dp), contentAlignment = Alignment.Center) {
-                                Text("Q", color = Color.White, style = authText(38, 58, FontWeight.Black))
-                            }
-                        }
+                        com.queuego.shared.QueueGoBrandMark("rider", Modifier.size(58.dp))
                         Spacer(Modifier.width(12.dp))
-                        Column {
-                            Row {
-                                Text("Queue", style = authText(28, 28, FontWeight.Bold))
-                                Text("Go", style = authText(28, 28, FontWeight.Bold), color = AuthRed)
-                            }
-                            Text("Rider", color = Color(0xFF6F6970), style = authText(13, 20, FontWeight.ExtraBold))
-                        }
+                        Text("Queue Rider", style = authText(28, 36, FontWeight.Bold))
                     }
                     Spacer(Modifier.height(24.dp))
                     Text("เข้าสู่ระบบ", style = authText(29, 44, FontWeight.Bold))
@@ -150,7 +136,7 @@ internal fun RiderLoginScreen(
                         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White, contentColor = AuthRed)
                     ) { Text("สมัครเป็นไรเดอร์", style = authText(15, 23, FontWeight.Black), color = AuthRed) }
                     Spacer(Modifier.height(16.dp))
-                    Text("QueueGo Rider • Beta", style = authText(9, 14), color = Color(0xFFA29BA0), modifier = Modifier.align(Alignment.CenterHorizontally))
+                    Text("Queue Rider", style = authText(12, 18), color = AuthMuted, modifier = Modifier.align(Alignment.CenterHorizontally))
                 }
             }
         }

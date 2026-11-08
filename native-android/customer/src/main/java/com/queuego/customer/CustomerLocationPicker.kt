@@ -279,6 +279,17 @@ internal fun CustomerLocationPickerScreen(
                     onReady = { mapReady = it; if (it) mapFailed = false }
                 )
             }
+            if (!mapReady && !mapFailed) {
+                Row(
+                    Modifier.align(Alignment.BottomCenter).padding(12.dp)
+                        .background(Color.White, RoundedCornerShape(12.dp)).padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.size(8.dp))
+                    Text("กำลังโหลดถนนบนแผนที่…", color = QgMuted, fontSize = 12.sp)
+                }
+            }
             if (!mapReady && mapFailed) {
                 Column(
                     Modifier.align(Alignment.Center).padding(16.dp),

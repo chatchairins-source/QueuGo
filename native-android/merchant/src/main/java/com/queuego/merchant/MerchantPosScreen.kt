@@ -1145,14 +1145,12 @@ fun MerchantPosScreen(
                 colors = ButtonDefaults.textButtonColors(containerColor = Color.White, contentColor = QgRed)
             ) { Text("‹", fontSize = 24.sp) }
             Row(
-                Modifier.weight(1f).semantics { contentDescription = "QueueGo หน้าร้าน" },
+                Modifier.weight(1f).semantics { contentDescription = "QueueMarket หน้าร้าน" },
                 horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(31.dp).background(QgRed, RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
-                    Text("Q", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                }
+                com.queuego.shared.QueueGoBrandMark("merchant", Modifier.size(31.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("QueueGo", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
+                Text("QueueMarket", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
                 Spacer(Modifier.width(4.dp))
                 Text("หน้าร้าน", color = QgMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
