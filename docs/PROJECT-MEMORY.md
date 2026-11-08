@@ -1,3 +1,9 @@
+## 2026-11-08 Resolve Merchant-only review mode on PR events
+
+- Merchant visual review was still falling back to Rider credentials because `github.event.head_commit.message` is absent from pull-request events; the tagged push copy was coalesced by the shared authenticated-review concurrency group. Resolve the actual PR head commit message by its exact SHA, export `merchant_only` as a job output, and use it consistently for credential selection, Rider-artifact skip, Merchant capture, and Web comparison. The tagged `fix-rider-invalid-step-metrics-20261106` push and PR paths are enabled.
+- Local Native source 490/0, POS lifecycle 99/0, workflow YAML parse and `git diff --check` pass.
+- NEXT: inspect the exact-head authenticated Merchant POS + Production Web screenshots, background FCM result and Native Pilot CI. No live purchase/payment or Production mutation.
+
 ## 2026-11-08 Unblock Merchant POS authenticated visual review
 
 - Exact POS successor `96dc1bbf19dc94f4e166d19f852442a2acd76881` has Native Pilot SUCCESS, including all three APK builds, packaging and emulator/runtime checks; Merchant Kotlin/JVM + Debug APK and authenticated Merchant hierarchy/tab visual regressions passed.

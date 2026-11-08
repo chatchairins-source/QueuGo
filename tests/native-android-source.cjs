@@ -1970,7 +1970,10 @@ ok(merchantPosScreen.indexOf('amount > 999999999.0') >= 0 &&
   'Cashier must reject amounts outside RPC bounds before persisting an unreplayable cash intent');
 
 const authenticatedReviewWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/rider-android-authenticated-review.yml'),'utf8');
-ok(authenticatedReviewWorkflow.includes("- name: Fetch the exact offline-tested Rider candidate\n        if: ${{ !contains(github.event.head_commit.message, '[merchant-visual-review]') }}") &&
+ok(authenticatedReviewWorkflow.includes("- name: Fetch the exact offline-tested Rider candidate\n        if: ${{ needs.credential-check.outputs.merchant_only != 'true' }}") &&
+  authenticatedReviewWorkflow.includes('REVIEW_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}') &&
+  authenticatedReviewWorkflow.includes('urllib.request.urlopen(request, timeout=20)') &&
+  authenticatedReviewWorkflow.includes('merchant_only: ${{ steps.check.outputs.merchant_only }}') &&
   authenticatedReviewWorkflow.includes('      - fix-rider-invalid-step-metrics-20261106') &&
   authenticatedReviewWorkflow.includes("github.ref_name == 'fix-rider-invalid-step-metrics-20261106') && contains(github.event.head_commit.message, '[merchant-visual-review]')") &&
   authenticatedReviewWorkflow.includes('Capture authenticated Merchant views on Android Emulator'),
