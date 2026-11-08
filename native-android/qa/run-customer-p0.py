@@ -48,7 +48,17 @@ try:
     log_process = subprocess.Popen([str(a) for a in adb + ['logcat', '-b', 'main', '-b', 'system', '-b', 'crash', '-v', 'threadtime', '-T', '1']], stdout=log_stream, stderr=subprocess.STDOUT)
     result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class', 'com.queuego.customer.CustomerLocationP0RuntimeTest', 'com.queuego.customer.test/androidx.test.runner.AndroidJUnitRunner'], capture_output=True, text=True, timeout=600)
     (out / 'instrumentation.txt').write_text(result.stdout + result.stderr)
-    assert re.search(r'OK \(\d+ tests?\)', result.stdout), 'Android instrumentation failed; inspect instrumentation.txt/logcat'
+    # Keep the strict Android result gate, but surface the real instrumentation
+    # failure in Actions logs so a failing API matrix can be fixed from evidence
+    # instead of repeating four opaque "inspect artifact" failures.
+    if not re.search(r'OK \\(\\d+ tests?\\)', result.stdout):
+        failure_lines = [line for line in result.stdout.splitlines() if (
+            'FAILURES!!!' in line or 'There were ' in line or 'java.lang.' in line
+            or 'INSTRUMENTATION_STATUS: stack=' in line or 'INSTRUMENTATION_CODE:' in line
+            or 'Tests run:' in line or 'INSTRUMENTATION_FAILED' in line
+        )]
+        raise AssertionError('Android instrumentation failed; inspect instrumentation.txt/logcat. '
+                             + ' | '.join(failure_lines[-24:])[:3500])
     assert log_process.poll() is None, 'Continuous Android log capture exited unexpectedly'
     log_process.terminate()
     log_process.wait(timeout=10)
