@@ -73,7 +73,25 @@ def run_case(label, longitude, latitude):
         (OUT / (label + "-instrumentation.txt")).write_text(output)
         assert process.returncode == 0 and "OK (1 test)" in output, (
             "Real Fused GPS test failed: " + output[-2500:])
-        adb("exec-out", "screencap", "-p", stdout=(OUT / (label + ".png")).open("wb"))
+        # ADB screenshot transport can close transiently after instrumented
+        # lifecycle recreation. Retry transport only; never retry a failed GPS
+        # assertion or manufacture a screenshot.
+        screenshot = OUT / (label + ".png")
+        screenshot_ok = False
+        for attempt in range(3):
+            with screenshot.open("wb") as stream:
+                capture = subprocess.run([*ADB_TARGET, "exec-out", "screencap", "-p"],
+                                         stdout=stream, stderr=subprocess.PIPE,
+                                         timeout=30)
+            if capture.returncode == 0 and screenshot.read_bytes().startswith(b"\\x89PNG\\r\\n\\x1a\\n") and screenshot.stat().st_size > 1024:
+                screenshot_ok = True
+                break
+            (OUT / (label + "-screencap-error.txt")).write_text(
+                "attempt=" + str(attempt + 1) + " returncode=" + str(capture.returncode) +
+                " stderr=" + capture.stderr.decode(errors="replace") + "\\n")
+            screenshot.unlink(missing_ok=True)
+            time.sleep(3)
+        assert screenshot_ok, "ADB screenshot transport failed after 3 attempts; GPS test result retained"
         dump = adb("shell", "dumpsys", "activity", "services", PACKAGE,
                    capture_output=True, text=True).stdout
         (OUT / (label + "-services.txt")).write_text(dump)
