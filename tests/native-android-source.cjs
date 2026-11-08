@@ -1635,7 +1635,8 @@ ok(
   merchantPosScreen.includes('selectedCategory == "all" || it.category?.trim() == selectedCategory') &&
   merchantPosScreen.includes('LaunchedEffect(snap?.shopId) {') &&
   merchantPosScreen.includes('selectedPosCategory = "all"') &&
-  merchantPosScreen.includes('scannedProduct = null') &&
+  !merchantPosScreen.includes('บาร์โค้ด / SKU') &&
+  !merchantPosScreen.includes('onBarcodeLookup') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('.put("category", p.category ?: JSONObject.NULL)') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('!p.has("category") || p.isNull("category")'),
   'Native FULL POS must preserve Production product categories across filtering, identity switches and offline cache'
@@ -1678,19 +1679,9 @@ ok(
   merchantPosScreen.includes('"codes" -> MerchantPosCodesScreen(') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosCodesScreen.kt').includes('api.saveProductCode(auth, product.id, codeType, codeText)') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosCodesScreen.kt').includes('api.removeProductCode(auth, target.id)'),
-  'Native POS barcode/SKU management must reuse Production shop-scoped RPC and manage_staff permission'
-);
-
-ok(
-  merchantPosApi.includes('"pos_product_code_lookup"') &&
-  merchantPosApi.includes('obj.optString("code") == code') &&
-  merchantPosScreen.includes('onBarcodeLookup = {') &&
-  merchantPosScreen.includes('posNetworkValidated(context)') &&
-  merchantPosScreen.includes('selectedBillId == originalBill') &&
-  merchantPosScreen.includes('scannedProduct?.id == product.id') &&
-  merchantPosScreen.includes('onBarcodeAdd(barcodeMatched)') &&
-  merchantPosScreen.includes('addPosProduct(product)'),
-  'Native POS scan/typed barcode lookup must be server-authoritative and preserve bill context'
+  !merchantPosScreen.includes('onBarcodeLookup') &&
+  !merchantPosApi.includes('suspend fun lookupProductCode('),
+  'Native POS keeps the dedicated barcode/SKU management tab and removes the duplicate scanner from the counter home'
 );
 
 ok(

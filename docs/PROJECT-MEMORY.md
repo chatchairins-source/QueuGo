@@ -1,3 +1,9 @@
+## 2026-11-08 Remove duplicate barcode/SKU lookup from POS counter
+
+- Owner-provided POS screenshot showed the counter's inline barcode/SKU scanner and search duplicated the dedicated `บาร์โค้ด/SKU` tab. Removed the inline counter field/result/lookup callback and the now-unused Native `lookupProductCode` client model/method. Kept the dedicated permission-gated barcode/SKU management tab, table QR generation, counter menu search, product selection, and all server RPCs used by those flows unchanged.
+- `node tests/native-android-source.cjs` PASS (489 checks, 0 failures); isolated `tests/pos-runtime.cjs` PASS (99/0); `git diff --check` PASS. Android SDK is unavailable locally; exact-head Merchant Kotlin/JVM + APK CI is required before claiming build verification.
+- NEXT: publish the focused change on the existing PR #872 successor, inspect exact-head Android Pilot and Merchant screenshots, and verify the counter no longer shows the duplicate scanner while the dedicated code-management tab remains.
+
 ## 2026-11-08 Rider online switch color parity — local source gate PASS
 
 - Refreshed GitHub `main` at `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`; PR #872 was open/draft at source head `b4c5665187165178e77d9471b9910be90e1ce004`. Local commit `79201cca157fe25a5c6db472ea69be3fd6493c37` changes only the Rider availability checked-track color. PR #872 is intentionally stacked on `test-rider-terminal-turn-restriction-20261106`; current `main` is not an ancestor of this branch, so preserve the existing stack and do not rebase/reset onto main.

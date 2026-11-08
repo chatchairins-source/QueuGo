@@ -107,13 +107,6 @@ internal fun posCloseShiftMatches(
         kotlin.math.abs(counted - requestedCountedCash) < 0.005
 }
 
-data class PosCodeLookup(
-    val productId: String,
-    val name: String,
-    val available: Boolean,
-    val posAvailable: Boolean
-)
-
 data class PosProductCode(
     val id: String,
     val productId: String,
@@ -791,29 +784,6 @@ class MerchantPosApi(
             "pos_change_price",
             auth.session.accessToken,
             JSONObject().put("p_product", productId).put("p_price", price)
-        )
-    }
-
-    // Reuse the same shop-scoped, permission-checked POS product code RPCs as Web.
-    suspend fun lookupProductCode(auth: NativeAuth, rawCode: String): PosCodeLookup? {
-        val code = rawCode.trim().uppercase(java.util.Locale.ROOT)
-        require(code.length in 1..64) { "รหัสสินค้าต้องยาว 1–64 ตัวอักษร" }
-        val raw = http.rpc(
-            "pos_product_code_lookup", auth.session.accessToken,
-            JSONObject().put("p_code", code)
-        )
-        if (raw == JSONObject.NULL) return null
-        val obj = objectValue(raw)
-        if (obj.length() == 0) return null
-        val productId = obj.optString("product_id")
-        require(productId.isNotBlank() && obj.optString("code") == code) {
-            "Server ส่งรหัสสินค้าไม่ตรงกับที่ค้นหา"
-        }
-        return PosCodeLookup(
-            productId = productId,
-            name = obj.optString("name"),
-            available = obj.optBoolean("available", false),
-            posAvailable = obj.optBoolean("pos_available", false)
         )
     }
 
