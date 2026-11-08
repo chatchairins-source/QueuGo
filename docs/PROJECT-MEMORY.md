@@ -1,3 +1,9 @@
+## 2026-11-08 Rider online switch color parity — local source gate PASS
+
+- Refreshed GitHub `main` at `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`; PR #872 is open/draft and its current source head is `b4c5665187165178e77d9471b9910be90e1ce004`. Local `work-rider-web-parity-20261108` is exactly one commit beyond that PR head; `79201cca157fe25a5c6db472ea69be3fd6493c37` changes only the Rider availability checked-track color. PR #872 is intentionally stacked on `test-rider-terminal-turn-restriction-20261106`; current `main` is not an ancestor of this branch, so preserve the existing stack and do not rebase/reset onto main.
+- Verified Rider Web's `.qg-online-pill.on .qg-online-switch` background is `#1fbe70`; Android switch now uses the same `Color(0xFF1FBE70)`. Added an exact-source guard so the checked state cannot silently revert. `node tests/native-android-source.cjs` PASS (490 checks, 0 failures); `git diff --check` PASS.
+- Next: publish this exact descendant to the requested topic branch and advance PR #872's existing source branch only by fast-forward; inspect exact-head checks. Android build/runtime, visual capture, physical road/GNSS, and APK release gates remain open. No production data changed and no release claim is made.
+
 ## 2026-11-08 Correct picker readiness and apply approved in-app role branding
 
 - Refreshed main2c44d6f9 and Native69eb2404 before edits. Customer/Merchant location picker no longer equates style-loaded with road-ready: require a fully rendered MapLibre frame and idle, invalidate readiness on GPS/search recenter, ignore disposed callbacks. Customer shows loading feedback before the existing retry timeout. Installed Customer QA now inspects actual MapLibre snapshot pixels for geographic detail on first/last lifecycle cycle and saves map-only evidence; semantics alone cannot certify a blank map. Online Customer/Merchant and offline Rider sources remain unchanged.

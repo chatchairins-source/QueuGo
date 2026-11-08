@@ -1080,6 +1080,12 @@ ok(
   riderOnlineStatusCopy.includes('title = "เปิดรับงานอยู่ · GPS ไม่พร้อม"'),
   'Rider idle card must preserve approved Ready title and nearby subtitle, but show the GPS warning when a server-online lease lacks location'
 );
+ok(
+  riderApp.includes('modifier = Modifier.semantics { contentDescription = "พร้อมรับงาน" }') &&
+  riderApp.includes('checkedTrackColor = Color(0xFF1FBE70)') &&
+  riderApp.includes('online pill; the red accent remains reserved for brand/actions.'),
+  'Rider Android availability switch must use the same green checked state as Rider Web'
+);
 ok(riderApp.includes('snapshot?.laundry?.activeJob?.jobId')&&!riderApp.includes('snapshot?.laundry?.activeJob?.id,'),'Rider Auto Accept lifecycle key must use Laundry jobId, never a nonexistent id field');
 ok(riderApp.includes('onExpired =')&&riderApp.includes('ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป'),'Rider expired offers must immediately leave the card and continue sequential dispatch');
 ok(riderApp.includes('ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)')&&riderApp.includes('มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที'),'Rider foreground must alert once for a newly issued server offer');
