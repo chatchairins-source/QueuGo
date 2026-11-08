@@ -68,10 +68,11 @@ try:
     (out / 'logcat.txt').write_text(logs)
     assert not re.search(r'FATAL EXCEPTION|ANR in com\.queuego\.customer|signal \d+ \(SIG(?:SEGV|ABRT)\)|shared_map_\w*failed|Native map (?:operation|setup) failed', logs), 'Crash/ANR or swallowed map lifecycle failure; inspect logcat'
     # Debug run-as is scoped to this app and avoids adb shell's scoped-storage denial.
-    for name in ('picker-0.png', 'picker-29.png'):
+    for name in ('picker-0.png', 'picker-29.png', 'road-detail-0.png', 'road-detail-29.png',
+                 'road-detail-0.txt', 'road-detail-29.txt'):
         with (out / name).open('wb') as image_out:
             run(adb + ['exec-out', 'run-as', 'com.queuego.customer', 'cat', 'files/p0-evidence/' + name], stdout=image_out)
-        assert (out / name).stat().st_size > 1024, 'Android screenshot is missing or empty'
+        assert (out / name).stat().st_size > (1024 if name.endswith('.png') else 10), 'Android map evidence is missing or empty'
     summary['result'] = 'PASS'
 finally:
     try:
