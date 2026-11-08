@@ -1,3 +1,9 @@
+## 2026-11-08 Native retail POS copy parity
+
+- Source review found the non-food Native POS already hid restaurant tables and Kitchen, but still labeled its catalog search “ค้นหาเมนู” and product section “เมนูสินค้า”. Web correctly uses retail product language.
+- Changed Native labels by authoritative `kitchenEnabled`: restaurants see “ค้นหาเมนู” / “เมนูอาหาร”; retail shops see “ค้นหาสินค้า” / “สินค้า”. Added source regression assertions.
+- Local validation: `tests/native-android-source.cjs` PASS (492/0), `tests/pos-runtime.cjs` PASS (115/0), Web JS syntax, workflow YAML parsing and `git diff --check` PASS. Local Gradle build unavailable (`gradle` is not installed; no Gradle wrapper or Android SDK in this checkout). No Production changes.
+
 ## 2026-11-08 Remove retired SDK checksum from Android test workflows
 
 - Exact-head Customer P0 run `42483395923` completed 3/4 API jobs successfully; API 33 failed before Gradle execution because `curl` downloaded a different SHA-256 for Longdo Android SDK AAR v0.1.8 than the hard-coded `0918c236...` pin. This is an external artifact-integrity failure, not a Customer UI test failure.

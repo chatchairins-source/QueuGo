@@ -1641,6 +1641,8 @@ ok(
   merchantPosScreen.includes('LaunchedEffect(snap?.shopId) {') &&
   merchantPosScreen.includes('selectedPosCategory = "all"') &&
   merchantPosScreen.includes('if (!kitchenEnabled)') &&
+  merchantPosScreen.includes('Text(if (kitchenEnabled) "ค้นหาเมนู" else "ค้นหาสินค้า")') &&
+  merchantPosScreen.includes('QgSectionTitle(if (kitchenEnabled) "เมนูอาหาร" else "สินค้า"') &&
   merchantPosScreen.includes('บาร์โค้ด / SKU') &&
   merchantPosScreen.includes('api.lookupProductCode(auth, code)') &&
   merchantPosScreen.includes('selectedCategory == "__best_seller__"') &&

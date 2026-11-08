@@ -2457,7 +2457,7 @@ private fun PosCounterView(
         OutlinedTextField(
             search,
             onSearch,
-            label = { Text("ค้นหาเมนู") },
+            label = { Text(if (kitchenEnabled) "ค้นหาเมนู" else "ค้นหาสินค้า") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -2513,7 +2513,7 @@ private fun PosCounterView(
         )
         Spacer(Modifier.height(12.dp))
 
-        QgSectionTitle("เมนูสินค้า", if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล" else selectedBill.number)
+        QgSectionTitle(if (kitchenEnabled) "เมนูอาหาร" else "สินค้า", if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล" else selectedBill.number)
         Spacer(Modifier.height(8.dp))
         val products = snapshot.products.filter {
             (selectedCategory == "all" || (selectedCategory == "__best_seller__" && it.name.trim() in bestSellerNames) ||
