@@ -18,8 +18,10 @@ on:
       - 'test-rider-**'
   push:
     branches:
+      - main
       - queuego-native-android-v1
       - work-release-gate-emulator-20261109
+      - work-release-main-source-20261109
       - 'work-native-**'
       - 'fix/native-**'
       - 'fix-native-**'
@@ -85,6 +87,9 @@ on:
       - 'tests/native-release-gate.cjs'
       - 'tests/native-release-workflow.cjs'
       - '.github/workflows/build-native-release.yml'
+      - '.github/workflows/native-release-certification.yml'
+      - '.github/workflows/backup-restore-drill.yml'
+      - 'tests/native-release-certification.cjs'
       - 'tests/play-store-readiness.cjs'
       - 'tests/security-auth-definer-review.cjs'
       - 'docs/security-auth-definer-review.json'

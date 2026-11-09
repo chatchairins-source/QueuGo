@@ -8,7 +8,15 @@ const bucketConfig=JSON.parse(read('native-android/qa/release-evidence-storage.j
 
 ok(/workflow_dispatch:/.test(cert),'release certification must be manual only');
 ok(!/\n\s*push:/.test(cert),'release certification must never run from push');
-ok(cert.includes('refs/heads/work-native-route-bundle-play-release-20261021'),'certification must be restricted to Native Source of Truth');
+ok(cert.includes('refs/heads/main'),'certification must be restricted to reviewed main source');
+ok(read('.github/workflows/build-native-rider-pilot.yml').includes('  push:\n    branches:\n      - main'),
+  'main must trigger the exact-HEAD Native Pilot attestation');
+ok(read('.github/workflows/build-native-rider-pilot.yml').includes('      - work-release-main-source-20261109'),
+  'release source review branch must receive exact-head Pilot validation');
+ok(read('.github/workflows/release-secret-readiness.yml').includes('  push:\n    branches:\n      - main'),
+  'main must trigger release-secret readiness');
+ok(read('.github/workflows/release-secret-readiness.yml').includes('      - work-release-main-source-20261109'),
+  'release source review must check secret presence without revealing secret values');
 ok(cert.includes('actions: read'),'certification must have read-only Actions permission for exact-HEAD CI attestation');
 ok(cert.includes('Require successful exact-HEAD Native Pilot CI'),'certification must require automated Native Pilot CI attestation');
 ok(cert.includes('.github/workflows/build-native-rider-pilot.yml')&&cert.includes('.event == "push"')&&cert.includes('.conclusion == "success"'),'certification must pin the successful main-branch Native Pilot workflow identity');
@@ -54,6 +62,7 @@ for(const key of [
   '"certification_run_id": os.environ["GITHUB_RUN_ID"]',
   '"native_pilot_run_id": int(os.environ["QG_CERTIFIED_NATIVE_PILOT_RUN_ID"])',
   '"backup_restore_run_id": int(os.environ["QG_CERTIFIED_BACKUP_RESTORE_RUN_ID"])',
+  '"rider_offline_run_id": int(os.environ["QG_CERTIFIED_RIDER_OFFLINE_RUN_ID"])',
   '"version_name": os.environ["QG_NATIVE_VERSION_NAME"]',
   '"customer_version_code"',
   '"merchant_version_code"',
@@ -68,7 +77,10 @@ ok(cert.includes('if: always()')&&cert.includes('queuego-release.keystore')&&cer
 
 ok(release.includes('run_path')&&release.includes('.github/workflows/native-release-certification.yml'),'final release must pin certification workflow identity');
 ok(release.includes('run_event')&&release.includes('workflow_dispatch'),'final release must require manual certification dispatch');
-ok(release.includes('run_branch')&&release.includes('work-native-route-bundle-play-release-20261021'),'final release must require certification from Native Source of Truth');
+ok(release.includes('run_branch')&&release.includes('[ "$run_branch" != "main" ]'),
+  'final release must require certification from main');
+ok(release.includes('[ "$pilot_branch" != "main" ]')&&release.includes('[ "$backup_branch" != "main" ]'),
+  'final release must independently bind Pilot and backup to main');
 ok(release.includes('certified-release-metadata.json'),'final release must require certification metadata');
 ok(release.includes('Certification metadata mismatch'),'final release must fail closed when certified metadata differs');
 ok(release.includes('Certification signing fingerprint does not match release input'),'final release must bind the certified signing identity');
@@ -77,5 +89,9 @@ ok(release.includes('Certification references an invalid Native Pilot CI run'),'
 ok(release.includes('Certification Backup Restore run id is missing or invalid'),'final release must require a recorded Backup Restore run id');
 ok(release.includes('Certification references an invalid Backup Restore Drill run'),'final release must independently revalidate the certified Backup Restore Drill');
 ok(release.includes('Certification Backup Restore Drill artifact is unavailable or expired'),'final release must require the backup artifact to remain live');
+ok(release.includes('QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id')&&
+  release.includes('Certification references an invalid Rider offline routing run')&&
+  release.includes('Certification Rider offline routing artifact is unavailable or expired'),
+  'final release must independently revalidate and export the certified Rider offline run');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Trusted external physical evidence intake and exact-metadata Native release certification'}));

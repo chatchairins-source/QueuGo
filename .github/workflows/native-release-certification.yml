@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       evidence_bundle_sha256:
-        description: SHA-256 of the uploaded physical/Play evidence ZIP
+        description: SHA-256 of the uploaded device/Play evidence ZIP
         required: true
         type: string
       version_name:
@@ -75,8 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$GITHUB_REF" != "refs/heads/work-native-route-bundle-play-release-20261021" ]; then
-            echo "::error::Release certification may run only from work-native-route-bundle-play-release-20261021"
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Release certification may run only from main"
             exit 1
           fi
 
@@ -86,11 +86,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=work-native-route-bundle-play-release-20261021&status=success&per_page=100")"
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&status=success&per_page=100")"
           pilot_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
             [.workflow_runs[]
               | select(.head_sha == $sha)
-              | select(.head_branch == "work-native-route-bundle-play-release-20261021")
+              | select(.head_branch == "main")
               | select(.path == ".github/workflows/build-native-rider-pilot.yml")
               | select(.event == "push")
               | select(.conclusion == "success")]
@@ -134,11 +134,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=work-native-route-bundle-play-release-20261021&status=success&per_page=100")"
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&status=success&per_page=100")"
           backup_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
             [.workflow_runs[]
               | select(.head_sha == $sha)
-              | select(.head_branch == "work-native-route-bundle-play-release-20261021")
+              | select(.head_branch == "main")
               | select(.path == ".github/workflows/backup-restore-drill.yml")
               | select(.event == "workflow_dispatch")
               | select(.conclusion == "success")]
@@ -388,6 +388,8 @@ jobs:
               "certification_workflow": ".github/workflows/native-release-certification.yml",
               "native_pilot_run_id": int(os.environ["QG_CERTIFIED_NATIVE_PILOT_RUN_ID"]),
               "backup_restore_run_id": int(os.environ["QG_CERTIFIED_BACKUP_RESTORE_RUN_ID"]),
+              "rider_offline_run_id": int(os.environ["QG_CERTIFIED_RIDER_OFFLINE_RUN_ID"])
+                  if os.environ.get("QG_CERTIFIED_RIDER_OFFLINE_RUN_ID") else None,
               "evidence_object_path": os.environ["EVIDENCE_OBJECT_PATH"],
               "evidence_bundle_sha256": os.environ["EVIDENCE_BUNDLE_SHA256"].lower(),
               "version_name": os.environ["QG_NATIVE_VERSION_NAME"],

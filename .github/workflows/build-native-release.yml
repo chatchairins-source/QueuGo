@@ -75,8 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$GITHUB_REF" != "refs/heads/work-native-route-bundle-play-release-20261021" ]; then
-            echo "::error::Certified release may run only from work-native-route-bundle-play-release-20261021"
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Certified release may run only from main"
             exit 1
           fi
 
@@ -172,7 +172,7 @@ jobs:
             echo "::error::Certification run must come from the trusted Native certification workflow"
             exit 1
           fi
-          if [ "$run_event" != "workflow_dispatch" ] || [ "$run_branch" != "work-native-route-bundle-play-release-20261021" ]; then
+          if [ "$run_event" != "workflow_dispatch" ] || [ "$run_branch" != "main" ]; then
             echo "::error::Certification run must be manually dispatched from Native Source of Truth"
             exit 1
           fi
@@ -221,6 +221,9 @@ jobs:
           backup_run_id = data.get("backup_restore_run_id")
           if type(backup_run_id) is not int or backup_run_id <= 0:
               raise SystemExit("::error::Certification Backup Restore run id is missing or invalid")
+          routing_run_id = data.get("rider_offline_run_id")
+          if routing_run_id is not None and (type(routing_run_id) is not int or routing_run_id <= 0):
+              raise SystemExit("::error::Certification Rider offline run id is invalid")
           PY
           pilot_run_id="$(jq -r '.native_pilot_run_id // empty' "$certification_metadata")"
           pilot_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$pilot_run_id")"
@@ -231,7 +234,7 @@ jobs:
           pilot_conclusion="$(jq -r '.conclusion // empty' <<<"$pilot_meta")"
           if [ "$pilot_head" != "$GITHUB_SHA" ] || \
              [ "$pilot_path" != ".github/workflows/build-native-rider-pilot.yml" ] || \
-             [ "$pilot_branch" != "work-native-route-bundle-play-release-20261021" ] || \
+             [ "$pilot_branch" != "main" ] || \
              [ "$pilot_event" != "push" ] || \
              [ "$pilot_conclusion" != "success" ]; then
             echo "::error::Certification references an invalid Native Pilot CI run"
@@ -248,7 +251,7 @@ jobs:
           backup_conclusion="$(jq -r '.conclusion // empty' <<<"$backup_meta")"
           if [ "$backup_head" != "$GITHUB_SHA" ] || \
              [ "$backup_path" != ".github/workflows/backup-restore-drill.yml" ] || \
-             [ "$backup_branch" != "work-native-route-bundle-play-release-20261021" ] || \
+             [ "$backup_branch" != "main" ] || \
              [ "$backup_event" != "workflow_dispatch" ] || \
              [ "$backup_conclusion" != "success" ]; then
             echo "::error::Certification references an invalid Backup Restore Drill run"
@@ -264,6 +267,27 @@ jobs:
             exit 1
           fi
           echo "QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id" >> "$GITHUB_ENV"
+          routing_run_id="$(jq -r '.rider_offline_run_id // empty' "$certification_metadata")"
+          if [ -n "$routing_run_id" ]; then
+            routing_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id")"
+            if ! jq -e --arg sha "$GITHUB_SHA" '
+              .head_sha == $sha and .head_branch == "main" and
+              .path == ".github/workflows/rider-offline-routing.yml" and
+              .event == "workflow_dispatch" and .conclusion == "success"
+            ' <<<"$routing_meta" >/dev/null; then
+              echo "::error::Certification references an invalid Rider offline routing run"
+              exit 1
+            fi
+            routing_artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id/artifacts?per_page=100")"
+            if ! jq -e --arg sha "$GITHUB_SHA" '
+              any(.artifacts[]; .expired == false and .size_in_bytes > 0 and
+                .name == ("rider-offline-routing-" + $sha))
+            ' <<<"$routing_artifacts" >/dev/null; then
+              echo "::error::Certification Rider offline routing artifact is unavailable or expired"
+              exit 1
+            fi
+            echo "QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id" >> "$GITHUB_ENV"
+          fi
           echo "QG_NATIVE_RELEASE_EVIDENCE=$report" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
