@@ -1644,6 +1644,8 @@ ok(
   merchantPosScreen.includes('if (barcodeRequestId == requestId && snapshot?.shopId == originalShop') &&
   merchantPosScreen.includes('finally { if (barcodeRequestId == requestId) scanLoading = false }') &&
   merchantPosScreen.includes('currentProduct != product || !currentProduct.available || posProductSoldOut(currentProduct)') &&
+  merchantPosScreen.includes('refreshSnapshot(select, success)') &&
+  merchantPosScreen.includes('if (committedMessage != null)') &&
   merchantPosScreen.includes('selectedPosCategory = "all"') &&
   merchantPosScreen.includes('if (!kitchenEnabled)') &&
   merchantPosScreen.includes('LaunchedEffect(kitchenEnabled, view, snap?.shopId, snapshotLoading)') &&
