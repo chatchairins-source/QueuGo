@@ -1,3 +1,19 @@
+## 2026-11-09 Bounded Rider offline routing metadata
+
+- Rider bundled routing now reads manifest bytes under a strict 64 KiB cap instead of trusting `InputStream.available()`, and rejects a config manifest declaring more than 64 KiB before copying and parsing it. The actual graph remains checksum verified and offline-only.
+- Added a JVM regression with an input stream reporting zero `available()` despite containing data. Source checks passed; hosted exact-head Rider JVM and Native Pilot verification remain required. No Production data or map assets changed.
+
+## 2026-11-09 POS committed write and readback separation
+
+- Merchant POS now preserves a successful server write acknowledgement when the subsequent snapshot read fails. The cashier sees that the action was saved and must refresh before the next action, instead of a misleading generic write failure that could prompt a duplicate cash or bill operation.
+- Native source checks passed 492/0 and diff whitespace passed locally. Exact-head Native Pilot compilation/runtime remains pending. No Production order, payment or schema data changed.
+
+## 2026-11-09 Retail barcode lookup response fencing
+
+- Native Merchant POS now invalidates an in-flight barcode/SKU lookup when the code, shop, view or authenticated actor changes. Late success, error and loading completion can no longer overwrite a newer counter lookup. The existing shop-scoped RPC and cashier confirmation remain authoritative.
+- POS add-to-bill now rechecks the current snapshot product for identity, availability and tracked stock before reusing a product selected from an older screen. PR #903 exact prior head Native Pilot CI passed; follow-up exact-head CI remains pending.
+- Source regression: `node tests/native-android-source.cjs` passed 492 checks. `tests/pos-runtime.cjs` could not run in this checkout because `jsdom` is not installed; Android Gradle/SDK are unavailable locally. Require exact-head hosted Merchant build and runtime acceptance before calling this release-ready. No Production data or schema changed.
+
 ## 2026-11-09 Retail barcode scanner focus and clean regression
 
 - Native Merchant retail POS now requests focus on its barcode/SKU field when a non-food counter opens or returns from another POS tab, then hides the software keyboard so a HID USB/Bluetooth keyboard-wedge scanner can enter a code immediately. Restaurant POS does not request scanner focus. Added source regression assertions.

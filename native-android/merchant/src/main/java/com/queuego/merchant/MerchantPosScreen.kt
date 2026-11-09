@@ -64,6 +64,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -142,6 +143,7 @@ fun MerchantPosScreen(
 ) {
     val context = LocalContext.current
     val barcodeFocusRequester = remember { FocusRequester() }
+    var barcodeRequestId by remember { mutableLongStateOf(0L) }
     val softwareKeyboardController = LocalSoftwareKeyboardController.current
     val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
     val merchantApi = remember { MerchantApi() }
@@ -401,7 +403,7 @@ fun MerchantPosScreen(
         }
     }
 
-    suspend fun refreshSnapshot(select: String? = selectedBillId) = refreshMutex.withLock {
+    suspend fun refreshSnapshot(select: String? = selectedBillId, committedMessage: String? = null) = refreshMutex.withLock {
         networkValidated = posNetworkValidated(context)
         if (snapshot == null) snapshotLoading = true
         try {
@@ -464,6 +466,9 @@ fun MerchantPosScreen(
                 networkValidated = posNetworkValidated(context)
                 message = merchantPosLoadError(failure)
             }
+            if (committedMessage != null) {
+                message = "$committedMessage · ${message ?: "โหลดข้อมูลล่าสุดไม่สำเร็จ"} · ตรวจข้อมูลก่อนทำรายการต่อ"
+            }
         } finally {
             snapshotLoading = false
         }
@@ -486,14 +491,17 @@ fun MerchantPosScreen(
         busy = true
         message = null
         scope.launch {
+            var committed = false
             try {
                 block()
+                committed = true
                 message = success
-                refreshSnapshot(select)
+                refreshSnapshot(select, success)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                message = failure.message ?: "บันทึกไม่สำเร็จ"
+                message = if (committed) "$success · โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณากดรีเฟรชก่อนทำรายการต่อ"
+                    else failure.message ?: "บันทึกไม่สำเร็จ"
             } finally {
                 busy = false
             }
@@ -642,6 +650,11 @@ fun MerchantPosScreen(
 
     fun addPosProduct(product: PosProduct, optionsJson: String? = null) {
         if (busy) return
+        val currentProduct = snapshot?.products?.firstOrNull { it.id == product.id }
+        if (currentProduct == null || currentProduct != product || !currentProduct.available || posProductSoldOut(currentProduct)) {
+            message = "สินค้าไม่พร้อมขาย กรุณาโหลดข้อมูลสินค้าใหม่"
+            return
+        }
         val online = posNetworkValidated(context)
         if (online && !can("receive_order")) {
             message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
@@ -1015,7 +1028,9 @@ fun MerchantPosScreen(
             softwareKeyboardController?.hide()
         }
     }
-    LaunchedEffect(snap?.shopId) {
+    LaunchedEffect(snap?.shopId, view, auth.session.authUserId) {
+        barcodeRequestId++
+        scanLoading = false
         selectedPosCategory = "all"
         scannedProduct = null
         scanStatus = null
@@ -1336,20 +1351,23 @@ fun MerchantPosScreen(
                     barcodeStatus = scanStatus,
                     barcodeLoading = scanLoading,
                     bestSellerNames = bestSellerNames,
-                    onBarcodeChange = { scannedCode = it.take(64); scannedProduct = null; scanStatus = null },
+                    onBarcodeChange = { barcodeRequestId++; scanLoading = false; scannedCode = it.take(64); scannedProduct = null; scanStatus = null },
                     onBarcodeLookup = {
                         val code = scannedCode.trim()
                         if (!kitchenEnabled && !busy && !scanLoading && code.isNotBlank()) {
                             val originalShop = snap.shopId
                             val originalBill = selectedBillId
                             val originalActor = auth.session.authUserId
+                            val requestId = ++barcodeRequestId
                             scanLoading = true; scannedProduct = null; scanStatus = null
                             scope.launch {
                                 try {
-                                    if (!posNetworkValidated(context)) scanStatus = "ค้นหาบาร์โค้ดต้องเชื่อมต่ออินเทอร์เน็ต"
+                                    if (!posNetworkValidated(context)) {
+                                        if (barcodeRequestId == requestId) scanStatus = "ค้นหาบาร์โค้ดต้องเชื่อมต่ออินเทอร์เน็ต"
+                                    }
                                     else {
                                         val match = api.lookupProductCode(auth, code)
-                                        if (snapshot?.shopId == originalShop && auth.session.authUserId == originalActor &&
+                                        if (barcodeRequestId == requestId && snapshot?.shopId == originalShop && auth.session.authUserId == originalActor &&
                                             selectedBillId == originalBill && view == "counter" && scannedCode.trim() == code) {
                                             val product = snap.products.firstOrNull { it.id == match?.productId }
                                             when {
@@ -1362,8 +1380,13 @@ fun MerchantPosScreen(
                                         }
                                     }
                                 } catch (cancelled: CancellationException) { throw cancelled }
-                                catch (failure: Exception) { scanStatus = failure.message ?: "ค้นหารหัสสินค้าไม่สำเร็จ" }
-                                finally { scanLoading = false }
+                                catch (failure: Exception) {
+                                    if (barcodeRequestId == requestId && snapshot?.shopId == originalShop &&
+                                        auth.session.authUserId == originalActor && scannedCode.trim() == code) {
+                                        scanStatus = failure.message ?: "ค้นหารหัสสินค้าไม่สำเร็จ"
+                                    }
+                                }
+                                finally { if (barcodeRequestId == requestId) scanLoading = false }
                             }
                         }
                     },

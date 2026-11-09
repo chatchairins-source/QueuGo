@@ -5,6 +5,7 @@ import com.valhalla.valhalla.Valhalla
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.security.MessageDigest
 
 /** One process-local actor, rebuilt from immutable APK assets after process death. */
@@ -32,8 +33,7 @@ object BundledOfflineRouting {
     /** Called only on Dispatchers.IO by the provider. Never load a graph from a shared directory. */
     private fun install(context: Context): File {
         val manifestText = context.assets.open("routing/manifest.json").use {
-            require(it.available() <= 64 * 1024) { "Offline graph manifest is too large" }
-            it.bufferedReader().readText()
+            readBoundedRoutingText(it, 64 * 1024)
         }
         val manifest = JSONObject(manifestText)
         require(manifest.getInt("format_version") == 1 &&
@@ -42,6 +42,7 @@ object BundledOfflineRouting {
             manifest.getString("licence") == "ODbL-1.0") { "Unsupported offline graph package" }
         val graph = manifest.getJSONObject("graph")
         val config = manifest.getJSONObject("config")
+        require(config.getLong("bytes") in 1..64 * 1024L) { "Offline routing config is too large" }
         val graphHash = graph.getString("sha256")
         require(graphHash.matches(Regex("[a-f0-9]{64}"))) { "Invalid offline graph checksum" }
         val root = File(context.noBackupFilesDir, "routing/$graphHash")
@@ -114,4 +115,17 @@ object BundledOfflineRouting {
         }
         return digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
     }
+}
+
+internal fun readBoundedRoutingText(input: InputStream, maxBytes: Int): String {
+    require(maxBytes > 0)
+    val output = java.io.ByteArrayOutputStream()
+    val buffer = ByteArray(4096)
+    while (true) {
+        val count = input.read(buffer)
+        if (count < 0) break
+        require(output.size().toLong() + count <= maxBytes) { "Offline graph manifest is too large" }
+        output.write(buffer, 0, count)
+    }
+    return output.toString(Charsets.UTF_8.name())
 }
