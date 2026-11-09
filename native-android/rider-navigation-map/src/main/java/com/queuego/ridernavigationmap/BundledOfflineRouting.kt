@@ -116,7 +116,7 @@ object BundledOfflineRouting {
         return digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
     }
 }
-\
+
 internal fun readBoundedRoutingText(input: InputStream, maxBytes: Int): String {
     require(maxBytes > 0)
     val output = java.io.ByteArrayOutputStream()
