@@ -1,3 +1,9 @@
+## 2026-11-09 Retail barcode scanner focus and clean regression
+
+- Native Merchant retail POS now requests focus on its barcode/SKU field when a non-food counter opens or returns from another POS tab, then hides the software keyboard so a HID USB/Bluetooth keyboard-wedge scanner can enter a code immediately. Restaurant POS does not request scanner focus. Added source regression assertions.
+- Commit `86b7301a60691f14ed445ecbd2382a8faf789e71` is published to both PR #872 branches. On the exact clean commit, Native source passed (492/0), POS runtime passed (115/0), Native release-evidence bundler passed (28/0), and release packaging guard passed. Repository test-script entries: 163 passed, 0 failed, 1 skipped; skipped `source-integrity` requires pinned `map-assets` absent from this checkout.
+- Local Android Gradle/APK build remains unavailable: no `gradle`, Gradle wrapper, `sdkmanager`, or Android SDK is installed. No CI result was polled and no Production data changed.
+
 ## 2026-11-09 Local production regression pass
 
 - On exact source HEAD `09252fb6731a842f7401cdf7ba3b0d994ab27abb`, ran the repository test-script entries directly with the existing sibling `node_modules` and skipped npm lifecycle hooks to avoid implicit downloads. Result: 163 entries passed, 0 failed, 1 skipped.
