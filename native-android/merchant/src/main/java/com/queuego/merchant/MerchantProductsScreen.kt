@@ -723,7 +723,10 @@ internal fun MerchantProductEditorScreen(
                         val variants = if (food) {
                             merchantRestaurantVariantsJson(
                                 portionEnabled = portionEnabled,
-                                specialPrice = specialPrice.toDoubleOrNull() ?: 10.0,
+                                specialPrice = if (portionEnabled) {
+                                    specialPrice.toDoubleOrNull()
+                                        ?: throw IllegalArgumentException("กรุณากรอกราคาพิเศษให้ถูกต้อง")
+                                } else 0.0,
                                 toppings = toppings
                             )
                         } else {

@@ -289,6 +289,9 @@ private fun MerchantGroceryCatalogCard(
                 label = { Text("สต็อก") }
             )
         }
+        if (stockQty.toIntOrNull() == null) {
+            Text("กรุณากรอกจำนวนสต็อกก่อนบันทึก", color = QgRed)
+        }
 
             }
         }
@@ -340,14 +343,15 @@ private fun MerchantGroceryCatalogCard(
                     MerchantGroceryCatalogDraft(
                         requestId = requestId,
                         sellingPrice = sellingPrice.toDoubleOrNull(),
-                        stockQty = stockQty.toIntOrNull() ?: 0,
+                        stockQty = stockQty.toIntOrNull() ?: return@Button,
                         stockTracking = stockTracking,
                         posAvailable = posAvailable,
                         deliveryAvailable = deliveryAvailable
                     )
                 )
             },
-            enabled = !busy && storePrice != null && storePrice.isFinite() && storePrice > 0 && (posAvailable || deliveryAvailable),
+            enabled = !busy && storePrice != null && storePrice.isFinite() && storePrice > 0 &&
+                stockQty.toIntOrNull() != null && (posAvailable || deliveryAvailable),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = QgRed),
             modifier = Modifier.fillMaxWidth().height(46.dp)
         ) {
