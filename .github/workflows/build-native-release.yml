@@ -221,6 +221,9 @@ jobs:
           backup_run_id = data.get("backup_restore_run_id")
           if type(backup_run_id) is not int or backup_run_id <= 0:
               raise SystemExit("::error::Certification Backup Restore run id is missing or invalid")
+          routing_run_id = data.get("rider_offline_run_id")
+          if routing_run_id is not None and (type(routing_run_id) is not int or routing_run_id <= 0):
+              raise SystemExit("::error::Certification Rider offline run id is invalid")
           PY
           pilot_run_id="$(jq -r '.native_pilot_run_id // empty' "$certification_metadata")"
           pilot_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$pilot_run_id")"
@@ -264,6 +267,27 @@ jobs:
             exit 1
           fi
           echo "QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id" >> "$GITHUB_ENV"
+          routing_run_id="$(jq -r '.rider_offline_run_id // empty' "$certification_metadata")"
+          if [ -n "$routing_run_id" ]; then
+            routing_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id")"
+            if ! jq -e --arg sha "$GITHUB_SHA" '
+              .head_sha == $sha and .head_branch == "main" and
+              .path == ".github/workflows/rider-offline-routing.yml" and
+              .event == "workflow_dispatch" and .conclusion == "success"
+            ' <<<"$routing_meta" >/dev/null; then
+              echo "::error::Certification references an invalid Rider offline routing run"
+              exit 1
+            fi
+            routing_artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id/artifacts?per_page=100")"
+            if ! jq -e --arg sha "$GITHUB_SHA" '
+              any(.artifacts[]; .expired == false and .size_in_bytes > 0 and
+                .name == ("rider-offline-routing-" + $sha))
+            ' <<<"$routing_artifacts" >/dev/null; then
+              echo "::error::Certification Rider offline routing artifact is unavailable or expired"
+              exit 1
+            fi
+            echo "QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id" >> "$GITHUB_ENV"
+          fi
           echo "QG_NATIVE_RELEASE_EVIDENCE=$report" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5

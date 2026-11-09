@@ -58,6 +58,7 @@ for(const key of [
   '"certification_run_id": os.environ["GITHUB_RUN_ID"]',
   '"native_pilot_run_id": int(os.environ["QG_CERTIFIED_NATIVE_PILOT_RUN_ID"])',
   '"backup_restore_run_id": int(os.environ["QG_CERTIFIED_BACKUP_RESTORE_RUN_ID"])',
+  '"rider_offline_run_id": int(os.environ["QG_CERTIFIED_RIDER_OFFLINE_RUN_ID"])',
   '"version_name": os.environ["QG_NATIVE_VERSION_NAME"]',
   '"customer_version_code"',
   '"merchant_version_code"',
@@ -84,5 +85,9 @@ ok(release.includes('Certification references an invalid Native Pilot CI run'),'
 ok(release.includes('Certification Backup Restore run id is missing or invalid'),'final release must require a recorded Backup Restore run id');
 ok(release.includes('Certification references an invalid Backup Restore Drill run'),'final release must independently revalidate the certified Backup Restore Drill');
 ok(release.includes('Certification Backup Restore Drill artifact is unavailable or expired'),'final release must require the backup artifact to remain live');
+ok(release.includes('QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id')&&
+  release.includes('Certification references an invalid Rider offline routing run')&&
+  release.includes('Certification Rider offline routing artifact is unavailable or expired'),
+  'final release must independently revalidate and export the certified Rider offline run');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Trusted external physical evidence intake and exact-metadata Native release certification'}));

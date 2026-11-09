@@ -388,6 +388,8 @@ jobs:
               "certification_workflow": ".github/workflows/native-release-certification.yml",
               "native_pilot_run_id": int(os.environ["QG_CERTIFIED_NATIVE_PILOT_RUN_ID"]),
               "backup_restore_run_id": int(os.environ["QG_CERTIFIED_BACKUP_RESTORE_RUN_ID"]),
+              "rider_offline_run_id": int(os.environ["QG_CERTIFIED_RIDER_OFFLINE_RUN_ID"])
+                  if os.environ.get("QG_CERTIFIED_RIDER_OFFLINE_RUN_ID") else None,
               "evidence_object_path": os.environ["EVIDENCE_OBJECT_PATH"],
               "evidence_bundle_sha256": os.environ["EVIDENCE_BUNDLE_SHA256"].lower(),
               "version_name": os.environ["QG_NATIVE_VERSION_NAME"],
