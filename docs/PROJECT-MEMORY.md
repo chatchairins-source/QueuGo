@@ -1,3 +1,8 @@
+## 2026-11-09 Bounded Rider offline routing metadata
+
+- Rider bundled routing now reads manifest bytes under a strict 64 KiB cap instead of trusting `InputStream.available()`, and rejects a config manifest declaring more than 64 KiB before copying and parsing it. The actual graph remains checksum verified and offline-only.
+- Added a JVM regression with an input stream reporting zero `available()` despite containing data. Source checks passed; hosted exact-head Rider JVM and Native Pilot verification remain required. No Production data or map assets changed.
+
 ## 2026-11-09 POS committed write and readback separation
 
 - Merchant POS now preserves a successful server write acknowledgement when the subsequent snapshot read fails. The cashier sees that the action was saved and must refresh before the next action, instead of a misleading generic write failure that could prompt a duplicate cash or bill operation.
