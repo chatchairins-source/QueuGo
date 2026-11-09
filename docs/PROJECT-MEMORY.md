@@ -1,3 +1,9 @@
+## 2026-11-09 Local production regression pass
+
+- On exact source HEAD `09252fb6731a842f7401cdf7ba3b0d994ab27abb`, ran the repository test-script entries directly with the existing sibling `node_modules` and skipped npm lifecycle hooks to avoid implicit downloads. Result: 163 entries passed, 0 failed, 1 skipped.
+- The skipped entry is `tests/source-integrity.cjs`, which requires pinned `map-assets` absent from this checkout; the normal pretest downloads those assets from external URLs. No asset was substituted and no assertion was weakened.
+- The passing entries include Rider, Customer, Merchant/POS, Admin, security, credit, map contracts and native release checks. This does not include an Android Gradle/APK build; Gradle, wrapper and Android SDK are unavailable here. No CI status was polled and no Production data was changed.
+
 ## 2026-11-08 Native retail POS copy parity
 
 - Source review found the non-food Native POS already hid restaurant tables and Kitchen, but still labeled its catalog search “ค้นหาเมนู” and product section “เมนูสินค้า”. Web correctly uses retail product language.
