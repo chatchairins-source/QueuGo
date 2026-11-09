@@ -19,6 +19,7 @@ on:
   push:
     branches:
       - queuego-native-android-v1
+      - work-release-gate-emulator-20261109
       - 'work-native-**'
       - 'fix/native-**'
       - 'fix-native-**'
