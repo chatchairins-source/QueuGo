@@ -76,12 +76,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.ImeAction
@@ -138,6 +141,8 @@ fun MerchantPosScreen(
     backLabel: String = "ย้อนกลับ"
 ) {
     val context = LocalContext.current
+    val barcodeFocusRequester = remember { FocusRequester() }
+    val softwareKeyboardController = LocalSoftwareKeyboardController.current
     val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
     val merchantApi = remember { MerchantApi() }
     val cashMovementStore = remember(context) { MerchantPosCashMovementStore(context) }
@@ -1003,6 +1008,13 @@ fun MerchantPosScreen(
     val openBills = snap?.bills?.filter { it.open }.orEmpty()
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
     val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
+    LaunchedEffect(kitchenEnabled, view, snap?.shopId, snapshotLoading) {
+        if (!snapshotLoading && snap != null && !kitchenEnabled && view == "counter") {
+            barcodeFocusRequester.requestFocus()
+            delay(150)
+            softwareKeyboardController?.hide()
+        }
+    }
     LaunchedEffect(snap?.shopId) {
         selectedPosCategory = "all"
         scannedProduct = null
@@ -1277,6 +1289,7 @@ fun MerchantPosScreen(
             when (view) {
                 "counter" -> PosCounterView(
                     snapshot = snap,
+                    barcodeFocusRequester = barcodeFocusRequester,
                     selectedBill = selectedBill,
                     mode = mode,
                     tableId = tableId,
@@ -2351,6 +2364,7 @@ private fun PosTabs(
 @Composable
 private fun PosCounterView(
     snapshot: PosSnapshot,
+    barcodeFocusRequester: FocusRequester,
     selectedBill: PosBill?,
     mode: String,
     tableId: String?,
@@ -2469,7 +2483,8 @@ private fun PosCounterView(
                     placeholder = { Text("พิมพ์หรือใช้เครื่องสแกน USB/Bluetooth") }, singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                     keyboardActions = KeyboardActions(onDone = { onBarcodeLookup() }),
-                    enabled = !busy && !barcodeLoading, modifier = Modifier.weight(1f))
+                    enabled = !busy && !barcodeLoading,
+                    modifier = Modifier.weight(1f).focusRequester(barcodeFocusRequester))
                 Button(onClick = onBarcodeLookup,
                     enabled = !busy && !barcodeLoading && barcode.isNotBlank() && canReceive && !pendingCreate,
                     colors = ButtonDefaults.buttonColors(containerColor = QgRed),
