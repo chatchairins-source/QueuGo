@@ -117,6 +117,22 @@ try{
   const emulatorResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
   assert.equal(emulatorResult.status,1,'Emulator evidence must never certify a physical gate');
   assert.match(emulatorResult.stderr,/physical gate device must be a real non-emulator device: physical_push_customer/);
+  physicalEnvelope.test_environment='emulator';
+  physicalEnvelope.devices[0].physical=false;
+  physicalEnvelope.automation_evidence={github_run_id:456,source_sha:head};
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  gates.physical_push_customer={status:'PASS',evidence_file:'physical_push_customer.json',
+    sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex')};
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const acceptedEmulator=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  assert.match(acceptedEmulator.stderr,/uncertified gate: physical_push_merchant/,
+    'complete, source-bound emulator evidence must pass its device gate and continue to the next gate');
+  physicalEnvelope.automation_evidence.source_sha='wrong';
+  fs.writeFileSync(path.join(evidenceDir,'physical_push_customer.json'),JSON.stringify(physicalEnvelope));
+  gates.physical_push_customer.sha256=crypto.createHash('sha256').update(fs.readFileSync(path.join(evidenceDir,'physical_push_customer.json'))).digest('hex');
+  fs.writeFileSync(physicalReport,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const wrongEmulatorSource=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:physicalReport},encoding:'utf8'});
+  assert.match(wrongEmulatorSource.stderr,/emulator gate CI source mismatch: physical_push_customer/);
 }finally{fs.rmSync(evidenceDir,{recursive:true,force:true});}
 
 const bindingDir=fs.mkdtempSync(path.join(os.tmpdir(),'qg-release-binding-'));

@@ -44,6 +44,10 @@ for(const pkg of ['com.queuego.customer','com.queuego.merchant','com.queuego.rid
   ok(cert.includes(pkg),'certification must validate Firebase client '+pkg);
 }
 ok(cert.includes('python3 native-android/qa/verify-native-release-gate.py'),'certification must use the canonical fail-closed Native release verifier');
+ok(cert.includes('QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id') &&
+  cert.includes('.github/workflows/rider-offline-routing.yml') &&
+  cert.includes('rider-offline-routing-'),
+  'emulator offline route evidence must bind a successful exact-HEAD Rider routing run with a retained artifact');
 ok(cert.includes('certified-release-metadata.json'),'certification must bind exact release metadata');
 for(const key of [
   '"source_sha": os.environ["GITHUB_SHA"]',

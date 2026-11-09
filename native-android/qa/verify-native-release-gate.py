@@ -153,6 +153,12 @@ def verify_physical_gate_semantics(envelope: dict, gate: str) -> None:
         return
     if envelope.get("operator_certified") is not True:
         raise ValueError(f"physical gate must be explicitly operator-certified: {gate}")
+    if envelope.get("test_environment") == "emulator":
+        attestation = envelope.get("automation_evidence")
+        if not isinstance(attestation, dict) or type(attestation.get("github_run_id")) is not int or attestation["github_run_id"] <= 0:
+            raise ValueError(f"emulator gate requires a CI run identity: {gate}")
+        if attestation.get("source_sha") != envelope.get("source_sha"):
+            raise ValueError(f"emulator gate CI source mismatch: {gate}")
     checks = envelope.get("checks", {})
     for key in required_checks:
         if checks.get(key) is not True:
@@ -261,7 +267,11 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
                 raise ValueError(f"physical gate device model is missing: {gate}")
             if role not in {"customer", "merchant", "rider"}:
                 raise ValueError(f"physical gate device role is invalid: {gate}")
-            if device.get("physical") is not True or device.get("emulator") is not False:
+            emulator_mode = envelope.get("test_environment") == "emulator"
+            if emulator_mode:
+                if device.get("physical") is not False or device.get("emulator") is not True:
+                    raise ValueError(f"emulator gate device must be an Android emulator: {gate}")
+            elif device.get("physical") is not True or device.get("emulator") is not False:
                 raise ValueError(f"physical gate device must be a real non-emulator device: {gate}")
             device_ids.add(device_hash)
             observed_roles.add(role)
@@ -332,6 +342,16 @@ def verify():
         raise ValueError("QG_CERTIFIED_NATIVE_PILOT_RUN_ID must come from exact-HEAD GitHub attestation")
     if envelopes["full_native_ci"].get("github_run_id") != int(pilot_run_raw):
         raise ValueError("full_native_ci evidence does not match the attested Native Pilot run")
+    for gate, envelope in envelopes.items():
+        if envelope.get("test_environment") != "emulator":
+            continue
+        expected_run = pilot_run_raw
+        if gate == "rider_offline_nationwide_routing":
+            expected_run = os.environ.get("QG_CERTIFIED_RIDER_OFFLINE_RUN_ID", "")
+            if not re.fullmatch(r"\d+", expected_run):
+                raise ValueError("Rider emulator routing requires an exact-HEAD attested offline CI run")
+        if envelope["automation_evidence"]["github_run_id"] != int(expected_run):
+            raise ValueError(f"emulator gate CI run does not match the attested exact-HEAD run: {gate}")
     backup_run_raw = os.environ.get("QG_CERTIFIED_BACKUP_RESTORE_RUN_ID", "")
     if not re.fullmatch(r"\d+", backup_run_raw):
         raise ValueError("QG_CERTIFIED_BACKUP_RESTORE_RUN_ID must come from exact-HEAD GitHub attestation")
