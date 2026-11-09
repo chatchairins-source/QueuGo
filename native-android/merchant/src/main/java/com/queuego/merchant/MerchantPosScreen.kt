@@ -2488,7 +2488,7 @@ private fun PosCounterView(
         val menuCategories = snapshot.products.mapNotNull { product ->
             product.category?.trim()?.takeIf { it.isNotBlank() }
         }.distinct()
-        if (menuCategories.isNotEmpty()) {
+        if (menuCategories.isNotEmpty() || bestSellerNames.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             Text("หมวดหมู่", fontWeight = FontWeight.Bold, fontSize = 12.sp)
             Row(

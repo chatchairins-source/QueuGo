@@ -1636,6 +1636,7 @@ ok(
   merchantPosApi.includes('category = nullableString(r, "category")') &&
   merchantPosScreen.includes('selectedCategory = selectedPosCategory') &&
   merchantPosScreen.includes('PosChoiceButton("ทั้งหมด", selectedCategory == "all")') &&
+  merchantPosScreen.includes('if (menuCategories.isNotEmpty() || bestSellerNames.isNotEmpty())') &&
   merchantPosScreen.includes('onCategory(category)') &&
   merchantPosScreen.includes('selectedCategory == "all" || (selectedCategory == "__best_seller__"') &&
   merchantPosScreen.includes('LaunchedEffect(snap?.shopId) {') &&

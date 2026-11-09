@@ -2,7 +2,8 @@
 
 - Source review found the non-food Native POS already hid restaurant tables and Kitchen, but still labeled its catalog search “ค้นหาเมนู” and product section “เมนูสินค้า”. Web correctly uses retail product language.
 - Changed Native labels by authoritative `kitchenEnabled`: restaurants see “ค้นหาเมนู” / “เมนูอาหาร”; retail shops see “ค้นหาสินค้า” / “สินค้า”. Added source regression assertions.
-- Local validation: `tests/native-android-source.cjs` PASS (492/0), `tests/pos-runtime.cjs` PASS (115/0), Web JS syntax, workflow YAML parsing and `git diff --check` PASS. Local Gradle build unavailable (`gradle` is not installed; no Gradle wrapper or Android SDK in this checkout). No Production changes.
+- Further source review found the Native category-chip row was hidden when a shop had no product categories, even if its best-seller RPC returned real sales. Match the Web behavior by rendering the row when either categories or best-sellers exist; added a regression assertion.
+- Local validation: `tests/native-android-source.cjs` PASS (492/0), `tests/pos-runtime.cjs` PASS (115/0), workflow SHA pinning (118/0), Web JS syntax, workflow YAML parsing and `git diff --check` PASS. Release packaging guard must be run on a clean checkout; this edit is not APK-build verification. Local Gradle build unavailable (`gradle` is not installed; no Gradle wrapper or Android SDK in this checkout). No Production changes.
 
 ## 2026-11-08 Remove retired SDK checksum from Android test workflows
 
