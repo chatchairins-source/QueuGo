@@ -1,3 +1,8 @@
+## 2026-11-09 POS committed write and readback separation
+
+- Merchant POS now preserves a successful server write acknowledgement when the subsequent snapshot read fails. The cashier sees that the action was saved and must refresh before the next action, instead of a misleading generic write failure that could prompt a duplicate cash or bill operation.
+- Native source checks passed 492/0 and diff whitespace passed locally. Exact-head Native Pilot compilation/runtime remains pending. No Production order, payment or schema data changed.
+
 ## 2026-11-09 Retail barcode lookup response fencing
 
 - Native Merchant POS now invalidates an in-flight barcode/SKU lookup when the code, shop, view or authenticated actor changes. Late success, error and loading completion can no longer overwrite a newer counter lookup. The existing shop-scoped RPC and cashier confirmation remain authoritative.
