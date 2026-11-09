@@ -21,6 +21,7 @@ on:
       - main
       - queuego-native-android-v1
       - work-release-gate-emulator-20261109
+      - work-release-main-source-20261109
       - 'work-native-**'
       - 'fix/native-**'
       - 'fix-native-**'

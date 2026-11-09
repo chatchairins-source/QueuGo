@@ -11,6 +11,8 @@ ok(!/\n\s*push:/.test(cert),'release certification must never run from push');
 ok(cert.includes('refs/heads/main'),'certification must be restricted to reviewed main source');
 ok(read('.github/workflows/build-native-rider-pilot.yml').includes('  push:\n    branches:\n      - main'),
   'main must trigger the exact-HEAD Native Pilot attestation');
+ok(read('.github/workflows/build-native-rider-pilot.yml').includes('      - work-release-main-source-20261109'),
+  'release source review branch must receive exact-head Pilot validation');
 ok(read('.github/workflows/release-secret-readiness.yml').includes('  push:\n    branches:\n      - main'),
   'main must trigger release-secret readiness');
 ok(cert.includes('actions: read'),'certification must have read-only Actions permission for exact-HEAD CI attestation');
