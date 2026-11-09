@@ -2419,3 +2419,8 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-11-08 POS review routing and stale scanner styles
 
 - Removed unused counter-scanner CSS and added a runtime source guard that the POS stylesheet has no scanner selectors while the dedicated SKU/barcode tab remains. The authenticated review head must carry `[merchant-visual-review]` so PR events select Merchant-only capture and skip the unrelated Rider archive.
+
+## 2026-11-09 Native release gate accepts attested emulator evidence (draft PR #905)
+
+- Stack on draft PR #903 (`83531c34`); do not merge, reset, or use older October release source as if it were current. Existing physical evidence still works. Explicit emulator envelopes require an identified emulator, source-bound CI run, operator certification, complete gate checks, hashed artifacts, and all required roles. Reject unknown environment labels and emulator claims on non-device gates.
+- Certification attests exact-HEAD Native Pilot; offline Rider emulator evidence additionally binds the independently successful exact-HEAD Rider routing run and its retained artifact. No evidence bundle was created or marked PASS by this code change. Release certification and signed APKs remain blocked by absent Production evidence, signing inputs, backup drill, and the old pinned release branch. The exact-head Native Pilot run for PR #905 must finish before its CI can be claimed.

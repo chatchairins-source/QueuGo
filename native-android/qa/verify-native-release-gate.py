@@ -196,6 +196,11 @@ def verify_gate_envelope(path: Path, bundle_root: Path, gate: str, head: str, ex
         raise ValueError(f"gate evidence source_sha mismatch: {gate}")
     if envelope.get("status") != expected_status:
         raise ValueError(f"gate evidence status mismatch: {gate}")
+    environment = envelope.get("test_environment")
+    if environment not in (None, "physical", "emulator"):
+        raise ValueError(f"gate evidence test_environment is invalid: {gate}")
+    if environment == "emulator" and gate not in PHYSICAL_GATES:
+        raise ValueError(f"emulator evidence is unsupported for this gate: {gate}")
 
     observed_at = envelope.get("observed_at")
     if not isinstance(observed_at, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", observed_at):

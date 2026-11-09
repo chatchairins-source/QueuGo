@@ -47,6 +47,22 @@ try{
   assert.equal(badResult.status,1,'mismatched gate envelope must fail');
   assert.match(badResult.stderr,/gate evidence envelope mismatch: full_native_ci/);
 
+  for(const [environment, expected] of [
+    ['simulator',/gate evidence test_environment is invalid: full_native_ci/],
+    ['emulator',/emulator evidence is unsupported for this gate: full_native_ci/]
+  ]){
+    const marked={...badEnvelope,gate:'full_native_ci',test_environment:environment};
+    fs.writeFileSync(badEnvelopePath,JSON.stringify(marked));
+    const markedReport={source_sha:head,p0:0,p1:0,gates:{full_native_ci:{
+      status:'PASS',evidence_file:'full_native_ci.json',
+      sha256:crypto.createHash('sha256').update(fs.readFileSync(badEnvelopePath)).digest('hex')
+    }}};
+    fs.writeFileSync(badReport,JSON.stringify(markedReport));
+    const markedResult=spawnSync('python3',[script],{env:{...env,QG_NATIVE_RELEASE_EVIDENCE:badReport},encoding:'utf8'});
+    assert.equal(markedResult.status,1,'unsupported test environment must fail');
+    assert.match(markedResult.stderr,expected);
+  }
+
   const preceding=[
     'full_native_ci','production_backend','backup_restore','security_regression',
     'service_area','ugc_chat_safety','security_platform_auth','firebase_three_packages'
