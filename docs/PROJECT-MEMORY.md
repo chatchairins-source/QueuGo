@@ -1,6 +1,7 @@
 ## 2026-11-09 Retail barcode lookup response fencing
 
 - Native Merchant POS now invalidates an in-flight barcode/SKU lookup when the code, shop, view or authenticated actor changes. Late success, error and loading completion can no longer overwrite a newer counter lookup. The existing shop-scoped RPC and cashier confirmation remain authoritative.
+- POS add-to-bill now rechecks the current snapshot product for identity, availability and tracked stock before reusing a product selected from an older screen. PR #903 exact prior head Native Pilot CI passed; follow-up exact-head CI remains pending.
 - Source regression: `node tests/native-android-source.cjs` passed 492 checks. `tests/pos-runtime.cjs` could not run in this checkout because `jsdom` is not installed; Android Gradle/SDK are unavailable locally. Require exact-head hosted Merchant build and runtime acceptance before calling this release-ready. No Production data or schema changed.
 
 ## 2026-11-09 Retail barcode scanner focus and clean regression
