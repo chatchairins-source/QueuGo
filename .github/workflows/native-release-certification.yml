@@ -104,6 +104,30 @@ jobs:
           echo "Certified exact-HEAD Native Pilot CI run: $pilot_run_id"
           echo "QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id" >> "$GITHUB_ENV"
 
+      - name: Attest exact-HEAD Rider offline routing CI when emulator evidence is used
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=${GITHUB_REF_NAME}&status=success&per_page=100")"
+          routing_run_id="$(jq -r --arg sha "$GITHUB_SHA" --arg branch "$GITHUB_REF_NAME" '
+            [.workflow_runs[]
+              | select(.head_sha == $sha and .head_branch == $branch)
+              | select(.path == ".github/workflows/rider-offline-routing.yml")
+              | select(.event == "workflow_dispatch" and .conclusion == "success")]
+            | sort_by(.run_number) | last | .id // empty
+          ' <<<"$runs")"
+          if [[ "$routing_run_id" =~ ^[0-9]+$ ]]; then
+            artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id/artifacts?per_page=100")"
+            if jq -e --arg sha "$GITHUB_SHA" '
+              any(.artifacts[]; .expired == false and .size_in_bytes > 0 and
+                .name == ("rider-offline-routing-" + $sha))
+            ' <<<"$artifacts" >/dev/null; then
+              echo "QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id" >> "$GITHUB_ENV"
+            fi
+          fi
+
       - name: Require successful exact-HEAD Backup Restore Drill
         shell: bash
         env:
