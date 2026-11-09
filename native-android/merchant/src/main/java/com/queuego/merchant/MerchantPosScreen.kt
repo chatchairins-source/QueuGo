@@ -644,6 +644,11 @@ fun MerchantPosScreen(
 
     fun addPosProduct(product: PosProduct, optionsJson: String? = null) {
         if (busy) return
+        val currentProduct = snapshot?.products?.firstOrNull { it.id == product.id }
+        if (currentProduct == null || currentProduct != product || !currentProduct.available || posProductSoldOut(currentProduct)) {
+            message = "สินค้าไม่พร้อมขาย กรุณาโหลดข้อมูลสินค้าใหม่"
+            return
+        }
         val online = posNetworkValidated(context)
         if (online && !can("receive_order")) {
             message = "บัญชีนี้ไม่มีสิทธิ์รับออเดอร์"
