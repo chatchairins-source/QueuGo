@@ -15,5 +15,9 @@ class BundledOfflineRoutingTextTest {
         assertThrows(IllegalArgumentException::class.java) {
             readBoundedRoutingText(ByteArrayInputStream(bytes), bytes.size - 1)
         }
+        assertEquals("", readBoundedRoutingText(ByteArrayInputStream(byteArrayOf()), 1))
+        assertThrows(IllegalArgumentException::class.java) {
+            readBoundedRoutingText(ByteArrayInputStream(bytes), 0)
+        }
     }
 }
