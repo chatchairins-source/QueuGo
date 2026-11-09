@@ -15,6 +15,8 @@ ok(read('.github/workflows/build-native-rider-pilot.yml').includes('      - work
   'release source review branch must receive exact-head Pilot validation');
 ok(read('.github/workflows/release-secret-readiness.yml').includes('  push:\n    branches:\n      - main'),
   'main must trigger release-secret readiness');
+ok(read('.github/workflows/release-secret-readiness.yml').includes('      - work-release-main-source-20261109'),
+  'release source review must check secret presence without revealing secret values');
 ok(cert.includes('actions: read'),'certification must have read-only Actions permission for exact-HEAD CI attestation');
 ok(cert.includes('Require successful exact-HEAD Native Pilot CI'),'certification must require automated Native Pilot CI attestation');
 ok(cert.includes('.github/workflows/build-native-rider-pilot.yml')&&cert.includes('.event == "push"')&&cert.includes('.conclusion == "success"'),'certification must pin the successful main-branch Native Pilot workflow identity');
