@@ -403,7 +403,7 @@ fun MerchantPosScreen(
         }
     }
 
-    suspend fun refreshSnapshot(select: String? = selectedBillId) = refreshMutex.withLock {
+    suspend fun refreshSnapshot(select: String? = selectedBillId, committedMessage: String? = null) = refreshMutex.withLock {
         networkValidated = posNetworkValidated(context)
         if (snapshot == null) snapshotLoading = true
         try {
@@ -466,6 +466,9 @@ fun MerchantPosScreen(
                 networkValidated = posNetworkValidated(context)
                 message = merchantPosLoadError(failure)
             }
+            if (committedMessage != null) {
+                message = "$committedMessage · ${message ?: "โหลดข้อมูลล่าสุดไม่สำเร็จ"} · ตรวจข้อมูลก่อนทำรายการต่อ"
+            }
         } finally {
             snapshotLoading = false
         }
@@ -488,14 +491,17 @@ fun MerchantPosScreen(
         busy = true
         message = null
         scope.launch {
+            var committed = false
             try {
                 block()
+                committed = true
                 message = success
-                refreshSnapshot(select)
+                refreshSnapshot(select, success)
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (failure: Exception) {
-                message = failure.message ?: "บันทึกไม่สำเร็จ"
+                message = if (committed) "$success · โหลดข้อมูลล่าสุดไม่สำเร็จ กรุณากดรีเฟรชก่อนทำรายการต่อ"
+                    else failure.message ?: "บันทึกไม่สำเร็จ"
             } finally {
                 busy = false
             }
