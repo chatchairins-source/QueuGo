@@ -16,6 +16,12 @@ const access=read('docs/play-app-access-content-rating.md');
 const readiness=read('docs/play-closed-beta-readiness.md');
 const manifest=JSON.parse(read('docs/pilot-recovery-manifest.json'));
 const releaseSecrets=read('.github/workflows/release-secret-readiness.yml');
+ok(/name: Validate release evidence Storage access\n\s+if: \$\{\{ always\(\) && env\.QG_SUPABASE_SERVICE_ROLE_KEY != '' \}\}/.test(releaseSecrets),
+  'Storage preflight must skip empty credentials after a presence failure');
+for(const step of ['Validate Firebase Android config','Validate Android release keystore']){
+  ok(releaseSecrets.includes(`name: ${step}\n        if: always()`),
+    `${step} must still validate existing signing inputs when unrelated Supabase secrets are absent`);
+}
 const releaseCertification=read('.github/workflows/native-release-certification.yml');
 const nativeRootGradle=read('native-android/build.gradle.kts');
 const nativeVoicePeer=read('native-android/shared/src/main/java/com/queuego/shared/NativeVoicePeer.kt');
