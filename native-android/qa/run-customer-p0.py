@@ -1,6 +1,7 @@
 """Real Android picker harness; isolated fixtures, no authenticated/backend writes."""
 from pathlib import Path
 import json
+import hashlib
 import os
 import re
 import subprocess
@@ -13,7 +14,7 @@ out = root / 'artifacts/customer-p0' / api
 out.mkdir(parents=True, exist_ok=True)
 
 def run(args, **kw):
-    return subprocess.run([str(a) for a in args], check=True, timeout=kw.pop('timeout', 120), **kw)
+    return subprocess.run([str(a) for a in args], check=kw.pop('check', True), timeout=kw.pop('timeout', 120), **kw)
 
 registry = Path(os.environ['RUNNER_TEMP']) / ('p0-avd-' + api)
 registry.mkdir(parents=True, exist_ok=True)
@@ -28,7 +29,8 @@ log = (out / 'emulator.log').open('w')
 emulator = subprocess.Popen([str(sdk / 'emulator/emulator'), '-avd', name, '-port', '5554', '-no-window', '-no-audio', '-no-boot-anim', '-no-snapshot', '-gpu', 'swiftshader_indirect', '-accel', 'on'], stdout=log, stderr=subprocess.STDOUT)
 log_process = None
 log_stream = (out / 'runtime-logcat.txt').open('w')
-summary = {'source_commit': os.environ['GITHUB_SHA'], 'api': int(api), 'result': 'FAIL', 'authenticated_online_tested': False, 'physical_device_tested': False, 'release_gate': 'BLOCKED'}
+source_commit = run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True).stdout.strip()
+summary = {'source_commit': source_commit, 'api': int(api), 'result': 'FAIL', 'authenticated_online_tested': False, 'physical_device_tested': False, 'release_gate': 'BLOCKED'}
 try:
     run(adb + ['wait-for-device'], timeout=180)
     deadline = time.monotonic() + 180
@@ -45,9 +47,19 @@ try:
     # Capture continuously without clearing logd: API26's system image rejects clears.
     # -T1 starts at the current tail; streaming preserves evidence beyond buffer rotation.
     log_process = subprocess.Popen([str(a) for a in adb + ['logcat', '-b', 'main', '-b', 'system', '-b', 'crash', '-v', 'threadtime', '-T', '1']], stdout=log_stream, stderr=subprocess.STDOUT)
-    result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class', 'com.queuego.customer.CustomerLocationP0RuntimeTest', 'com.queuego.customer.test/androidx.test.runner.AndroidJUnitRunner'], capture_output=True, text=True, timeout=600)
+    result = run(adb + ['shell', 'am', 'instrument', '-w', '-r', '-e', 'class', 'com.queuego.customer.CustomerLocationP0RuntimeTest', 'com.queuego.customer.test/androidx.test.runner.AndroidJUnitRunner'], capture_output=True, text=True, timeout=600, check=False)
     (out / 'instrumentation.txt').write_text(result.stdout + result.stderr)
-    assert re.search(r'OK \(\d+ tests?\)', result.stdout), 'Android instrumentation failed; inspect instrumentation.txt/logcat'
+    # Keep the strict Android result gate, but surface the real instrumentation
+    # failure in Actions logs so a failing API matrix can be fixed from evidence
+    # instead of repeating four opaque "inspect artifact" failures.
+    if result.returncode != 0 or not re.search(r'OK \(\d+ tests?\)', result.stdout):
+        failure_lines = [line for line in result.stdout.splitlines() if (
+            'FAILURES!!!' in line or 'There were ' in line or 'java.lang.' in line
+            or 'INSTRUMENTATION_STATUS: stack=' in line or 'INSTRUMENTATION_CODE:' in line
+            or 'Tests run:' in line or 'INSTRUMENTATION_FAILED' in line
+        )]
+        raise AssertionError(f'Android instrumentation failed (exit {result.returncode}); inspect instrumentation.txt/logcat. '
+                             + ' | '.join(failure_lines[-24:])[:3500])
     assert log_process.poll() is None, 'Continuous Android log capture exited unexpectedly'
     log_process.terminate()
     log_process.wait(timeout=10)
@@ -57,10 +69,28 @@ try:
     (out / 'logcat.txt').write_text(logs)
     assert not re.search(r'FATAL EXCEPTION|ANR in com\.queuego\.customer|signal \d+ \(SIG(?:SEGV|ABRT)\)|shared_map_\w*failed|Native map (?:operation|setup) failed', logs), 'Crash/ANR or swallowed map lifecycle failure; inspect logcat'
     # Debug run-as is scoped to this app and avoids adb shell's scoped-storage denial.
-    for name in ('picker-0.png', 'picker-29.png'):
+    for name in ('picker-0.png', 'picker-29.png', 'road-detail-0.png', 'road-detail-29.png',
+                 'road-detail-0.txt', 'road-detail-29.txt'):
         with (out / name).open('wb') as image_out:
             run(adb + ['exec-out', 'run-as', 'com.queuego.customer', 'cat', 'files/p0-evidence/' + name], stdout=image_out)
-        assert (out / name).stat().st_size > 1024, 'Android screenshot is missing or empty'
+        assert (out / name).stat().st_size > (1024 if name.endswith('.png') else 10), 'Android map evidence is missing or empty'
+    # Validate and fingerprint the actual installed MapLibre screenshots on the host.
+    # This does not infer road coverage from a screenshot alone: the Android test
+    # independently enforces pixel diversity and geographic edge thresholds.
+    evidence = {}
+    for index in (0, 29):
+        metrics = (out / f'road-detail-{index}.txt').read_text().strip()
+        match = re.fullmatch(r'colors=(\d+) edges=(\d+) samples=(\d+)', metrics)
+        assert match, f'Invalid map pixel evidence at cycle {index}: {metrics!r}'
+        colors, edges, samples = map(int, match.groups())
+        assert colors >= 16 and samples > 0 and edges > samples // 1000, (
+            f'Insufficient geographic map detail at cycle {index}: {metrics}')
+        evidence[str(index)] = {'colors': colors, 'edges': edges, 'samples': samples}
+        for filename in (f'road-detail-{index}.png', f'picker-{index}.png'):
+            data = (out / filename).read_bytes()
+            assert data[:8] == b'\x89PNG\r\n\x1a\n', f'Invalid PNG signature: {filename}'
+            evidence[str(index)][filename] = {'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()}
+    summary['rendered_map_evidence'] = evidence
     summary['result'] = 'PASS'
 finally:
     try:

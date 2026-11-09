@@ -1,7 +1,7 @@
 package com.queuego.rider
 
 import com.queuego.ridernavigationmap.NavigationGuidanceState
-import com.queuego.ridernavigationmap.navigationTurnPhrase
+import com.queuego.ridernavigationmap.navigationInstructionPhrase
 import java.util.Locale
 import kotlin.math.ceil
 import kotlin.math.roundToInt
@@ -39,7 +39,7 @@ internal fun riderNavigationHudInfo(guidance: NavigationGuidanceState): RiderNav
         ?.let(::riderEtaLabel)
 
     val next = guidance.nextInstruction
-    val nextPhrase = next?.let { navigationTurnPhrase(it.turnCode) }
+    val nextPhrase = next?.let { navigationInstructionPhrase(it) }
     val nextDistanceMeters = guidance.distanceToInstructionMeters
         ?.takeIf { it.isFinite() && it >= 0.0 }
     val nextDistance = nextDistanceMeters?.let(::riderRouteDistanceLabel)
@@ -60,7 +60,7 @@ internal fun riderNavigationHudInfo(guidance: NavigationGuidanceState): RiderNav
             (followingDistanceMeters != null && followingDistanceMeters <= 300.0)
         )
     val followingText = if (showFollowing) {
-        navigationTurnPhrase(following!!.turnCode)?.let { phrase ->
+        navigationInstructionPhrase(following!!)?.let { phrase ->
             buildString {
                 append(phrase)
                 followingDistanceMeters?.let {

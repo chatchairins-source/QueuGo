@@ -588,7 +588,7 @@ private fun MerchantNativeAuthentication(
                     MerchantQueueGoMark(Modifier.size(42.dp))
                     Spacer(Modifier.size(8.dp))
                     Text("Queue", color = Color.White, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
-                    Text("Go", color = Color(0xFFF0092D), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
+                    Text("Market", color = Color(0xFFF0092D), fontSize = 25.sp, fontWeight = FontWeight.ExtraBold)
                 }
                 Spacer(Modifier.height(28.dp))
                 Text(
@@ -863,24 +863,7 @@ private fun MerchantNativeAuthentication(
 
 @Composable
 internal fun MerchantQueueGoMark(modifier: Modifier = Modifier) {
-    Canvas(modifier) {
-        val strokeWidth = size.minDimension * (8f / 48f)
-        val center = Offset(size.width * (23f / 48f), size.height * (23f / 48f))
-        val radius = size.minDimension * (16f / 48f)
-        drawCircle(
-            color = Color(0xFFEC092E),
-            radius = radius,
-            center = center,
-            style = Stroke(width = strokeWidth)
-        )
-        drawLine(
-            color = Color(0xFFEC092E),
-            start = Offset(size.width * (26f / 48f), size.height * (27f / 48f)),
-            end = Offset(size.width * (38f / 48f), size.height * (39f / 48f)),
-            strokeWidth = strokeWidth,
-            cap = StrokeCap.Round
-        )
-    }
+    com.queuego.shared.QueueGoBrandMark("merchant", modifier)
 }
 
 @Composable

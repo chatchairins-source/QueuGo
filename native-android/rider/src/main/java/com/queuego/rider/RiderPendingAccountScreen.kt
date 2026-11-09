@@ -115,11 +115,7 @@ private fun RiderAccountCard(modifier: Modifier, badge: String?, title: String, 
                 shape = RoundedCornerShape(28.dp), color = Color.White
             ) {
                 Column(Modifier.padding(30.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Surface(shape = RoundedCornerShape(20.dp), color = Color(0xFFE6002D)) {
-                        Box(Modifier.size(62.dp), contentAlignment = Alignment.Center) {
-                            Text("Q", color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Black)
-                        }
-                    }
+                    com.queuego.shared.QueueGoBrandMark("rider", Modifier.size(62.dp))
                     if (badge != null) {
                     Spacer(Modifier.height(16.dp))
                     Text(badge, color = Color(0xFFE6002D),

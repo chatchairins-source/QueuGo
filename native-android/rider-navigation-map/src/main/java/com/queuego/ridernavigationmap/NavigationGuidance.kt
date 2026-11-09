@@ -154,7 +154,7 @@ internal fun navigationUpcomingInstructions(
         val instruction = leg.instructions[index]
         if (
             index > 0 &&
-            navigationTurnPhrase(instruction.turnCode) != null &&
+            navigationInstructionPhrase(instruction) != null &&
             actionAt + 15.0 >= traveled
         ) {
             upcoming += instruction to (actionAt - traveled).coerceAtLeast(0.0)
@@ -187,3 +187,6 @@ fun navigationTurnPhrase(turnCode: Int): String? = when (turnCode) {
     11 -> "ขึ้นเรือ"
     else -> null
 }
+
+fun navigationInstructionPhrase(instruction: NavigationRouteInstruction): String? =
+    instruction.instructionText?.takeIf { it.isNotBlank() } ?: navigationTurnPhrase(instruction.turnCode)

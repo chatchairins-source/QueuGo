@@ -165,8 +165,20 @@ def capture_rider_earnings_period(label, filename):
 def tap_label(ns,label):
     choices=[n for n in ns if n.get("text","").strip()==label and rect(n)]
     assert choices, "Rider tab missing: "+label
-    clickable=[n for n in choices if n.get("clickable")=="true"]
-    tap(clickable[-1] if clickable else choices[-1])
+    # Compose may expose the label as a non-clickable child of a clickable
+    # setting row. Tap the smallest clickable ancestor containing its centre,
+    # rather than assuming a text node is itself a reliable hit target.
+    target=choices[-1]
+    b=rect(target)
+    cx,cy=(b[0]+b[2])//2,(b[1]+b[3])//2
+    parents=[]
+    for n in ns:
+        r=rect(n)
+        if n.get("clickable")=="true" and r and r[0]<=cx<=r[2] and r[1]<=cy<=r[3]:
+            parents.append(((r[2]-r[0])*(r[3]-r[1]),n))
+    if parents:
+        target=min(parents,key=lambda pair:pair[0])[1]
+    tap(target)
 
 def shot(name):
     p=OUT/(name+".png")
@@ -198,12 +210,24 @@ def provision_map():
 
 
 def scroll_to_text(label):
-    for _ in range(8):
+    # UIAutomator can report a partially occluded row as present. On the
+    # authenticated Profile screen the support row may sit *behind* the fixed
+    # bottom navigation; tapping its reported centre switches to Messages.
+    # Require the entire target label to be above the navigation before tap.
+    for _ in range(12):
         ns=nodes()
-        if any(n.get("text","").strip()==label and rect(n) for n in ns): return ns
+        nav_top=min(
+            (rect(n)[1] for n in ns
+             if n.get("text", "").strip() in ("หน้าแรก", "ข้อความ", "รายได้", "โปรไฟล์")
+             and rect(n) and rect(n)[1] > 0),
+            default=10**9,
+        )
+        matches=[n for n in ns if n.get("text","").strip()==label and rect(n)]
+        if matches and any(rect(n)[3] < nav_top - 24 for n in matches):
+            return ns
         swipe_vertical("up")
         time.sleep(0.5)
-    raise SystemExit("Read-only Rider profile entry not visible: "+label)
+    raise AssertionError("Rider profile entry not safely above bottom navigation: "+label)
 
 def expand_profile_extra_tools():
     ns=nodes()
@@ -226,7 +250,31 @@ def capture_profile_dialog(entry,title,name):
     ns=scroll_to_text(entry)
     tap_label(ns,entry)
     ns=wait(lambda xs:any(node_exact(n,title) and rect(n) for n in xs),20)
-    assert ns, "Rider read-only profile screen did not open: "+title
+    if not ns:
+        # Preserve the actual failed viewport and a privacy-minimized hierarchy.
+        # A missing title alone cannot distinguish missed tap, navigation,
+        # transient loading, or an inaccessible Compose dialog.
+        shot("failure-" + name)
+        observed = nodes()
+        safe_labels = {
+            "แจ้งปัญหา / ติดตามเรื่อง", "ติดต่อฝ่ายดูแล", "ปิด",
+            "เครื่องมือ Rider เพิ่มเติม", "โปรไฟล์", "หน้าแรก",
+            "ข้อความ", "รายได้", "เข้าสู่ระบบ"
+        }
+        evidence = [{
+            "label": n.get("text", "").strip() if n.get("text", "").strip() in safe_labels else "",
+            "description": n.get("content-desc", "").strip() if n.get("content-desc", "").strip() in safe_labels else "",
+            "class": n.get("class", ""),
+            "bounds": n.get("bounds", ""),
+            "clickable": n.get("clickable", ""),
+            "enabled": n.get("enabled", ""),
+            "visible": bool(rect(n))
+        } for n in observed]
+        (OUT / ("failure-" + name + "-hierarchy.json")).write_text(
+            json.dumps(evidence, ensure_ascii=False, indent=2) + "\\n"
+        )
+        raise AssertionError("Rider read-only profile screen did not open: " + title)
+
     if entry == "ตรวจสอบระบบ Rider":
         # Gate the actual installed UI, not only the title or source-level JVM test.
         # The current emulator may have 0..4 checks ready; Google Maps is optional.
@@ -275,6 +323,15 @@ def main():
     assert apk.is_file(), "Build Rider debug APK first"
     install_verified_apk(ADB, apk, PKG)
     run(["shell","pm","clear",PKG],timeout=60)
+    if os.environ.get("QG_REQUIRE_PLAY_SERVICES") == "1":
+        installed = run(["shell","pm","path","com.google.android.gms"],
+                        capture_output=True,text=True).stdout.strip()
+        assert installed.startswith("package:"), "Authenticated push-capable review requires real Google Play services"
+        # Presence enables real FCM registration; it does not prove delivery.
+        (OUT/"play-services.json").write_text(json.dumps({
+            "installed": True, "push_delivery_certified": False,
+            "system_image": "android-30;google_apis;x86_64"
+        },indent=2)+"\n")
     provision_map()
     run(["shell","am","start","-W","-n",PKG+"/.MainActivity"],capture_output=True,text=True,timeout=60)
     ns=wait(lambda xs:any("เข้าสู่ระบบ" in (n.get("text","")+n.get("content-desc","")) for n in xs))
@@ -330,7 +387,7 @@ def main():
     captured={item["screen"] for item in screens}
     missing_screens=[name for name in expected_screens if name not in captured]
     meta={
-      "source_head":os.environ.get("GITHUB_SHA",""),
+      "source_head":subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip(),
       "workflow_run":os.environ.get("GITHUB_RUN_ID",""),
       "captured_at_utc":datetime.datetime.now(datetime.timezone.utc).isoformat(),
       "package":PKG,"apk_sha256":hashlib.sha256(apk.read_bytes()).hexdigest(),

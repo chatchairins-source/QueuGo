@@ -1,14 +1,15 @@
-# QueueGo native launcher family
+# Approved QueueGo native launcher family
 
-Customer and Merchant retain the Production QueueGo Q family in red `#EF3340`. Rider intentionally uses the owner-approved heavier, cleaner Q in `#E6002D`: no wheel, flame, motorcycle, black detail, text, or prototype-style role glyph inside the mark.
+Owner selected the connected-symbol red family on 2026-11-08; the selected visual reference remains in the conversation; `family-preview.png` shows the native vector implementation.
 
-All adaptive foregrounds stay inside the 33dp safe circle. Customer/Merchant service-symbol weight remains cross-checked within 10%; Rider is excluded from that role-glyph comparison because its approved icon is intentionally the Q alone. These source checks supplement visual review and do not claim physical-device launcher certification.
+- Customer: **QueueGo**, shopping bag.
+- Merchant: **QueueMarket**, storefront.
+- Rider: **Queue Rider**, forward road arrow.
 
-- `*-foreground.svg`: transparent 108dp adaptive foreground.
-- `*-play-store.svg` / `*-play-store-512.png`: opaque 512×512 artwork.
-- Android: independent foreground/background XML, adaptive resource, and 48/72/96/144/192px density PNGs.
-- Rider: Android 13+ monochrome adaptive icon is generated from the same bold Q.
+All three use white artwork on red `#EF1717`, one thick circular Q, a short low tail, and a role symbol joined to its lower inner rim. English wordmarks are outlined paths, so installed devices do not need a font. Native vectors reproduce the approved design; the generated reference is retained for comparison.
 
-Regenerate vector/preview with `node native-android/branding/generate-icons.cjs`; integrate with `--integrate` after preview review. Export PNGs and geometry report with `node native-android/branding/export-icons.cjs` using Sharp. Verify committed assets with `node tests/native-launcher-assets.cjs`.
+`generate-icons.cjs` is the shared geometry source for adaptive foreground/background XML, Android 13 monochrome resources, SVG/store assets and previews. Run `node native-android/branding/generate-icons.cjs --integrate`, then `node native-android/branding/export-icons.cjs` (Sharp). `wordmarks.json` contains reusable outlined DejaVu Sans Bold lettering; regenerate only when names change using `python3 native-android/branding/generate-wordmarks.py` (fontTools; optional `QG_BRAND_FONT`).
 
-All changes are native assets only. Production web icons are unchanged. Do not distribute APKs before the visual, functional, and physical release gates pass.
+Exports include 512px store PNGs and 48/72/96/144/192px legacy launcher PNGs. Adaptive foreground geometry, including the names, must stay inside Android's 33dp safe circle. Export measures actual rasterized alpha before writing `geometry-check.json`. Android applies its launcher mask to the independent full-bleed red background.
+
+Validate with `node tests/native-launcher-assets.cjs` and `node tests/native-android-source.cjs`. Source checks do not certify installed-device rendering. This change does not alter package IDs, backend, navigation, POS, signing, or Production Web assets. Existing installed APKs retain their previous icon until a new build is installed.

@@ -128,13 +128,13 @@ fun RiderEarningsScreen(auth: QueueGoAuth, api: QueueGoApi, onBack: () -> Unit, 
                         ) {
                             Column(Modifier.weight(1f)) {
                                 Text(row.numberLabel, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text(row.status, color = QgMuted, fontSize = 8.sp, modifier = Modifier.padding(top = 2.dp))
+                                Text(row.status, color = QgMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
                             }
                             Column(horizontalAlignment = Alignment.End) {
                                 Text(
                                     if (row.status == "completed") "สำเร็จ" else "กำลังดำเนินการ",
                                     color = QgMuted,
-                                    fontSize = 8.sp
+                                    fontSize = 12.sp
                                 )
                                 Text(baht(row.deliveryFee), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             }
@@ -159,7 +159,7 @@ private fun RiderJobHistoryDetail(
             .background(Color(0xFFFAF7F8), RoundedCornerShape(14.dp))
             .padding(11.dp)
     ) {
-        Text("เส้นทางงาน", color = QgMuted, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+        Text("เส้นทางงาน", color = QgMuted, fontSize = 12.sp, fontWeight = FontWeight.Bold)
         Text(
             "รับ · " + detail?.pickupAddress.orEmpty().ifBlank { "ไม่มีรายละเอียดจุดรับ" },
             fontSize = 11.sp,
@@ -169,7 +169,7 @@ private fun RiderJobHistoryDetail(
         Text(
             "ส่ง · " + detail?.deliveryAddress.orEmpty().ifBlank { "ไม่มีรายละเอียดจุดส่ง" },
             color = Color(0xFF5E575B),
-            fontSize = 10.sp,
+            fontSize = 12.sp,
             modifier = Modifier.padding(top = 4.dp)
         )
         Spacer(Modifier.height(10.dp))
@@ -193,7 +193,7 @@ private fun RiderJobHistoryDetail(
                 )
             }
             row.platformCancellationFundingReference?.let {
-                Text("อ้างอิง $it", color = QgMuted, fontSize = 8.sp, modifier = Modifier.padding(top = 5.dp))
+                Text("อ้างอิง $it", color = QgMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 5.dp))
             }
             Spacer(Modifier.height(7.dp))
         }
@@ -208,7 +208,7 @@ private fun RiderJobHistoryDetail(
         Text(
             "เงินสดรับ-จ่ายรวมเงิน QueueGo เฉพาะรายการที่ยืนยันชำระแล้ว และไม่ใช่กำไรสุทธิ",
             color = QgMuted,
-            fontSize = 8.sp,
+            fontSize = 12.sp,
             modifier = Modifier.padding(top = 8.dp)
         )
     }
@@ -232,13 +232,13 @@ private fun RiderMissionRow(mission: RiderMission) {
             Column(Modifier.weight(1f)) {
                 Text(mission.title, fontSize = 14.sp, fontWeight = FontWeight.Black)
                 mission.description?.let {
-                    Text(it, color = QgMuted, fontSize = 9.sp, modifier = Modifier.padding(top = 3.dp))
+                    Text(it, color = QgMuted, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
                 }
             }
             Text(
                 stateLabel,
                 color = if (mission.completed) Color(0xFF12845E) else QgRed,
-                fontSize = 9.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
         }
@@ -264,18 +264,18 @@ private fun RiderMissionRow(mission: RiderMission) {
         ) {
             Text(
                 "${mission.progressJobs} / ${mission.targetJobs} เที่ยว",
-                fontSize = 10.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold
             )
             riderMissionEndLabel(mission.endsAt)?.let {
-                Text("ถึง $it", color = QgMuted, fontSize = 8.sp)
+                Text("ถึง $it", color = QgMuted, fontSize = 12.sp)
             }
         }
         mission.rewardNote?.let {
             Text(
                 "รางวัล · $it",
                 color = Color(0xFF6E5C15),
-                fontSize = 9.sp,
+                fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier
                     .padding(top = 7.dp)
@@ -302,7 +302,7 @@ internal fun riderMissionEndLabel(raw: String?): String? {
 private fun RiderEarnStat(label: String, value: String, background: Color, color: Color, modifier: Modifier) {
     Card(modifier, shape = RoundedCornerShape(20.dp), border = BorderStroke(1.dp, Color(0xFFEEE6E8)), colors = CardDefaults.cardColors(containerColor = background)) {
         Column(Modifier.padding(16.dp)) {
-            Text(label, color = Color(0xFF8A8387), fontSize = 9.sp)
+            Text(label, color = Color(0xFF665F63), fontSize = 12.sp)
             Text(value, color = color, fontSize = 21.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 6.dp))
         }
     }
@@ -311,7 +311,7 @@ private fun RiderEarnStat(label: String, value: String, background: Color, color
 @Composable
 private fun RiderCashStat(label: String, value: String, modifier: Modifier, color: Color = Color(0xFF17171B)) {
     Column(modifier.background(Color(0xFFFAF7F8), RoundedCornerShape(14.dp)).padding(11.dp)) {
-        Text(label, color = Color(0xFF8D8589), fontSize = 8.sp)
+        Text(label, color = Color(0xFF665F63), fontSize = 12.sp)
         Text(value, color = color, fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 4.dp))
     }
 }
@@ -334,7 +334,7 @@ private fun RiderEarnSectionTitle(title: String, count: String) {
 @Composable
 private fun RiderEarnLoading(message: String? = null) {
     Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = if (message.isNullOrBlank()) 1.dp else 28.dp), contentAlignment = Alignment.Center) {
-        if (!message.isNullOrBlank()) Text(message, color = Color(0xFF8A8387), fontSize = 12.sp)
+        if (!message.isNullOrBlank()) Text(message, color = Color(0xFF665F63), fontSize = 12.sp)
     }
 }
 

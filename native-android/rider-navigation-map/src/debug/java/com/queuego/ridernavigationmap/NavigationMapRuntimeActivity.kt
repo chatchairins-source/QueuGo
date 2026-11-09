@@ -17,6 +17,9 @@ import org.maplibre.android.maps.MapLibreMap
 
 class NavigationMapRuntimeActivity : ComponentActivity() {
     val mapReady = CountDownLatch(1)
+    @Volatile
+    var latestCountryIdleCamera: org.maplibre.android.camera.CameraPosition? = null
+        private set
 
     @Volatile
     var latestDiagnostics = NavigationMapDiagnostics(0, 0, 0, 0)
@@ -31,16 +34,46 @@ class NavigationMapRuntimeActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val installedSource = queueGoMapVectorSourceUri(this)
+        val hasLocalArchive = installedSource?.let {
+            it.startsWith("pmtiles://asset://") || it.startsWith("pmtiles://file://")
+        } == true
+        // Country CI stages the real archive for every camera/gesture test, too.
+        // Keep the small fixture only for ordinary runs without a local archive.
+        val runtimeMapSource = if (intent.getBooleanExtra("installedThailandMap", false) || hasLocalArchive) {
+            installedSource
+        } else "asset://queuego-nav-runtime-tilejson.json"
         setContent {
             if (mapMounted.value) {
                 RiderNavigationMap(
                     stateKey = "runtime-session",
                     state = mapState.value,
                     modifier = Modifier.fillMaxSize(),
-                    mapSourceUri = if (intent.getBooleanExtra("installedThailandMap", false)) {
-                        queueGoMapVectorSourceUri(this)
-                    } else "asset://queuego-nav-runtime-tilejson.json",
-                    onMapReady = { if (it) mapReady.countDown() },
+                    mapSourceUri = runtimeMapSource,
+                    onMapReady = { if (it) {
+                        if (intent.getBooleanExtra("installedThailandMap", false)) {
+                            findMapView(window.decorView)?.apply {
+                                val countryView = this
+                                addOnDidBecomeIdleListener {
+                                    runOnUiThread {
+                                        if (!isDestroyed && !isFinishing) {
+                                            countryView.getMapAsync { map -> latestCountryIdleCamera = map.cameraPosition }
+                                        }
+                                    }
+                                }
+                                addOnGlyphsRequestedListener { stack, first, last ->
+                                    android.util.Log.d("QueueGoLabelQA", "glyph_requested stack=${stack.joinToString("|")} range=$first-$last")
+                                }
+                                addOnGlyphsLoadedListener { stack, first, last ->
+                                    android.util.Log.d("QueueGoLabelQA", "glyph_loaded stack=${stack.joinToString("|")} range=$first-$last")
+                                }
+                                addOnGlyphsErrorListener { stack, first, last ->
+                                    android.util.Log.e("QueueGoLabelQA", "glyph_error stack=${stack.joinToString("|")} range=$first-$last")
+                                }
+                            }
+                        }
+                        mapReady.countDown()
+                    } },
                     onUserGesture = { userGestureCount += 1 },
                     onDiagnostics = { latestDiagnostics = it }
                 )

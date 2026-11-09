@@ -76,7 +76,7 @@ fun MerchantProductionLogin(
         val copySide = (viewportWidth * 0.06f).coerceIn(20f, 34f).dp
         val panelHeight = if (short) 373.dp else 439.dp
         val heroHeight = if (veryShort) (maxHeight * 0.28f).coerceAtLeast(120.dp)
-            else (maxHeight - panelHeight + 16.dp).coerceAtLeast(if (short) 140.dp else 175.dp)
+            else (maxHeight - panelHeight + 16.dp).coerceIn(if (short) 140.dp else 175.dp, 360.dp)
         val titleSize = if (veryShort) 21f else (viewportWidth * 0.064f).coerceIn(23f, 31f)
         val subtitleSize = (viewportWidth * 0.037f).coerceIn(12f, 16f)
         Column(Modifier.widthIn(max = 520.dp).fillMaxWidth().verticalScroll(rememberScrollState())) {
@@ -98,7 +98,7 @@ fun MerchantProductionLogin(
                         Spacer(Modifier.width(7.dp))
                         Text("Queue", color = Color.White, fontSize = 25.sp, lineHeight = 25.sp,
                             fontWeight = FontWeight(850), letterSpacing = (-0.5).sp)
-                        Text("Go", color = Color(0xFFF0092D), fontSize = 25.sp, lineHeight = 25.sp,
+                        Text("Market", color = Color(0xFFF0092D), fontSize = 25.sp, lineHeight = 25.sp,
                             fontWeight = FontWeight(850), letterSpacing = (-0.5).sp)
                     }
                     Spacer(Modifier.height(if (short) 14.dp else 27.dp))

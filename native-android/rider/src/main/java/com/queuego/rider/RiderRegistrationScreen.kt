@@ -119,9 +119,7 @@ internal fun RiderRegistrationScreen(
                     Text("สมัครเป็นไรเดอร์",fontSize=24.sp,fontWeight=FontWeight.Bold)
                     Text("กรอกข้อมูลให้ครบเพื่อส่งให้ Admin ตรวจสอบ",fontSize=11.sp,color=Color(0xFF77747B))
                 }
-                Box(Modifier.size(42.dp).background(RegistrationRed,RoundedCornerShape(13.dp)),contentAlignment=Alignment.Center) {
-                    Text("Q",color=Color.White,fontSize=24.sp,fontWeight=FontWeight.Black)
-                }
+                com.queuego.shared.QueueGoBrandMark("rider", Modifier.size(42.dp))
             }
             Spacer(Modifier.height(16.dp))
             Surface(Modifier.widthIn(max=820.dp).fillMaxWidth(),shape=RoundedCornerShape(if(wide)28.dp else 22.dp),

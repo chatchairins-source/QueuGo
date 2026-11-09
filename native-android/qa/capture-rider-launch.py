@@ -59,9 +59,28 @@ def provision_real_map(pkg):
     import urllib.request
     archive = Path(os.environ["RUNNER_TEMP"]) / "queuego-ci-buriram.pmtiles"
     if not archive.is_file():
-        with urllib.request.urlopen(CI_MAP_URL, timeout=90) as response, archive.open("wb") as target:
-            import shutil
-            shutil.copyfileobj(response, target)
+        import shutil
+        import urllib.error
+        last_error = None
+        for attempt in range(1, 4):
+            temporary = archive.with_suffix(".download")
+            temporary.unlink(missing_ok=True)
+            try:
+                with urllib.request.urlopen(CI_MAP_URL, timeout=90) as response, temporary.open("wb") as target:
+                    shutil.copyfileobj(response, target)
+                digest = hashlib.sha256(temporary.read_bytes()).hexdigest()
+                if digest != CI_MAP_SHA256:
+                    raise ValueError("Real Buriram map archive checksum mismatch")
+                temporary.replace(archive)
+                break
+            except (urllib.error.URLError, TimeoutError, OSError, ValueError) as exc:
+                temporary.unlink(missing_ok=True)
+                last_error = exc
+                print(f"QUEUEGO_MAP_ARCHIVE_DOWNLOAD_RETRY attempt={attempt}/3 error={type(exc).__name__}: {exc}", flush=True)
+                if attempt < 3:
+                    time.sleep(min(10 * attempt, 30))
+        if not archive.is_file():
+            raise RuntimeError("Pinned real Buriram map archive unavailable after three verified attempts") from last_error
     actual = hashlib.sha256(archive.read_bytes()).hexdigest()
     assert actual == CI_MAP_SHA256, "Real Buriram map archive checksum mismatch"
     device_archive = "/data/local/tmp/queuego-ci-buriram.pmtiles"

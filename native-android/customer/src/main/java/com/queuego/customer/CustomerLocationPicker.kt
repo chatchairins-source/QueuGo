@@ -3,6 +3,7 @@ package com.queuego.customer
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.runtime.rememberCoroutineScope
@@ -278,6 +279,17 @@ internal fun CustomerLocationPickerScreen(
                     onReady = { mapReady = it; if (it) mapFailed = false }
                 )
             }
+            if (!mapReady && !mapFailed) {
+                Row(
+                    Modifier.align(Alignment.BottomCenter).padding(12.dp)
+                        .background(Color.White, RoundedCornerShape(12.dp)).padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.size(8.dp))
+                    Text("กำลังโหลดถนนบนแผนที่…", color = QgMuted, fontSize = 12.sp)
+                }
+            }
             if (!mapReady && mapFailed) {
                 Column(
                     Modifier.align(Alignment.Center).padding(16.dp),
@@ -359,7 +371,7 @@ internal fun CustomerLocationPickerScreen(
             onValueChange = {
                 draft = draft.edit(it)
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().testTag("customer-delivery-address"),
             minLines = 3,
             placeholder = { Text(
                 if (rideStop != null) "ที่อยู่หรือจุดสังเกต"

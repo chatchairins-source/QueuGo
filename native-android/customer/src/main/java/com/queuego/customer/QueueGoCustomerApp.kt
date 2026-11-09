@@ -43,6 +43,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.key
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
@@ -1495,7 +1496,9 @@ private fun CustomerTopBar(
                 .padding(horizontal = horizontalPadding, vertical = verticalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(Modifier.clickable(onClick = onHome)) {
+            Row(Modifier.clickable(onClick = onHome), verticalAlignment = Alignment.CenterVertically) {
+                com.queuego.shared.QueueGoBrandMark("customer", Modifier.size(28.dp))
+                Spacer(Modifier.size(6.dp))
                 Text(
                     "Queue",
                     color = androidx.compose.ui.graphics.Color(0xFF17191D),
@@ -1741,7 +1744,14 @@ internal fun CustomerHome(
             }
             Spacer(Modifier.height(11.dp))
             if (!loading && nearbyShops.isEmpty()) {
-                Text("ยังไม่มีร้านค้า", color = QgMuted, modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp))
+                Column(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+                    Text(
+                        if (location == null) "เลือกที่อยู่จัดส่งเพื่อค้นหาร้านใกล้คุณ"
+                        else "ไม่พบร้านค้าในพื้นที่นี้ ลองเปลี่ยนที่อยู่หรือค้นหาร้านค้า",
+                        color = QgMuted, style = MaterialTheme.typography.bodyMedium
+                    )
+                    TextButton(onClick = onLocation) { Text("เลือกที่อยู่จัดส่ง") }
+                }
             }
         }
         items(nearbyShops, key = { "home-shop:" + it.id }) { shop ->

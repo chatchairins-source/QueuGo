@@ -43,6 +43,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -75,14 +76,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.dropShadow
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.shadow.Shadow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -136,6 +141,8 @@ fun MerchantPosScreen(
     backLabel: String = "ย้อนกลับ"
 ) {
     val context = LocalContext.current
+    val barcodeFocusRequester = remember { FocusRequester() }
+    val softwareKeyboardController = LocalSoftwareKeyboardController.current
     val api = remember { MerchantPosApi(MerchantPosPendingStore(context.noBackupFilesDir.resolve("queuego-pos-edit-pending"))) }
     val merchantApi = remember { MerchantApi() }
     val cashMovementStore = remember(context) { MerchantPosCashMovementStore(context) }
@@ -164,6 +171,7 @@ fun MerchantPosScreen(
     var scannedProduct by remember(auth.session.authUserId) { mutableStateOf<PosProduct?>(null) }
     var scanStatus by remember(auth.session.authUserId) { mutableStateOf<String?>(null) }
     var scanLoading by remember(auth.session.authUserId) { mutableStateOf(false) }
+    var bestSellerNames by remember(auth.session.authUserId) { mutableStateOf<Set<String>>(emptySet()) }
     var selectedPosCategory by rememberSaveable { mutableStateOf("all") }
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
@@ -1000,18 +1008,39 @@ fun MerchantPosScreen(
     val openBills = snap?.bills?.filter { it.open }.orEmpty()
     val selectedBill = openBills.firstOrNull { it.id == selectedBillId }
     val kitchenEnabled = snap?.shopCategory == "food" || snap?.shopCategory == "cafe"
+    LaunchedEffect(kitchenEnabled, view, snap?.shopId, snapshotLoading) {
+        if (!snapshotLoading && snap != null && !kitchenEnabled && view == "counter") {
+            barcodeFocusRequester.requestFocus()
+            delay(150)
+            softwareKeyboardController?.hide()
+        }
+    }
     LaunchedEffect(snap?.shopId) {
         selectedPosCategory = "all"
         scannedProduct = null
         scanStatus = null
         scannedCode = ""
+        bestSellerNames = emptySet()
     }
-    LaunchedEffect(mode, tableId, selectedBillId) {
-        scannedProduct = null
+    LaunchedEffect(snap?.shopId, view, auth.session.accessToken) {
+        if (view == "counter" && snap?.owner == true && can("view_sales")) {
+            bestSellerNames = runCatching { api.ownerItemSales(auth, 7).items
+                .filter { it.quantity > 0 }.map { it.name.trim() }.filter { it.isNotEmpty() }.toSet() }
+                .getOrElse { emptySet() }
+        }
     }
+    LaunchedEffect(kitchenEnabled, selectedBillId) {
+        if (!kitchenEnabled && selectedBillId == null) {
+            mode = "TAKEAWAY"
+            tableId = null
+            noTable = false
+        }
+        if (!kitchenEnabled && view in setOf("tables", "kitchen")) view = "counter"
+    }
+    LaunchedEffect(mode, tableId, selectedBillId) { scannedProduct = null }
     LaunchedEffect(snap?.products) {
         val current = selectedPosCategory
-        if (current != "all" && snap?.products?.none { it.category?.trim() == current } != false) {
+        if (current != "all" && current != "__best_seller__" && snap?.products?.none { it.category?.trim() == current } != false) {
             selectedPosCategory = "all"
         }
     }
@@ -1145,14 +1174,12 @@ fun MerchantPosScreen(
                 colors = ButtonDefaults.textButtonColors(containerColor = Color.White, contentColor = QgRed)
             ) { Text("‹", fontSize = 24.sp) }
             Row(
-                Modifier.weight(1f).semantics { contentDescription = "QueueGo หน้าร้าน" },
+                Modifier.weight(1f).semantics { contentDescription = "QueueMarket หน้าร้าน" },
                 horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(Modifier.size(31.dp).background(QgRed, RoundedCornerShape(50)), contentAlignment = Alignment.Center) {
-                    Text("Q", color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Black)
-                }
+                com.queuego.shared.QueueGoBrandMark("merchant", Modifier.size(31.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("QueueGo", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
+                Text("QueueMarket", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
                 Spacer(Modifier.width(4.dp))
                 Text("หน้าร้าน", color = QgMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
@@ -1262,6 +1289,7 @@ fun MerchantPosScreen(
             when (view) {
                 "counter" -> PosCounterView(
                     snapshot = snap,
+                    barcodeFocusRequester = barcodeFocusRequester,
                     selectedBill = selectedBill,
                     mode = mode,
                     tableId = tableId,
@@ -1307,65 +1335,41 @@ fun MerchantPosScreen(
                     barcodeMatched = scannedProduct,
                     barcodeStatus = scanStatus,
                     barcodeLoading = scanLoading,
-                    onBarcodeChange = { next ->
-                        scannedCode = next.take(64)
-                        scannedProduct = null
-                        scanStatus = null
-                    },
+                    bestSellerNames = bestSellerNames,
+                    onBarcodeChange = { scannedCode = it.take(64); scannedProduct = null; scanStatus = null },
                     onBarcodeLookup = {
                         val code = scannedCode.trim()
-                        if (!busy && !scanLoading && code.isNotBlank()) {
+                        if (!kitchenEnabled && !busy && !scanLoading && code.isNotBlank()) {
                             val originalShop = snap.shopId
                             val originalBill = selectedBillId
-                            val originalMode = mode
-                            val originalTable = tableId
                             val originalActor = auth.session.authUserId
-                            scanLoading = true
-                            scannedProduct = null
-                            scanStatus = null
+                            scanLoading = true; scannedProduct = null; scanStatus = null
                             scope.launch {
                                 try {
-                                    if (!posNetworkValidated(context)) {
-                                        scanStatus = "ค้นหาบาร์โค้ดต้องเชื่อมต่ออินเทอร์เน็ต"
-                                    } else {
+                                    if (!posNetworkValidated(context)) scanStatus = "ค้นหาบาร์โค้ดต้องเชื่อมต่ออินเทอร์เน็ต"
+                                    else {
                                         val match = api.lookupProductCode(auth, code)
-                                        if (snapshot?.shopId == originalShop &&
-                                            auth.session.authUserId == originalActor &&
-                                            selectedBillId == originalBill &&
-                                            mode == originalMode && tableId == originalTable &&
-                                            view == "counter" && scannedCode.trim() == code) {
+                                        if (snapshot?.shopId == originalShop && auth.session.authUserId == originalActor &&
+                                            selectedBillId == originalBill && view == "counter" && scannedCode.trim() == code) {
                                             val product = snap.products.firstOrNull { it.id == match?.productId }
                                             when {
                                                 match == null -> scanStatus = "ไม่พบรหัสสินค้านี้ในร้าน"
-                                                !match.available || !match.posAvailable ->
-                                                    scanStatus = "สินค้านี้ปิดขายหน้าร้าน"
-                                                product == null ->
-                                                    scanStatus = "พบรหัสแล้ว แต่เมนูร้านยังไม่ตรง กรุณาโหลดข้อมูลใหม่"
-                                                posProductSoldOut(product) ->
-                                                    scanStatus = "สินค้าหมดสต็อก · ไม่สามารถเพิ่มเข้าบิล"
-                                                else -> {
-                                                    scannedProduct = product
-                                                    scanStatus = "พบ " + product.name + " · ตรวจสอบก่อนเพิ่มเข้าบิล"
-                                                }
+                                                !match.available || !match.posAvailable -> scanStatus = "สินค้านี้ปิดขายหน้าร้าน"
+                                                product == null -> scanStatus = "พบรหัสแล้ว แต่ข้อมูลสินค้าไม่ตรง กรุณาโหลดข้อมูลใหม่"
+                                                posProductSoldOut(product) -> scanStatus = "สินค้าหมดสต็อก · ไม่สามารถเพิ่มเข้าบิล"
+                                                else -> { scannedProduct = product; scanStatus = "พบ ${product.name} · ตรวจสอบก่อนเพิ่มเข้าบิล" }
                                             }
                                         }
                                     }
-                                } catch (cancelled: CancellationException) {
-                                    throw cancelled
-                                } catch (failure: Exception) {
-                                    scanStatus = failure.message ?: "ค้นหารหัสสินค้าไม่สำเร็จ"
-                                } finally {
-                                    scanLoading = false
-                                }
+                                } catch (cancelled: CancellationException) { throw cancelled }
+                                catch (failure: Exception) { scanStatus = failure.message ?: "ค้นหารหัสสินค้าไม่สำเร็จ" }
+                                finally { scanLoading = false }
                             }
                         }
                     },
                     onBarcodeAdd = { product ->
                         if (!busy && !scanLoading && scannedProduct?.id == product.id) {
-                            scannedProduct = null
-                            scannedCode = ""
-                            scanStatus = null
-                            addPosProduct(product)
+                            scannedProduct = null; scannedCode = ""; scanStatus = null; addPosProduct(product)
                         }
                     },
                     onCategory = { selectedPosCategory = it },
@@ -2290,8 +2294,10 @@ private fun PosTabs(
 ) {
     val tabs = buildList {
         add("counter" to "＋ รับออเดอร์")
-        add("tables" to "โต๊ะ")
-        if (kitchenEnabled) add("kitchen" to "ครัว")
+        if (kitchenEnabled) {
+            add("tables" to "โต๊ะ")
+            add("kitchen" to "ครัว")
+        }
         add("bills" to "คิดเงิน")
         if (cashierEnabled) add("shifts" to "กะรับเงิน")
         if (codesEnabled) add("codes" to "บาร์โค้ด/SKU")
@@ -2358,6 +2364,7 @@ private fun PosTabs(
 @Composable
 private fun PosCounterView(
     snapshot: PosSnapshot,
+    barcodeFocusRequester: FocusRequester,
     selectedBill: PosBill?,
     mode: String,
     tableId: String?,
@@ -2369,6 +2376,7 @@ private fun PosCounterView(
     barcodeMatched: PosProduct?,
     barcodeStatus: String?,
     barcodeLoading: Boolean,
+    bestSellerNames: Set<String>,
     busy: Boolean,
     pendingCreate: Boolean,
     canReceive: Boolean,
@@ -2426,11 +2434,11 @@ private fun PosCounterView(
             }
             Spacer(Modifier.height(8.dp))
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (kitchenEnabled) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             PosChoiceButton("ทานที่ร้าน", mode == "DINE_IN", Modifier.weight(1f)) { onMode("DINE_IN") }
             PosChoiceButton("รับกลับ", mode == "TAKEAWAY", Modifier.weight(1f)) { onMode("TAKEAWAY") }
-        }
-        if (mode == "DINE_IN" && canManageTables) {
+        } else Text("ขายหน้าร้าน", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        if (kitchenEnabled && mode == "DINE_IN" && canManageTables) {
             OutlinedButton(
                 onClick = onManageTables,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
@@ -2440,7 +2448,7 @@ private fun PosCounterView(
             }
         }
 
-        if (mode == "DINE_IN") {
+        if (kitchenEnabled && mode == "DINE_IN") {
             Spacer(Modifier.height(10.dp))
             Text("เลือกโต๊ะ", fontWeight = FontWeight.ExtraBold)
             Row(
@@ -2463,63 +2471,39 @@ private fun PosCounterView(
         OutlinedTextField(
             search,
             onSearch,
-            label = { Text("ค้นหาเมนู") },
+            label = { Text(if (kitchenEnabled) "ค้นหาเมนู" else "ค้นหาสินค้า") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(Modifier.height(8.dp))
-        Row(
-            Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedTextField(
-                barcode,
-                onBarcodeChange,
-                label = { Text("บาร์โค้ด / SKU") },
-                placeholder = { Text("พิมพ์หรือใช้เครื่องสแกน") },
-                singleLine = true,
-                enabled = !busy && !barcodeLoading,
-                modifier = Modifier.weight(1f)
-            )
-            Button(
-                onClick = onBarcodeLookup,
-                enabled = !busy && !barcodeLoading && barcode.isNotBlank() && canReceive &&
-                    !pendingCreate,
-                colors = ButtonDefaults.buttonColors(containerColor = QgRed),
-                modifier = Modifier.heightIn(min = 50.dp)
-            ) { Text("ค้นหา") }
-        }
-        if (barcodeStatus != null) {
-            Text(barcodeStatus, fontSize = 12.sp,
-                color = if (barcodeMatched == null) QgRed else Color(0xFF15803D))
-        }
-        if (barcodeMatched != null) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                color = Color(0xFFF5F7F9)
-            ) {
-                Row(
-                    Modifier.padding(10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(barcodeMatched.name, modifier = Modifier.weight(1f),
-                        fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                    Button(
-                        onClick = { onBarcodeAdd(barcodeMatched) },
-                        enabled = !busy && !pendingCreate && canReceive &&
-                            !posProductSoldOut(barcodeMatched),
-                        colors = ButtonDefaults.buttonColors(containerColor = QgRed)
-                    ) { Text("เพิ่มเข้าบิล") }
+        if (!kitchenEnabled) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(barcode, onBarcodeChange, label = { Text("บาร์โค้ด / SKU") },
+                    placeholder = { Text("พิมพ์หรือใช้เครื่องสแกน USB/Bluetooth") }, singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    keyboardActions = KeyboardActions(onDone = { onBarcodeLookup() }),
+                    enabled = !busy && !barcodeLoading,
+                    modifier = Modifier.weight(1f).focusRequester(barcodeFocusRequester))
+                Button(onClick = onBarcodeLookup,
+                    enabled = !busy && !barcodeLoading && barcode.isNotBlank() && canReceive && !pendingCreate,
+                    colors = ButtonDefaults.buttonColors(containerColor = QgRed),
+                    modifier = Modifier.heightIn(min = 50.dp)) { Text(if (barcodeLoading) "ค้นหา…" else "ค้นหา") }
+            }
+            barcodeStatus?.let { Text(it, fontSize = 12.sp,
+                color = if (barcodeMatched == null) QgRed else Color(0xFF15803D)) }
+            barcodeMatched?.let { product ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(product.name, Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                    Button(onClick = { onBarcodeAdd(product) }, enabled = !busy && !pendingCreate && canReceive,
+                        colors = ButtonDefaults.buttonColors(containerColor = QgRed)) { Text("เพิ่มเข้าบิล") }
                 }
             }
         }
         val menuCategories = snapshot.products.mapNotNull { product ->
             product.category?.trim()?.takeIf { it.isNotBlank() }
         }.distinct()
-        if (menuCategories.isNotEmpty()) {
+        if (menuCategories.isNotEmpty() || bestSellerNames.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
             Text("หมวดหมู่", fontWeight = FontWeight.Bold, fontSize = 12.sp)
             Row(
@@ -2527,6 +2511,9 @@ private fun PosCounterView(
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
                 PosChoiceButton("ทั้งหมด", selectedCategory == "all") { onCategory("all") }
+                if (bestSellerNames.isNotEmpty()) PosChoiceButton("สินค้าขายดี · 7 วัน", selectedCategory == "__best_seller__") {
+                    onCategory("__best_seller__")
+                }
                 menuCategories.forEach { category ->
                     PosChoiceButton(category, selectedCategory == category) { onCategory(category) }
                 }
@@ -2541,10 +2528,11 @@ private fun PosCounterView(
         )
         Spacer(Modifier.height(12.dp))
 
-        QgSectionTitle("เมนูสินค้า", if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล" else selectedBill.number)
+        QgSectionTitle(if (kitchenEnabled) "เมนูอาหาร" else "สินค้า", if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล" else selectedBill.number)
         Spacer(Modifier.height(8.dp))
         val products = snapshot.products.filter {
-            (selectedCategory == "all" || it.category?.trim() == selectedCategory) &&
+            (selectedCategory == "all" || (selectedCategory == "__best_seller__" && it.name.trim() in bestSellerNames) ||
+                (selectedCategory != "__best_seller__" && it.category?.trim() == selectedCategory)) &&
                 (search.isBlank() || it.name.contains(search.trim(), ignoreCase = true))
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {

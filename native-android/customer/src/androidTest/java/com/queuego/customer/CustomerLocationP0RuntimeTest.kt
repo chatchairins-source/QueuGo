@@ -27,19 +27,20 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.click
 
-/** Isolated Android UI harness: real picker/Longdo GL, no account, backend writes or orders. */
+/** Isolated Android UI harness: real picker/MapLibre GL, no account, backend writes or orders. */
 class CustomerLocationP0RuntimeTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
-    @Test fun longdoGoogleLocationRuntimeClassesArePackaged() {
+    @Test fun currentNativeMapAndPlatformLocationRuntimeClassesArePackaged() {
         listOf(
-            "com.google.android.gms.location.LocationServices",
-            "com.google.android.gms.location.LocationRequest",
-            "com.google.android.gms.location.LocationListener",
-            "com.google.android.gms.location.FusedLocationProviderApi"
+            "org.maplibre.android.MapLibre",
+            "org.maplibre.android.maps.MapView",
+            "android.location.LocationManager",
+            "android.location.LocationListener"
         ).forEach { className ->
-            assertNotNull("Missing runtime class required by Longdo: $className", Class.forName(className))
+            assertNotNull("Missing current native map/location runtime: $className", Class.forName(className))
         }
     }
 
@@ -52,7 +53,7 @@ class CustomerLocationP0RuntimeTest {
             com.queuego.shared.QgLocationPickerMap(
                 initialPoint = null, recenterPoint = target.value, recenterToken = token.value,
                 modifier = Modifier.fillMaxSize().testTag("camera-owner-map"),
-                onCenterChanged = { selections.incrementAndGet() }, onReady = { ready.set(it) })
+                onPointSelected = { selections.incrementAndGet() }, onReady = { ready.set(it) })
         }
         compose.waitUntil(30_000) { ready.get() }
         compose.waitForIdle()
@@ -66,7 +67,12 @@ class CustomerLocationP0RuntimeTest {
             assertEquals("App GPS recenter echoed as a user pan", 0, selections.get())
         }
         compose.onNodeWithTag("camera-owner-map").performTouchInput { swipeLeft(durationMillis = 300) }
-        compose.waitUntil(10_000) { selections.get() > 0 }
+        compose.waitForIdle()
+        compose.runOnIdle {
+            assertEquals("Panning must not choose a delivery stop", 0, selections.get())
+        }
+        compose.onNodeWithTag("camera-owner-map").performTouchInput { click(center) }
+        compose.waitUntil(10_000) { selections.get() == 1 }
     }
 
     @Test fun thirtyOpenGpsSaveCloseCyclesAndEarlyBackground() {
@@ -76,6 +82,7 @@ class CustomerLocationP0RuntimeTest {
         compose.setContent {
             if (visible.value) CustomerLocationPickerScreen(
                 location = gps.value, address = "", busy = false,
+                searchPlaces = { emptyList() },
                 readGps = { CustomerLocation(14.995, 103.103, "") },
                 resolveAddress = { _, _ -> "Isolated Android test address" },
                 onSave = { saved.set(it); visible.value = false },
@@ -94,7 +101,7 @@ class CustomerLocationP0RuntimeTest {
                 compose.onAllNodes(androidx.compose.ui.test.hasText("กำลังอ่านตำแหน่ง GPS…"))
                     .fetchSemanticsNodes().isEmpty()
             }
-            compose.onNodeWithText("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต")
+            compose.onNodeWithTag("customer-delivery-address")
                 .performScrollTo().performTextReplacement("Cycle $index manual address")
             if (index == 0 || index == 29) {
                 compose.waitUntil(30_000) {
@@ -108,6 +115,7 @@ class CustomerLocationP0RuntimeTest {
                 }
                 compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.StateDescription, "แผนที่พร้อมใช้งาน"))
                     .performScrollTo()
+                assertRenderedRoadDetail(index)
                 val directory = File(compose.activity.filesDir, "p0-evidence").apply { mkdirs() }
                 requireNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()) { "Android screenshot was unavailable" }.let { bitmap ->
                     File(directory, "picker-$index.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
@@ -123,20 +131,65 @@ class CustomerLocationP0RuntimeTest {
         }
     }
 
+    /** Inspect MapLibre's actual rendered pixels, excluding controls and the center pin.
+     * A gray canvas or a single pin must never pass merely because semantics say ready.
+     */
+    private fun assertRenderedRoadDetail(index: Int) {
+        val completed = java.util.concurrent.CountDownLatch(1)
+        val rendered = AtomicReference<Bitmap?>()
+        fun findMap(view: android.view.View): org.maplibre.android.maps.MapView? {
+            if (view is org.maplibre.android.maps.MapView) return view
+            if (view is android.view.ViewGroup) for (i in 0 until view.childCount) {
+                findMap(view.getChildAt(i))?.let { return it }
+            }
+            return null
+        }
+        compose.activityRule.scenario.onActivity { activity ->
+            requireNotNull(findMap(activity.window.decorView)).getMapAsync { map ->
+                map.snapshot { bitmap -> rendered.set(bitmap); completed.countDown() }
+            }
+        }
+        assertTrue("Rendered map snapshot timed out", completed.await(30, java.util.concurrent.TimeUnit.SECONDS))
+        val bitmap = requireNotNull(rendered.get())
+        try {
+            val colors = mutableSetOf<Int>()
+            var edges = 0
+            var samples = 0
+            for (y in bitmap.height / 10 until bitmap.height * 9 / 10 step 3) {
+                for (x in bitmap.width / 10 until bitmap.width * 9 / 10 step 3) {
+                    if (kotlin.math.abs(x - bitmap.width / 2) < 30 && kotlin.math.abs(y - bitmap.height / 2) < 30) continue
+                    val pixel = bitmap.getPixel(x, y)
+                    colors.add(pixel and 0x00F8F8F8)
+                    val next = bitmap.getPixel((x + 3).coerceAtMost(bitmap.width - 1), y)
+                    if (kotlin.math.abs(android.graphics.Color.red(pixel) - android.graphics.Color.red(next)) +
+                        kotlin.math.abs(android.graphics.Color.green(pixel) - android.graphics.Color.green(next)) +
+                        kotlin.math.abs(android.graphics.Color.blue(pixel) - android.graphics.Color.blue(next)) > 40) edges++
+                    samples++
+                }
+            }
+            val directory = File(compose.activity.filesDir, "p0-evidence").apply { mkdirs() }
+            File(directory, "road-detail-$index.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
+            File(directory, "road-detail-$index.txt").writeText("colors=${colors.size} edges=$edges samples=$samples")
+            assertTrue("Map has no rendered geographic detail: ${colors.size} colors", colors.size >= 16)
+            assertTrue("Map has insufficient geographic edges: $edges/$samples", edges > samples / 1000)
+        } finally { bitmap.recycle() }
+    }
+
     @Test fun selectedDraftSurvivesSavedStateRestore() {
         val restoration = StateRestorationTester(compose)
         restoration.setContent {
             CustomerLocationPickerScreen(
                 location = CustomerLocation(14.995, 103.103, "Original"),
                 address = "Original", busy = false,
+                searchPlaces = { emptyList() },
                 readGps = { CustomerLocation(14.995, 103.103, "") },
                 resolveAddress = { _, _ -> "Generated" },
                 onSave = {}, onBack = {})
         }
-        compose.onNodeWithText("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต")
+        compose.onNodeWithTag("customer-delivery-address")
             .performScrollTo().performTextReplacement("Restored manual address")
         restoration.emulateSavedInstanceStateRestore()
-        compose.onNodeWithText("บ้านเลขที่ หมู่บ้าน ซอย ถนน หรือจุดสังเกต")
+        compose.onNodeWithTag("customer-delivery-address")
             .assertTextContains("Restored manual address")
     }
 

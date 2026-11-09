@@ -1,12 +1,56 @@
+import java.net.URI
+import java.util.Base64
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+// Reject privileged keys before BuildConfig generation; runtime rejection alone
+// would still leave an accidentally supplied server key inside a debug APK.
+val debugBackendUrl = providers.environmentVariable("QG_DEBUG_BACKEND_URL").orNull.orEmpty().trim()
+val debugBackendPublicKey = providers.environmentVariable("QG_DEBUG_BACKEND_PUBLISHABLE_KEY").orNull.orEmpty().trim()
+if (debugBackendUrl.isNotEmpty() || debugBackendPublicKey.isNotEmpty()) {
+    require(debugBackendUrl.isNotEmpty() && debugBackendPublicKey.isNotEmpty()) {
+        "Debug backend URL and public key must be supplied together"
+    }
+    val uri = runCatching { URI(debugBackendUrl) }.getOrNull()
+    require(uri != null && uri.host != null && uri.userInfo == null && uri.query == null &&
+        uri.fragment == null && (uri.port == -1 || uri.port in 1..65535) &&
+        (uri.path.isNullOrEmpty() || uri.path == "/")) { "Invalid isolated debug backend origin" }
+    val local = uri.host in setOf("localhost", "127.0.0.1", "10.0.2.2", "[::1]", "::1")
+    require(uri.scheme == "https" || (uri.scheme == "http" && local)) { "Debug backend requires HTTPS or loopback" }
+    require(!uri.host.equals("pkypiqhlrmzocysgeqew.supabase.co", ignoreCase = true) &&
+        debugBackendPublicKey != "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre") { "Debug backend must not mix Production settings" }
+    val publishable = debugBackendPublicKey.startsWith("sb_publishable_") &&
+        debugBackendPublicKey.length in 24..4096 && debugBackendPublicKey.none(Char::isWhitespace)
+    val anon = runCatching {
+        val parts = debugBackendPublicKey.split('.')
+        val payload = if (parts.size == 3 && parts.all { it.isNotEmpty() })
+            groovy.json.JsonSlurper().parseText(String(Base64.getUrlDecoder().decode(parts[1]), Charsets.UTF_8)) as? Map<*, *> else null
+        payload?.get("role") == "anon"
+    }.getOrDefault(false)
+    require(publishable || anon) { "Debug backend key must be public; server keys cannot enter APKs" }
+}
+
+fun backendBuildConfigLiteral(value: String): String = "\"" + value
+    .replace("\\", "\\\\").replace("\"", "\\\"")
+    .replace("\n", "\\n").replace("\r", "\\r") + "\""
+
 android {
     namespace = "com.queuego.shared"
     compileSdk = 36
-    defaultConfig { minSdk = 26 }
-    buildFeatures { compose = true }
+    defaultConfig {
+        minSdk = 26
+        buildConfigField("String", "QG_DEBUG_BACKEND_URL", "\"\"")
+        buildConfigField("String", "QG_DEBUG_BACKEND_PUBLISHABLE_KEY", "\"\"")
+    }
+    buildTypes {
+        getByName("debug") {
+            buildConfigField("String", "QG_DEBUG_BACKEND_URL", backendBuildConfigLiteral(debugBackendUrl))
+            buildConfigField("String", "QG_DEBUG_BACKEND_PUBLISHABLE_KEY", backendBuildConfigLiteral(debugBackendPublicKey))
+        }
+    }
+    buildFeatures { compose = true; buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

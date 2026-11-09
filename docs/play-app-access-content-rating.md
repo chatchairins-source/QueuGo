@@ -88,8 +88,8 @@ Google requires review access credentials/instructions to remain valid regardles
 Current QueueGo Closed Beta target for all three Android apps:
 
 - **QueueGo Customer (`com.queuego.customer`): Ages 18 and over only.**
-- **QueueGo Merchant (`com.queuego.merchant`): Ages 18 and over only.**
-- **QueueGo Rider (`com.queuego.rider`): Ages 18 and over only.**
+- **QueueMarket (`com.queuego.merchant`): Ages 18 and over only.**
+- **Queue Rider (`com.queuego.rider`): Ages 18 and over only.**
 - **Restrict Minor Access: Enable for the Closed Beta/Pilot apps in Play Console.**
 
 Why this is the correct Pilot boundary:
@@ -167,8 +167,8 @@ Review carefully:
 Google Play requires a per-app declaration. Current QueueGo decision:
 
 - **QueueGo Customer (`com.queuego.customer`): Yes — Contains ads.**
-- **QueueGo Merchant (`com.queuego.merchant`): No.**
-- **QueueGo Rider (`com.queuego.rider`): No.**
+- **QueueMarket (`com.queuego.merchant`): No.**
+- **Queue Rider (`com.queuego.rider`): No.**
 
 Why Customer is declared **Yes**:
 - Customer has a `โปรโมชั่นจากร้าน` surface backed by `qg_public_promotions()`.

@@ -1,71 +1,53 @@
-// One geometry source for preview, Android vectors and exported launcher artwork.
+// Approved red/white family. One geometry source for Android, SVG and PNG exports.
 const fs = require('fs');
 const path = require('path');
 const root = path.resolve(__dirname, '..');
-const standardRed = '#EF3340'; // Production Customer/Merchant red.
-const riderRed = '#E6002D'; // Owner-approved stronger Rider Q.
-const ring = 'M81,51 A28,28 0,1 1,25 51 A28,28 0,1 1,81 51 Z M73,51 A20,20 0,1 0,33 51 A20,20 0,1 0,73 51 Z';
-const tail = 'M54,59 H61 C64,59 66,60 68,63 L77,72 C79,74 78,76 75,76 H71 C68,76 66,75 64,73 L52,62 C51,60 52,59 54,59 Z';
-const riderRing = 'M82,51 A29,29 0,1 1,24 51 A29,29 0,1 1,82 51 Z M69,51 A16,16 0,1 0,37 51 A16,16 0,1 0,69 51 Z';
-const riderTail = 'M57,58 C58.5,56.5 61,56.5 62.5,58 L74.5,70 C76.5,72 76.5,74.5 74.5,76.5 L73.5,77.5 C71.5,79.5 69,79.5 67,77.5 L55,65.5 C53.5,64 53.5,61.5 55,60 Z';
-const roles = {
+const wordmarks = require('./wordmarks.json');
+const red = '#EF1717';
+// Thick circular Q, short low tail. Foreground remains inside adaptive safe circle.
+const ring = 'M76,45 A22,22 0,1 1,32 45 A22,22 0,1 1,76 45 Z M67,45 A13,13 0,1 0,41 45 A13,13 0,1 0,67 45 Z';
+const tail = 'M66,57 C67,56 69,56 70,57 L73,60 C75,62 75,64 73,65 C72,66 70,66 69,65 L66,62 C65,61 65,59 66,57 Z';
+const symbols = {
   customer: [
-    {d:'M46,39 V46 M42,39 V45 C42,48 44,49 46,49 C48,49 50,48 50,45 V39 M46,49 V58', stroke:2.2},
-    {d:'M59,38 C55.5,38 54,41 54,44 C54,47 56,49 59,49 C62,49 64,47 64,44 C64,41 62.5,38 59,38 Z', fill:true},
-    {d:'M59,48 V58', stroke:2.2}
+    {d:'M45,59 L47,43 Q47,42 49,42 H59 Q61,42 61,44 L63,59',stroke:1.8},
+    {d:'M50,42 V40 A4,4 0,0 1,58 40 V42',stroke:1.6},
+    {d:'M50,44 A0.9,0.9 0,1 0,50 45.8 A0.9,0.9 0,1 0,50 44 Z M58,44 A0.9,0.9 0,1 0,58 45.8 A0.9,0.9 0,1 0,58 44 Z',fill:true}
   ],
   merchant: [
-    {d:'M43,46 V56 C43,57 44,58 45,58 H61 C62,58 63,57 63,56 V46 M51,58 V50 H57 V58', stroke:1.7},
-    {d:'M42,44 L44.5,39 H61.5 L64,44 V46 C64,49 60,50 58.5,47 C57,50 53.5,50 53,47 C52.5,50 49,50 47.5,47 C46,50 42,49 42,46 Z', stroke:1.7},
-    {d:'M48,39 L47.5,44 M58,39 L58.5,44 M53,39 V44', stroke:1.5}
+    {d:'M46,47 H48 V59 H46 Z M60,47 H62 V59 H60 Z',fill:true},
+    {d:'M47,38 H51 L50,44 C49,47 44,46 45,43 Z M52,38 H56 L56.5,43 C57,47 51,47 51.5,43 Z M57,38 H61 L63,43 C64,46 59,47 58,44 Z',fill:true}
   ],
-  rider: []
+  rider: [
+    {d:'M43,59 C44,49 51,44 62,41 L61,38 L65,42 L62,47 L62.5,44 C53,47 48,52 47,59 Z',fill:true},
+    {d:'M51,57 L54,57 L55,54 L52.5,54 Z M53.5,52 L56,52 L58,49 L55.5,49 Z',fill:true}
+  ]
 };
-const colorFor = role => role === 'rider' ? riderRed : standardRed;
-function paths(role) {
-  if(role === 'rider') return [{d:riderRing,fill:true,even:true},{d:riderTail,fill:true}];
-  return [{d:ring,fill:true,even:true},{d:tail,fill:true},...roles[role]];
-}
-function svgPaths(role) {
-  const red=colorFor(role);
-  return paths(role).map(p=>`<path d="${p.d}" fill="${p.fill?red:'none'}"${p.even?' fill-rule="evenodd"':''}${p.stroke?` stroke="${red}" stroke-width="${p.stroke}" stroke-linecap="round" stroke-linejoin="round"`:''}/>`).join('');
-}
-function svg(role, background=true) {
-  const backgroundMarkup = !background ? '' : role === 'rider'
-    ? '<rect x="18.8" y="18.8" width="70.4" height="70.4" rx="15" fill="#FFFFFF" stroke="#F4BEC9" stroke-width="1.2"/>'
-    : '<rect width="108" height="108" fill="#FFFFFF"/>';
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="${background?'18 18 72 72':'0 0 108 108'}">${backgroundMarkup}${svgPaths(role)}</svg>`;
-}
-for(const role of Object.keys(roles)) {
-  fs.writeFileSync(path.join(__dirname, `${role}-foreground.svg`),svg(role,false));
-  fs.writeFileSync(path.join(__dirname, `${role}-play-store.svg`),svg(role));
-}
-let preview = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#F7F7F8"/><text x="60" y="52" font-family="sans-serif" font-size="22" fill="#17191D">QueueGo · launcher family / native vector preview</text>`;
-Object.keys(roles).forEach((role,i)=>{
- const x=80+i*380;
- preview+=`<rect x="${x}" y="90" width="280" height="280" rx="62" fill="white"/><svg x="${x}" y="90" width="280" height="280" viewBox="18 18 72 72">${svgPaths(role)}</svg><text x="${x+140}" y="410" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#17191D">${role[0].toUpperCase()+role.slice(1)}</text>`;
- [48,32,24].forEach((size,j)=>{preview+=`<rect x="${x+j*96}" y="452" width="${size}" height="${size}" rx="${size*.22}" fill="white"/><svg x="${x+j*96}" y="452" width="${size}" height="${size}" viewBox="18 18 72 72">${svgPaths(role)}</svg>`;});
- preview+=`<defs><clipPath id="mask${i}"><circle cx="${x+140}" cy="559" r="36"/></clipPath></defs><g clip-path="url(#mask${i})"><rect x="${x+104}" y="523" width="72" height="72" fill="white"/><svg x="${x+104}" y="523" width="72" height="72" viewBox="18 18 72 72">${svgPaths(role)}</svg></g>`;
-});
-preview+='</svg>';fs.writeFileSync(path.join(__dirname,'family-preview.svg'),preview);
-if(process.argv.includes('--integrate')) {
- for(const role of Object.keys(roles)) {
-  const res=path.join(root,role,'src/main/res');
-  const red=colorFor(role);
-  const xmlPaths=paths(role).map(p=>`    <path android:pathData="${p.d}" android:fillColor="${p.fill?red:'#00000000'}"${p.even?' android:fillType="evenOdd"':''}${p.stroke?` android:strokeColor="${red}" android:strokeWidth="${p.stroke}" android:strokeLineCap="round" android:strokeLineJoin="round"`:''}/>`).join('\n');
-  const vector=`<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n${xmlPaths}\n</vector>\n`;
-  fs.writeFileSync(path.join(res,'drawable/ic_queuego_foreground.xml'),vector);
-  fs.writeFileSync(path.join(res,'drawable/ic_queuego_background.xml'),'<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle"><solid android:color="#FFFFFF"/></shape>\n');
-  fs.mkdirSync(path.join(res,'mipmap-anydpi-v26'),{recursive:true});
-  fs.writeFileSync(path.join(res,'mipmap-anydpi-v26/ic_queuego_launcher.xml'),'<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@drawable/ic_queuego_background"/><foreground android:drawable="@drawable/ic_queuego_foreground"/></adaptive-icon>\n');
-  if(role === 'rider') {
-    const monoPaths=paths(role).map(p=>`    <path android:pathData="${p.d}" android:fillColor="#FFFFFFFF"${p.even?' android:fillType="evenOdd"':''}/>`).join('\n');
-    fs.writeFileSync(path.join(res,'drawable/ic_queuego_monochrome.xml'),`<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n${monoPaths}\n</vector>\n`);
-    fs.mkdirSync(path.join(res,'mipmap-anydpi-v33'),{recursive:true});
-    fs.writeFileSync(path.join(res,'mipmap-anydpi-v33/ic_queuego_launcher.xml'),'<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@drawable/ic_queuego_background"/><foreground android:drawable="@drawable/ic_queuego_foreground"/><monochrome android:drawable="@drawable/ic_queuego_monochrome"/></adaptive-icon>\n');
-  }
-  if (fs.existsSync(path.join(res,'drawable/ic_queuego_launcher.xml'))) fs.unlinkSync(path.join(res,'drawable/ic_queuego_launcher.xml'));
-  const manifest=path.join(root,role,'src/main/AndroidManifest.xml');
-  fs.writeFileSync(manifest,fs.readFileSync(manifest,'utf8').replaceAll('@drawable/ic_queuego_launcher','@mipmap/ic_queuego_launcher'));
+function paths(role) { return [{d:ring,fill:true,even:true},{d:tail,fill:true},...symbols[role],{d:wordmarks[role].path,fill:true}]; }
+function svgPaths(role) { return paths(role).map(p=>`<path d="${p.d}" fill="${p.fill?'#FFFFFF':'none'}"${p.even?' fill-rule="evenodd"':''}${p.stroke?` stroke="#FFFFFF" stroke-width="${p.stroke}" stroke-linecap="round" stroke-linejoin="round"`:''}/>`).join(''); }
+function svg(role,background=true) { return `<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="${background?'18 18 72 72':'0 0 108 108'}">${background?`<rect x="18" y="18" width="72" height="72" fill="${red}"/>`:''}${svgPaths(role)}</svg>`; }
+for(const role of Object.keys(symbols)) {
+ fs.writeFileSync(path.join(__dirname,`${role}-foreground.svg`),svg(role,false));
+ fs.writeFileSync(path.join(__dirname,`${role}-play-store.svg`),svg(role));
+ if(!process.argv.includes('--integrate'))continue;
+ const res=path.join(root,role,'src/main/res');
+ // Reuse the approved geometry inside the app, excluding tiny launcher wordmarks.
+ const markPaths=paths(role).slice(0,-1).map(p=>`    <path android:pathData="${p.d}" android:fillColor="${p.fill?'#FFFFFFFF':'#00000000'}"${p.even?' android:fillType="evenOdd"':''}${p.stroke?` android:strokeColor="#FFFFFFFF" android:strokeWidth="${p.stroke}" android:strokeLineCap="round" android:strokeLineJoin="round"`:''}/>`).join('\n');
+ fs.writeFileSync(path.join(root,'shared/src/main/res/drawable',`qg_brand_${role}.xml`),`<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="48dp" android:height="48dp" android:viewportWidth="56" android:viewportHeight="56">\n    <path android:fillColor="${red}" android:pathData="M0,0 H56 V56 H0 Z"/>\n    <group android:translateX="-26" android:translateY="-17">\n${markPaths}\n    </group>\n</vector>\n`);
+ const vectorPaths=paths(role).map(p=>`    <path android:pathData="${p.d}" android:fillColor="${p.fill?'#FFFFFFFF':'#00000000'}"${p.even?' android:fillType="evenOdd"':''}${p.stroke?` android:strokeColor="#FFFFFFFF" android:strokeWidth="${p.stroke}" android:strokeLineCap="round" android:strokeLineJoin="round"`:''}/>`).join('\n');
+ const vector=`<?xml version="1.0" encoding="utf-8"?>\n<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">\n${vectorPaths}\n</vector>\n`;
+ fs.writeFileSync(path.join(res,'drawable/ic_queuego_foreground.xml'),vector);
+ fs.writeFileSync(path.join(res,'drawable/ic_queuego_monochrome.xml'),vector);
+ fs.writeFileSync(path.join(res,'drawable/ic_queuego_background.xml'),`<?xml version="1.0" encoding="utf-8"?>\n<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle"><solid android:color="${red}"/></shape>\n`);
+ for(const version of [26,33]) {
+  fs.mkdirSync(path.join(res,`mipmap-anydpi-v${version}`),{recursive:true});
+  fs.writeFileSync(path.join(res,`mipmap-anydpi-v${version}/ic_queuego_launcher.xml`),`<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android"><background android:drawable="@drawable/ic_queuego_background"/><foreground android:drawable="@drawable/ic_queuego_foreground"/>${version===33?'<monochrome android:drawable="@drawable/ic_queuego_monochrome"/>':''}</adaptive-icon>\n`);
  }
+ const manifest=path.join(root,role,'src/main/AndroidManifest.xml');
+ fs.writeFileSync(manifest,fs.readFileSync(manifest,'utf8').replace(/android:label="[^"]*"/,`android:label="${wordmarks[role].name}"`));
 }
+let preview='<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="540" viewBox="0 0 1200 540"><rect width="1200" height="540" fill="#F6F3F0"/>';
+Object.keys(symbols).forEach((role,i)=>{
+ const x=70+i*380;
+ preview+=`<defs><clipPath id="tile${i}"><rect x="${x}" y="80" width="300" height="300" rx="65"/></clipPath></defs><g clip-path="url(#tile${i})"><svg x="${x}" y="80" width="300" height="300" viewBox="18 18 72 72"><rect x="18" y="18" width="72" height="72" fill="${red}"/>${svgPaths(role)}</svg></g><text x="${x+150}" y="435" text-anchor="middle" font-family="DejaVu Sans,sans-serif" font-weight="bold" font-size="30" fill="#202020">${wordmarks[role].name}</text>`;
+});
+fs.writeFileSync(path.join(__dirname,'family-preview.svg'),preview+'</svg>');

@@ -23,6 +23,8 @@ android {
                 ?.takeIf { it.isNotBlank() } ?: "https://queuego-map-buriram.onrender.com"
     }
 
+    sourceSets.getByName("androidTest").assets.srcDir(rootProject.projectDir.parentFile.resolve("ops/maps/sources"))
+
     buildFeatures { compose = true }
     androidResources { noCompress += "pmtiles" }
 
@@ -43,6 +45,18 @@ providers.environmentVariable("QG_OFFLINE_MAP_ASSETS").orNull?.let { assetsRoot 
     }
 }
 
+// Routing tiles are a separate, checksummed Valhalla graph; PMTiles cannot route.
+providers.environmentVariable("QG_OFFLINE_ROUTING_ASSETS").orNull?.let { assetsRoot ->
+    require(file("$assetsRoot/routing/manifest.json").isFile &&
+        file("$assetsRoot/routing/tiles.tar").isFile &&
+        file("$assetsRoot/routing/valhalla.json").isFile) {
+        "QG_OFFLINE_ROUTING_ASSETS has no complete Valhalla routing package"
+    }
+    androidComponents.onVariants { variant ->
+        variant.sources.assets?.addStaticSourceDirectory(assetsRoot)
+    }
+}
+
 dependencies {
     // Debug lifecycle host reads the actual renderer camera; use the same pinned SDK.
     debugImplementation("org.maplibre.gl:android-sdk-opengl:13.7.1")
@@ -50,6 +64,7 @@ dependencies {
     testImplementation("org.json:json:20240303")
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test:core:1.6.1")
+    androidTestImplementation("io.github.rallista:valhalla-mobile:0.6.4")
     androidTestImplementation("junit:junit:4.13.2")
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
     implementation("com.google.firebase:firebase-messaging")

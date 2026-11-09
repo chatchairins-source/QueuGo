@@ -10,7 +10,7 @@ const checks=[
  ['MerchantMediaScreen.kt','"คลังรูปภาพร้าน"'],
  ['MerchantHoursScreen.kt','"เวลาทำการและวันหยุด"'],
  ['MerchantProductsScreen.kt','"สินค้าและเมนู"'],
- ['MerchantPosScreen.kt','"QueueGo หน้าร้าน"'],
+ ['MerchantPosScreen.kt','"QueueMarket หน้าร้าน"'],
  ['MerchantMarketStockScreen.kt','"สินค้าและสต๊อกตลาด"'],
  ['MerchantShopSetupScreen.kt','"แก้ไขข้อมูลร้าน"'],
  ['MerchantCatalogScreen.kt','"เพิ่มสินค้าจากคลังสินค้า"'],

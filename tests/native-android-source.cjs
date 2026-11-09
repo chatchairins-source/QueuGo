@@ -5,6 +5,11 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const nativePilotWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/build-native-rider-pilot.yml'),'utf8');
 const mapEngineWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/queuego-map-engine-buriram.yml'),'utf8');
+for (const workflowPath of ['native-customer-p0.yml', 'native-merchant-grocery.yml']) {
+  const workflow = fs.readFileSync(path.join(__dirname, '../.github/workflows', workflowPath), 'utf8');
+  ok(workflow.includes('sdkmanager') && !/LongdoMapAndroidSDK|api\.longdo\.com\/map-android-SDK|0918c23673ba6c7a349746f005525aca2ff3470f8e2966d5d2a4cb633ae5980c/.test(workflow),
+    workflowPath + ' must provision Android SDK without downloading the retired Longdo artifact');
+}
 const rideReleaseCandidateBranch = 'work-native-rider-nav-unified-offline-20261030';
 const requiredFullNativeGates = [
   'continuous-dispatch-races', 'route-bundle-stack-races',
@@ -116,8 +121,8 @@ ok(/targetSdk\s*=\s*36/.test(gradle),'targetSdk 36');
 
 const riderIcon=read('rider/src/main/res/drawable/ic_queuego_foreground.xml');
 const riderAdaptive33=read('rider/src/main/res/mipmap-anydpi-v33/ic_queuego_launcher.xml');
-ok(riderIcon.includes('#E6002D')&&riderIcon.includes('fillType="evenOdd"')&&!riderIcon.includes('strokeColor="#EF3340"'),
-   'Rider launcher must use the simplified bold QueueGo red Q mark');
+ok(riderIcon.includes('#FFFFFFFF')&&riderIcon.includes('fillType="evenOdd"')&&read('rider/src/main/res/drawable/ic_queuego_background.xml').includes('#EF1717'),
+   'Rider launcher must use the approved white circular Q on red');
 ok(riderAdaptive33.includes('<monochrome android:drawable="@drawable/ic_queuego_monochrome"'),
    'Rider launcher must expose Android 13+ monochrome icon support');
 for(const density of ['mdpi','hdpi','xhdpi','xxhdpi','xxxhdpi']){
@@ -1080,6 +1085,12 @@ ok(
   riderOnlineStatusCopy.includes('title = "เปิดรับงานอยู่ · GPS ไม่พร้อม"'),
   'Rider idle card must preserve approved Ready title and nearby subtitle, but show the GPS warning when a server-online lease lacks location'
 );
+ok(
+  riderApp.includes('modifier = Modifier.semantics { contentDescription = "พร้อมรับงาน" }') &&
+  riderApp.includes('checkedTrackColor = Color(0xFF1FBE70)') &&
+  riderApp.includes('online pill; the red accent remains reserved for brand/actions.'),
+  'Rider Android availability switch must use the same green checked state as Rider Web'
+);
 ok(riderApp.includes('snapshot?.laundry?.activeJob?.jobId')&&!riderApp.includes('snapshot?.laundry?.activeJob?.id,'),'Rider Auto Accept lifecycle key must use Laundry jobId, never a nonexistent id field');
 ok(riderApp.includes('onExpired =')&&riderApp.includes('ข้อเสนอนี้หมดเวลา ระบบกำลังส่งงานให้ Rider คนถัดไป'),'Rider expired offers must immediately leave the card and continue sequential dispatch');
 ok(riderApp.includes('ToneGenerator(AudioManager.STREAM_NOTIFICATION, 100)')&&riderApp.includes('มีงานใหม่ที่ระบบจัดให้ กรุณาตอบรับภายใน 30 วินาที'),'Rider foreground must alert once for a newly issued server offer');
@@ -1417,7 +1428,7 @@ ok(source.includes('pos_save_table')&&source.includes('pos_delete_table')&&sourc
 ok(source.includes('pos_owner_dashboard'),'Merchant native POS must preserve storefront reports');
 ok(source.includes('PosTabs(')&&source.includes('"reports" to "ยอดขาย"')&&source.includes('"history" to "ประวัติ"')&&source.includes('"staff" to "พนักงาน"'),'Merchant native POS must preserve Production counter tables kitchen bills reports history and staff tabs');
 ok(source.includes('shop_profiles?select=shop_name,public_category,metadata')&&source.includes('shopCategory = shopCategory?.trim()?.lowercase().orEmpty()'),'Merchant native POS must read the authoritative shop category before enabling Kitchen');
-ok(source.includes('if (kitchenEnabled) add("kitchen" to "ครัว")')&&source.includes('canSendKitchen = kitchenEnabled && can("send_kitchen")'),'Merchant native POS must hide Kitchen and its actions for non-food merchants');
+ok(source.includes('if (kitchenEnabled) {')&&source.includes('add("tables" to "โต๊ะ")')&&source.includes('add("kitchen" to "ครัว")')&&source.includes('canSendKitchen = kitchenEnabled && can("send_kitchen")'),'Merchant native POS must hide restaurant tables, Kitchen and actions for non-food merchants');
 ok(source.includes('bills = openBills,')&&source.includes('if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")))')&&source.includes('!showKitchenStatus || selected.kitchenStatus in setOf("READY", "SERVED")'),'Merchant native POS must allow direct checkout without a Kitchen status for non-food merchants');
 ok(source.includes('pendingPosRequestId')&&source.includes('ตรวจบิลเดิม')&&source.includes('requestId = requestId'),'Merchant native POS must preserve idempotent new-bill recovery after uncertain network results');
 ok(source.includes('pos_submit_offline_draft')&&source.includes('put("request_ids", JSONArray(item.requestIds))')&&source.includes('item.copy(requestIds = if'),'Merchant offline draft submission must use one atomic server request with stable per-unit retry IDs');
@@ -1548,7 +1559,7 @@ ok(
 ok(
   merchantPosScreen.includes('canManageTables = can("manage_staff")') &&
   merchantPosScreen.includes('onManageTables = { view = "tables" }') &&
-  merchantPosScreen.includes('if (mode == "DINE_IN" && canManageTables)') &&
+  merchantPosScreen.includes('if (kitchenEnabled && mode == "DINE_IN" && canManageTables)') &&
   merchantPosScreen.includes('Text("จัดการโต๊ะ · เพิ่มโต๊ะ / แก้ไข / QR Code")'),
   'Merchant POS counter must provide a visible route to table management for authorized owners/staff'
 );
@@ -1625,11 +1636,22 @@ ok(
   merchantPosApi.includes('category = nullableString(r, "category")') &&
   merchantPosScreen.includes('selectedCategory = selectedPosCategory') &&
   merchantPosScreen.includes('PosChoiceButton("ทั้งหมด", selectedCategory == "all")') &&
+  merchantPosScreen.includes('if (menuCategories.isNotEmpty() || bestSellerNames.isNotEmpty())') &&
   merchantPosScreen.includes('onCategory(category)') &&
-  merchantPosScreen.includes('selectedCategory == "all" || it.category?.trim() == selectedCategory') &&
+  merchantPosScreen.includes('selectedCategory == "all" || (selectedCategory == "__best_seller__"') &&
   merchantPosScreen.includes('LaunchedEffect(snap?.shopId) {') &&
   merchantPosScreen.includes('selectedPosCategory = "all"') &&
-  merchantPosScreen.includes('scannedProduct = null') &&
+  merchantPosScreen.includes('if (!kitchenEnabled)') &&
+  merchantPosScreen.includes('LaunchedEffect(kitchenEnabled, view, snap?.shopId, snapshotLoading)') &&
+  merchantPosScreen.includes('barcodeFocusRequester.requestFocus()') &&
+  merchantPosScreen.includes('Modifier.weight(1f).focusRequester(barcodeFocusRequester)') &&
+  merchantPosScreen.includes('Text(if (kitchenEnabled) "ค้นหาเมนู" else "ค้นหาสินค้า")') &&
+  merchantPosScreen.includes('QgSectionTitle(if (kitchenEnabled) "เมนูอาหาร" else "สินค้า"') &&
+  merchantPosScreen.includes('บาร์โค้ด / SKU') &&
+  merchantPosScreen.includes('api.lookupProductCode(auth, code)') &&
+  merchantPosScreen.includes('selectedCategory == "__best_seller__"') &&
+  merchantPosScreen.includes('api.ownerItemSales(auth, 7)') &&
+  merchantPosScreen.includes('snap?.owner == true && can("view_sales")') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('.put("category", p.category ?: JSONObject.NULL)') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosOfflineDraftStore.kt').includes('!p.has("category") || p.isNull("category")'),
   'Native FULL POS must preserve Production product categories across filtering, identity switches and offline cache'
@@ -1665,6 +1687,8 @@ ok(
 
 ok(
   merchantPosApi.includes('"pos_product_codes_for_shop"') &&
+  merchantPosApi.includes('"pos_product_code_lookup"') &&
+  merchantPosApi.includes('suspend fun lookupProductCode(') &&
   merchantPosApi.includes('"pos_product_code_save"') &&
   merchantPosApi.includes('"pos_product_code_remove"') &&
   merchantPosScreen.includes('add("codes" to "บาร์โค้ด/SKU")') &&
@@ -1672,19 +1696,9 @@ ok(
   merchantPosScreen.includes('"codes" -> MerchantPosCodesScreen(') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosCodesScreen.kt').includes('api.saveProductCode(auth, product.id, codeType, codeText)') &&
   read('merchant/src/main/java/com/queuego/merchant/MerchantPosCodesScreen.kt').includes('api.removeProductCode(auth, target.id)'),
-  'Native POS barcode/SKU management must reuse Production shop-scoped RPC and manage_staff permission'
-);
-
-ok(
-  merchantPosApi.includes('"pos_product_code_lookup"') &&
-  merchantPosApi.includes('obj.optString("code") == code') &&
-  merchantPosScreen.includes('onBarcodeLookup = {') &&
-  merchantPosScreen.includes('posNetworkValidated(context)') &&
-  merchantPosScreen.includes('selectedBillId == originalBill') &&
-  merchantPosScreen.includes('scannedProduct?.id == product.id') &&
-  merchantPosScreen.includes('onBarcodeAdd(barcodeMatched)') &&
-  merchantPosScreen.includes('addPosProduct(product)'),
-  'Native POS scan/typed barcode lookup must be server-authoritative and preserve bill context'
+  merchantPosScreen.includes('onBarcodeLookup') && merchantPosScreen.includes('if (!kitchenEnabled)') &&
+  merchantPosApi.includes('suspend fun lookupProductCode('),
+  'Native POS keeps barcode/SKU management and exposes the real scanner only for retail counters'
 );
 
 ok(
@@ -1971,5 +1985,15 @@ ok(!merchantPosScreen.includes('it.copy(requestIds = emptyList())') &&
 ok(merchantPosScreen.indexOf('amount > 999999999.0') >= 0 &&
   merchantPosScreen.indexOf('amount > 999999999.0') < merchantPosScreen.indexOf('!cashMovementStore.save(request)'),
   'Cashier must reject amounts outside RPC bounds before persisting an unreplayable cash intent');
+
+const authenticatedReviewWorkflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/rider-android-authenticated-review.yml'),'utf8');
+ok(authenticatedReviewWorkflow.includes("- name: Fetch the exact offline-tested Rider candidate\n        if: ${{ needs.credential-check.outputs.merchant_only != 'true' }}") &&
+  authenticatedReviewWorkflow.includes('REVIEW_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}') &&
+  authenticatedReviewWorkflow.includes('urllib.request.urlopen(request, timeout=20)') &&
+  authenticatedReviewWorkflow.includes('merchant_only: ${{ steps.check.outputs.merchant_only }}') &&
+  authenticatedReviewWorkflow.includes('      - fix-rider-invalid-step-metrics-20261106') &&
+  authenticatedReviewWorkflow.includes("github.ref_name == 'fix-rider-invalid-step-metrics-20261106') && contains(github.event.head_commit.message, '[merchant-visual-review]')") &&
+  authenticatedReviewWorkflow.includes('Capture authenticated Merchant views on Android Emulator'),
+  'Merchant-only visual review must trigger on the POS successor and skip the unrelated nationwide Rider artifact');
 
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));

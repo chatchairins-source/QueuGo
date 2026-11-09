@@ -183,23 +183,43 @@ class QueueGoNavigationRouteClient(
 
         val instructions = mutableListOf<NavigationRouteInstruction>()
         val legs = route.optJSONArray("legs")
+        // Only an ABSENT legs field denotes a geometry-only response.
+        // Explicit null, scalar or object values are malformed guidance:
+        // rejecting them avoids silently erasing turn instructions.
+        require(!route.has("legs") || legs != null) {
+            "QueueGo route navigation legs must be an array"
+        }
         var sequence = 0
         if (legs != null) {
             for (legIndex in 0 until legs.length()) {
-                val steps = legs.optJSONObject(legIndex)?.optJSONArray("steps") ?: continue
+                val leg = legs.optJSONObject(legIndex)
+                    ?: error("QueueGo route contains a malformed navigation leg")
+                // A missing steps field is allowed for older route responses.
+                // Explicitly malformed steps must not silently erase guidance.
+                if (!leg.has("steps")) continue
+                val steps = leg.optJSONArray("steps")
+                    ?: error("QueueGo route contains malformed navigation steps")
                 require(sequence + steps.length() <= QUEUEGO_ROUTE_MAX_STEPS) {
                     "QueueGo route has too many steps"
                 }
                 for (stepIndex in 0 until steps.length()) {
-                    val step = steps.optJSONObject(stepIndex) ?: continue
+                    val step = steps.optJSONObject(stepIndex)
+                        ?: error("QueueGo route contains a malformed turn-by-turn step")
+                    // Missing metrics are permitted for older responses, but an
+                    // explicitly invalid metric must not silently become zero:
+                    // that would corrupt distance-to-turn and instruction timing.
+                    val stepDistance = readOptionalNonNegativeStepMetric(step, "distance")
+                    val stepDuration = readOptionalNonNegativeStepMetric(step, "duration")
+                    require(stepDistance.isFinite() && stepDistance >= 0.0 &&
+                        stepDuration.isFinite() && stepDuration >= 0.0) {
+                        "QueueGo route contains invalid turn-by-turn step metrics"
+                    }
                     instructions += NavigationRouteInstruction(
                         sequence = sequence++,
                         turnCode = step.optInt("vendor_type", 7),
                         roadName = step.optString("name").trim(),
-                        sectionDistanceMeters = step.optDouble("distance", 0.0)
-                            .takeIf { it.isFinite() && it >= 0.0 } ?: 0.0,
-                        sectionDurationSeconds = step.optDouble("duration", 0.0)
-                            .takeIf { it.isFinite() && it >= 0.0 } ?: 0.0
+                        sectionDistanceMeters = stepDistance,
+                        sectionDurationSeconds = stepDuration
                     )
                 }
             }
@@ -275,6 +295,17 @@ class QueueGoNavigationRouteClient(
             instructions = instructions,
             speedLimitIntervals = speedLimitIntervals
         )
+    }
+
+    private fun readOptionalNonNegativeStepMetric(step: JSONObject, key: String): Double {
+        if (!step.has(key)) return 0.0
+        val value = step.opt(key)
+        require(value is Number) { "QueueGo route contains invalid turn-by-turn step metrics" }
+        val metric = value.toDouble()
+        require(metric.isFinite() && metric >= 0.0) {
+            "QueueGo route contains invalid turn-by-turn step metrics"
+        }
+        return metric
     }
 
     private fun appendCoordinates(output: MutableList<NavigationMapPoint>, coordinates: JSONArray?) {

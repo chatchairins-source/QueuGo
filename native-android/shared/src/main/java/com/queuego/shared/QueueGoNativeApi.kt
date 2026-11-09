@@ -104,8 +104,8 @@ internal fun queueGoReverseCandidate(rows: JSONArray): JSONObject? {
 class QueueGoNativeApi {
     private val orderReads = QueueGoOrderReadCompatibility()
     companion object {
-        const val BASE_URL = "https://pkypiqhlrmzocysgeqew.supabase.co"
-        const val PUBLISHABLE_KEY = "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre"
+        val BASE_URL: String get() = QueueGoBackendEnvironment.baseUrl
+        val PUBLISHABLE_KEY: String get() = QueueGoBackendEnvironment.publishableKey
         private const val TIMEOUT = 15000
     }
 

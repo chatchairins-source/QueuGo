@@ -30,6 +30,8 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
     implementation("com.google.firebase:firebase-messaging")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
+    // Snapshot QA compiles against the exact SDK already used by the shared map.
+    androidTestImplementation("org.maplibre.gl:android-sdk-opengl:13.7.1")
     androidTestImplementation("androidx.test.ext:junit:1.3.0")
     androidTestImplementation("androidx.test:runner:1.7.0")
     androidTestImplementation("androidx.test:core:1.7.0")

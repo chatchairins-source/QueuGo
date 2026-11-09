@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -91,10 +92,29 @@ fun QueueGoTheme(content: @Composable () -> Unit) {
 }
 
 @Composable
+fun QueueGoBrandMark(role: String, modifier: Modifier = Modifier) {
+    val drawable = when (role) {
+        "merchant" -> R.drawable.qg_brand_merchant
+        "rider" -> R.drawable.qg_brand_rider
+        else -> R.drawable.qg_brand_customer
+    }
+    Image(painterResource(drawable), contentDescription = null,
+        modifier = modifier.clip(RoundedCornerShape(12.dp)))
+}
+
+@Composable
 fun QueueGoBrand(modifier: Modifier = Modifier, suffix: String? = null) {
+    val appPackage = LocalContext.current.packageName
+    val role = when {
+        appPackage.endsWith(".merchant") -> "merchant"
+        appPackage.endsWith(".rider") -> "rider"
+        else -> "customer"
+    }
+    val name = when (role) { "merchant" -> "QueueMarket"; "rider" -> "Queue Rider"; else -> "QueueGo" }
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
-        Text("Queue", color = QgInk, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
-        Text("Go", color = QgRed, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
+        QueueGoBrandMark(role, Modifier.size(32.dp))
+        Spacer(Modifier.size(8.dp))
+        Text(name, color = QgRed, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
         if (!suffix.isNullOrBlank()) {
             Text("  " + suffix, color = QgMuted, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
         }

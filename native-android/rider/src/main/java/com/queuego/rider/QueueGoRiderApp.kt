@@ -4511,7 +4511,9 @@ private fun RiderReadyCard(
                 enabled = enabled,
                 modifier = Modifier.semantics { contentDescription = "พร้อมรับงาน" },
                 colors = androidx.compose.material3.SwitchDefaults.colors(
-                    checkedTrackColor = QgRed,
+                    // Keep the availability control aligned with Rider Web's green
+                    // online pill; the red accent remains reserved for brand/actions.
+                    checkedTrackColor = Color(0xFF1FBE70),
                     checkedThumbColor = Color.White
                 )
             )
