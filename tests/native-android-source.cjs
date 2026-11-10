@@ -1527,6 +1527,11 @@ ok(merchantProductsScreen.includes('specialPrice.toDoubleOrNull()') &&
   merchantProductsScreen.includes('กรุณากรอกราคาพิเศษให้ถูกต้อง') &&
   !merchantProductsScreen.includes('specialPrice.toDoubleOrNull() ?: 10.0'),
   'Merchant menu editor must reject an incomplete special price instead of silently charging 10 baht');
+ok(merchantProductsScreen.includes('toppingPrices[index].toDoubleOrNull()') &&
+  merchantProductsScreen.includes('กรุณากรอกราคาท็อปปิ้งให้ถูกต้อง') &&
+  merchantProductsScreen.includes('priceText = toppingPrices[index]') &&
+  !merchantProductsScreen.includes('priceText.toDoubleOrNull() ?: 0.0'),
+  'Merchant menu editor must preserve incomplete topping input and reject it at save');
 ok(silentMerchantGrocery.includes('stockQty.toIntOrNull() != null') &&
   !silentMerchantGrocery.includes('stockQty = stockQty.toIntOrNull() ?: 0'),
   'Merchant grocery editor must not silently turn an empty stock field into zero');

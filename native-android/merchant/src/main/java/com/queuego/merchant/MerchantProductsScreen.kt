@@ -336,6 +336,9 @@ internal fun MerchantProductEditorScreen(
     var portionEnabled by remember(product?.id) { mutableStateOf(initialOptions.portionEnabled) }
     var specialPrice by remember(product?.id) { mutableStateOf(initialOptions.specialPrice.toString()) }
     var toppings by remember(product?.id) { mutableStateOf(initialOptions.toppings) }
+    var toppingPrices by remember(product?.id) {
+        mutableStateOf(initialOptions.toppings.map { it.price.toString() })
+    }
     var genericVariants by remember(product?.id) {
         mutableStateOf(merchantGenericVariantText(product?.variantsJson ?: "[]"))
     }
@@ -649,17 +652,23 @@ internal fun MerchantProductEditorScreen(
                 toppings.forEachIndexed { index, item ->
                     MerchantToppingRow(
                         item = item,
+                        priceText = toppingPrices[index],
+                        onPriceChange = { next ->
+                            toppingPrices = toppingPrices.toMutableList().also { it[index] = next }
+                        },
                         onChange = { changed ->
                             toppings = toppings.toMutableList().also { it[index] = changed }
                         },
                         onRemove = {
                             toppings = toppings.toMutableList().also { it.removeAt(index) }
+                            toppingPrices = toppingPrices.toMutableList().also { it.removeAt(index) }
                         }
                     )
                 }
                 OutlinedButton(
                     onClick = {
                         toppings = toppings + MerchantToppingOption("", 0.0, true)
+                        toppingPrices = toppingPrices + "0.0"
                     },
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
                 ) { Text("＋ เพิ่มท็อปปิ้งเอง") }
@@ -721,13 +730,19 @@ internal fun MerchantProductEditorScreen(
                         require(value >= 0.0) { "ราคาขายหน้าร้านไม่ถูกต้อง" }
                         require(stockValue >= 0) { "จำนวนสินค้าในสต็อกไม่ถูกต้อง" }
                         val variants = if (food) {
+                            val validToppings = toppings.mapIndexed { index, topping ->
+                                if (!topping.enabled) topping else topping.copy(
+                                    price = toppingPrices[index].toDoubleOrNull()
+                                        ?: throw IllegalArgumentException("กรุณากรอกราคาท็อปปิ้งให้ถูกต้อง")
+                                )
+                            }
                             merchantRestaurantVariantsJson(
                                 portionEnabled = portionEnabled,
                                 specialPrice = if (portionEnabled) {
                                     specialPrice.toDoubleOrNull()
                                         ?: throw IllegalArgumentException("กรุณากรอกราคาพิเศษให้ถูกต้อง")
                                 } else 0.0,
-                                toppings = toppings
+                                toppings = validToppings
                             )
                         } else {
                             merchantGenericVariantsJson(genericVariants)
@@ -913,10 +928,11 @@ private fun ProductSwitchRow(
 @Composable
 private fun MerchantToppingRow(
     item: MerchantToppingOption,
+    priceText: String,
+    onPriceChange: (String) -> Unit,
     onChange: (MerchantToppingOption) -> Unit,
     onRemove: () -> Unit
 ) {
-    var priceText by remember(item.name, item.price) { mutableStateOf(item.price.toString()) }
     Row(
         Modifier
             .fillMaxWidth()
@@ -939,12 +955,10 @@ private fun MerchantToppingRow(
         Spacer(Modifier.width(5.dp))
         OutlinedTextField(
             value = priceText,
-            onValueChange = { next ->
-                priceText = next.filter { ch -> ch.isDigit() || ch == '.' }
-                onChange(item.copy(price = priceText.toDoubleOrNull() ?: 0.0))
-            },
+            onValueChange = { next -> onPriceChange(next.filter { ch -> ch.isDigit() || ch == '.' }) },
             modifier = Modifier.weight(.85f),
             label = { Text("+ บาท", fontSize = 8.sp) },
+            isError = item.enabled && priceText.toDoubleOrNull() == null,
             singleLine = true
         )
         Spacer(Modifier.width(4.dp))
