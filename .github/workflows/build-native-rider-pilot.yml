@@ -297,6 +297,7 @@ jobs:
           PY
           test "$(stat -c %s "$source_pbf")" -eq 330076369
           (cd "$QG_MAP_DATA_DIR" && md5sum --check source-check.md5)
+          ln -s "$source_pbf" "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
           source_sha256="$(sha256sum "$source_pbf" | cut -d ' ' -f 1)"
           echo "Pinned Geofabrik Thailand snapshot 2026-11-09: 330076369 bytes; SHA-256 $source_sha256" >> "$GITHUB_STEP_SUMMARY"
           bash native-android/qa/build-thailand-shortbread-pmtiles.sh
