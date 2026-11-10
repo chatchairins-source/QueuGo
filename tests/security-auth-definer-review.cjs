@@ -5,6 +5,7 @@ let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const review=JSON.parse(read('docs/security-auth-definer-review.json'));
 const anon=JSON.parse(read('docs/security-anon-definer-allowlist.json'));
+const live=JSON.parse(read('docs/security-definer-production-audit-20261110.json'));
 const migration=read('supabase/migrations/20261007021517_security_scope_authenticated_definer_helpers.sql');
 const cash=read('QueueGo-Market-Checkout-Migration.sql');
 
@@ -22,6 +23,12 @@ ok(/sp\.user_id=v_user/.test(migration)&&/v_role<>'admin'/.test(migration),'effe
 ok(/revoke execute on function public\.market_public_catalog\(\) from authenticated/i.test(migration),'legacy market catalog must stay service-only');
 ok(/revoke execute on function public\.queuego_nearest_market[\s\S]+from authenticated/i.test(migration),'unused nearest-market helper must stay service-only');
 ok(review.conclusion==='PASS_CODE_DATABASE_REVIEW','review conclusion must remain explicit');
+ok(live.snapshot_date==='2026-11-10'&&live.project_ref===review.production_project,'live production security snapshot must identify its source');
+ok(live.public_schema_anonymous_security_definer_count===anon.rules.length,'the reviewed anon allowlist must match the live privilege count');
+ok(live.public_schema_authenticated_security_definer_count===189&&live.public_schema_authenticated_security_definer_count>review.authenticated_security_definer_total,'live authenticated definer surface exceeds historical review');
+ok(live.observed_authenticated_count_increase_since_review===live.public_schema_authenticated_security_definer_count-review.authenticated_security_definer_total,'audit must account for scope growth');
+ok(live.status==='PENDING_FULL_CURRENT_SECURITY_REVIEW'&&!live.production_mutations_performed,'historical review cannot certify current production security');
+ok(live.remaining_findings.leaked_password_protection_disabled===true,'disabled leaked-password protection remains an explicit platform blocker');
 ok(/leaked-password protection/i.test(review.boundary),'platform Auth blocker must remain separate from code/database review');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Authenticated SECURITY DEFINER review, public allowlist, downstream checkout guard and scoped GP access'}));
