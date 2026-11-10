@@ -27,6 +27,8 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify exact-head country runtime trigger contract
+        run: node tests/native-country-runtime-pr-gate.cjs
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
