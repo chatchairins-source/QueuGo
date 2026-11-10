@@ -145,10 +145,13 @@ jobs:
           set -euo pipefail
           test -n "$QG_SUPABASE_DB_URL" || { echo "::error::Missing QG_SUPABASE_DB_URL"; exit 1; }
           ledger="$RUNNER_TEMP/queuego-release-migrations.txt"
+          metadata="$RUNNER_TEMP/queuego-release-migration-metadata.tsv"
+          trap 'rm -f "$ledger" "$metadata"' EXIT
           psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
             -c 'select version from supabase_migrations.schema_migrations order by version' > "$ledger"
-          python3 ops/verify-migration-ledger.py "$ledger"
-          rm -f "$ledger"
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -F $'\t' -v ON_ERROR_STOP=1 \
+            -c "select version, name, md5(array_to_string(statements, E'\\n')) from supabase_migrations.schema_migrations order by version" > "$metadata"
+          python3 ops/verify-migration-ledger.py "$ledger" --metadata "$metadata"
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
