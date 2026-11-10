@@ -1523,6 +1523,22 @@ ok(merchantNotifications.includes('ทั้งหมด')&&merchantNotification
 ok(source.includes('unreadCount = notifications.count { !it.isRead }')&&source.includes('QgIconButton(')&&source.includes('"notifications" -> MerchantNotificationsScreen'),'Merchant native header must expose unread notification badge and route');
 const merchantProductModel=read('merchant/src/main/java/com/queuego/merchant/MerchantProductModel.kt');
 const merchantProductsScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantProductsScreen.kt');
+ok(merchantProductsScreen.includes('specialPrice.toDoubleOrNull()') &&
+  merchantProductsScreen.includes('กรุณากรอกราคาพิเศษให้ถูกต้อง') &&
+  !merchantProductsScreen.includes('specialPrice.toDoubleOrNull() ?: 10.0'),
+  'Merchant menu editor must reject an incomplete special price instead of silently charging 10 baht');
+ok(merchantProductsScreen.includes('toppingPrices[index].toDoubleOrNull()') &&
+  merchantProductsScreen.includes('กรุณากรอกราคาท็อปปิ้งให้ถูกต้อง') &&
+  merchantProductsScreen.includes('priceText = toppingPrices[index]') &&
+  !merchantProductsScreen.includes('priceText.toDoubleOrNull() ?: 0.0'),
+  'Merchant menu editor must preserve incomplete topping input and reject it at save');
+ok(silentMerchantGrocery.includes('stockQty.toIntOrNull() != null') &&
+  !silentMerchantGrocery.includes('stockQty = stockQty.toIntOrNull() ?: 0'),
+  'Merchant grocery editor must not silently turn an empty stock field into zero');
+ok(silentMerchantLaundry.includes('enabled = !busy && feesValid') &&
+  silentMerchantLaundry.includes('if (roundMode) settings.pickupFee') &&
+  !silentMerchantLaundry.includes('minimum.toDoubleOrNull() ?: 0.0'),
+  'Merchant laundry settings must reject incomplete visible fees and preserve hidden fee values');
 ok(source.includes('products?select=id,name,description,price,delivery_price,image,category,stock,variants,available,pos_available,delivery_available,pos_price,delivery_restriction,inventory_stock_tracking,grocery_master_id,grocery_stock_tracking,metadata'),'Merchant native products must load Production stock/category/variant/channel and inventory-tracking fields');
 ok(source.includes('merchantDeliveryPriceFromStore')&&source.includes('1.0 + rate / 100.0'),'Merchant native Delivery price must add GP to the storefront price like Production web');
 ok(merchantProductModel.includes('merchantEffectiveGpRate(raw: Any?)')&&merchantApiSource.includes('val gpRate = effectiveGp(auth, shopId)')&&merchantProductsScreen.includes('gpRateValid'),'Merchant product save must re-fetch and validate GP instead of saving at 0% after a failed load');

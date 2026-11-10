@@ -217,6 +217,12 @@ private fun LaundrySettingsCard(
     var returnFee by remember(settings) { mutableStateOf(settings.returnFee.toString()) }
     var roundTrip by remember(settings) { mutableStateOf(settings.roundTripFee.toString()) }
     var roundMode by remember(settings) { mutableStateOf(settings.deliveryFeeMode == "round_trip") }
+    val minimumValue = minimum.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 }
+    val pickupValue = pickup.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 }
+    val returnValue = returnFee.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 }
+    val roundTripValue = roundTrip.toDoubleOrNull()?.takeIf { it.isFinite() && it >= 0.0 }
+    val feesValid = minimumValue != null && (if (roundMode) roundTripValue != null
+        else pickupValue != null && returnValue != null)
 
     QgCard(Modifier.fillMaxWidth()) {
         Column {
@@ -239,20 +245,22 @@ private fun LaundrySettingsCard(
                 OutlinedTextField(returnFee, { returnFee = numeric(it) }, label = { Text("ค่าส่งคืน") }, modifier = Modifier.fillMaxWidth())
             }
             Spacer(Modifier.height(10.dp))
+            if (!feesValid) Text("กรุณากรอกยอดและค่ารับ-ส่งให้ครบก่อนบันทึก", color = QgRed)
             Button(
                 onClick = {
+                    if (!feesValid) return@Button
                     onSave(
                         MerchantLaundrySettings(
                             enabled,
-                            minimum.toDoubleOrNull() ?: 0.0,
-                            pickup.toDoubleOrNull() ?: 0.0,
-                            returnFee.toDoubleOrNull() ?: 0.0,
-                            roundTrip.toDoubleOrNull() ?: 0.0,
+                            minimumValue ?: return@Button,
+                            if (roundMode) settings.pickupFee else pickupValue ?: return@Button,
+                            if (roundMode) settings.returnFee else returnValue ?: return@Button,
+                            if (roundMode) roundTripValue ?: return@Button else settings.roundTripFee,
                             if (roundMode) "round_trip" else "separate"
                         )
                     )
                 },
-                enabled = !busy,
+                enabled = !busy && feesValid,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("บันทึกค่าฝากซัก") }
         }
