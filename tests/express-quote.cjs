@@ -36,7 +36,7 @@ const assert=require('node:assert/strict');
  eq((await handler(req({...payload,destination:payload.pickup}))).status,400);
  eq((await handler(req({...payload,sender:{...payload.sender,phone:''}}))).status,400);
  calls=[];
- for(const bad of ['abcde','12345','+66abc123456','0812345678 ext 9','0812345678901234','++66812345678','0812345678\\n123']){
+ for(const bad of ['abcde','12345','+66abc123456','0812345678 ext 9','0812345678901234','++66812345678','0812345678\n123']){
   eq((await handler(req({...payload,sender:{...payload.sender,phone:bad}}))).status,400);
   eq((await handler(req({...payload,receiver:{...payload.receiver,phone:bad}}))).status,400);
  }
