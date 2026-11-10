@@ -40,8 +40,25 @@ jobs:
         with:
           gradle-version: '9.6.0'
       - name: Android SDK
+        shell: bash
         run: |
-          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' >/dev/null
+          set -euo pipefail
+          if [ -f "$ANDROID_HOME/platforms/android-36/android.jar" ] &&
+             [ -x "$ANDROID_HOME/build-tools/36.0.0/aapt2" ]; then
+            echo "Android 36 platform and build tools are already installed"
+            exit 0
+          fi
+          for attempt in 1 2; do
+            if timeout --signal=TERM --kill-after=10s 180s bash -c \
+              'yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null'; then
+              test -f "$ANDROID_HOME/platforms/android-36/android.jar"
+              test -x "$ANDROID_HOME/build-tools/36.0.0/aapt2"
+              exit 0
+            fi
+            echo "::warning::Android SDK installation attempt $attempt timed out or failed"
+          done
+          echo "::error::Android SDK installation failed after two bounded attempts"
+          exit 1
       - name: Customer JVM and real UI harness builds
         run: gradle -p native-android :customer:testDebugUnitTest :customer:assembleDebug :customer:assembleDebugAndroidTest --no-daemon --stacktrace
       - name: Android acceleration
