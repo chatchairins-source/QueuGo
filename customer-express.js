@@ -22,9 +22,14 @@
   const p=pending();if(p){const committed=rows.find(o=>o.id===p.p_request_id)||(await read(p.p_request_id))[0];if(!same(u))return;if(committed){selected=committed.id;rows=[committed,...rows.filter(o=>o.id!==committed.id)];localStorage.removeItem(key());}}
  }
  function schedule(){clearTimeout(timer);if(document.hidden||!onExpress())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{await refresh();if(onExpress()&&(pending()||rows.some(o=>!terminal(o))))render()}catch(e){error=e.message;if(onExpress())render()}}schedule()},5000)}
+ function clearExpressQuote(){
+  const invalidated=Boolean(quote||quoteSource);
+  quote=null;quoteSource='';
+  return invalidated;
+ }
  function bindForm(){
   const map={expressSenderName:'senderName',expressSenderPhone:'senderPhone',expressReceiverName:'receiverName',expressReceiverPhone:'receiverPhone',expressItemType:'itemType',expressWeight:'weight',expressSize:'size',expressVehicle:'vehicleType',expressInstructions:'instructions'};
-  Object.entries(map).forEach(([id,k])=>{const e=$(id);if(e){let invalidated=false;e.oninput=()=>{form[k]=e.value;if(quote){invalidated=true}quote=null;quoteSource=''};e.onchange=()=>{if(invalidated&&!busy&&onExpress())render()}}});
+  Object.entries(map).forEach(([id,k])=>{const e=$(id);if(e)e.oninput=()=>{form[k]=e.value;if(!clearExpressQuote()||!onExpress())return;const fieldId=e.id,start=e.selectionStart,end=e.selectionEnd,direction=e.selectionDirection;render();const updated=$(fieldId);if(!updated)return;if(typeof updated.focus==='function')updated.focus({preventScroll:true});if(Number.isInteger(start)&&Number.isInteger(end)&&typeof updated.setSelectionRange==='function')updated.setSelectionRange(start,end,direction||'none')};});
  }
  function mountTracking(o){
   try{trackingMap?.remove()}catch{}trackingMap=null;
@@ -78,12 +83,13 @@
   if(!current&&!p)html+=rows.filter(terminal).slice(0,5).map(o=>'<p><a href="#express/'+esc(o.id)+'">'+esc(QueueGoOrderNumber.format(o))+' · '+baht(o.fare)+'</a></p>').join('');
   layout(html,'orders');bindForm();document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>action(button.dataset.action));if(current)mountTracking(current);
  }
+ function saveExpressPoint(which,next){if(which==='pickup')pickup=next;else destination=next;clearExpressQuote()}
  async function pick(which){
   const old=which==='pickup'?pickup:destination;let point=old?{lat:old.lat,lng:old.lng}:null,revision=0;
   layout('<div class="pt"><h1>'+(which==='pickup'?'เลือกจุดรับพัสดุ':'เลือกจุดส่งพัสดุ')+'</h1></div><section class="card"><div id="express-location-map" class="mapbox" style="height:240px"></div><button class="lk" id="express-gps">ใช้ตำแหน่ง GPS ปัจจุบัน</button><textarea id="express-address" class="in" maxlength="500" placeholder="ที่อยู่หรือจุดสังเกต">'+esc(old?.address||'')+'</textarea><button id="express-save-location" class="prim">ใช้จุดนี้</button><button id="express-back" class="lk">กลับ</button><p id="express-location-error" role="status"></p></section>','orders');
   const u=actor();picker=initLocationPicker('express-location-map',old?.lat,old?.lng,async(lat,lng)=>{point={lat,lng};const version=++revision,field=$('express-address');if(!field||field.value.trim())return;const address=await qtReverseGeocodeCustomer(lat,lng);if(same(u)&&version===revision&&field.isConnected&&!field.value.trim())field.value=address});
   $('express-gps').onclick=()=>picker?.locate();$('express-back').onclick=()=>{picker?.destroy();picker=null;render()};
-  $('express-save-location').onclick=()=>{const address=$('express-address').value.trim();if(!point||address.length<3){$('express-location-error').textContent='เลือกหมุดและระบุที่อยู่ให้ครบ';return}const next={...point,address};if(which==='pickup')pickup=next;else destination=next;quote=null;quoteSource='';picker?.destroy();picker=null;render()};
+  $('express-save-location').onclick=()=>{const address=$('express-address').value.trim();if(!point||address.length<3){$('express-location-error').textContent='เลือกหมุดและระบุที่อยู่ให้ครบ';return}const next={...point,address};saveExpressPoint(which,next);picker?.destroy();picker=null;render()};
  }
  function validExpressContactPhone(input){
   const phone=String(input??'').trim();
@@ -97,28 +103,30 @@
   if(form.senderName.trim().length<1||!validExpressContactPhone(form.senderPhone)||form.receiverName.trim().length<1||!validExpressContactPhone(form.receiverPhone)||form.itemType.trim().length<1||!Number.isFinite(weight)||weight<=0||weight>1000)throw Error('กรอกข้อมูลผู้ส่ง ผู้รับ และพัสดุให้ครบ');
   return {pickup,destination,sender:{name:form.senderName.trim(),phone:form.senderPhone.trim()},receiver:{name:form.receiverName.trim(),phone:form.receiverPhone.trim()},item:{type:form.itemType.trim(),weightKg:weight,size:form.size,vehicleType:form.vehicleType,instructions:form.instructions.trim()}};
  }
+ function expressQuoteMatches(source){return !!source&&JSON.stringify(formPayload())===source}
+ function acceptExpressQuote(source,data){if(!expressQuoteMatches(source))throw Error('ข้อมูลพัสดุเปลี่ยนแล้ว กรุณาตรวจค่าส่งอีกครั้ง');quote=data;quoteSource=source}
  async function action(kind){
-  if(busy)return;if(kind==='retry')return V.express(selected);if(kind==='pickup'||kind==='destination')return pick(kind);if(kind==='new'){selected=null;quote=null;error='';return render()}
+  if(busy)return;if(kind==='retry')return V.express(selected);if(kind==='pickup'||kind==='destination')return pick(kind);if(kind==='new'){selected=null;clearExpressQuote();error='';return render()}
   const u=actor();busy=true;error='';render();
   try{
    if(kind==='quote'){
     const payload=formPayload(),source=JSON.stringify(payload);
     const accessToken=await token();if(!same(u))return;
     const res=await fetch(CFG.URL+'/functions/v1/queuego-express-quote',{method:'POST',headers:hdr(accessToken),body:source,signal:AbortSignal.timeout(30000)});
-    const data=await res.json();if(!res.ok)throw Error(data.error||'ยังประเมินราคา Express ไม่ได้');if(!same(u))return;if(JSON.stringify(formPayload())!==source)throw Error('ข้อมูลพัสดุเปลี่ยนแล้ว กรุณาตรวจค่าส่งอีกครั้ง');quote=data;quoteSource=source;
+    const data=await res.json();if(!res.ok)throw Error(data.error||'ยังประเมินราคา Express ไม่ได้');if(!same(u))return;acceptExpressQuote(source,data);
    }else if(kind==='request'){
-    let p=pending();if(!p){if(!quote||!quoteSource||JSON.stringify(formPayload())!==quoteSource)throw Error('ข้อมูลพัสดุเปลี่ยนแล้ว กรุณาตรวจค่าส่งอีกครั้ง');p={p_request_id:uuid(),p_quote_id:quote.quote_id};localStorage.setItem(key(),JSON.stringify(p))}
+    let p=pending();if(!p){if(!quote||!expressQuoteMatches(quoteSource))throw Error('ข้อมูลพัสดุเปลี่ยนแล้ว กรุณาตรวจค่าส่งอีกครั้ง');p={p_request_id:uuid(),p_quote_id:quote.quote_id};localStorage.setItem(key(),JSON.stringify(p))}
     const result=await rpc('queuego_request_express',p);if(!same(u))return;if(result?.id!==p.p_request_id)throw Error('ยังยืนยันเลขงาน Express ไม่ได้');selected=result.id;
-    try{localStorage.removeItem(key())}catch{}quote=null;await refresh();
+    try{localStorage.removeItem(key())}catch{}clearExpressQuote();await refresh();
    }else if(kind==='cancel'){
     const o=rows.find(r=>r.id===selected);if(!o||o.rider_id||o.status!=='searching_rider')throw Error('งานนี้ยกเลิกไม่ได้');await rpc('qg_customer_cancel_order',{p_order_id:o.id});if(same(u))await refresh();
    }
   }catch(e){
-   if(same(u)){error=e.message;if(kind==='request'){try{const p=pending(),committed=p&&(await read(p.p_request_id))[0];if(!same(u))return;if(committed){selected=committed.id;rows=[committed,...rows.filter(o=>o.id!==committed.id)];localStorage.removeItem(key());error='';quote=null}}catch{}}}
+   if(same(u)){error=e.message;if(kind==='request'){try{const p=pending(),committed=p&&(await read(p.p_request_id))[0];if(!same(u))return;if(committed){selected=committed.id;rows=[committed,...rows.filter(o=>o.id!==committed.id)];localStorage.removeItem(key());error='';clearExpressQuote()}}catch{}}}
   }finally{busy=false;if(same(u))render()}
  }
  V.express=async(id,ticket=routeVersion)=>{
-  const u=actor();if(!u)return go('login');stop();if(owner!==u){owner=u;pickup=currentPos?{lat:currentPos.lat,lng:currentPos.lng,address:currentPos.address}:null;destination=quote=selected=null;rows=[];error='';}
+  const u=actor();if(!u)return go('login');stop();if(owner!==u){owner=u;pickup=currentPos?{lat:currentPos.lat,lng:currentPos.lng,address:currentPos.address}:null;destination=quote=selected=null;clearExpressQuote();rows=[];error='';}
   if(id)selected=id;error='';
   try{const c=await rpc('queuego_express_config');if(!same(u)||ticket!==routeVersion)return;config=c||{};await refresh();if(!same(u)||ticket!==routeVersion)return}catch(e){if(!same(u)||ticket!==routeVersion)return;config={enabled:false,configured:false};error='โหลดข้อมูล Express ไม่สำเร็จ กรุณาลองอีกครั้ง'}
   render();schedule();

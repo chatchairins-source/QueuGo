@@ -1,3 +1,12 @@
+## 2026-11-10 Customer Express stale quote UI and test wiring — IN PROGRESS
+
+- Verified source heads before editing: main `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`, PR #908 `000e9c73fb3a2b72b07c7649778a87b85e2eed4d`, and PR #913 `890f3146f9c6f905f7d405fa0a515d4f8b562b6d`. #913 is 16 commits ahead of #908 and directly based on it; it remains stacked. The PR lineage is diverged from main (merge base `65638570b670b3949457d2fd8317bf4f65d8c0a5`; PR head is 4,128 ahead and 1,080 behind main).
+- Found a Web Customer bug in #913: typing into a quoted form cleared the quote variables but deferred the repaint until `change`/blur, leaving the previous fare and Rider request button visible while editing. The existing quote freshness file was also not included in `npm test`.
+- Follow-up changes on a new branch based exactly on #913: clear quote state and repaint on input; preserve focus and text selection; clear quote source when route/order state resets; compare the live payload before accepting a delayed quote response or submitting a quote; add behavioral regressions for sender/receiver phone, weight, vehicle, pickup and destination edits and six late API responses; include the regression in `npm test`.
+- Local verification: `node --check customer-express.js` and the focused quote freshness regression pass. No Production SQL, RLS, RPC, order, payment, or user data was changed.
+- Current exact predecessor CI at review time: PR #908 Native Pilot exact head passed, with map/navigation runtime jobs skipped; PR #913 Customer P0 API 26 passed while APIs 30/33/35 were still running, and its Native Pilot was queued. Check the new stacked PR's exact-head run before reporting CI as complete.
+- **NEXT:** inspect the follow-up PR's exact-head Native Pilot/full npm regression and Customer P0 evidence; then continue the Native release, migration reconciliation, non-Production E2E, and signing gates. No Production Express rollout or Production release claim.
+
 ## 2026-11-09 Bounded Rider offline routing metadata
 
 - Rider bundled routing now reads manifest bytes under a strict 64 KiB cap instead of trusting `InputStream.available()`, and rejects a config manifest declaring more than 64 KiB before copying and parsing it. The actual graph remains checksum verified and offline-only.
