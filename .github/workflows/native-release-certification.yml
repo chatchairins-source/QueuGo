@@ -151,7 +151,16 @@ jobs:
             -c 'select version from supabase_migrations.schema_migrations order by version' > "$ledger"
           psql "$QG_SUPABASE_DB_URL" -X -A -t -F $'\t' -v ON_ERROR_STOP=1 \
             -c "select version, name, md5(array_to_string(statements, E'\\n')) from supabase_migrations.schema_migrations order by version" > "$metadata"
-          python3 ops/verify-migration-ledger.py "$ledger" --metadata "$metadata"
+          python3 ops/verify-migration-ledger.py "$ledger" --metadata "$metadata" --report "$RUNNER_TEMP/queuego-migration-ledger-report.json"
+
+      - name: Preserve migration reconciliation diagnostics on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: migration-reconciliation-${{ github.sha }}
+          path: ${{ runner.temp }}/queuego-migration-ledger-report.json
+          if-no-files-found: ignore
+          retention-days: 14
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
