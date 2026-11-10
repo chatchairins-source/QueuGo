@@ -9,7 +9,7 @@ import re
 import sys
 
 
-VERSION = re.compile(r"^\d{14}$")
+VERSION = re.compile(r"^[0-9]{14}$")
 MD5 = re.compile(r"^[0-9a-f]{32}$")
 
 
@@ -37,7 +37,7 @@ def deployed_versions(path: Path) -> set[str]:
     return set(values)
 
 
-def equivalent_sql(root: Path, path: Path, deployed: set[str]) -> tuple[dict[str, list[str]], dict[str, dict[str, str]]]:
+def equivalent_sql(root: Path, path: Path, deployed: set[str]) -> tuple[dict[str, list[str]], dict[str, dict[str, str]], dict[str, list[str]]]:
     """Find byte-identical SQL with the same name under a different version.
 
     This is diagnostic only: an equivalent does not certify ledger alignment.
@@ -58,6 +58,11 @@ def equivalent_sql(root: Path, path: Path, deployed: set[str]) -> tuple[dict[str
         production.setdefault((name, digest), []).append(version)
     if seen != deployed:
         raise ValueError("Production migration metadata does not match the ledger")
+    replayed_sql = {
+        f"{name} [{digest}]": sorted(versions)
+        for (name, digest), versions in production.items()
+        if len(versions) > 1
+    }
 
     matches: dict[str, list[str]] = {}
     name_mismatches: dict[str, dict[str, str]] = {}
@@ -72,7 +77,7 @@ def equivalent_sql(root: Path, path: Path, deployed: set[str]) -> tuple[dict[str
         counterparts = [v for v in production.get((name, digest), []) if v != version]
         if counterparts:
             matches[version] = sorted(counterparts)
-    return matches, name_mismatches
+    return matches, name_mismatches, replayed_sql
 
 
 def main() -> int:
@@ -87,9 +92,9 @@ def main() -> int:
     try:
         checked_in = checked_in_versions(args.root)
         deployed = deployed_versions(args.ledger)
-        equivalents, name_mismatches = (
+        equivalents, name_mismatches, replayed_sql = (
             equivalent_sql(args.root, args.metadata, deployed)
-            if args.metadata else ({}, {})
+            if args.metadata else ({}, {}, {})
         )
     except (OSError, ValueError) as error:
         print(f"::error::Migration ledger verification failed: {error}", file=sys.stderr)
@@ -104,6 +109,11 @@ def main() -> int:
         for version in sorted(equivalents):
             print(f"  {version} -> {', '.join(equivalents[version])}")
         print("These matches are diagnostic; every version mismatch still blocks certification.")
+        if replayed_sql:
+            print(f"Production repeated-name identical-SQL groups ({len(replayed_sql)}):")
+            for label, versions in sorted(replayed_sql.items()):
+                print(f"  {label}: {', '.join(versions)}")
+            print("Repeated SQL is diagnostic; never rewrite deployed migration history automatically.")
         if name_mismatches:
             print(f"Applied migration name mismatches ({len(name_mismatches)}):")
             for version, names in sorted(name_mismatches.items()):
@@ -116,6 +126,7 @@ def main() -> int:
             "untracked_in_production": untracked,
             "same_name_sql_equivalents": equivalents,
             "applied_version_name_mismatches": name_mismatches,
+            "production_repeated_sql_groups": replayed_sql,
             "reconciled": not (missing or untracked or name_mismatches),
         }
         try:
