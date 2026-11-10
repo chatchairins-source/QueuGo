@@ -31,6 +31,16 @@ internal data class PendingExpress(val requestId: String, val quoteId: String) {
 internal fun validExpressWeightKg(weightKg: Double?): Boolean =
     weightKg != null && weightKg.isFinite() && weightKg > 0.0 && weightKg <= 1000.0
 
+// Keep the Native form aligned with the Express quote endpoint. Allow common
+// formatting, but require 9-15 digits so the sender/recipient can be called.
+internal fun validExpressContactPhone(input: String): Boolean {
+    val phone = input.trim()
+    if (phone.length !in 9..30 || phone.count { it in '0'..'9' } !in 9..15) return false
+    return phone.withIndex().all { (index, char) ->
+        char in '0'..'9' || char in "(). -" || (index == 0 && char == '+')
+    }
+}
+
 internal data class CustomerExpressOrder(
     val id: String,
     val number: String,
@@ -109,6 +119,9 @@ private class CustomerExpressApi(private val http: QueueGoNativeApi = QueueGoNat
         instructions: String
     ): JSONObject {
         require(validExpressWeightKg(weightKg)) { "น้ำหนักพัสดุต้องมากกว่า 0 และไม่เกิน 1,000 กก." }
+        require(validExpressContactPhone(senderPhone) && validExpressContactPhone(receiverPhone)) {
+            "กรุณากรอกเบอร์โทรผู้ส่งและผู้รับที่ติดต่อได้"
+        }
         fun point(location: CustomerLocation) = JSONObject()
             .put("lat", location.latitude)
             .put("lng", location.longitude)
@@ -219,8 +232,8 @@ internal fun CustomerExpressScreen(
     val frozen = busy || pending != null || current?.terminal == false
     val weightKg = weightText.toDoubleOrNull()
     val formReady = pickup != null && destination != null &&
-        senderName.trim().isNotEmpty() && senderPhone.trim().length >= 5 &&
-        receiverName.trim().isNotEmpty() && receiverPhone.trim().length >= 5 &&
+        senderName.trim().isNotEmpty() && validExpressContactPhone(senderPhone) &&
+        receiverName.trim().isNotEmpty() && validExpressContactPhone(receiverPhone) &&
         itemType.trim().isNotEmpty() && validExpressWeightKg(weightKg)
 
     val editing = picker
