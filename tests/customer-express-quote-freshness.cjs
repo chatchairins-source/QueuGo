@@ -15,6 +15,10 @@ assert.match(source, /quote=null;quoteSource=''/);
 assert.match(source, /id="express-quote-summary"/);
 assert.match(source, /e\.onchange=\(\)=>\{if\(invalidated&&!busy&&onExpress\(\)\)render\(\)\}/);
 assert.match(source, /quote=null;quoteSource='';picker\?\.destroy\(\)/);
+assert.match(source, /typeof data\.quote_id!=='string'/);
+assert.match(source, /!Number\.isFinite\(data\.fare\)\|\|data\.fare<0/);
+assert.match(source, /!Number\.isFinite\(data\.distance_km\)\|\|data\.distance_km<0/);
+assert.match(source, /!Number\.isFinite\(data\.duration_minutes\)\|\|data\.duration_minutes<0/);
 // Exercise the comparison contract with a changed phone, weight and pickup.
 const fingerprint = value => JSON.stringify(value);
 const original = {sender:{phone:'0812345678'},item:{weightKg:1},pickup:{lat:14,lng:102}};
