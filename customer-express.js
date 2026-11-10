@@ -98,7 +98,7 @@
   return {pickup,destination,sender:{name:form.senderName.trim(),phone:form.senderPhone.trim()},receiver:{name:form.receiverName.trim(),phone:form.receiverPhone.trim()},item:{type:form.itemType.trim(),weightKg:weight,size:form.size,vehicleType:form.vehicleType,instructions:form.instructions.trim()}};
  }
  async function action(kind){
-  if(busy)return;if((kind==='quote'||kind==='request')&&(!config.enabled||!config.configured)){error='บริการ Express ยังไม่เปิดให้ใช้ในขณะนี้';quote=null;quoteSource='';render();return}if(kind==='retry')return V.express(selected);if(kind==='pickup'||kind==='destination')return pick(kind);if(kind==='new'){selected=null;quote=null;error='';return render()}
+  if(busy)return;if((kind==='quote'||(kind==='request'&&!pending()))&&(!config.enabled||!config.configured)){error='บริการ Express ยังไม่เปิดให้ใช้ในขณะนี้';quote=null;quoteSource='';render();return}if(kind==='retry')return V.express(selected);if(kind==='pickup'||kind==='destination')return pick(kind);if(kind==='new'){selected=null;quote=null;error='';return render()}
   const u=actor();busy=true;error='';render();
   try{
    if(kind==='quote'){
