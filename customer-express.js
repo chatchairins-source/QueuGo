@@ -40,7 +40,7 @@
   trackingMap.on('load',()=>{if(!trackingMap)return;const bounds=new maplibregl.LngLatBounds();pts.forEach(p=>{new maplibregl.Marker({color:p[2],scale:.85}).setLngLat([p[0],p[1]]).addTo(trackingMap);bounds.extend([p[0],p[1]])});if(pts.length>1)trackingMap.fitBounds(bounds,{padding:38,maxZoom:15,duration:0})});
  }
  function render(){
-  if(!onExpress())return;const current=rows.find(o=>o.id===selected),p=pending();stop();
+  if(!onExpress())return;const current=rows.find(o=>o.id===selected);let p=null,pendingInvalid=false;try{p=pending()}catch(e){pendingInvalid=true;error=e.message}stop();
   let html='<div class="pt"><button class="back" onclick="go(\'home\')">'+ico('back')+'</button><h1>QueueGo Express</h1></div>';
   html+='<p class="sm">ส่งด่วน 1 จุดรับ · 1 จุดส่ง · ชำระเงินสด</p>';
   if(error)html+='<p role="alert">'+esc(error)+'</p><button class="lk" data-action="retry" '+(busy?'disabled':'')+'>ลองโหลดอีกครั้ง</button>';
@@ -74,7 +74,7 @@
    else if(!p)html+='<button class="prim" data-action="quote" '+(busy||!config.enabled||!pickup||!destination?'disabled':'')+'>ดูค่าส่ง</button>';
    html+='</section>';
   }
-  if(p||!current&&quote)html+='<button class="prim" data-action="request" '+(busy?'disabled':'')+'>'+(p?'ตรวจผลคำขอเดิม / ลองอีกครั้ง':'เรียกไรเดอร์ส่งด่วน')+'</button>';
+  if(!pendingInvalid&&(p||!current&&quote))html+='<button class="prim" data-action="request" '+(busy?'disabled':'')+'>'+(p?'ตรวจผลคำขอเดิม / ลองอีกครั้ง':'เรียกไรเดอร์ส่งด่วน')+'</button>';
   if(!current&&!p)html+=rows.filter(terminal).slice(0,5).map(o=>'<p><a href="#express/'+esc(o.id)+'">'+esc(QueueGoOrderNumber.format(o))+' · '+baht(o.fare)+'</a></p>').join('');
   layout(html,'orders');bindForm();document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>action(button.dataset.action));if(current)mountTracking(current);
  }
@@ -98,7 +98,7 @@
   return {pickup,destination,sender:{name:form.senderName.trim(),phone:form.senderPhone.trim()},receiver:{name:form.receiverName.trim(),phone:form.receiverPhone.trim()},item:{type:form.itemType.trim(),weightKg:weight,size:form.size,vehicleType:form.vehicleType,instructions:form.instructions.trim()}};
  }
  async function action(kind){
-  if(busy)return;if((kind==='quote'||(kind==='request'&&!pending()))&&(!config.enabled||!config.configured)){error='บริการ Express ยังไม่เปิดให้ใช้ในขณะนี้';quote=null;quoteSource='';render();return}if(kind==='retry')return V.express(selected);if(kind==='pickup'||kind==='destination')return pick(kind);if(kind==='new'){selected=null;quote=null;quoteSource='';error='';return render()}
+  if(busy)return;let saved=null;try{saved=pending()}catch(e){error=e.message;render();return}if((kind==='quote'||(kind==='request'&&!saved))&&(!config.enabled||!config.configured)){error='บริการ Express ยังไม่เปิดให้ใช้ในขณะนี้';quote=null;quoteSource='';render();return}if(kind==='retry')return V.express(selected);if(kind==='pickup'||kind==='destination')return pick(kind);if(kind==='new'){selected=null;quote=null;quoteSource='';error='';return render()}
   const u=actor();busy=true;error='';render();
   try{
    if(kind==='quote'){
