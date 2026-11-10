@@ -93,7 +93,7 @@
  function formPayload(){
   const weight=Number(form.weight);
   if(!pickup||!destination)throw Error('เลือกจุดรับและจุดส่งให้ครบ');
-  if(form.senderName.trim().length<1||!validExpressContactPhone(form.senderPhone)||form.receiverName.trim().length<1||!validExpressContactPhone(form.receiverPhone)||form.itemType.trim().length<1||!Number.isFinite(weight)||weight<=0)throw Error('กรอกข้อมูลผู้ส่ง ผู้รับ และพัสดุให้ครบ');
+  if(form.senderName.trim().length<1||!validExpressContactPhone(form.senderPhone)||form.receiverName.trim().length<1||!validExpressContactPhone(form.receiverPhone)||form.itemType.trim().length<1||!Number.isFinite(weight)||weight<=0||weight>1000)throw Error('กรอกข้อมูลผู้ส่ง ผู้รับ และพัสดุให้ครบ');
   return {pickup,destination,sender:{name:form.senderName.trim(),phone:form.senderPhone.trim()},receiver:{name:form.receiverName.trim(),phone:form.receiverPhone.trim()},item:{type:form.itemType.trim(),weightKg:weight,size:form.size,vehicleType:form.vehicleType,instructions:form.instructions.trim()}};
  }
  async function action(kind){
