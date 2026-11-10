@@ -84,10 +84,16 @@
   $('express-gps').onclick=()=>picker?.locate();$('express-back').onclick=()=>{picker?.destroy();picker=null;render()};
   $('express-save-location').onclick=()=>{const address=$('express-address').value.trim();if(!point||address.length<3){$('express-location-error').textContent='เลือกหมุดและระบุที่อยู่ให้ครบ';return}const next={...point,address};if(which==='pickup')pickup=next;else destination=next;quote=null;picker?.destroy();picker=null;render()};
  }
+ function validExpressContactPhone(input){
+  const phone=String(input??'').trim();
+  if(phone.length<9||phone.length>30||!/^\+?[0-9(). -]+$/.test(phone))return false;
+  const digits=phone.replace(/[^0-9]/g,'');
+  return digits.length>=9&&digits.length<=15;
+ }
  function formPayload(){
   const weight=Number(form.weight);
   if(!pickup||!destination)throw Error('เลือกจุดรับและจุดส่งให้ครบ');
-  if(form.senderName.trim().length<1||form.senderPhone.trim().length<5||form.receiverName.trim().length<1||form.receiverPhone.trim().length<5||form.itemType.trim().length<1||!Number.isFinite(weight)||weight<=0)throw Error('กรอกข้อมูลผู้ส่ง ผู้รับ และพัสดุให้ครบ');
+  if(form.senderName.trim().length<1||!validExpressContactPhone(form.senderPhone)||form.receiverName.trim().length<1||!validExpressContactPhone(form.receiverPhone)||form.itemType.trim().length<1||!Number.isFinite(weight)||weight<=0)throw Error('กรอกข้อมูลผู้ส่ง ผู้รับ และพัสดุให้ครบ');
   return {pickup,destination,sender:{name:form.senderName.trim(),phone:form.senderPhone.trim()},receiver:{name:form.receiverName.trim(),phone:form.receiverPhone.trim()},item:{type:form.itemType.trim(),weightKg:weight,size:form.size,vehicleType:form.vehicleType,instructions:form.instructions.trim()}};
  }
  async function action(kind){
