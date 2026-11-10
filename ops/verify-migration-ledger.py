@@ -105,7 +105,7 @@ def main() -> int:
             "reconciled": not (missing or untracked),
         }
         try:
-            args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\\n")
+            args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         except OSError as error:
             print(f"::error::Cannot write reconciliation report: {error}", file=sys.stderr)
             return 1
