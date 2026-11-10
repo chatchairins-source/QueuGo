@@ -71,6 +71,31 @@ with tempfile.TemporaryDirectory() as directory:
     duplicate_metadata = verify_metadata(rows[0], rows[0])
     assert duplicate_metadata.returncode == 1 and "invalid or duplicate" in duplicate_metadata.stderr
 
+    # Equal version numbers alone must not certify a renamed applied migration.
+    ledger.write_text("20261001000000\n20261002000000\n")
+    correctly_named = verify_metadata(rows[0], f"20261002000000\torders\t{orders_hash}")
+    assert correctly_named.returncode == 0, correctly_named.stderr
+
+    renamed = verify_metadata(rows[0], f"20261002000000\torders_renamed\t{orders_hash}")
+    assert renamed.returncode == 1
+    assert "Applied migration name mismatches (1)" in renamed.stdout
+    assert "20261002000000" in renamed.stdout
+
+    renamed_report = root / "renamed-migration.json"
+    documented = subprocess.run(
+        [sys.executable, str(script), str(ledger), "--root", str(root),
+         "--metadata", str(metadata), "--report", str(renamed_report)],
+        capture_output=True, text=True, check=False,
+    )
+    assert documented.returncode == 1
+    report_data = json.loads(renamed_report.read_text())
+    assert report_data["missing_in_production"] == []
+    assert report_data["untracked_in_production"] == []
+    assert report_data["reconciled"] is False
+    assert report_data["applied_version_name_mismatches"]["20261002000000"] == {
+        "checked_in": "orders", "production": "orders_renamed"
+    }
+
     # A nameless migration must fail cleanly, not crash during equivalence diagnostics.
     nameless = migrations / "20261004000000.sql"
     nameless.write_text("select 4;\n")
