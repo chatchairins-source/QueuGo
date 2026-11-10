@@ -1,6 +1,7 @@
 """Exercise the release gate against isolated migration ledgers."""
 
 from pathlib import Path
+import json
 import hashlib
 import subprocess
 import sys
@@ -83,5 +84,29 @@ with tempfile.TemporaryDirectory() as directory:
     duplicate_version = verify("20261001000000", "20261002000000")
     assert duplicate_version.returncode == 1 and "duplicate migration version" in duplicate_version.stderr
     duplicate_file.unlink()
+
+    # The JSON report is diagnostic: mismatches must still fail closed.
+    report = root / "reconciliation.json"
+    ledger.write_text("20261001000000\\n")
+    generated = subprocess.run(
+        [sys.executable, str(script), str(ledger), "--root", str(root),
+         "--report", str(report)],
+        capture_output=True, text=True, check=False,
+    )
+    assert generated.returncode == 1 and report.is_file()
+    details = json.loads(report.read_text())
+    assert details["reconciled"] is False
+    assert details["missing_in_production"] == ["20261002000000"]
+    assert details["untracked_in_production"] == []
+    assert details["checked_in_count"] == 2 and details["production_count"] == 1
+
+    ledger.write_text("20261001000000\\n20261002000000\\n")
+    exact = subprocess.run(
+        [sys.executable, str(script), str(ledger), "--root", str(root),
+         "--report", str(report)],
+        capture_output=True, text=True, check=False,
+    )
+    assert exact.returncode == 0
+    assert json.loads(report.read_text())["reconciled"] is True
 
 print("PASS migration ledger gate and read-only SQL equivalence diagnostics")
