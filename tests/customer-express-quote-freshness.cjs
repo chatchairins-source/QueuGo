@@ -6,7 +6,7 @@ const path = require('node:path');
 const source = fs.readFileSync(path.join(__dirname, '..', 'customer-express.js'), 'utf8');
 assert.match(source, /const payload=formPayload\(\),source=JSON\.stringify\(payload\)/);
 assert.match(source, /body:source,signal:AbortSignal\.timeout/);
-assert.match(source, /JSON\.stringify\(formPayload\(\)\)!==source\)throw Error/);
+assert.match(source, /if\(!same\(u\)\)return;if\(!config\.enabled\|\|!config\.configured\)throw Error\('บริการ Express ยังไม่เปิดให้ใช้ในขณะนี้'\);if\(JSON\.stringify\(formPayload\(\)\)!==source\)/);
 assert.match(source, /JSON\.stringify\(formPayload\(\)\)!==quoteSource\)throw Error/);
 assert.match(source, /form\[k\]=e\.value;if\(quote\)\{invalidated=true;/);
 assert.match(source, /const summary=\$\('express-quote-summary'\);if\(summary\)summary\.hidden=true/);
