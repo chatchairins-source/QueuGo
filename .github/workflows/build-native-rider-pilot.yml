@@ -299,7 +299,7 @@ jobs:
           PY
           test "$(stat -c %s "$source_pbf")" -eq 330076369
           (cd "$QG_MAP_DATA_DIR" && md5sum --check source-check.md5)
-          ln -s "$source_pbf" "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
+          ln -s "$(basename "$source_pbf")" "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
           ocean_file="$QG_PLANETILER_OCEAN_PATH"
           ocean_url=https://www.osmdata.org/download/water-polygons-split-3857.zip
           if ! curl --fail --location --retry 2 --retry-all-errors --connect-timeout 20 --max-time 600 "$ocean_url" -o "$ocean_file"; then
