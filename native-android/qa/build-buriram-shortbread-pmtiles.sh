@@ -59,7 +59,7 @@ if [[ -n "${QG_PLANETILER_OCEAN_PATH}" ]]; then
     echo "Configured Planetiler ocean polygons file is missing or empty: ${QG_PLANETILER_OCEAN_PATH}" >&2
     exit 2
   fi
-  CMD+=("--ocean-path=/data/$(basename "${QG_PLANETILER_OCEAN_PATH}")")
+  CMD+=("--water-polygons-path=/data/$(basename "${QG_PLANETILER_OCEAN_PATH}")")
 fi
 
 if [[ "${QG_PLANETILER_DRY_RUN}" == "1" ]]; then
