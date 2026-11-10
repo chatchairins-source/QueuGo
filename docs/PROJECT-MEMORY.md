@@ -1,3 +1,7 @@
+## 2026-11-10 Planetiler remote-input timeout fix — PENDING EXACT-HEAD CI
+
+- Run `42813653497` generated correct source inputs but Planetiler still ran with `--download` and attempted remote OSM/ocean fetches; the ocean endpoint timed out. The builder now supports explicit staged inputs, and the workflow downloads ocean data with bounded retries, disables Planetiler downloads, and records its size/SHA-256. Regression dry-run asserts `--ocean-path` is passed and `--download` is absent. Awaiting exact-head build, offline runtime, and artifact gates; no Production changes.
+
 ## 2026-11-10 Geofabrik snapshot URL retired; offline bundle source refreshed — IN PROGRESS
 
 - Exact-head run 42812449576 on c98d2e6 passed the full QueueGo regression and independent Express PostgreSQL races. The nationwide-map step failed before generation because Geofabrik returned HTTP 404 for pinned snapshot thailand-261029.osm.pbf; no country runtime or tested APK export ran.
