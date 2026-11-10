@@ -98,7 +98,7 @@
   return {pickup,destination,sender:{name:form.senderName.trim(),phone:form.senderPhone.trim()},receiver:{name:form.receiverName.trim(),phone:form.receiverPhone.trim()},item:{type:form.itemType.trim(),weightKg:weight,size:form.size,vehicleType:form.vehicleType,instructions:form.instructions.trim()}};
  }
  async function action(kind){
-  if(busy)return;if(kind==='retry')return V.express(selected);if(kind==='pickup'||kind==='destination')return pick(kind);if(kind==='new'){selected=null;quote=null;error='';return render()}
+  if(busy)return;if((kind==='quote'||kind==='request')&&(!config.enabled||!config.configured)){error='บริการ Express ยังไม่เปิดให้ใช้ในขณะนี้';quote=null;quoteSource='';render();return}if(kind==='retry')return V.express(selected);if(kind==='pickup'||kind==='destination')return pick(kind);if(kind==='new'){selected=null;quote=null;error='';return render()}
   const u=actor();busy=true;error='';render();
   try{
    if(kind==='quote'){
@@ -118,7 +118,7 @@
   }finally{busy=false;if(same(u))render()}
  }
  V.express=async(id,ticket=routeVersion)=>{
-  const u=actor();if(!u)return go('login');stop();if(owner!==u){owner=u;pickup=currentPos?{lat:currentPos.lat,lng:currentPos.lng,address:currentPos.address}:null;destination=quote=selected=null;rows=[];error='';}
+  const u=actor();if(!u)return go('login');stop();if(owner!==u){owner=u;pickup=currentPos?{lat:currentPos.lat,lng:currentPos.lng,address:currentPos.address}:null;destination=quote=selected=null;quoteSource='';rows=[];error='';}
   if(id)selected=id;error='';
   try{const c=await rpc('queuego_express_config');if(!same(u)||ticket!==routeVersion)return;config=c||{};await refresh();if(!same(u)||ticket!==routeVersion)return}catch(e){if(!same(u)||ticket!==routeVersion)return;config={enabled:false,configured:false};error='โหลดข้อมูล Express ไม่สำเร็จ กรุณาลองอีกครั้ง'}
   render();schedule();
