@@ -1,3 +1,8 @@
+## 2026-11-10 Planetiler 0.10.2 ocean input CLI corrected — PENDING EXACT-HEAD CI
+
+- Mirror download succeeded in run `42827962253` and Planetiler started. The build then used its default `ocean_path` and failed because the staged zip was not passed through; this exposed that the 0.10.2 Shortbread profile accepts `--ocean-path`, not the generic water-polygons config option.
+- Changed builder/test back to `--ocean-path=/data/<staged-file>`; a local exact-source dry-run will guard it. The next exact-head run must confirm archive generation, installed offline runtime and APK export. No Production changes.
+
 ## 2026-11-10 Planetiler water polygon CLI contract correction — PENDING EXACT-HEAD CI
 
 - Source review of Planetiler config names found the supported input key is `water_polygons_path`; changed the staged-input CLI argument to `--water-polygons-path` and updated the builder dry-run regression. Exact-head map generation must still validate the argument against pinned Planetiler 0.10.2.
