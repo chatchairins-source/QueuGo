@@ -37,6 +37,8 @@ with tempfile.TemporaryDirectory() as directory:
 
     invalid = verify("20261001000000", "not-a-version")
     assert invalid.returncode == 1 and "invalid version" in invalid.stderr
+    unicode_digit = verify("20261001000000".replace("2", "\u0662", 1))
+    assert unicode_digit.returncode == 1 and "invalid version" in unicode_digit.stderr
 
     duplicate = verify("20261001000000", "20261001000000")
     assert duplicate.returncode == 1 and "duplicate versions" in duplicate.stderr
@@ -95,6 +97,26 @@ with tempfile.TemporaryDirectory() as directory:
     assert report_data["applied_version_name_mismatches"]["20261002000000"] == {
         "checked_in": "orders", "production": "orders_renamed"
     }
+
+    # A repeated historical SQL migration is diagnostic, never auto-repaired.
+    replayed_report = root / "replayed-sql.json"
+    ledger.write_text("20261001000000\n20261002000000\n20261003000000\n")
+    metadata.write_text("\n".join([
+        rows[0],
+        f"20261002000000\torders\t{orders_hash}",
+        f"20261003000000\torders\t{orders_hash}"
+    ]) + "\n")
+    repeated = subprocess.run(
+        [sys.executable, str(script), str(ledger), "--root", str(root),
+         "--metadata", str(metadata), "--report", str(replayed_report)],
+        capture_output=True, text=True, check=False,
+    )
+    assert repeated.returncode == 1
+    assert "Production repeated-name identical-SQL groups (1)" in repeated.stdout
+    assert "20261003000000" in json.loads(replayed_report.read_text())["untracked_in_production"]
+    groups = json.loads(replayed_report.read_text())["production_repeated_sql_groups"]
+    assert len(groups) == 1
+    assert next(iter(groups.values())) == ["20261002000000", "20261003000000"]
 
     # A nameless migration must fail cleanly, not crash during equivalence diagnostics.
     nameless = migrations / "20261004000000.sql"
