@@ -21,5 +21,6 @@ for(const phone of ['', 'abcde','12345','0812345678 ext 9','0812345678901234','+
 }
 ok(express.includes('!validExpressContactPhone(form.senderPhone)')&&express.includes('!validExpressContactPhone(form.receiverPhone)'),
    'Web sender and receiver must both be validated before quoting');
+ok(express.includes('weight<=0||weight>1000'),'Web parcel weight must match the 1,000 kg Native and backend boundary');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Customer Web Express category/form/trusted quote/request/recovery/state/tracking; no Production mutation'}));
