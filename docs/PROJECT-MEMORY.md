@@ -1,3 +1,8 @@
+## 2026-11-10 Planetiler water polygon CLI contract correction — PENDING EXACT-HEAD CI
+
+- Source review of Planetiler config names found the supported input key is `water_polygons_path`; changed the staged-input CLI argument to `--water-polygons-path` and updated the builder dry-run regression. Exact-head map generation must still validate the argument against pinned Planetiler 0.10.2.
+- Water source outage and mirror fallback remain as recorded below; no Production changes.
+
 ## 2026-11-10 Water polygons origin outage; mirror fallback — PENDING EXACT-HEAD CI
 
 - Exact-head run `42824979640` passed the full QueueGo regression, Express PostgreSQL races, and all three Android Kotlin/JVM + Debug APK build/integrity jobs. Native Pilot failed only at downloading water polygons: `osmdata.openstreetmap.de` timed out repeatedly; the pinned Geofabrik PBF checksum passed.
