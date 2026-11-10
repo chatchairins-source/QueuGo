@@ -73,21 +73,21 @@ with tempfile.TemporaryDirectory() as directory:
 
     # A nameless migration must fail cleanly, not crash during equivalence diagnostics.
     nameless = migrations / "20261004000000.sql"
-    nameless.write_text("select 4;\\n")
+    nameless.write_text("select 4;\n")
     rejected = verify("20261001000000", "20261002000000")
     assert rejected.returncode == 1 and "invalid migration filename" in rejected.stderr
     nameless.unlink()
 
     # Duplicate migration versions must be rejected even with distinct filenames.
     duplicate_file = migrations / "20261001000000_duplicate.sql"
-    duplicate_file.write_text("select 5;\\n")
+    duplicate_file.write_text("select 5;\n")
     duplicate_version = verify("20261001000000", "20261002000000")
     assert duplicate_version.returncode == 1 and "duplicate migration version" in duplicate_version.stderr
     duplicate_file.unlink()
 
     # The JSON report is diagnostic: mismatches must still fail closed.
     report = root / "reconciliation.json"
-    ledger.write_text("20261001000000\\n")
+    ledger.write_text("20261001000000\n")
     generated = subprocess.run(
         [sys.executable, str(script), str(ledger), "--root", str(root),
          "--report", str(report)],
@@ -100,7 +100,7 @@ with tempfile.TemporaryDirectory() as directory:
     assert details["untracked_in_production"] == []
     assert details["checked_in_count"] == 2 and details["production_count"] == 1
 
-    ledger.write_text("20261001000000\\n20261002000000\\n")
+    ledger.write_text("20261001000000\n20261002000000\n")
     exact = subprocess.run(
         [sys.executable, str(script), str(ledger), "--root", str(root),
          "--report", str(report)],
