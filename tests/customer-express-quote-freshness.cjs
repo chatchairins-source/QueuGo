@@ -20,6 +20,9 @@ assert.match(source, /!Number\.isFinite\(data\.fare\)\|\|data\.fare<0/);
 assert.match(source, /!Number\.isFinite\(data\.distance_km\)\|\|data\.distance_km<0/);
 assert.match(source, /!Number\.isFinite\(data\.duration_minutes\)\|\|data\.duration_minutes<0/);
 assert.match(source, /\(kind==='quote'\|\|\(kind==='request'&&!pending\(\)\)\)\&\&\(!config\.enabled\|\|!config\.configured\)/);
+assert.match(source, /config=c\|\|\{\};if\(!config\.enabled\|\|!config\.configured\)\{quote=null;quoteSource=''\}await refresh\(\)/);
+assert.match(source, /config=\{enabled:false,configured:false\};quote=null;quoteSource=''/);
+assert.match(source, /if\(kind==='new'\)\{selected=null;quote=null;quoteSource=''/);
 // Disabled Express must block new requests, but must not strand an already persisted request ID.
 assert.match(source, /let p=pending\(\);if\(!p\)\{/);
 assert.match(source, /const result=await rpc\('queuego_request_express',p\)/);
