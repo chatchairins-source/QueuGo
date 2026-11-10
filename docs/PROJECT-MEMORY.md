@@ -1,3 +1,10 @@
+## 2026-11-10 Native offline-map CI trigger follow-up — IN PROGRESS
+
+- PR #914 exact-head Native Pilot run `42808637904` completed successfully, including the full npm regression, Kotlin/JVM and Debug APK jobs, and Android launch/lifecycle capture.
+- Its Thailand archive build and no-network country runtime were skipped because the bundle condition only selected the dedicated Rider offline branch, while the Customer Express fix uses a different stacked branch.
+- Added a targeted follow-up branch selector and a regression wired into `npm test`; the new stacked PR must prove that the pinned Thailand archive builds, offline runtime executes, and test APK export stays behind those gates.
+- No Production database or data changed. Offline-map acceptance remains pending the new exact-head CI run; Debug APKs are not Production releases.
+
 ## 2026-11-10 Customer Express stale quote UI and test wiring — IN PROGRESS
 
 - Verified source heads before editing: main `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`, PR #908 `000e9c73fb3a2b72b07c7649778a87b85e2eed4d`, and PR #913 `890f3146f9c6f905f7d405fa0a515d4f8b562b6d`. #913 is 16 commits ahead of #908 and directly based on it; it remains stacked. The PR lineage is diverged from main (merge base `65638570b670b3949457d2fd8317bf4f65d8c0a5`; PR head is 4,128 ahead and 1,080 behind main).
