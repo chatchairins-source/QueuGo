@@ -280,6 +280,8 @@ jobs:
         env:
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
           QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261109.osm.pbf
+          QG_PLANETILER_DOWNLOAD: '0'
+          QG_PLANETILER_OCEAN_PATH: ${{ runner.temp }}/queuego-country-map/water-polygons-split-3857.zip
         run: |
           set -euo pipefail
           mkdir -p "$QG_MAP_DATA_DIR"
@@ -298,6 +300,10 @@ jobs:
           test "$(stat -c %s "$source_pbf")" -eq 330076369
           (cd "$QG_MAP_DATA_DIR" && md5sum --check source-check.md5)
           ln -s "$source_pbf" "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
+          ocean_file="$QG_PLANETILER_OCEAN_PATH"
+          curl --fail --location --retry 5 --retry-all-errors --connect-timeout 30 --max-time 1200 https://osmdata.openstreetmap.de/download/water-polygons-split-3857.zip -o "$ocean_file"
+          test -s "$ocean_file"
+          echo "Planetiler ocean polygons staged: $(stat -c %s "$ocean_file") bytes; SHA-256 $(sha256sum "$ocean_file" | cut -d ' ' -f 1)" >> "$GITHUB_STEP_SUMMARY"
           source_sha256="$(sha256sum "$source_pbf" | cut -d ' ' -f 1)"
           echo "Pinned Geofabrik Thailand snapshot 2026-11-09: 330076369 bytes; SHA-256 $source_sha256" >> "$GITHUB_STEP_SUMMARY"
           bash native-android/qa/build-thailand-shortbread-pmtiles.sh
