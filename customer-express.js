@@ -11,7 +11,7 @@
  const onExpress=()=>location.hash.split('/')[0]==='#express';
  const rpc=(name,body={})=>db('rpc/'+name,{method:'POST',body});
  const same=u=>actor()===u&&onExpress();
- const pending=()=>{const raw=localStorage.getItem(key());if(!raw)return null;const p=JSON.parse(raw);if(!/^[0-9a-f-]{36}$/i.test(p.p_request_id)||!/^[0-9a-f-]{36}$/i.test(p.p_quote_id))throw Error('คำขอ Express เดิมอ่านไม่ได้ กรุณาติดต่อฝ่ายช่วยเหลือ');return p};
+ const pending=()=>{const raw=localStorage.getItem(key());if(!raw)return null;let p;try{p=JSON.parse(raw)}catch{throw Error('คำขอ Express เดิมอ่านไม่ได้ กรุณาติดต่อฝ่ายช่วยเหลือ')}const uuidPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;if(!p||typeof p!=='object'||Array.isArray(p)||!uuidPattern.test(p.p_request_id)||!uuidPattern.test(p.p_quote_id))throw Error('คำขอ Express เดิมอ่านไม่ได้ กรุณาติดต่อฝ่ายช่วยเหลือ');return {p_request_id:p.p_request_id,p_quote_id:p.p_quote_id}};
  const status=o=>({searching_rider:'กำลังหาไรเดอร์',rider_assigned:'ไรเดอร์กำลังไปจุดรับ',picked_up:'รับพัสดุแล้ว',in_progress:o.arrived_dropoff_at?'ถึงจุดส่งแล้ว':'กำลังนำส่ง',completed:'ส่งสำเร็จแล้ว',cancelled:'ยกเลิกแล้ว',no_rider_available:'ยังไม่มีไรเดอร์พร้อมรับงาน'})[o.status]||o.status;
  function stop(){clearTimeout(timer);timer=null;picker?.destroy();picker=null;try{trackingMap?.remove()}catch{}trackingMap=null}
  async function read(id){return (await rpc('queuego_express_state',{p_order_id:id||null})).express_orders||[]}
