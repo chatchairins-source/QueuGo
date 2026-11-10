@@ -35,10 +35,10 @@ assert.ok(workflow.slice(raceStart, raceEnd).includes("startsWith(github.head_re
 const { spawnSync } = require('node:child_process');
 const builderDryRun = spawnSync('bash', ['native-android/qa/build-buriram-shortbread-pmtiles.sh'], {
   encoding: 'utf8',
-  env: { ...process.env, QG_PLANETILER_DRY_RUN: '1', QG_PLANETILER_DOWNLOAD: '0', QG_PLANETILER_OCEAN_PATH: '/tmp/water-polygons-split-3857.zip', QG_MAP_DATA_DIR: '/tmp/queuego-map-dry-run' },
+  env: { ...process.env, QG_PLANETILER_DRY_RUN: '1', QG_PLANETILER_DOWNLOAD: '0', QG_PLANETILER_OCEAN_PATH: __filename, QG_MAP_DATA_DIR: '/tmp/queuego-map-dry-run' },
 });
 assert.equal(builderDryRun.status, 0, builderDryRun.stderr);
-assert.ok(builderDryRun.stdout.includes('--ocean-path=/data/water-polygons-split-3857.zip'), 'builder must pass the staged ocean polygons file to Planetiler');
+assert.ok(builderDryRun.stdout.includes('--ocean-path=/data/native-offline-map-trigger.cjs'), 'builder must pass the staged ocean polygons file to Planetiler');
 assert.ok(!builderDryRun.stdout.includes('--download'), 'offline map CI must not ask Planetiler to redownload checked inputs');
 
 console.log('Native acceptance selectors: country archive, no-network runtime, gated APK export and Express PR race tests PASS');
