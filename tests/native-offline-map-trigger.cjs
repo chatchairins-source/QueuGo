@@ -11,6 +11,10 @@ const countryEnd = workflow.indexOf('      - name: Tracking coordinate and termi
 assert.ok(countryStart >= 0 && countryEnd > countryStart, 'the nationwide map build step must be present');
 const countryGate = workflow.slice(countryStart, countryEnd);
 assert.ok(countryGate.includes("startsWith(github.head_ref, 'work-native-express-offline-map-')"), 'the explicit follow-up PR must build the pinned country archive');
+assert.ok(countryGate.includes('thailand-261109.osm.pbf'), 'the builder must use the available fixed Geofabrik snapshot');
+assert.ok(countryGate.includes('thailand-261109.osm.pbf.md5') && countryGate.includes('md5sum --check source-check.md5'), 'the downloaded snapshot must be checked against its official sidecar');
+assert.ok(countryGate.includes('330076369') && countryGate.includes('--source-date 2026-11-09'), 'the snapshot size and data date must stay pinned');
+assert.ok(!countryGate.includes('thailand-261029.osm.pbf'), 'the removed October snapshot must not return');
 
 const runtimeStart = workflow.indexOf('      - name: Test installed country archive and camera without internet');
 const runtimeEnd = workflow.indexOf('      - name: Save nationwide offline evidence', runtimeStart);

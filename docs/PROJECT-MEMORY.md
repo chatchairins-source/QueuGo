@@ -1,3 +1,8 @@
+## 2026-11-10 Geofabrik snapshot URL retired; offline bundle source refreshed — IN PROGRESS
+
+- Exact-head run 42812449576 on c98d2e6 passed the full QueueGo regression and independent Express PostgreSQL races. The nationwide-map step failed before generation because Geofabrik returned HTTP 404 for pinned snapshot thailand-261029.osm.pbf; no country runtime or tested APK export ran.
+- Current official Geofabrik index lists thailand-261109.osm.pbf (330,076,369 bytes; data through 2026-11-09). Follow-up pins that dated URL and expected size, downloads and validates Geofabrik's MD5 sidecar, records the resulting SHA-256 in CI evidence, then generates the archive with source date 2026-11-09.
+- Added regression assertions for the source snapshot, sidecar check, byte count, and rejection of the retired URL. Exact-head map build, offline runtime and artifact export remain pending. No Production data or database changed.
 ## 2026-11-10 Native offline-map CI trigger follow-up — IN PROGRESS
 
 - PR #914 exact-head Native Pilot run `42808637904` completed successfully, including the full npm regression, Kotlin/JVM and Debug APK jobs, and Android launch/lifecycle capture.
