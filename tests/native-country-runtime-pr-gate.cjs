@@ -11,4 +11,7 @@ assert.match(workflow, /ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| 
 assert.match(workflow, /QG_NAV_RUNTIME_OFFLINE: '1'/, 'runtime must enforce offline mode');
 assert.match(workflow, /inspect_archive\(target \/ 'thailand-shortbread\.pmtiles'\)/, 'reused archive must be checked');
 assert.match(workflow, /actual\['sha256'\] == manifest\['sha256'\]/, 'archive SHA-256 must match its manifest');
+assert.ok(pr[1].includes('native-android/rider-navigation-map/src/main/**'), 'production map source must retrigger country runtime');
+assert.ok(pr[1].includes('native-android/rider-navigation-map/build.gradle.kts'), 'map Gradle changes must retrigger country runtime');
+assert.ok(pr[1].includes('tests/native-country-runtime-pr-gate.cjs'), 'gate test edits must retrigger country runtime');
 console.log('Installed-country runtime PR trigger and exact-source safety assertions PASS');
