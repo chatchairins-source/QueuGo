@@ -77,4 +77,11 @@ with tempfile.TemporaryDirectory() as directory:
     assert rejected.returncode == 1 and "invalid migration filename" in rejected.stderr
     nameless.unlink()
 
+    # Duplicate migration versions must be rejected even with distinct filenames.
+    duplicate_file = migrations / "20261001000000_duplicate.sql"
+    duplicate_file.write_text("select 5;\\n")
+    duplicate_version = verify("20261001000000", "20261002000000")
+    assert duplicate_version.returncode == 1 and "duplicate migration version" in duplicate_version.stderr
+    duplicate_file.unlink()
+
 print("PASS migration ledger gate and read-only SQL equivalence diagnostics")
