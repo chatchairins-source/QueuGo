@@ -16,7 +16,7 @@ const validPhone=vm.runInNewContext(express.slice(phoneStart,phoneEnd)+'; validE
 for(const phone of ['0812345678','021234567','+66 81-234-5678','(02) 123-4567']){
   ok(validPhone(phone),'Web must accept dialable phone '+phone);
 }
-for(const phone of ['', 'abcde','12345','0812345678 ext 9','0812345678901234','++66812345678','0812345678\\n123']){
+for(const phone of ['', 'abcde','12345','0812345678 ext 9','0812345678901234','++66812345678','0812345678\n123']){
   ok(!validPhone(phone),'Web must reject invalid phone '+phone);
 }
 ok(express.includes('!validExpressContactPhone(form.senderPhone)')&&express.includes('!validExpressContactPhone(form.receiverPhone)'),
