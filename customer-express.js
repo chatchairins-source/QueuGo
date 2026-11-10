@@ -105,7 +105,7 @@
     const payload=formPayload(),source=JSON.stringify(payload);
     const accessToken=await token();if(!same(u))return;
     const res=await fetch(CFG.URL+'/functions/v1/queuego-express-quote',{method:'POST',headers:hdr(accessToken),body:source,signal:AbortSignal.timeout(30000)});
-    const data=await res.json();if(!res.ok)throw Error(data.error||'ยังประเมินราคา Express ไม่ได้');if(!same(u))return;if(JSON.stringify(formPayload())!==source)throw Error('ข้อมูลพัสดุเปลี่ยนแล้ว กรุณาตรวจค่าส่งอีกครั้ง');quote=data;quoteSource=source;
+    const data=await res.json();if(!res.ok)throw Error(data.error||'ยังประเมินราคา Express ไม่ได้');if(!same(u))return;if(JSON.stringify(formPayload())!==source)throw Error('ข้อมูลพัสดุเปลี่ยนแล้ว กรุณาตรวจค่าส่งอีกครั้ง');if(!data||typeof data.quote_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(data.quote_id)||!Number.isFinite(data.fare)||data.fare<0||!Number.isFinite(data.distance_km)||data.distance_km<0||!Number.isFinite(data.duration_minutes)||data.duration_minutes<0)throw Error('ข้อมูลใบเสนอราคา Express ไม่สมบูรณ์ กรุณาลองใหม่');quote=data;quoteSource=source;
    }else if(kind==='request'){
     let p=pending();if(!p){if(!quote||!quoteSource||JSON.stringify(formPayload())!==quoteSource)throw Error('ข้อมูลพัสดุเปลี่ยนแล้ว กรุณาตรวจค่าส่งอีกครั้ง');p={p_request_id:uuid(),p_quote_id:quote.quote_id};localStorage.setItem(key(),JSON.stringify(p))}
     const result=await rpc('queuego_request_express',p);if(!same(u))return;if(result?.id!==p.p_request_id)throw Error('ยังยืนยันเลขงาน Express ไม่ได้');selected=result.id;
