@@ -1,3 +1,8 @@
+## 2026-11-10 Water polygons origin outage; mirror fallback — PENDING EXACT-HEAD CI
+
+- Exact-head run `42824979640` passed the full QueueGo regression, Express PostgreSQL races, and all three Android Kotlin/JVM + Debug APK build/integrity jobs. Native Pilot failed only at downloading water polygons: `osmdata.openstreetmap.de` timed out repeatedly; the pinned Geofabrik PBF checksum passed.
+- Changed the planned download to the daily `www.osmdata.org` mirror and a dated FAU archive fallback; CI records final URL, byte count, and SHA-256. These downloads and retries still require exact-head confirmation. No map archive, installed offline runtime, offline routing or release APK is certified by this failing run.
+
 ## 2026-11-10 Planetiler remote-input timeout fix — PENDING EXACT-HEAD CI
 
 - Run `42813653497` generated correct source inputs but Planetiler still ran with `--download` and attempted remote OSM/ocean fetches; the ocean endpoint timed out. The builder now supports explicit staged inputs, and the workflow downloads ocean data with bounded retries, disables Planetiler downloads, and records its size/SHA-256. Regression dry-run asserts `--ocean-path` is passed and `--download` is absent. Awaiting exact-head build, offline runtime, and artifact gates; no Production changes.
