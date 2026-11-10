@@ -8,7 +8,8 @@ assert.match(source, /const payload=formPayload\(\),source=JSON\.stringify\(payl
 assert.match(source, /body:source,signal:AbortSignal\.timeout/);
 assert.match(source, /JSON\.stringify\(formPayload\(\)\)!==source\)throw Error/);
 assert.match(source, /JSON\.stringify\(formPayload\(\)\)!==quoteSource\)throw Error/);
-assert.match(source, /form\[k\]=e\.value;quote=null;quoteSource=''/);
+assert.match(source, /form\[k\]=e\.value;if\(quote\)\{invalidated=true\}quote=null;quoteSource=''/);
+assert.match(source, /e\.onchange=\(\)=>\{if\(invalidated&&!busy&&onExpress\(\)\)render\(\)\}/);
 assert.match(source, /quote=null;quoteSource='';picker\?\.destroy\(\)/);
 // Exercise the comparison contract with a changed phone, weight and pickup.
 const fingerprint = value => JSON.stringify(value);
