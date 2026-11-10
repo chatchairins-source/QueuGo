@@ -2,7 +2,8 @@
 
 - PR #914 exact-head Native Pilot run `42808637904` completed successfully, including the full npm regression, Kotlin/JVM and Debug APK jobs, and Android launch/lifecycle capture.
 - Its Thailand archive build and no-network country runtime were skipped because the bundle condition only selected the dedicated Rider offline branch, while the Customer Express fix uses a different stacked branch.
-- Added a targeted follow-up branch selector and a regression wired into `npm test`; the new stacked PR must prove that the pinned Thailand archive builds, offline runtime executes, and test APK export stays behind those gates.
+- Added a targeted follow-up branch selector and a regression wired into `npm test`; the exact-head CI must prove that the pinned Thailand archive builds, offline runtime executes, and test APK export stays behind those gates.
+- Source review found the `express-races` job selected push refs but omitted `github.head_ref`, so PR-triggered Express PostgreSQL race coverage was skipped. Added the PR head selector and expanded the same regression to fail if this returns.
 - No Production database or data changed. Offline-map acceptance remains pending the new exact-head CI run; Debug APKs are not Production releases.
 
 ## 2026-11-10 Customer Express stale quote UI and test wiring — IN PROGRESS

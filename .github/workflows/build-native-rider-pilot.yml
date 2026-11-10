@@ -558,7 +558,7 @@ jobs:
 
 
   express-races:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.head_ref, 'work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 6
     services:
