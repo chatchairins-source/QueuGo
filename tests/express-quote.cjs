@@ -35,6 +35,19 @@ const assert=require('node:assert/strict');
  eq((await handler(req({...payload,pickup:{...payload.pickup,lat:100}}))).status,400);
  eq((await handler(req({...payload,destination:payload.pickup}))).status,400);
  eq((await handler(req({...payload,sender:{...payload.sender,phone:''}}))).status,400);
+ calls=[];
+ for(const bad of ['abcde','12345','+66abc123456','0812345678 ext 9','0812345678901234','++66812345678','0812345678\\n123']){
+  eq((await handler(req({...payload,sender:{...payload.sender,phone:bad}}))).status,400);
+  eq((await handler(req({...payload,receiver:{...payload.receiver,phone:bad}}))).status,400);
+ }
+ eq(calls.length,0); // Invalid contact data must fail before Auth/route/quote calls.
+ calls=[];
+ const formatted=await handler(req({...payload,sender:{...payload.sender,phone:'+66 81-234-5678'},receiver:{...payload.receiver,phone:'(02) 123-4567'}}));
+ eq(formatted.status,200);
+ const formattedCache=JSON.parse(calls.at(-1)[1].body);
+ eq(formattedCache.p_sender_phone,'+66 81-234-5678');
+ eq(formattedCache.p_receiver_phone,'(02) 123-4567');
+
  eq((await handler(req({...payload,item:{...payload.item,weightKg:0}}))).status,400);
  eq((await handler(req({...payload,item:{...payload.item,vehicleType:'truck'}}))).status,400);
 
