@@ -24,7 +24,7 @@
  function schedule(){clearTimeout(timer);if(document.hidden||!onExpress())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{await refresh();if(onExpress()&&(pending()||rows.some(o=>!terminal(o))))render()}catch(e){error=e.message;if(onExpress())render()}}schedule()},5000)}
  function bindForm(){
   const map={expressSenderName:'senderName',expressSenderPhone:'senderPhone',expressReceiverName:'receiverName',expressReceiverPhone:'receiverPhone',expressItemType:'itemType',expressWeight:'weight',expressSize:'size',expressVehicle:'vehicleType',expressInstructions:'instructions'};
-  Object.entries(map).forEach(([id,k])=>{const e=$(id);if(e){let invalidated=false;e.oninput=()=>{form[k]=e.value;if(quote){invalidated=true}quote=null;quoteSource=''};e.onchange=()=>{if(invalidated&&!busy&&onExpress())render()}}});
+  Object.entries(map).forEach(([id,k])=>{const e=$(id);if(e){let invalidated=false;e.oninput=()=>{form[k]=e.value;if(quote){invalidated=true;const summary=$('express-quote-summary');if(summary)summary.hidden=true;const request=document.querySelector('[data-action="request"]');if(request){request.disabled=true;request.textContent='ข้อมูลเปลี่ยนแล้ว กรุณาตรวจค่าส่งอีกครั้ง'}}quote=null;quoteSource=''};e.onchange=()=>{if(invalidated&&!busy&&onExpress())render()}}});
  }
  function mountTracking(o){
   try{trackingMap?.remove()}catch{}trackingMap=null;
@@ -70,7 +70,7 @@
    html+='<label>ขนาดพัสดุ</label><select id="expressSize" class="in"><option value="small" '+(form.size==='small'?'selected':'')+'>เล็ก</option><option value="medium" '+(form.size==='medium'?'selected':'')+'>กลาง</option><option value="large" '+(form.size==='large'?'selected':'')+'>ใหญ่</option></select>';
    html+='<label>ประเภทรถ</label><select id="expressVehicle" class="in"><option value="motorcycle" '+(form.vehicleType==='motorcycle'?'selected':'')+'>มอเตอร์ไซค์</option><option value="car" '+(form.vehicleType==='car'?'selected':'')+'>รถยนต์</option><option value="saleng" '+(form.vehicleType==='saleng'?'selected':'')+'>ซาเล้ง</option></select>';
    html+='<label>หมายเหตุถึงไรเดอร์</label><textarea id="expressInstructions" class="ta" maxlength="500">'+esc(form.instructions)+'</textarea>';
-   if(quote)html+='<p>ค่าส่งเงินสด <b>'+baht(quote.fare)+'</b></p><p>เส้นทาง '+Number(quote.distance_km).toLocaleString('th-TH',{maximumFractionDigits:1})+' กม. · ประมาณ '+Math.ceil(quote.duration_minutes)+' นาที</p>';
+   if(quote)html+='<div id="express-quote-summary"><p>ค่าส่งเงินสด <b>'+baht(quote.fare)+'</b></p><p>เส้นทาง '+Number(quote.distance_km).toLocaleString('th-TH',{maximumFractionDigits:1})+' กม. · ประมาณ '+Math.ceil(quote.duration_minutes)+' นาที</p></div>';
    else if(!p)html+='<button class="prim" data-action="quote" '+(busy||!config.enabled||!pickup||!destination?'disabled':'')+'>ดูค่าส่ง</button>';
    html+='</section>';
   }
