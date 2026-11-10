@@ -37,12 +37,13 @@ def deployed_versions(path: Path) -> set[str]:
     return set(values)
 
 
-def equivalent_sql(root: Path, path: Path, deployed: set[str]) -> dict[str, list[str]]:
+def equivalent_sql(root: Path, path: Path, deployed: set[str]) -> tuple[dict[str, list[str]], dict[str, dict[str, str]]]:
     """Find byte-identical SQL with the same name under a different version.
 
     This is diagnostic only: an equivalent does not certify ledger alignment.
     """
     production: dict[tuple[str, str], list[str]] = {}
+    names_by_version: dict[str, str] = {}
     seen: set[str] = set()
     for line in path.read_text().splitlines():
         fields = line.split("\t")
@@ -53,20 +54,25 @@ def equivalent_sql(root: Path, path: Path, deployed: set[str]) -> dict[str, list
                 or not MD5.fullmatch(digest) or version in seen):
             raise ValueError("invalid or duplicate Production migration metadata")
         seen.add(version)
+        names_by_version[version] = name
         production.setdefault((name, digest), []).append(version)
     if seen != deployed:
         raise ValueError("Production migration metadata does not match the ledger")
 
     matches: dict[str, list[str]] = {}
+    name_mismatches: dict[str, dict[str, str]] = {}
     for migration in sorted((root / "supabase" / "migrations").glob("*.sql")):
         version, name = migration.stem.split("_", 1)
         if version in deployed:
+            actual_name = names_by_version[version]
+            if actual_name != name:
+                name_mismatches[version] = {"checked_in": name, "production": actual_name}
             continue
         digest = hashlib.md5(migration.read_bytes()).hexdigest()
         counterparts = [v for v in production.get((name, digest), []) if v != version]
         if counterparts:
             matches[version] = sorted(counterparts)
-    return matches
+    return matches, name_mismatches
 
 
 def main() -> int:
@@ -81,7 +87,10 @@ def main() -> int:
     try:
         checked_in = checked_in_versions(args.root)
         deployed = deployed_versions(args.ledger)
-        equivalents = equivalent_sql(args.root, args.metadata, deployed) if args.metadata else {}
+        equivalents, name_mismatches = (
+            equivalent_sql(args.root, args.metadata, deployed)
+            if args.metadata else ({}, {})
+        )
     except (OSError, ValueError) as error:
         print(f"::error::Migration ledger verification failed: {error}", file=sys.stderr)
         return 1
@@ -95,6 +104,10 @@ def main() -> int:
         for version in sorted(equivalents):
             print(f"  {version} -> {', '.join(equivalents[version])}")
         print("These matches are diagnostic; every version mismatch still blocks certification.")
+        if name_mismatches:
+            print(f"Applied migration name mismatches ({len(name_mismatches)}):")
+            for version, names in sorted(name_mismatches.items()):
+                print(f"  {version}: checked-in {names['checked_in']!r}, Production {names['production']!r}")
     if args.report:
         report = {
             "checked_in_count": len(checked_in),
@@ -102,14 +115,15 @@ def main() -> int:
             "missing_in_production": missing,
             "untracked_in_production": untracked,
             "same_name_sql_equivalents": equivalents,
-            "reconciled": not (missing or untracked),
+            "applied_version_name_mismatches": name_mismatches,
+            "reconciled": not (missing or untracked or name_mismatches),
         }
         try:
             args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         except OSError as error:
             print(f"::error::Cannot write reconciliation report: {error}", file=sys.stderr)
             return 1
-    if missing or untracked:
+    if missing or untracked or name_mismatches:
         print("::error::Reconcile migration history and schema before release certification", file=sys.stderr)
         return 1
     return 0
