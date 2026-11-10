@@ -27,6 +27,10 @@ internal data class PendingExpress(val requestId: String, val quoteId: String) {
     fun body(): JSONObject = JSONObject().put("p_request_id", requestId).put("p_quote_id", quoteId)
 }
 
+// Rider registration caps verified vehicle capacity at 1,000 kg.
+internal fun validExpressWeightKg(weightKg: Double?): Boolean =
+    weightKg != null && weightKg.isFinite() && weightKg > 0.0 && weightKg <= 1000.0
+
 internal data class CustomerExpressOrder(
     val id: String,
     val number: String,
@@ -104,6 +108,7 @@ private class CustomerExpressApi(private val http: QueueGoNativeApi = QueueGoNat
         vehicleType: String,
         instructions: String
     ): JSONObject {
+        require(validExpressWeightKg(weightKg)) { "น้ำหนักพัสดุต้องมากกว่า 0 และไม่เกิน 1,000 กก." }
         fun point(location: CustomerLocation) = JSONObject()
             .put("lat", location.latitude)
             .put("lng", location.longitude)
@@ -216,7 +221,7 @@ internal fun CustomerExpressScreen(
     val formReady = pickup != null && destination != null &&
         senderName.trim().isNotEmpty() && senderPhone.trim().length >= 5 &&
         receiverName.trim().isNotEmpty() && receiverPhone.trim().length >= 5 &&
-        itemType.trim().isNotEmpty() && weightKg != null && weightKg > 0
+        itemType.trim().isNotEmpty() && validExpressWeightKg(weightKg)
 
     val editing = picker
     if (editing != null && !frozen) {
