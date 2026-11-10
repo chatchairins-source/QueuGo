@@ -3,6 +3,7 @@
 
 import argparse
 import hashlib
+import json
 from pathlib import Path
 import re
 import sys
@@ -74,6 +75,8 @@ def main() -> int:
     parser.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--metadata", type=Path,
                         help="psql TSV: version, name, MD5 of recorded SQL (diagnostic only)")
+    parser.add_argument("--report", type=Path,
+                        help="Write machine-readable reconciliation diagnostics without altering Production")
     args = parser.parse_args()
     try:
         checked_in = checked_in_versions(args.root)
@@ -92,6 +95,20 @@ def main() -> int:
         for version in sorted(equivalents):
             print(f"  {version} -> {', '.join(equivalents[version])}")
         print("These matches are diagnostic; every version mismatch still blocks certification.")
+    if args.report:
+        report = {
+            "checked_in_count": len(checked_in),
+            "production_count": len(deployed),
+            "missing_in_production": missing,
+            "untracked_in_production": untracked,
+            "same_name_sql_equivalents": equivalents,
+            "reconciled": not (missing or untracked),
+        }
+        try:
+            args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\\n")
+        except OSError as error:
+            print(f"::error::Cannot write reconciliation report: {error}", file=sys.stderr)
+            return 1
     if missing or untracked:
         print("::error::Reconcile migration history and schema before release certification", file=sys.stderr)
         return 1
