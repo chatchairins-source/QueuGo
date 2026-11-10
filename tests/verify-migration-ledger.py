@@ -70,4 +70,11 @@ with tempfile.TemporaryDirectory() as directory:
     duplicate_metadata = verify_metadata(rows[0], rows[0])
     assert duplicate_metadata.returncode == 1 and "invalid or duplicate" in duplicate_metadata.stderr
 
+    # A nameless migration must fail cleanly, not crash during equivalence diagnostics.
+    nameless = migrations / "20261004000000.sql"
+    nameless.write_text("select 4;\\n")
+    rejected = verify("20261001000000", "20261002000000")
+    assert rejected.returncode == 1 and "invalid migration filename" in rejected.stderr
+    nameless.unlink()
+
 print("PASS migration ledger gate and read-only SQL equivalence diagnostics")
