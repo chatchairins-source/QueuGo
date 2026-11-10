@@ -24,6 +24,8 @@ ok(express.includes('!validExpressContactPhone(form.senderPhone)')&&express.incl
 ok(express.includes('weight<=0||weight>1000'),'Web parcel weight must match the 1,000 kg Native and backend boundary');
 for(const control of ['pickup','destination'])ok(express.includes("(busy||p||!config.enabled||!config.configured?'disabled':'')"),'Express location selection must be disabled when service configuration is incomplete: '+control);
 ok(express.includes("(busy||!config.enabled||!config.configured||!pickup||!destination?'disabled':'')"),'Express quote control must be disabled when service configuration is incomplete');
+ok(express.includes("(busy||(!p&&(!config.enabled||!config.configured))?'disabled':'')"),
+   'New Express request must be disabled while service is unavailable, without blocking saved-request recovery');
 
 // Exercise persisted Express request parsing with malformed and tampered local state.
 const pendingStart=express.indexOf(' const pending=()=>');
