@@ -13,7 +13,7 @@ assert.match(source, /const summary=\$\('express-quote-summary'\);if\(summary\)s
 assert.match(source, /request\.disabled=true;request\.textContent=/);
 assert.match(source, /quote=null;quoteSource=''/);
 assert.match(source, /id="express-quote-summary"/);
-assert.match(source, /e\.onchange=\(\)=>\{if\(invalidated&&!busy&&onExpress\(\)\)render\(\)\}/);
+assert.match(source, /e\.onchange=\(\)=>\{e\.oninput\(\);if\(invalidated&&!busy&&onExpress\(\)\)render\(\)\}/);
 assert.match(source, /quote=null;quoteSource='';picker\?\.destroy\(\)/);
 assert.match(source, /typeof data\.quote_id!=='string'/);
 assert.match(source, /!Number\.isFinite\(data\.fare\)\|\|data\.fare<0/);
