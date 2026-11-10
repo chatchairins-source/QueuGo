@@ -74,7 +74,7 @@
    else if(!p)html+='<button class="prim" data-action="quote" '+(busy||!config.enabled||!config.configured||!pickup||!destination?'disabled':'')+'>ดูค่าส่ง</button>';
    html+='</section>';
   }
-  if(!pendingInvalid&&(p||!current&&quote))html+='<button class="prim" data-action="request" '+(busy?'disabled':'')+'>'+(p?'ตรวจผลคำขอเดิม / ลองอีกครั้ง':'เรียกไรเดอร์ส่งด่วน')+'</button>';
+  if(!pendingInvalid&&(p||!current&&quote))html+='<button class="prim" data-action="request" '+(busy||(!p&&(!config.enabled||!config.configured))?'disabled':'')+'>'+(p?'ตรวจผลคำขอเดิม / ลองอีกครั้ง':'เรียกไรเดอร์ส่งด่วน')+'</button>';
   if(!current&&!p)html+=rows.filter(terminal).slice(0,5).map(o=>'<p><a href="#express/'+esc(o.id)+'">'+esc(QueueGoOrderNumber.format(o))+' · '+baht(o.fare)+'</a></p>').join('');
   layout(html,'orders');bindForm();document.querySelectorAll('[data-action]').forEach(button=>button.onclick=()=>action(button.dataset.action));if(current)mountTracking(current);
  }
