@@ -1,3 +1,8 @@
+## 2026-11-10 Relative PBF mount path correction — PENDING EXACT-HEAD CI
+
+- Run `42829494568` passed full npm regression, Express PostgreSQL race tests, and Customer/Merchant/Rider Kotlin/JVM + Debug APK package-integrity jobs. Planetiler parsed the staged ocean file successfully, then failed because the PBF symlink target was an absolute host path outside the container's `/data` mount.
+- Changed the workflow symlink to a basename-relative target inside the mounted directory; regression now requires the relative form. Need exact-head proof of map generation and downstream offline/APK gates. No Production changes.
+
 ## 2026-11-10 Planetiler 0.10.2 ocean input CLI corrected — PENDING EXACT-HEAD CI
 
 - Mirror download succeeded in run `42827962253` and Planetiler started. The build then used its default `ocean_path` and failed because the staged zip was not passed through; this exposed that the 0.10.2 Shortbread profile accepts `--ocean-path`, not the generic water-polygons config option.
