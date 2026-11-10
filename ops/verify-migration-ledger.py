@@ -14,7 +14,7 @@ MD5 = re.compile(r"^[0-9a-f]{32}$")
 
 def checked_in_versions(root: Path) -> set[str]:
     versions: set[str] = set()
-    for path in (root / "supabase" / "migrations").glob("*.sql"):
+    for path in sorted((root / "supabase" / "migrations").glob("*.sql")):
         parts = path.stem.split("_", 1)
         version = parts[0]
         if len(parts) != 2 or not parts[1] or not VERSION.fullmatch(version):
@@ -57,7 +57,7 @@ def equivalent_sql(root: Path, path: Path, deployed: set[str]) -> dict[str, list
         raise ValueError("Production migration metadata does not match the ledger")
 
     matches: dict[str, list[str]] = {}
-    for migration in (root / "supabase" / "migrations").glob("*.sql"):
+    for migration in sorted((root / "supabase" / "migrations").glob("*.sql")):
         version, name = migration.stem.split("_", 1)
         if version in deployed:
             continue
