@@ -24,7 +24,7 @@
  function schedule(){clearTimeout(timer);if(document.hidden||!onExpress())return;timer=setTimeout(async()=>{if(!busy&&!picker){try{await refresh();if(onExpress()&&(pending()||rows.some(o=>!terminal(o))))render()}catch(e){error=e.message;if(onExpress())render()}}schedule()},5000)}
  function bindForm(){
   const map={expressSenderName:'senderName',expressSenderPhone:'senderPhone',expressReceiverName:'receiverName',expressReceiverPhone:'receiverPhone',expressItemType:'itemType',expressWeight:'weight',expressSize:'size',expressVehicle:'vehicleType',expressInstructions:'instructions'};
-  Object.entries(map).forEach(([id,k])=>{const e=$(id);if(e)e.oninput=()=>{form[k]=e.value;quote=null;quoteSource=''}});
+  Object.entries(map).forEach(([id,k])=>{const e=$(id);if(e){let invalidated=false;e.oninput=()=>{form[k]=e.value;if(quote){invalidated=true}quote=null;quoteSource=''};e.onchange=()=>{if(invalidated&&!busy&&onExpress())render()}}});
  }
  function mountTracking(o){
   try{trackingMap?.remove()}catch{}trackingMap=null;
