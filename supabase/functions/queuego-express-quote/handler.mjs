@@ -2,6 +2,15 @@ import {validPoint,fetchRoadLeg} from '../queuego-route-bundle-matrix/road-matri
 
 const cleanText=(value,min,max)=>typeof value==='string'&&value.trim().length>=min&&value.trim().length<=max?value.trim():null;
 
+// Contact numbers must be dialable. Support common spacing/punctuation but reject
+// arbitrary strings (previously five letters could reach a live Express quote).
+export function validExpressContactPhone(value){
+ const phone=cleanText(value,9,30);
+ if(!phone||!/^\+?[0-9(). -]+$/.test(phone))return null;
+ const digits=phone.replace(/[^0-9]/g,'');
+ return digits.length>=9&&digits.length<=15?phone:null;
+}
+
 export function createExpressQuoteHandler(env,fetcher=fetch){
  return async req=>{
   const cors={
@@ -36,9 +45,9 @@ export function createExpressQuoteHandler(env,fetcher=fetch){
     return reply({error:'เลือกจุดรับและจุดส่งให้ครบ'},400);
 
    const senderName=cleanText(input?.sender?.name,1,120);
-   const senderPhone=cleanText(input?.sender?.phone,5,30);
+   const senderPhone=validExpressContactPhone(input?.sender?.phone);
    const receiverName=cleanText(input?.receiver?.name,1,120);
-   const receiverPhone=cleanText(input?.receiver?.phone,5,30);
+   const receiverPhone=validExpressContactPhone(input?.receiver?.phone);
    const itemType=cleanText(input?.item?.type,1,80);
    const itemSize=cleanText(input?.item?.size,1,50);
    const vehicleType=cleanText(input?.item?.vehicleType,1,20);
