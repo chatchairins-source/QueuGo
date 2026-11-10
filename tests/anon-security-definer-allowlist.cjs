@@ -13,11 +13,16 @@ const expected=[
   'qg_table_scan(uuid,uuid,double precision,double precision)',
   'qg_table_catalog(uuid,uuid)',
   'qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision)',
-  'qg_table_session_status(uuid,uuid)'
+  'qg_table_session_status(uuid,uuid)',
+  'queuego_ride_config()'
 ].sort();
 const actual=allow.rules.map(x=>x.signature).sort();
-ok(JSON.stringify(actual)===JSON.stringify(expected),'anonymous SECURITY DEFINER allowlist must contain exactly the 9 reviewed RPCs');
-ok(new Set(actual).size===9,'anonymous RPC allowlist must not contain duplicates');
+ok(JSON.stringify(actual)===JSON.stringify(expected),'anonymous SECURITY DEFINER allowlist must contain exactly the 10 reviewed RPCs');
+ok(new Set(actual).size===10,'anonymous RPC allowlist must not contain duplicates');
+const ride=allow.rules.find(x=>x.signature==='queuego_ride_config()');
+ok(ride&&ride.category==='public_ride_config','ride config RPC must be classified as public pricing only');
+ok(ride.controls.some(x=>x.includes('no caller arguments')),'ride config must have no caller-controlled selectors');
+ok(ride.controls.some(x=>x.includes('no identity')),'ride config must not return account or order data');
 for(const denied of ['market_public_catalog()','queuego_nearest_market(double precision,double precision,numeric)']){
   ok(!actual.includes(denied),'retired/non-public RPC must not return to anon allowlist: '+denied);
   ok(allow.explicitly_not_anonymous.includes(denied),'non-anonymous RPC must remain explicitly documented: '+denied);
