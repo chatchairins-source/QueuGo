@@ -91,6 +91,8 @@ on:
       - '.github/workflows/native-release-certification.yml'
       - '.github/workflows/backup-restore-drill.yml'
       - 'tests/native-release-certification.cjs'
+      - 'ops/verify-migration-ledger.py'
+      - 'tests/verify-migration-ledger.py'
       - 'tests/play-store-readiness.cjs'
       - 'tests/security-auth-definer-review.cjs'
       - 'docs/security-auth-definer-review.json'
@@ -255,6 +257,8 @@ jobs:
           python3 native-android/qa/native-rpc-production-preflight.py --sql > "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
           grep -q 'pg_catalog.pg_proc' "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
           echo "Production RPC live check remains a separate Release Gate; no database credentials used here."
+      - name: Migration ledger release gate regression
+        run: python3 tests/verify-migration-ledger.py
       - name: Emulator APK transport recovery regression (no device required)
         run: python3 -m unittest discover -s native-android/qa -p 'test_adb_install_recovery.py' -v
       - name: Authenticated Rider screenshot hierarchy freshness regression

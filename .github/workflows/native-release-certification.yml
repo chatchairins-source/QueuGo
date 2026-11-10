@@ -161,6 +161,19 @@ jobs:
           echo "Certified exact-HEAD Backup Restore Drill run: $backup_run_id"
           echo "QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id" >> "$GITHUB_ENV"
 
+      - name: Require reconciled Production migration ledger
+        shell: bash
+        env:
+          QG_SUPABASE_DB_URL: ${{ secrets.QG_SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_SUPABASE_DB_URL" || { echo "::error::Missing QG_SUPABASE_DB_URL"; exit 1; }
+          ledger="$RUNNER_TEMP/queuego-release-migrations.txt"
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'select version from supabase_migrations.schema_migrations order by version' > "$ledger"
+          python3 ops/verify-migration-ledger.py "$ledger"
+          rm -f "$ledger"
+
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
