@@ -59,8 +59,8 @@
   }else{
    if(!config.enabled||!config.configured)html+='<p class="empty">บริการ Express ยังไม่เปิดให้ใช้ในขณะนี้</p>';
    html+='<section class="card">';
-   html+='<button class="lk" data-action="pickup" '+(busy||p||!config.enabled?'disabled':'')+'>จุดรับ: '+esc(pickup?.address||'เลือกบนแผนที่')+'</button><br>';
-   html+='<button class="lk" data-action="destination" '+(busy||p||!config.enabled?'disabled':'')+'>จุดส่ง: '+esc(destination?.address||'เลือกบนแผนที่')+'</button>';
+   html+='<button class="lk" data-action="pickup" '+(busy||p||!config.enabled||!config.configured?'disabled':'')+'>จุดรับ: '+esc(pickup?.address||'เลือกบนแผนที่')+'</button><br>';
+   html+='<button class="lk" data-action="destination" '+(busy||p||!config.enabled||!config.configured?'disabled':'')+'>จุดส่ง: '+esc(destination?.address||'เลือกบนแผนที่')+'</button>';
    html+='<label>ชื่อผู้ส่ง</label><input id="expressSenderName" class="in" maxlength="120" value="'+esc(form.senderName)+'">';
    html+='<label>เบอร์ผู้ส่ง</label><input id="expressSenderPhone" class="in" maxlength="30" value="'+esc(form.senderPhone)+'">';
    html+='<label>ชื่อผู้รับ</label><input id="expressReceiverName" class="in" maxlength="120" value="'+esc(form.receiverName)+'">';
@@ -71,7 +71,7 @@
    html+='<label>ประเภทรถ</label><select id="expressVehicle" class="in"><option value="motorcycle" '+(form.vehicleType==='motorcycle'?'selected':'')+'>มอเตอร์ไซค์</option><option value="car" '+(form.vehicleType==='car'?'selected':'')+'>รถยนต์</option><option value="saleng" '+(form.vehicleType==='saleng'?'selected':'')+'>ซาเล้ง</option></select>';
    html+='<label>หมายเหตุถึงไรเดอร์</label><textarea id="expressInstructions" class="ta" maxlength="500">'+esc(form.instructions)+'</textarea>';
    if(quote)html+='<div id="express-quote-summary"><p>ค่าส่งเงินสด <b>'+baht(quote.fare)+'</b></p><p>เส้นทาง '+Number(quote.distance_km).toLocaleString('th-TH',{maximumFractionDigits:1})+' กม. · ประมาณ '+Math.ceil(quote.duration_minutes)+' นาที</p></div>';
-   else if(!p)html+='<button class="prim" data-action="quote" '+(busy||!config.enabled||!pickup||!destination?'disabled':'')+'>ดูค่าส่ง</button>';
+   else if(!p)html+='<button class="prim" data-action="quote" '+(busy||!config.enabled||!config.configured||!pickup||!destination?'disabled':'')+'>ดูค่าส่ง</button>';
    html+='</section>';
   }
   if(!pendingInvalid&&(p||!current&&quote))html+='<button class="prim" data-action="request" '+(busy?'disabled':'')+'>'+(p?'ตรวจผลคำขอเดิม / ลองอีกครั้ง':'เรียกไรเดอร์ส่งด่วน')+'</button>';
