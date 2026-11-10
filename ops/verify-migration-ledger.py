@@ -15,8 +15,9 @@ MD5 = re.compile(r"^[0-9a-f]{32}$")
 def checked_in_versions(root: Path) -> set[str]:
     versions: set[str] = set()
     for path in (root / "supabase" / "migrations").glob("*.sql"):
-        version = path.name.split("_", 1)[0]
-        if not VERSION.fullmatch(version):
+        parts = path.stem.split("_", 1)
+        version = parts[0]
+        if len(parts) != 2 or not parts[1] or not VERSION.fullmatch(version):
             raise ValueError(f"invalid migration filename: {path.name}")
         if version in versions:
             raise ValueError(f"duplicate migration version: {version}")
