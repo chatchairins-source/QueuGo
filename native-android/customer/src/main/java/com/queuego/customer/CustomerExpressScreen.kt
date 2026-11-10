@@ -197,13 +197,25 @@ internal fun CustomerExpressScreen(
     var error by remember { mutableStateOf<String?>(null) }
 
     suspend fun refresh() {
+        // Read capability first. During phased rollout the Express RPC may not
+        // yet exist in Production. Show "not available" instead of keeping
+        // the Native screen stuck loading because state() returned HTTP 404.
+        val config = try {
+            api.config(auth)
+        } catch (e: QueueGoHttpException) {
+            if (e.statusCode != 404) throw e
+            enabled = false
+            loaded = true
+            return
+        }
+        enabled = config.optBoolean("enabled") && config.optBoolean("configured")
+        // A disabled feature can still have past/active orders. Retain their
+        // owner-scoped state whenever the service RPCs are installed.
         val recent = api.state(auth)
         val retained = selected?.takeIf { id -> recent.none { it.id == id } }?.let { api.state(auth, it) }.orEmpty()
         val current = retained + recent
         orders = current.distinctBy { it.id }
         current.firstOrNull { !it.terminal }?.let { selected = it.id }
-        val config = api.config(auth)
-        enabled = config.optBoolean("enabled") && config.optBoolean("configured")
     }
 
     LaunchedEffect(auth.user.id, auth.session.accessToken, lifecycle) {
