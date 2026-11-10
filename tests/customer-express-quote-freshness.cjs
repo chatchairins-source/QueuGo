@@ -19,7 +19,10 @@ assert.match(source, /typeof data\.quote_id!=='string'/);
 assert.match(source, /!Number\.isFinite\(data\.fare\)\|\|data\.fare<0/);
 assert.match(source, /!Number\.isFinite\(data\.distance_km\)\|\|data\.distance_km<0/);
 assert.match(source, /!Number\.isFinite\(data\.duration_minutes\)\|\|data\.duration_minutes<0/);
-assert.match(source, /\(kind==='quote'\|\|kind==='request'\)\&\&\(!config\.enabled\|\|!config\.configured\)/);
+assert.match(source, /\(kind==='quote'\|\|\(kind==='request'&&!pending\(\)\)\)\&\&\(!config\.enabled\|\|!config\.configured\)/);
+// Disabled Express must block new requests, but must not strand an already persisted request ID.
+assert.match(source, /let p=pending\(\);if\(!p\)\{/);
+assert.match(source, /const result=await rpc\('queuego_request_express',p\)/);
 assert.match(source, /destination=quote=selected=null;quoteSource='';rows=\[\]/);
 // Exercise the comparison contract with a changed phone, weight and pickup.
 const fingerprint = value => JSON.stringify(value);
