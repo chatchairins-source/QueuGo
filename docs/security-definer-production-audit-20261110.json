@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "snapshot_date": "2026-11-10",
+  "project_ref": "pkypiqhlrmzocysgeqew",
+  "source": "Read-only Production pg_proc privilege scan and Supabase Security Advisor",
+  "public_schema_authenticated_security_definer_count": 189,
+  "public_schema_anonymous_security_definer_count": 10,
+  "previously_reviewed_authenticated_count_at_2026_10_07": 123,
+  "observed_authenticated_count_increase_since_review": 66,
+  "reviewed_new_anonymous_rpc": "queuego_ride_config()",
+  "reviewed_new_anonymous_rpc_scope": "No input arguments; returns fixed public ride tariff fields and flags only",
+  "remaining_findings": {
+    "anonymous_security_definer_warnings": 10,
+    "authenticated_security_definer_warnings": 189,
+    "leaked_password_protection_disabled": true,
+    "rls_enabled_no_policy_info": 32
+  },
+  "status": "PENDING_FULL_CURRENT_SECURITY_REVIEW",
+  "caveat": "Function counts and static guards do not prove authorization safety. Previously reviewed 123-function snapshot must not be represented as a current 189-function certification. Never revoke intentional public guest or customer RPC access without verified client contract and regression tests.",
+  "production_mutations_performed": false
+}

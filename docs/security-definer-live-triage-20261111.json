@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "snapshot_date": "2026-11-11",
+  "project_ref": "pkypiqhlrmzocysgeqew",
+  "source": "Read-only pg_proc privilege and definition scan on Supabase Production; no SQL mutations",
+  "classification_method": {
+    "authenticated_executable_security_definer_count": 189,
+    "definitions_with_inline_identity_or_role_marker": 129,
+    "without_inline_marker": 60,
+    "without_inline_marker_but_containing_common_authorization_helper_marker": 46,
+    "without_inline_marker_or_common_helper_marker": 14,
+    "caveat": "Text marker grouping is triage only, not proof of authorization correctness. Full review remains required."
+  },
+  "anonymous_executable_without_inline_identity_marker": {
+    "count": 10,
+    "signatures": [
+      "market_public_catalog_v2()",
+      "market_public_markets_v1()",
+      "market_public_shops_v2()",
+      "qg_public_promotions()",
+      "qg_public_shop_reviews(uuid)",
+      "qg_table_catalog(uuid, uuid)",
+      "qg_table_checkout(uuid, uuid, uuid, jsonb, double precision, double precision)",
+      "qg_table_scan(uuid, uuid, double precision, double precision)",
+      "qg_table_session_status(uuid, uuid)",
+      "queuego_ride_config()"
+    ],
+    "assessment": "Intentionally public or guest-scoped RPC surface; function-level output/session/device/location guards require continued contract review."
+  },
+  "authenticated_only_without_inline_identity_marker": [
+    {
+      "signature": "qg_rider_work_preferences(jsonb)",
+      "anon_executable": false,
+      "delegated_guard": "qg_private.current_rider_profile_id() -> qg_private.assert_live_session(); binds auth.uid() to an active rider profile."
+    },
+    {
+      "signature": "queuego_credit_begin_topup(uuid, text, bigint)",
+      "anon_executable": false,
+      "delegated_guard": "qg_private.credit_owner(kind) -> qg_private.assert_live_session(); binds auth.uid() to an active shop or rider account."
+    },
+    {
+      "signature": "queuego_credit_summary(text, uuid)",
+      "anon_executable": false,
+      "delegated_guard": "qg_private.credit_owner(kind) -> qg_private.assert_live_session(); scopes balances and entries to the authenticated account."
+    },
+    {
+      "signature": "queuego_place_cash_order(uuid, uuid, jsonb, double precision, double precision, text, numeric, numeric, text)",
+      "anon_executable": false,
+      "delegated_guard": "Delegates to queuego_place_cash_order_core(), which is not executable by anon/authenticated and requires auth.uid() for an active customer."
+    }
+  ],
+  "full_current_security_review_status": "PENDING_FULL_CURRENT_SECURITY_REVIEW",
+  "production_mutations_performed": false,
+  "search_path_assessment": {
+    "authenticated_executable_security_definer_count": 189,
+    "functions_without_fixed_search_path": 0,
+    "functions_with_fixed_search_path": 189,
+    "functions_with_nondefault_fixed_search_path": 2,
+    "observed_nondefault_paths": [
+      "pg_catalog, public, pg_temp",
+      "public, market_private, pg_temp"
+    ],
+    "role_schema_privileges": {
+      "anon": {
+        "public_create": false,
+        "market_private_usage": false,
+        "market_private_create": false
+      },
+      "authenticated": {
+        "public_create": false,
+        "market_private_usage": false,
+        "market_private_create": false
+      }
+    },
+    "caveat": "Read-only snapshot. Fixed search_path and schema privilege observations are useful hardening signals, not a substitute for reviewing each function's query, ownership checks, and reachable object resolution."
+  }
+}

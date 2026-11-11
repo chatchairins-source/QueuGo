@@ -1,7 +1,7 @@
 {
-  "version": 1,
-  "reviewed_at": "2026-10-07T08:42:00+07:00",
-  "purpose": "Intentional anonymous SECURITY DEFINER RPCs required by public storefront or guest QR table ordering.",
+  "version": 2,
+  "reviewed_at": "2026-11-10",
+  "purpose": "Reviewed intentional anonymous SECURITY DEFINER RPCs required by public storefront, guest QR table ordering, or read-only public ride fare configuration.",
   "rules": [
     {
       "signature": "market_public_catalog_v2()",
@@ -96,6 +96,18 @@
       "controls": [
         "session id + device hash",
         "active/expiry status only"
+      ]
+    },
+    {
+      "signature": "queuego_ride_config()",
+      "category": "public_ride_config",
+      "reason": "Anonymous Customer ride booking must display the active public motorcycle fare rules before sign-in; Production grants anon EXECUTE explicitly.",
+      "controls": [
+        "no caller arguments",
+        "returns only feature enabled/configured, seven fixed ride tariff numerics and static tariff identifier",
+        "reads only fixed ride configuration keys through internal rule helpers",
+        "no identity, shop, order or customer rows returned",
+        "stable read-only function with search_path public, pg_temp"
       ]
     }
   ],
