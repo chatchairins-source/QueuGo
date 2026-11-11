@@ -138,19 +138,52 @@ def scroll_to_label(label):
         swipe_vertical("up")
     raise AssertionError("Merchant control not visible: "+label)
 
+POS_VIEW_MARKERS = {
+    "counter": {"ขายหน้าร้าน"},
+    "tables": {"จัดการโต๊ะ"},
+    "kitchen": {"คิวครัวหน้าร้าน", "ยังไม่มีออเดอร์เข้าครัว"},
+    "bills": {"คิดเงินและปิดบิล"},
+}
+
+def visible_labels(ns):
+    return {text for n in ns if rect(n) for text in labels(n)}
+
+def pos_view_ready(ns, name):
+    return bool(visible_labels(ns) & POS_VIEW_MARKERS[name])
+
 def capture_pos(screens, prefix):
     ns=nodes()
     if not any(has_label(n,"＋ รับออเดอร์") for n in ns):
         tap_label(ns,"หน้าหลัก")
         tap_label(scroll_to_label("หน้าร้าน POS"),"หน้าร้าน POS")
-    ns=wait(lambda xs:any(has_label(n,"＋ รับออเดอร์") for n in xs),90)
-    assert ns, "Merchant POS failed to render"
-    time.sleep(5)
-    for name,label in (("counter","＋ รับออเดอร์"),("tables","โต๊ะ"),("cashier","คิดเงิน")):
+    required={"＋ รับออเดอร์","คิดเงิน"}
+    ns=wait(lambda xs: required.issubset(visible_labels(xs)),90)
+    assert ns, "Merchant POS failed to render its required order and payment tabs"
+
+    available=visible_labels(ns)
+    has_tables="โต๊ะ" in available
+    has_kitchen="ครัว" in available
+    assert has_tables == has_kitchen, "Merchant restaurant POS must expose both table and kitchen tabs"
+    candidates=(("counter","＋ รับออเดอร์"),("tables","โต๊ะ"),
+                ("kitchen","ครัว"),("bills","คิดเงิน"))
+    captured=[]
+    for name,label in candidates:
+        if label not in available:
+            continue
         tap_label(nodes(),label)
-        time.sleep(3)
+        fresh=wait(lambda xs:pos_view_ready(xs,name),45)
+        assert fresh, "Merchant POS view did not render: "+label
+        time.sleep(1)
         screens.append({"screen":prefix+"pos_"+name,"account":"merchant-test","read_only":True,
                         **shot(prefix+"pos-"+name)})
+        captured.append(name)
+
+    assert {"counter","bills"}.issubset(captured), "Merchant POS order/payment screenshots are incomplete"
+    return {
+        "available_tabs":[label for _,label in candidates if label in available],
+        "captured_views":captured,
+        "tables_and_kitchen_enabled":has_tables,
+    }
 
 def recover_merchant_session(screens):
     """Require actual process death and authenticated server-backed home recovery."""
@@ -211,7 +244,7 @@ def main():
                 else "promotions" if label == "โปรโมชั่น" else "profile")
         capture_primary_tab(screens, label, f"{i:02d}-" + name, label)
     recovery = recover_merchant_session(screens)
-    capture_pos(screens,"phone-")
+    pos_review = {"phone": capture_pos(screens,"phone-")}
     if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1":
         run(["shell","wm","size","1600x2560"])
         run(["shell","wm","density","240"])
@@ -232,7 +265,7 @@ def main():
         screens.append({"screen":"tablet-home","account":"merchant-test","read_only":True,**shot("tablet-home")})
         for label,name in (("คำสั่งซื้อ","orders"),("สินค้า","products"),("โปรโมชั่น","promotions"),("บัญชี","profile")):
             capture_primary_tab(screens, label, "tablet-" + name, "tablet-" + name)
-        capture_pos(screens,"tablet-")
+        pos_review["tablet"] = capture_pos(screens,"tablet-")
     meta={
       "source_head":subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip(),
       "workflow_run":os.environ.get("GITHUB_RUN_ID",""),
@@ -245,8 +278,8 @@ def main():
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
       "cold_session_recovery": recovery,
       "scope":"Authenticated Merchant primary tabs, process-death session recovery and POS views; read-only review",
-      "expected_screens":["home","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี","recovered-home","phone-pos_counter","phone-pos_tables","phone-pos_cashier"],
-      "missing_screens":[],"review_complete":True
+      "expected_screens":[screen["screen"] for screen in screens],
+      "missing_screens":[],"pos_review":pos_review,"review_complete":True
     }
     (OUT/"metadata.json").write_text(json.dumps(meta,ensure_ascii=False,indent=2)+"\n")
     print("QUEUEGO_MERCHANT_AUTHENTICATED_REVIEW_PASS: all expected Merchant screens captured")

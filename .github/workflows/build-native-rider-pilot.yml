@@ -95,6 +95,7 @@ on:
       - 'tests/verify-migration-ledger.py'
       - 'tests/play-store-readiness.cjs'
       - 'tests/security-auth-definer-review.cjs'
+      - 'native-android/qa/security_review_gate.py'
       - 'docs/security-auth-definer-review.json'
       - 'docs/security-anon-definer-allowlist.json'
       - 'docs/play-closed-beta-readiness.md'
@@ -276,20 +277,46 @@ jobs:
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
       - name: Build and bundle pinned nationwide offline map
-        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') }}
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') }}
         env:
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
-          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261029.osm.pbf
+          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261109.osm.pbf
+          QG_PLANETILER_DOWNLOAD: '0'
+          QG_PLANETILER_OCEAN_PATH: ${{ runner.temp }}/queuego-country-map/water-polygons-split-3857.zip
         run: |
           set -euo pipefail
           mkdir -p "$QG_MAP_DATA_DIR"
-          curl --fail --location --retry 2 "$QG_THAILAND_PBF_URL" -o "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
-          echo "0f26968be9675bbdadaab232d19cafb4464e6535a73afe5eee4afd94b43825c6  $QG_MAP_DATA_DIR/thailand-latest.osm.pbf" | sha256sum -c -
+          source_pbf="$QG_MAP_DATA_DIR/thailand-261109.osm.pbf"
+          source_md5="$QG_MAP_DATA_DIR/thailand-261109.osm.pbf.md5"
+          curl --fail --location --retry 2 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
+          curl --fail --location --retry 2 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
+          python3 - "$source_md5" > "$QG_MAP_DATA_DIR/source-check.md5" <<'PY'
+          import re, sys
+          text=open(sys.argv[1], encoding="ascii").read().strip()
+          match=re.fullmatch(r"([0-9a-fA-F]{32})\s+\*?thailand-261109\.osm\.pbf", text)
+          if not match:
+              raise SystemExit("Geofabrik MD5 sidecar does not identify thailand-261109.osm.pbf")
+          print(f"{match.group(1).lower()}  thailand-261109.osm.pbf")
+          PY
+          test "$(stat -c %s "$source_pbf")" -eq 330076369
+          (cd "$QG_MAP_DATA_DIR" && md5sum --check source-check.md5)
+          ln -s "$(basename "$source_pbf")" "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
+          ocean_file="$QG_PLANETILER_OCEAN_PATH"
+          ocean_url=https://www.osmdata.org/download/water-polygons-split-3857.zip
+          if ! curl --fail --location --retry 2 --retry-all-errors --connect-timeout 20 --max-time 600 "$ocean_url" -o "$ocean_file"; then
+            echo "::warning::Primary osmdata host unavailable; retrying the dated FAU mirror snapshot"
+            ocean_url=https://ftp.fau.de/mirrors/openstreetmapdata.com-archive/2026-10-28/water-polygons-split-3857.zip
+            curl --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 1200 "$ocean_url" -o "$ocean_file"
+          fi
+          test -s "$ocean_file"
+          echo "Planetiler ocean polygons source: $ocean_url; bytes: $(stat -c %s "$ocean_file"); SHA-256: $(sha256sum "$ocean_file" | cut -d ' ' -f 1)" >> "$GITHUB_STEP_SUMMARY"
+          source_sha256="$(sha256sum "$source_pbf" | cut -d ' ' -f 1)"
+          echo "Pinned Geofabrik Thailand snapshot 2026-11-09: 330076369 bytes; SHA-256 $source_sha256" >> "$GITHUB_STEP_SUMMARY"
           bash native-android/qa/build-thailand-shortbread-pmtiles.sh
           archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
           python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/queuego-offline-assets" \
             --expected-sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
-            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-10-29
+            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-11-09
           echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets" >> "$GITHUB_ENV"
       - name: Tracking coordinate and terminal-state unit tests
         run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest --no-build-cache --stacktrace
@@ -314,10 +341,21 @@ jobs:
             native-android/customer/build/outputs/apk/debug/customer-debug.apk \
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
             native-android/rider/build/outputs/apk/debug/rider-debug.apk
+      - name: Verify and record source-bound APK checksums
+        run: |
+          set -euo pipefail
+          python3 tests/native-apk-manifest.py
+          python3 native-android/qa/create-apk-manifest.py \
+            --source-sha "$(git rev-parse HEAD)" \
+            --output artifacts/native-pilot-apks/APK-MANIFEST.json \
+            --customer native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            --merchant native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            --rider native-android/rider/build/outputs/apk/debug/rider-debug.apk
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-native-pilot-apks
           path: |
+            artifacts/native-pilot-apks/APK-MANIFEST.json
             native-android/customer/build/outputs/apk/debug/customer-debug.apk
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
             native-android/rider/build/outputs/apk/debug/rider-debug.apk
@@ -558,7 +596,7 @@ jobs:
 
 
   express-races:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.head_ref, 'work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 6
     services:
@@ -632,7 +670,7 @@ jobs:
           retention-days: 14
 
   navigation-map-runtime:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.head_ref, 'work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-map-runtime-xml-') || startsWith(github.head_ref, 'work-native-rider-map-runtime-xml-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.head_ref, 'work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-map-runtime-xml-') || startsWith(github.head_ref, 'work-native-rider-map-runtime-xml-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') || startsWith(github.ref, 'refs/heads/work-native-express-offline-map-') || startsWith(github.head_ref, 'work-native-express-offline-map-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

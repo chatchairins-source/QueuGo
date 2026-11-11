@@ -3,15 +3,25 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - '.github/workflows/build-native-rider-pilot.yml'
+      - '.github/workflows/build-native-release.yml'
+      - '.github/workflows/native-release-certification.yml'
       - '.github/workflows/rider-android-authenticated-review.yml'
       - 'native-android/qa/fetch-rider-offline-candidate.py'
+      - 'native-android/qa/rider_offline_asset_pack.py'
       - 'native-android/rider-navigation-map/**'
       - 'native-android/rider/**'
+      - 'native-android/rider_offline_map_pack/**'
+      - 'native-android/rider_offline_routing_pack/**'
       - 'native-android/qa/run-rider-offline-routing.py'
       - 'native-android/qa/run-rider-fused-gps.py'
+      - 'native-android/qa/adb_screenshot.py'
+      - 'native-android/qa/test_adb_screenshot.py'
       - 'native-android/qa/maplibre-swiftshader/**'
       - 'native-android/build.gradle.kts'
       - 'native-android/settings.gradle.kts'
+      - 'tests/native-offline-asset-pack.cjs'
+      - 'tests/rider-offline-asset-pack.py'
       - 'ops/maps/**'
       - '.github/workflows/rider-offline-routing.yml'
 permissions:
@@ -140,9 +150,21 @@ jobs:
         run: |
           set +o pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-30;default;x86_64'
+      - name: Prepare source-verified Rider Play Asset Packs
+        run: |
+          set -euo pipefail
+          python3 native-android/qa/rider_offline_asset_pack.py prepare \
+            --source-sha "$(git rev-parse HEAD)" \
+            --map-assets "$QG_OFFLINE_MAP_ASSETS" \
+            --routing-assets "$QG_OFFLINE_ROUTING_ASSETS" \
+            --map-pack-output native-android/rider_offline_map_pack/src/main/assets \
+            --routing-pack-output native-android/rider_offline_routing_pack/src/main/assets
       - name: Exact-source JVM tests and Rider Debug APK
         run: |
           gradle -p native-android :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest :rider:testDebugUnitTest :rider:assembleDebug :rider:assembleDebugAndroidTest --no-daemon --stacktrace
+          # Build the Play AAB without copying the large map/graph into its base module.
+          env -u QG_OFFLINE_MAP_ASSETS -u QG_OFFLINE_ROUTING_ASSETS \
+            gradle -p native-android :rider:bundleDebug --no-daemon --stacktrace
           mkdir -p artifacts/rider-offline-routing
           git rev-parse HEAD > artifacts/rider-offline-routing/build-commit.txt
           stat -c %s native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk-size-bytes.txt
@@ -154,6 +176,11 @@ jobs:
           cp "$QG_OFFLINE_ROUTING_ASSETS/routing/manifest.json" artifacts/rider-offline-routing/graph-manifest.json
           cp "$QG_OFFLINE_MAP_ASSETS/maps/thailand-shortbread.json" artifacts/rider-offline-routing/rendering-manifest.json
           cp "$QG_OFFLINE_MAP_ASSETS/maps/thailand-shortbread-recovery.json" artifacts/rider-offline-routing/rendering-recovery.json
+          bundle="$(find native-android/rider/build/outputs/bundle -type f -name '*.aab' -print -quit)"
+          test -n "$bundle"
+          python3 native-android/qa/rider_offline_asset_pack.py verify-aab \
+            --bundle "$bundle" --source-sha "$(git rev-parse HEAD)" \
+            | tee artifacts/rider-offline-routing/asset-pack-evidence.json
       - name: Enable Android acceleration
         run: |
           test -c /dev/kvm
@@ -175,6 +202,8 @@ jobs:
           # Real alternative Android Emulator graphics driver; no product style/text changes.
           python3 native-android/qa/run-rider-navigation-map-runtime.py
           sha256sum -c artifacts/rider-offline-routing/apk.sha256
+      - name: Regression-test ADB screenshot timeout recovery
+        run: python3 native-android/qa/test_adb_screenshot.py
       - name: Verify real Fused GPS on Google APIs emulator using the same Rider APK
         run: |
           python3 native-android/qa/run-rider-fused-gps.py

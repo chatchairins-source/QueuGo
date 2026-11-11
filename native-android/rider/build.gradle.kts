@@ -10,6 +10,7 @@ if (file("google-services.json").exists()) {
 android {
     namespace = "com.queuego.rider"
     compileSdk = 36
+    assetPacks += listOf(":rider_offline_map_pack", ":rider_offline_routing_pack")
 
     defaultConfig {
         applicationId = "com.queuego.rider"

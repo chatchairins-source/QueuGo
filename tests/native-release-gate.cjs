@@ -341,9 +341,26 @@ try{
   });
   assert.equal(backupResult.status,1,'backup_restore evidence must be bound to the attested Backup Restore Drill');
   assert.match(backupResult.stderr,/backup_restore evidence does not match the attested Backup Restore Drill/);
+
+  const backupEnvelope=JSON.parse(fs.readFileSync(path.join(bindingDir,'backup_restore.json'),'utf8'));
+  backupEnvelope.github_run_id=456;
+  fs.writeFileSync(path.join(bindingDir,'backup_restore.json'),JSON.stringify(backupEnvelope));
+  gates.backup_restore={status:'PASS',evidence_file:'backup_restore.json',
+    sha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(bindingDir,'backup_restore.json'))).digest('hex')};
+  fs.writeFileSync(report,JSON.stringify({source_sha:head,p0:0,p1:0,gates}));
+  const releaseEnv={...env,QG_NATIVE_RELEASE_EVIDENCE:report,QG_CERTIFIED_NATIVE_PILOT_RUN_ID:'123',
+    QG_CERTIFIED_BACKUP_RESTORE_RUN_ID:'456',QG_NATIVE_VERSION_NAME:'1.0.0'};
+  for(const role of ['CUSTOMER','MERCHANT','RIDER']){
+    releaseEnv[`QG_${role}_VERSION_CODE`]='1';
+    releaseEnv[`QG_${role}_PLAY_MAX_VERSION_CODE`]='0';
+  }
+  const staleSecurity=spawnSync('python3',[script],{env:releaseEnv,encoding:'utf8'});
+  assert.equal(staleSecurity.status,1,'Native release must remain blocked by the current Production security review');
+  assert.match(staleSecurity.stderr,/Supabase Auth leaked-password protection is disabled/);
 }finally{fs.rmSync(bindingDir,{recursive:true,force:true});}
 
 const verifier=fs.readFileSync(script,'utf8');
+assert.ok(verifier.includes('verify_production_security_review('),'Native release must fail closed on stale or incomplete live Production SECURITY DEFINER review');
 assert.ok(verifier.includes('for role in ("customer", "merchant", "rider")'),'release verifier must apply Play history checks to Customer, Merchant and Rider');
 assert.ok(verifier.includes('play_max_name = f"QG_{role.upper()}_PLAY_MAX_VERSION_CODE"'),'release verifier must derive the per-role observed Play max environment name');
 assert.ok(verifier.includes('version_code <= play_max'),'release verifier must reject a versionCode that does not exceed observed Play history');

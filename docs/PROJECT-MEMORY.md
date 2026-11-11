@@ -1,10 +1,79 @@
+## 2026-11-11 Rider Fused GPS capture transport — IN PROGRESS
+
+- Exact-head Rider offline-routing run `42954010332` passed the real installed Valhalla route, cold-process restart, country rendering and GPS-camera instrumentation, and software-renderer comparison. Its later Fused GPS acceptance reached screenshot capture after the instrumentation returned successfully, then failed because `adb exec-out screencap -p` timed out after 30 seconds; `adb emu kill` also timed out and masked the original failure during cleanup.
+- The failure is in screenshot/ADB transport handling, not evidence that GPS passed or failed. Added a bounded retry helper for genuine PNG captures, preserves each timeout in the artifact, adds cleanup-timeout handling, and tests recovered timeout, exhausted timeout and invalid screenshot output. The GPS assertion remains unchanged and a screenshot remains required.
+- **NEXT:** exact-head offline-routing CI must pass the Fused GPS step; only then retain the exact-source transfer candidate. Physical road/GPS acceptance, Firebase background push and signed release remain separate gates.
+
+## 2026-11-10 Relative PBF mount path correction — PENDING EXACT-HEAD CI
+
+- Run `42829494568` passed full npm regression, Express PostgreSQL race tests, and Customer/Merchant/Rider Kotlin/JVM + Debug APK package-integrity jobs. Planetiler parsed the staged ocean file successfully, then failed because the PBF symlink target was an absolute host path outside the container's `/data` mount.
+- Changed the workflow symlink to a basename-relative target inside the mounted directory; regression now requires the relative form. Need exact-head proof of map generation and downstream offline/APK gates. No Production changes.
+
+## 2026-11-10 Planetiler 0.10.2 ocean input CLI corrected — PENDING EXACT-HEAD CI
+
+- Mirror download succeeded in run `42827962253` and Planetiler started. The build then used its default `ocean_path` and failed because the staged zip was not passed through; this exposed that the 0.10.2 Shortbread profile accepts `--ocean-path`, not the generic water-polygons config option.
+- Changed builder/test back to `--ocean-path=/data/<staged-file>`; a local exact-source dry-run will guard it. The next exact-head run must confirm archive generation, installed offline runtime and APK export. No Production changes.
+
+## 2026-11-10 Planetiler water polygon CLI contract correction — PENDING EXACT-HEAD CI
+
+- Source review of Planetiler config names found the supported input key is `water_polygons_path`; changed the staged-input CLI argument to `--water-polygons-path` and updated the builder dry-run regression. Exact-head map generation must still validate the argument against pinned Planetiler 0.10.2.
+- Water source outage and mirror fallback remain as recorded below; no Production changes.
+
+## 2026-11-10 Water polygons origin outage; mirror fallback — PENDING EXACT-HEAD CI
+
+- Exact-head run `42824979640` passed the full QueueGo regression, Express PostgreSQL races, and all three Android Kotlin/JVM + Debug APK build/integrity jobs. Native Pilot failed only at downloading water polygons: `osmdata.openstreetmap.de` timed out repeatedly; the pinned Geofabrik PBF checksum passed.
+- Changed the planned download to the daily `www.osmdata.org` mirror and a dated FAU archive fallback; CI records final URL, byte count, and SHA-256. These downloads and retries still require exact-head confirmation. No map archive, installed offline runtime, offline routing or release APK is certified by this failing run.
+
+## 2026-11-10 Planetiler remote-input timeout fix — PENDING EXACT-HEAD CI
+
+- Run `42813653497` generated correct source inputs but Planetiler still ran with `--download` and attempted remote OSM/ocean fetches; the ocean endpoint timed out. The builder now supports explicit staged inputs, and the workflow downloads ocean data with bounded retries, disables Planetiler downloads, and records its size/SHA-256. Regression dry-run asserts `--ocean-path` is passed and `--download` is absent. Awaiting exact-head build, offline runtime, and artifact gates; no Production changes.
+
+## 2026-11-10 Geofabrik snapshot URL retired; offline bundle source refreshed — IN PROGRESS
+
+- Exact-head run 42812449576 on c98d2e6 passed the full QueueGo regression and independent Express PostgreSQL races. The nationwide-map step failed before generation because Geofabrik returned HTTP 404 for pinned snapshot thailand-261029.osm.pbf; no country runtime or tested APK export ran.
+- Current official Geofabrik index lists thailand-261109.osm.pbf (330,076,369 bytes; data through 2026-11-09). Follow-up pins that dated URL and expected size, downloads and validates Geofabrik's MD5 sidecar, records the resulting SHA-256 in CI evidence, then generates the archive with source date 2026-11-09.
+- Added regression assertions for the source snapshot, sidecar check, byte count, and rejection of the retired URL. Exact-head map build, offline runtime and artifact export remain pending. No Production data or database changed.
+- Checked Planetiler's documented `--osm-path` contract. The builder reads `/data/thailand-latest.osm.pbf`; linked the checksum-verified dated PBF to that exact input path and added a regression assertion so the builder cannot silently use another input.
+## 2026-11-10 Native offline-map CI trigger follow-up — IN PROGRESS
+
+- PR #914 exact-head Native Pilot run `42808637904` completed successfully, including the full npm regression, Kotlin/JVM and Debug APK jobs, and Android launch/lifecycle capture.
+- Its Thailand archive build and no-network country runtime were skipped because the bundle condition only selected the dedicated Rider offline branch, while the Customer Express fix uses a different stacked branch.
+- Added a targeted follow-up branch selector and a regression wired into `npm test`; the exact-head CI must prove that the pinned Thailand archive builds, offline runtime executes, and test APK export stays behind those gates.
+- Source review found the `express-races` job selected push refs but omitted `github.head_ref`, so PR-triggered Express PostgreSQL race coverage was skipped. Added the PR head selector and expanded the same regression to fail if this returns.
+- No Production database or data changed. Offline-map acceptance remains pending the new exact-head CI run; Debug APKs are not Production releases.
+
 ## 2026-11-11 Customer Express quote freshness regression — IN PROGRESS
 
 - Rechecked main at `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`, PR #913 at `9b61e4dd1990dfd14a31127cb1a0d1f9cf7ead05`, and current stacked heads before refreshing this branch. The #913 source already invalidates the visible fare and disables the Rider request control immediately on input, and rejects quote responses whose live payload changed; this branch now carries that exact source instead of the stale #913 predecessor file.
 - Strengthened `tests/customer-express-quote-freshness.cjs` to execute production `formPayload()`, `bindForm()`, and `action('quote')` with a deferred API response. Regression covers sender/receiver phone, weight, vehicle, pickup, destination, hides the old fare synchronously, and rejects each stale response. The test is wired into `npm test`.
 - Local `node --check customer-express.js` and focused quote freshness/in-flight race regression PASS. No Production SQL, Auth, RLS, RPC, order, payment, or user data changed.
-- Exact-head Native Pilot for this refreshed branch is running as of update (run `42940840439`). No new CI success is claimed until it completes.
-- **NEXT:** retain the stacked Native offline acceptance, verify the newest APK artifacts, and continue the Production migration/security, non-Production E2E, backup, and signed Release gates. Express remains disabled in Production.
+- Exact-head Native Pilot run `42941106634` passed on `5dc08fbed0cafd29b9906ee4ec32edbc13ef3909`; the `navigation-map-runtime` job was skipped, so this is not evidence for nationwide offline routing. The three APKs are Debug artifacts, and Rider Firebase configuration was absent.
+- **NEXT:** retain the quote-freshness regression, complete exact-head offline-map/runtime CI, and continue Production migration/security, isolated E2E, backup, and signed Release gates. Express remains disabled in Production.
+
+
+## 2026-11-11 Source-bound APK manifest — PENDING EXACT-HEAD CI
+
+- PR #915 adds `native-android/qa/create-apk-manifest.py` to record each Customer/Merchant/Rider APK's exact size and SHA-256 with the checked-out source SHA and an explicit Debug/non-Production certification boundary. The primary Native Pilot artifact includes the manifest.
+- `tests/native-apk-manifest.py` (16 checks) and workflow assertions in `tests/native-offline-map-trigger.cjs` pass locally. The manifest does not certify signed release, Firebase background push, backup restore, or offline routing.
+
+## 2026-11-11 Offline-map navigation runtime selector — PENDING EXACT-HEAD CI
+
+- Native Pilot run `42949957095` on `ad8514ffa6a6cd708e67be46f3f1a11cb07da76c` passed Express race, RPC catalog and all three role APK jobs, then remained in the Android lifecycle capture step. The separate `navigation-map-runtime` job was skipped because its PR branch selector omitted `work-native-express-offline-map-*`.
+- Added that stacked PR branch to the job condition and a static regression so it cannot silently skip the dedicated map runtime acceptance again. Exact-head rerun is pending; no nationwide offline navigation acceptance is claimed until that job passes.
+- No Production data changed. Preserve #914 ancestry and Express disabled state.
+
+## 2026-11-11 Rider offline data in signed Play bundles — PENDING EXACT-HEAD CI
+
+- The Rider field-test APK contains a 404 MB ODbL Thailand PMTiles map and a 1.1 GB ODbL Valhalla motorcycle graph. Putting both in the base Play module would exceed its 500 MB compressed-download limit. The signed-release workflow previously produced a Rider AAB without these offline assets.
+- Added separate install-time Play Asset Packs for map and routing data. A source-bound pack manifest records source SHA, file inventory, byte counts and SHA-256. The verifier rejects missing/changed assets, wrong source, oversized packs, and map/routing payloads under base/assets.
+- Release workflow also selects the already audited source-built MapLibre 13.7.1-qg4625.1 component used by offline acceptance and verifies both native-library hashes in the signed Rider APK and AAB. This prevents a release from silently reverting to the unmodified upstream renderer.
+- Release certification now requires successful exact-HEAD Rider offline-routing evidence and unexpired contiguous candidate-APK parts. The signed-release job reassembles the certified APK, verifies its whole-file hash and source SHA, extracts both payloads, builds the signed Play AAB and standalone Rider APK separately, then verifies both outputs. The run ID is read from the persisted job environment at execution time.
+- Full npm test passed in a clean isolated source snapshot; the added source-built MapLibre APK/AAB hash fixtures also pass independently. Targeted checks cover pack preparation, offline APK/AAB integrity, renderer identity, fail-closed manifests, release selectors and Customer Express quote freshness. Exact-source Gradle builds, install-time split runtime and post-change hosted CI are still required; this does not certify a signed release or Production readiness. No Production data/configuration changed.
+
+## 2026-11-09 Bounded Rider offline routing metadata
+
+- Rider bundled routing now reads manifest bytes under a strict 64 KiB cap instead of trusting `InputStream.available()`, and rejects a config manifest declaring more than 64 KiB before copying and parsing it. The actual graph remains checksum verified and offline-only.
+- Added a JVM regression with an input stream reporting zero `available()` despite containing data. Source checks passed; hosted exact-head Rider JVM and Native Pilot verification remain required. No Production data or map assets changed.
 
 ## 2026-11-09 Bounded Rider offline routing metadata
 
@@ -2441,3 +2510,83 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Run the existing release-secret presence check on this review branch as well. It reports missing configuration without printing secret values; a secret-presence PASS alone does not certify an APK, payment flow, or operator evidence.
 - Exact review-branch release-secret run `42630226782` failed because `QG_SUPABASE_SERVICE_ROLE_KEY`, `QG_SUPABASE_DB_URL`, and `QG_BACKUP_PASSPHRASE` are absent; Firebase and Android signing secrets were present but their validators were skipped by the earlier failure. Run those independent validators even when Supabase inputs are absent, while keeping the overall job failed and skipping Storage access without its credential. Never expose secret contents or treat presence as certification.
 - Follow-up exact-head run `42630768316` confirmed Firebase config and Android release signing identity both PASS, while the same three backend/backup secrets remain absent. Native Merchant product entry audit found three silent monetary/inventory defaults: an incomplete restaurant special surcharge became 10 baht, an incomplete laundry fee became zero, and an empty grocery stock became zero. Reject those incomplete visible inputs, preserve hidden laundry fees when changing mode, and keep save disabled until the visible values parse. No Production data was edited.
+
+## 2026-11-11 Release certification blocks stale Production security review
+
+- Re-read PR ancestry before editing: #908 `000e9c73`, #913 `9b61e4dd`, #914 `607ac130`, #915 `f2e47161`; #915 remains stacked on #914 with no behind commits. Exact-head Customer P0 `42971060688` succeeded across API 26/30/33/35. Rider routing `42971060672` succeeded. Native Pilot `42971060683` is still running; Customer/Merchant/Rider JVM + Debug APK, RPC catalog, dispatch, Express race and navigation-map-runtime jobs passed; native-pilot job was still in progress. Auth review `42971060775` credential-check passed; capture remained in progress.
+- Read-only Production Supabase Advisor observation at `2026-11-11T06:30:24.358Z`: 32 RLS-no-policy INFO, 10 anon-executable SECURITY DEFINER WARN, 189 authenticated-executable SECURITY DEFINER WARN, and 1 leaked-password-protection WARN. Read-only `pg_proc` review found direct `anon` execution on `queuego_ride_config()`. Its live body returns only tariff/configuration fields; its source migration revokes PUBLIC and grants authenticated/service_role only, and current Customer Web/Native callers use authenticated sessions. Added it to the source allowlist's `explicitly_not_anonymous` list with a regression asserting the exact public field set and role grants. The live anon grant remains unresolved; no Production permission, schema, order or financial data was changed.
+- The previous source document reviewed only 142 authenticated and 9 anonymous functions on 2026-10-10. Update it to preserve the historical reviewed counts while recording the current 189/10 snapshot and explicitly marking `BLOCKED_UNREVIEWED_LIVE_DELTA`; do not infer that the delta is safe or requires a Production change before examining it.
+- Added `native-android/qa/security_review_gate.py` and wired it into `verify-native-release-gate.py`. Native release certification now requires a current (≤24h), project-bound snapshot whose reviewed counts/classifications and anonymous allowlist exactly match the live Advisor surface; current stale evidence fails closed. Regression covers current mismatch, a valid synthetic fresh snapshot, stale snapshot rejection, anonymous count mismatch, and the full release verifier integration. No signed APK/certification PASS claimed.
+- Local regression `tests/security-auth-definer-review.cjs`: 42 checks, 0 failures; Python compilation and `git diff --check` passed. Hosted CI for the new commit remains required. QueueGo is not ready for Production release.
+- Follow-up hardening requires arithmetic reconciliation of direct `auth.uid()`, helper-guarded and downstream/public-guarded authenticated function groups, validates that public/POS/table/downstream groups cover the full unguarded count, and rejects future-dated review timestamps. Updated synthetic cases pass at 43 checks / 0 failures. The Supabase CLI is not installed here; do not invent a forward migration to reconcile the live `anon` ACL.
+- Release validation also requires the complete `pg_proc` SECURITY DEFINER signature inventory captured within 15 minutes of the Advisor snapshot, exact reviewed-vs-live signature equality, and a non-overlapping exhaustive partition across direct identity, helper, downstream, POS/table and intentional-public groups. The checked-in Production snapshot explicitly records `function_inventory.status=NOT_CAPTURED`; regression now passes 47 checks / 0 failures, including partial inventory, same-count unknown signature, classification mismatch and future review rejection.
+
+## 2026-11-11 Capture the current Production SECURITY DEFINER inventory
+
+- Read-only Supabase Advisor and `pg_proc` captures at `2026-11-11T07:06:18.712Z` / `2026-11-11T07:06:22.483Z` reconciled 189 authenticated and 10 anonymous SECURITY DEFINER signatures. The catalog contained 280 public SECURITY DEFINER functions; all had an explicit `search_path` setting.
+- Added the exact current signature arrays to `docs/security-auth-definer-review.json` with `status=CAPTURED_UNREVIEWED`. The older reviewed surface remains 142 authenticated / 9 anonymous, and the 189/10 live surface is not yet classified. Release certification stays blocked; this capture does not change Production permissions or certify any function as safe.
+- Regression now checks inventory completeness, uniqueness, Advisor/catalog count reconciliation, and the 15-minute capture window. The `queuego_ride_config()` anonymous grant and Auth leaked-password warning remain unresolved. No Production data or schema was changed.
+
+## 2026-11-11 Align dine-in catalog with POS checkout eligibility
+
+- Read-only Production function inspection found `qg_table_catalog()` filtering `available AND delivery_available`, while its checkout function and checked-in table QR migration enforce `available AND pos_available`. A read-only count found one currently available POS-only product hidden by the live catalog and zero items the live catalog exposes that checkout rejects.
+- Created `supabase/migrations/20261111072204_qg_table_catalog_pos_availability.sql` locally with Supabase CLI v3.0.0; it replaces only the catalog function body and includes no grants, RLS changes, or data writes. The migration was not applied to Production.
+- Extended isolated PGlite QR validation: POS-only items appear at their POS price, delivery-only items stay excluded and checkout continues to reject them. Local result: 36 checks / 0 failures. After the migration and test update, full `npm test` exited 0; `native-release-gate.cjs` passed its negative authorization checks, and the posttest Map Field QA gate passed 28 checks.
+- Production function/migration drift remains open. Do not apply this migration or claim Supabase/JWT/RLS E2E until the Production migration ledger is reconciled safely.
+
+## 2026-11-11 Correct exact-head release review regression ordering
+
+- Exact-head CI at PR #915 commit `5d6ac5dd94e11243cee3d376d2f21e6998caf13f` showed three workflows failing on the same `tests/security-auth-definer-review.cjs` assertion: QueueGo RC Tests `42983448306`, Native Pilot `42983448349`, and Map Engine `42983448357`. Customer P0 `42983448289` passed; Rider offline routing and authenticated review were still running when checked.
+- The current checked-in Production snapshot has `auth_leaked_password_protection=1`. `security_review_gate.py` correctly rejects that first, before comparing the old reviewed 142 authenticated functions with the 189 live Advisor count. The regression incorrectly expected the latter error first.
+- Updated the regression to assert the real Auth blocker, then isolate that blocker to zero and assert the stale 142/189 function review still fails. No release gate was weakened; no Supabase plan, Auth setting, Production schema, ACL, data, order or payment was changed.
+- Exact-head verification after this correction is pending. QueueGo remains blocked from release by the unresolved leaked-password setting, unreviewed live function inventory, Express rollout/RPC, signed-release evidence and remaining runtime acceptance.
+
+## 2026-11-11 Align Native release regression with Auth gate precedence
+
+- After the first exact-head correction, QueueGo RC Tests `42985421431` passed on `f872e5d17057825c99dabb3831239ec07b81e10a`. Both Native Pilot attempts then failed at the Native release packaging guard because `tests/native-release-gate.cjs` still expected the old 142/189 mismatch before the current Auth warning; the actual gate correctly returned `Supabase Auth leaked-password protection is disabled`.
+- Updated that integration assertion to require the current Auth blocker. The separate `tests/security-auth-definer-review.cjs` regression still isolates the warning to zero and verifies the 142/189 live-function mismatch, so neither blocker is masked and no gate is weakened.
+- Exact-head CI after this follow-up is pending. No Production Auth setting, plan, permission, migration, data, order or payment was changed.
+
+## 2026-11-11 Capture canonical Production SECURITY DEFINER identities
+
+- Read-only Supabase `pg_proc` inventory at `2026-11-11T08:24:50.537896Z` reports 280 public SECURITY DEFINER functions, 189 executable by authenticated, 10 executable by anon, and 0 without an explicit `search_path`. The Advisor snapshot at `2026-11-11T08:14:52.927Z` still reports 189/10 and leaked-password protection warning 1; the two captures are within the 15-minute gate window.
+- Refreshed the checked-in inventory using `p.oid::regprocedure::text` identity signatures (argument types, without argument names). The live anonymous set now matches all 9 allowlisted public/guest identities plus the single unexpected `queuego_ride_config()`. This fixes metadata representation only; the function review remains unclassified and blocked.
+- Added regressions for canonical identity formatting and exact anonymous drift. No Production function, ACL, Auth setting, schema, migration ledger, order, payment or user data was changed.
+
+
+## 2026-11-11 Align security regression clock with Production snapshot
+
+- Exact-head QueueGo RC Tests on `d830f1c9207b56457b9f73ca6b0e3be58c1114bb` failed because the deterministic regression time `07:07Z` preceded the checked-in Advisor snapshot at `08:14Z`; the security gate correctly rejected the fixture as future-dated before reaching the intended Auth warning assertion.
+- The first correction moved the deterministic test time to `08:30Z`. A follow-up now derives the gate time from each fixture’s Advisor and function-inventory timestamps, adding one minute after the later capture; this keeps the test deterministic as production snapshots refresh while preserving the Auth-warning-first and isolated 142/189 mismatch checks.
+- Initial correction was committed as `58908196d436717bb84f7fdb7540e7b08d13e362`; snapshot-relative gate-time handling is now covered by a regression that advances the Advisor and inventory captures past the former fixed clock and verifies the intended Auth warning. No Production Auth setting, database permission, schema, data, order or payment was changed. No Production Auth setting, database permission, schema, data, order or payment was changed.
+
+
+## 2026-11-11 Merchant POS authenticated review follows shop type
+
+- Exact-head Authenticated Review on `6c342a2e90de023e4f4c4c326763cb9027655f14` captured the Merchant's real retail POS screen, then failed because `capture-merchant-authenticated-review.py` unconditionally required a `โต๊ะ` tab.
+- Root cause: Native Merchant's `PosTabs` intentionally exposes `โต๊ะ` and `ครัว` only for food/cafe shops. The authenticated review account is a retail shop, where the correct tabs are order entry and checkout; the app UI was behaving as designed.
+- Commit `1f5343b638b5456ccd59b66ab84ee5905d78d11a` makes the visual capture require order-entry and payment tabs, capture table/kitchen tabs as a matched optional pair only when enabled for the shop, and wait for each page's own content marker before saving. Expected screenshots and available POS views are now recorded from the actual review surface instead of hard-coding a restaurant-only screen.
+- Verification before push: Python syntax check PASS; synthetic retail and restaurant/cafe selector and content-marker checks PASS. The exact-head Android authenticated review must still run to validate the real account/emulator path.
+- No Production database, Auth, ACL, migration, order, payment, or user data changed. Production release remains blocked by the previously recorded security review, Express RPC/migration, release signing, backup, and device evidence gates.
+
+
+## 2026-11-11 Trigger Merchant authenticated review for its capture script
+
+- Follow-up inspection found the authenticated-review workflow's pull-request path filter covered the Rider capture script but omitted `native-android/qa/capture-merchant-authenticated-review.py`. Therefore the corrected Merchant capture would otherwise not schedule another real emulator review.
+- Commit `a93a2f91c3e0a9f4042e195131bdfa5b6775e585` adds the Merchant capture script to the workflow trigger paths. The PR changes the workflow file itself, so the next exact-head pull-request evaluation should schedule the authenticated review.
+- This repairs test selection only; no production state or data changed. Awaiting exact-head workflow evidence.
+
+
+## 2026-11-11 Keep the Merchant barcode page visible without the soft keyboard
+
+- Authenticated UI artifact `13844906311` on `e6c04d5a736165bd0d70b5a65a4fe6767ea4c241` showed Gboard covering the lower half of Merchant POS order entry, even though the app was focusing the USB/Bluetooth barcode field and issuing one IME hide after 150 ms.
+- The Android IME can finish its show animation after that first hide. The Merchant POS screen now waits for the animation to settle and issues a bounded second hide while keeping barcode-field focus for hardware scanners. The next authenticated review must confirm the screenshot shows the full POS page with the keyboard dismissed.
+- This is app UI code only. No Production database, Auth, migration, order, payment, or user data changed.
+
+
+## 2026-11-11 Apply the ride-config ACL correction safely
+
+- Exact live ACL for `public.queuego_ride_config()` was `anon=true`, `authenticated=true`, `service_role=true`; the existing source migration intended `authenticated,service_role` only and the Customer app uses authenticated sessions.
+- Applied the idempotent ACL migration through Supabase at ledger version `20261111111354`: revoke EXECUTE from `anon` and `PUBLIC`, retain `authenticated` and `service_role`. No function body, RLS, orders, payments or user data changed.
+- Read-only verification confirms `anon=false`, `authenticated=true`, `service_role=true`; Advisor anonymous SECURITY DEFINER count decreased from 10 to 9, while authenticated remains 189. Production migration count is now 392.
+- The source migration filename now matches the ledger version. The broader migration history drift and authenticated SECURITY DEFINER classification remain release blockers.

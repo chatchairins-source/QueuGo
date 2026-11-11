@@ -222,8 +222,8 @@ jobs:
           if type(backup_run_id) is not int or backup_run_id <= 0:
               raise SystemExit("::error::Certification Backup Restore run id is missing or invalid")
           routing_run_id = data.get("rider_offline_run_id")
-          if routing_run_id is not None and (type(routing_run_id) is not int or routing_run_id <= 0):
-              raise SystemExit("::error::Certification Rider offline run id is invalid")
+          if type(routing_run_id) is not int or routing_run_id <= 0:
+              raise SystemExit("::error::Certification Rider offline run id is missing or invalid")
           PY
           pilot_run_id="$(jq -r '.native_pilot_run_id // empty' "$certification_metadata")"
           pilot_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$pilot_run_id")"
@@ -268,26 +268,41 @@ jobs:
           fi
           echo "QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id" >> "$GITHUB_ENV"
           routing_run_id="$(jq -r '.rider_offline_run_id // empty' "$certification_metadata")"
-          if [ -n "$routing_run_id" ]; then
-            routing_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id")"
-            if ! jq -e --arg sha "$GITHUB_SHA" '
-              .head_sha == $sha and .head_branch == "main" and
-              .path == ".github/workflows/rider-offline-routing.yml" and
-              .event == "workflow_dispatch" and .conclusion == "success"
-            ' <<<"$routing_meta" >/dev/null; then
-              echo "::error::Certification references an invalid Rider offline routing run"
-              exit 1
-            fi
-            routing_artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id/artifacts?per_page=100")"
-            if ! jq -e --arg sha "$GITHUB_SHA" '
-              any(.artifacts[]; .expired == false and .size_in_bytes > 0 and
-                .name == ("rider-offline-routing-" + $sha))
-            ' <<<"$routing_artifacts" >/dev/null; then
-              echo "::error::Certification Rider offline routing artifact is unavailable or expired"
-              exit 1
-            fi
-            echo "QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id" >> "$GITHUB_ENV"
+          routing_meta="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id")"
+          if ! jq -e --arg sha "$GITHUB_SHA" '
+            .head_sha == $sha and .head_branch == "main" and
+            .path == ".github/workflows/rider-offline-routing.yml" and
+            .event == "workflow_dispatch" and .conclusion == "success"
+          ' <<<"$routing_meta" >/dev/null; then
+            echo "::error::Certification references an invalid Rider offline routing run"
+            exit 1
           fi
+          routing_artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id/artifacts?per_page=100")"
+          if ! jq -e --arg sha "$GITHUB_SHA" '
+            any(.artifacts[]; .expired == false and .size_in_bytes > 0 and
+              .name == ("rider-offline-routing-" + $sha))
+          ' <<<"$routing_artifacts" >/dev/null; then
+            echo "::error::Certification Rider offline routing evidence is unavailable or expired"
+            exit 1
+          fi
+          part_names="$(jq -r --arg sha "$GITHUB_SHA" '
+            [.artifacts[] | select(.expired == false and .size_in_bytes > 0)
+              | .name | select(test("^rider-unreleased-country-part[0-9]{2}-" + $sha + "$"))]
+            | sort | .[]
+          ' <<<"$routing_artifacts")"
+          part_count="$(printf '%s\n' "$part_names" | sed '/^$/d' | wc -l)"
+          if [ "$part_count" -lt 1 ] || [ "$part_count" -gt 3 ]; then
+            echo "::error::Certified Rider APK transfer parts are missing or exceed the 3-part limit"
+            exit 1
+          fi
+          for index in $(seq 0 $((part_count - 1))); do
+            suffix="$(printf '%02d' "$index")"
+            grep -Fx "rider-unreleased-country-part${suffix}-${GITHUB_SHA}" <<<"$part_names" >/dev/null || {
+              echo "::error::Rider APK transfer parts are not contiguous from part00"
+              exit 1
+            }
+          done
+          echo "QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id" >> "$GITHUB_ENV"
           echo "QG_NATIVE_RELEASE_EVIDENCE=$report" >> "$GITHUB_ENV"
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
@@ -301,6 +316,25 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
+
+      - name: Prepare audited source-built MapLibre component
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          inputs="$RUNNER_TEMP/maplibre-compat-inputs"
+          repository="$RUNNER_TEMP/maplibre-compat-repository"
+          mkdir -p "$inputs"
+          timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13484815852/zip" > "$inputs/x86_64.zip"
+          timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13485115419/zip" > "$inputs/arm64-v8a.zip"
+          base='https://repo.maven.apache.org/maven2/org/maplibre/gl/android-sdk-opengl/13.7.1/android-sdk-opengl-13.7.1'
+          curl --fail --location --retry 2 --max-time 180 "$base.aar" -o "$inputs/baseline.aar"
+          curl --fail --location --retry 2 --max-time 60 "$base.pom" -o "$inputs/baseline.pom"
+          python3 native-android/qa/maplibre-swiftshader/prepare-repository.py prepare \
+            --baseline-aar "$inputs/baseline.aar" --baseline-pom "$inputs/baseline.pom" \
+            --x86-zip "$inputs/x86_64.zip" --arm64-zip "$inputs/arm64-v8a.zip" --repository "$repository"
+          echo "QG_MAPLIBRE_COMPAT_REPOSITORY=$repository" >> "$GITHUB_ENV"
 
       - name: Download verified Android bundletool
         shell: bash
@@ -397,13 +431,102 @@ jobs:
           QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
         run: python3 native-android/qa/verify-native-release-gate.py
 
-      - name: Build signed Native APK and AAB for all roles
+      - name: Rebuild Rider Play Asset Packs from the exact certified field APK
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ROUTING_RUN_ID="${QG_CERTIFIED_RIDER_OFFLINE_RUN_ID:-}"
+          case "$ROUTING_RUN_ID" in
+            ''|*[!0-9]*) echo "::error::Exact-HEAD Rider offline-routing run is required"; exit 1 ;;
+          esac
+          work="$RUNNER_TEMP/queuego-rider-offline-source"
+          mkdir -p "$work"
+          artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ROUTING_RUN_ID/artifacts?per_page=100")"
+          names="$(jq -r --arg sha "$GITHUB_SHA" '
+            [.artifacts[] | select(.expired == false and .size_in_bytes > 0)
+              | .name | select(test("^rider-unreleased-country-part[0-9]{2}-" + $sha + "$"))]
+            | sort | .[]
+          ' <<<"$artifacts")"
+          count="$(printf '%s\n' "$names" | sed '/^$/d' | wc -l)"
+          if [ "$count" -lt 1 ] || [ "$count" -gt 3 ]; then
+            echo "::error::Exact-source Rider APK transfer parts are unavailable"
+            exit 1
+          fi
+          for index in $(seq 0 $((count - 1))); do
+            suffix="$(printf '%02d' "$index")"
+            name="rider-unreleased-country-part${suffix}-${GITHUB_SHA}"
+            grep -Fx "$name" <<<"$names" >/dev/null || {
+              echo "::error::Rider APK transfer parts are not contiguous"
+              exit 1
+            }
+            gh run download "$ROUTING_RUN_ID" --repo "$GITHUB_REPOSITORY" --name "$name" --dir "$work/$suffix"
+            file="$(find "$work/$suffix" -type f -name "rider-debug.apk.part${suffix}" -print -quit)"
+            test -n "$file"
+            cp "$file" "$work/rider-debug.apk.part${suffix}"
+            if [ "$index" -eq 0 ]; then
+              for metadata in parts.sha256 whole-apk.sha256 build-commit.txt; do
+                test -s "$work/$suffix/$metadata"
+                cp "$work/$suffix/$metadata" "$work/"
+              done
+            fi
+          done
+          (
+            cd "$work"
+            sha256sum -c parts.sha256
+          )
+          apk="$RUNNER_TEMP/queuego-rider-exact-source.apk"
+          : > "$apk"
+          for index in $(seq 0 $((count - 1))); do
+            suffix="$(printf '%02d' "$index")"
+            cat "$work/rider-debug.apk.part${suffix}" >> "$apk"
+          done
+          expected_apk_sha="$(awk '{print $1}' "$work/whole-apk.sha256")"
+          actual_apk_sha="$(sha256sum "$apk" | awk '{print $1}')"
+          if [ "$actual_apk_sha" != "$expected_apk_sha" ]; then
+            echo "::error::Reassembled exact-source Rider APK SHA-256 mismatch"
+            exit 1
+          fi
+          if [ "$(tr -d '\r\n' < "$work/build-commit.txt")" != "$GITHUB_SHA" ]; then
+            echo "::error::Rider field APK source SHA does not match release HEAD"
+            exit 1
+          fi
+          rm -rf native-android/rider_offline_map_pack/src/main/assets \
+                 native-android/rider_offline_routing_pack/src/main/assets
+          python3 native-android/qa/rider_offline_asset_pack.py prepare \
+            --source-sha "$GITHUB_SHA" \
+            --apk "$apk" --apk-sha256 "$expected_apk_sha" \
+            --build-commit-file "$work/build-commit.txt" \
+            --map-pack-output native-android/rider_offline_map_pack/src/main/assets \
+            --routing-pack-output native-android/rider_offline_routing_pack/src/main/assets
+
+      - name: Build signed Native AABs for Play delivery
         env:
           QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
           QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
           QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
         run: |
-          gradle -p native-android             :customer:assembleRelease :customer:bundleRelease             :merchant:assembleRelease :merchant:bundleRelease             :rider:assembleRelease :rider:bundleRelease             --no-build-cache --stacktrace
+          gradle -p native-android \
+            :customer:bundleRelease :merchant:bundleRelease :rider:bundleRelease \
+            --no-build-cache --stacktrace
+
+      - name: Build signed standalone Native APKs
+        env:
+          QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
+          QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
+          QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
+        run: |
+          gradle -p native-android :customer:assembleRelease :merchant:assembleRelease \
+            --no-build-cache --stacktrace
+          QG_OFFLINE_MAP_ASSETS=native-android/rider_offline_map_pack/src/main/assets \
+          QG_OFFLINE_ROUTING_ASSETS=native-android/rider_offline_routing_pack/src/main/assets \
+            gradle -p native-android :rider:assembleRelease --no-build-cache --stacktrace
+          python3 native-android/qa/rider_offline_asset_pack.py verify-aab \
+            --bundle native-android/rider/build/outputs/bundle/release/rider-release.aab \
+            --source-sha "$GITHUB_SHA"
+          python3 native-android/qa/rider_offline_asset_pack.py verify-apk \
+            --apk native-android/rider/build/outputs/apk/release/rider-release.apk
 
       - name: Verify Android 16 KB page-size packaging
         run: |
@@ -416,6 +539,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          test -s "$QG_MAPLIBRE_COMPAT_REPOSITORY/component.json"
+          python3 native-android/qa/maplibre-swiftshader/prepare-repository.py verify-apk \
+            --repository "$QG_MAPLIBRE_COMPAT_REPOSITORY" \
+            --apk native-android/rider/build/outputs/apk/release/rider-release.apk
+          python3 native-android/qa/maplibre-swiftshader/prepare-repository.py verify-aab \
+            --repository "$QG_MAPLIBRE_COMPAT_REPOSITORY" \
+            --aab native-android/rider/build/outputs/bundle/release/rider-release.aab
           evidence="$RUNNER_TEMP/native-release-artifacts.json"
           QG_NATIVE_RELEASE_ARTIFACT_EVIDENCE="$evidence"             python3 native-android/qa/verify-native-release-artifacts.py
           release_dir="$RUNNER_TEMP/queuego-native-certified-release"

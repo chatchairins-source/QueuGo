@@ -9,6 +9,8 @@ QG_PM_TILES_OUTPUT_NAME="${QG_PM_TILES_OUTPUT_NAME:-buriram-shortbread.pmtiles}"
 QG_PM_TILES_MAXZOOM="${QG_PM_TILES_MAXZOOM:-14}"
 QG_MAP_DATA_DIR="${QG_MAP_DATA_DIR:-$(pwd)/.queuego-map-data}"
 QG_PLANETILER_DRY_RUN="${QG_PLANETILER_DRY_RUN:-0}"
+QG_PLANETILER_DOWNLOAD="${QG_PLANETILER_DOWNLOAD:-1}"
+QG_PLANETILER_OCEAN_PATH="${QG_PLANETILER_OCEAN_PATH:-}"
 
 if [[ ! "${QG_PM_TILES_OUTPUT_NAME}" =~ ^[A-Za-z0-9._-]+\.pmtiles$ ]]; then
   echo "Invalid QG_PM_TILES_OUTPUT_NAME: ${QG_PM_TILES_OUTPUT_NAME}" >&2
@@ -38,13 +40,27 @@ CMD=(
   shortbread
   "--osm-url=${QG_THAILAND_PBF_URL}"
   "--osm-path=${PBF_PATH_IN_CONTAINER}"
-  --download
   "--bounds=${QG_BURIRAM_BOUNDS}"
   "--output=${OUTPUT_PATH_IN_CONTAINER}"
   --storage=mmap
   "--maxzoom=${QG_PM_TILES_MAXZOOM}"
   --force
 )
+
+if [[ "${QG_PLANETILER_DOWNLOAD}" == "1" ]]; then
+  CMD+=(--download)
+elif [[ "${QG_PLANETILER_DOWNLOAD}" != "0" ]]; then
+  echo "QG_PLANETILER_DOWNLOAD must be 0 or 1." >&2
+  exit 2
+fi
+
+if [[ -n "${QG_PLANETILER_OCEAN_PATH}" ]]; then
+  if [[ ! -s "${QG_PLANETILER_OCEAN_PATH}" ]]; then
+    echo "Configured Planetiler ocean polygons file is missing or empty: ${QG_PLANETILER_OCEAN_PATH}" >&2
+    exit 2
+  fi
+  CMD+=("--ocean-path=/data/$(basename "${QG_PLANETILER_OCEAN_PATH}")")
+fi
 
 if [[ "${QG_PLANETILER_DRY_RUN}" == "1" ]]; then
   printf '%q ' "${CMD[@]}"

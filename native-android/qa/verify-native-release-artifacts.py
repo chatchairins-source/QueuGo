@@ -18,6 +18,9 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[2]
 NATIVE = ROOT / "native-android"
+sys.path.insert(0, str(Path(__file__).parent))
+from rider_offline_asset_pack import verify_aab as verify_rider_offline_aab
+from rider_offline_asset_pack import verify_standalone_apk as verify_rider_standalone_apk
 ROLES = {
     "customer": "com.queuego.customer",
     "merchant": "com.queuego.merchant",
@@ -184,6 +187,29 @@ def verify() -> dict:
         if aab_cert_sha != expected_cert:
             raise ValueError(f"AAB signer does not match certified release certificate for {role}")
 
+        run([java, "-jar", str(bundletool), "validate", f"--bundle={aab}"])
+        offline_assets = None
+        maplibre_component = None
+        if role == "rider":
+            offline_assets = {
+                "play_aab": verify_rider_offline_aab(aab, source_sha),
+                "standalone_apk": verify_rider_standalone_apk(apk),
+            }
+            component_repository = Path(os.environ.get("QG_MAPLIBRE_COMPAT_REPOSITORY", ""))
+            if not (component_repository / "component.json").is_file():
+                raise ValueError("verified source-built MapLibre component is required for Rider release APK/AAB")
+            helper = NATIVE / "qa" / "maplibre-swiftshader" / "prepare-repository.py"
+            maplibre_component = {
+                "apk": json.loads(run([
+                    sys.executable, str(helper), "verify-apk",
+                    "--repository", str(component_repository), "--apk", str(apk),
+                ])),
+                "aab": json.loads(run([
+                    sys.executable, str(helper), "verify-aab",
+                    "--repository", str(component_repository), "--aab", str(aab),
+                ])),
+            }
+
         artifacts[role] = {
             "application_id": package,
             "version_code": expected_codes[role],
@@ -202,6 +228,8 @@ def verify() -> dict:
             "apk_signature_verified": True,
             "aab_signature_verified": True,
             "apk_aab_signer_match": True,
+            "rider_offline_asset_delivery": offline_assets,
+            "maplibre_source_component": maplibre_component,
         }
 
     if len(signer_digests) != 1:

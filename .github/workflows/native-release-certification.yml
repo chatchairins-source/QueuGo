@@ -104,7 +104,7 @@ jobs:
           echo "Certified exact-HEAD Native Pilot CI run: $pilot_run_id"
           echo "QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id" >> "$GITHUB_ENV"
 
-      - name: Attest exact-HEAD Rider offline routing CI when emulator evidence is used
+      - name: Require exact-HEAD Rider offline routing and asset-pack evidence
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -118,15 +118,35 @@ jobs:
               | select(.event == "workflow_dispatch" and .conclusion == "success")]
             | sort_by(.run_number) | last | .id // empty
           ' <<<"$runs")"
-          if [[ "$routing_run_id" =~ ^[0-9]+$ ]]; then
-            artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id/artifacts?per_page=100")"
-            if jq -e --arg sha "$GITHUB_SHA" '
-              any(.artifacts[]; .expired == false and .size_in_bytes > 0 and
-                .name == ("rider-offline-routing-" + $sha))
-            ' <<<"$artifacts" >/dev/null; then
-              echo "QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id" >> "$GITHUB_ENV"
-            fi
+          case "$routing_run_id" in
+            ''|*[!0-9]*) echo "::error::Exact-HEAD successful Rider offline-routing run is required for the Play asset packs"; exit 1 ;;
+          esac
+          artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id/artifacts?per_page=100")"
+          if ! jq -e --arg sha "$GITHUB_SHA" '
+            any(.artifacts[]; .expired == false and .size_in_bytes > 0 and
+              .name == ("rider-offline-routing-" + $sha))
+          ' <<<"$artifacts" >/dev/null; then
+            echo "::error::Exact-HEAD Rider offline-routing evidence is unavailable or expired"
+            exit 1
           fi
+          part_names="$(jq -r --arg sha "$GITHUB_SHA" '
+            [.artifacts[] | select(.expired == false and .size_in_bytes > 0)
+              | .name | select(test("^rider-unreleased-country-part[0-9]{2}-" + $sha + "$"))]
+            | sort | .[]
+          ' <<<"$artifacts")"
+          part_count="$(printf '%s\n' "$part_names" | sed '/^$/d' | wc -l)"
+          if [ "$part_count" -lt 1 ] || [ "$part_count" -gt 3 ]; then
+            echo "::error::Exact-HEAD verified Rider APK transfer parts are missing or exceed the 3-part limit"
+            exit 1
+          fi
+          for index in $(seq 0 $((part_count - 1))); do
+            suffix="$(printf '%02d' "$index")"
+            grep -Fx "rider-unreleased-country-part${suffix}-${GITHUB_SHA}" <<<"$part_names" >/dev/null || {
+              echo "::error::Rider APK transfer parts are not contiguous from part00"
+              exit 1
+            }
+          done
+          echo "QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id" >> "$GITHUB_ENV"
 
       - name: Require successful exact-HEAD Backup Restore Drill
         shell: bash

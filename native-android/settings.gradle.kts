@@ -15,4 +15,7 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "QueueGoNative"
-include(":shared", ":customer", ":merchant", ":rider", ":rider-navigation-map", ":rider-maplibre-osm")
+include(
+    ":shared", ":customer", ":merchant", ":rider", ":rider-navigation-map", ":rider-maplibre-osm",
+    ":rider_offline_map_pack", ":rider_offline_routing_pack",
+)

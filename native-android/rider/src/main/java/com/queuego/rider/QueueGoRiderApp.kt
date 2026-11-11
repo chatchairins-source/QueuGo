@@ -2631,14 +2631,6 @@ private fun RiderHome(
             onRouteIssue = { navigationRouteIssue = it }
         )
 
-        if (!activeNavigationWork) {
-            RiderMapWordmark(
-                Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 10.dp)
-            )
-        }
-
         if (activeNavigationWork) {
             navigationHud?.let { hud ->
                 RiderManeuverBanner(
@@ -4399,31 +4391,6 @@ private fun RiderSpeedLimitSign(speedLimitKph: Int) {
             color = Color(0xFF161214),
             fontSize = 18.sp,
             fontWeight = FontWeight.Black
-        )
-    }
-}
-
-@Composable
-private fun RiderMapWordmark(modifier: Modifier = Modifier) {
-    Row(
-        modifier,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            "Queue",
-            color = Color(0xFF17171B).copy(alpha = 0.46f),
-            fontSize = 11.sp,
-            lineHeight = 12.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.3).sp
-        )
-        Text(
-            "Go",
-            color = QgRed.copy(alpha = 0.46f),
-            fontSize = 11.sp,
-            lineHeight = 12.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = (-0.3).sp
         )
     }
 }

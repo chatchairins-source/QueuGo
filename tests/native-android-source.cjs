@@ -1255,17 +1255,14 @@ ok(
    riderApp.includes('modifier = Modifier.size(44.dp).clickable { compassResetSignal += 1 }'),
    'Rider map controls must expose Web-parity recenter, overview and compass in the lower-right stack above the measured job dock');
 ok(
-   riderApp.includes('private fun RiderMapWordmark(') &&
-   riderApp.includes('if (!activeNavigationWork) {') &&
-   riderApp.includes('RiderMapWordmark(') &&
-   riderApp.includes('Color(0xFF17171B).copy(alpha = 0.46f)') &&
-   riderApp.includes('QgRed.copy(alpha = 0.46f)') &&
+   riderApp.includes('QueueGoRiderNavigationMap(') &&
+   !riderApp.includes('RiderMapWordmark(') &&
    riderApp.includes('private fun RiderBlueprintSpeedPill(speedKph: Int?)') &&
    riderApp.includes('modifier = Modifier.size(52.dp)') &&
    riderApp.includes('shape = androidx.compose.foundation.shape.CircleShape') &&
    riderApp.includes('fontSize = 20.sp') &&
    riderApp.includes('fontSize = 7.sp'),
-   'Rider idle map chrome must match current Web wordmark and circular 52dp speed control');
+   'Rider idle map chrome must keep the map unobstructed and retain circular 52dp speed control');
 ok(riderApp.includes('var auth by remember { mutableStateOf<QueueGoAuth?>(null) }')&&
    riderApp.includes('var restoring by remember { mutableStateOf(true) }')&&
    riderApp.includes('val cached = auth ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO)')&&

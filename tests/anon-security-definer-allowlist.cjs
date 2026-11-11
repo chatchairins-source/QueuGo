@@ -18,10 +18,33 @@ const expected=[
 const actual=allow.rules.map(x=>x.signature).sort();
 ok(JSON.stringify(actual)===JSON.stringify(expected),'anonymous SECURITY DEFINER allowlist must contain exactly the 9 reviewed RPCs');
 ok(new Set(actual).size===9,'anonymous RPC allowlist must not contain duplicates');
-for(const denied of ['market_public_catalog()','queuego_nearest_market(double precision,double precision,numeric)']){
+for(const denied of ['market_public_catalog()','queuego_nearest_market(double precision,double precision,numeric)','queuego_ride_config()']){
   ok(!actual.includes(denied),'retired/non-public RPC must not return to anon allowlist: '+denied);
   ok(allow.explicitly_not_anonymous.includes(denied),'non-anonymous RPC must remain explicitly documented: '+denied);
 }
+
+const rideMigration=read('supabase/migrations/20261017113000_passenger_ride_production_enable.sql');
+const rideConfig=rideMigration.match(/create or replace function public\.queuego_ride_config\(\)[\s\S]*?grant execute on function public\.queuego_ride_config\(\) to authenticated,service_role;/i)?.[0]||'';
+ok(rideConfig.length>0,'ride configuration SECURITY DEFINER source must be available for permission review');
+ok(/stable security definer set search_path=public,pg_temp/i.test(rideConfig),'ride configuration must retain its stable pinned-search-path definition');
+ok(/revoke all on function public\.queuego_ride_config\(\) from public/i.test(rideConfig),'ride configuration must revoke default PUBLIC execution');
+ok(/grant execute on function public\.queuego_ride_config\(\) to authenticated,service_role/i.test(rideConfig),'ride configuration source must grant only authenticated and service role execution');
+ok(!/grant execute on function public\.queuego_ride_config\(\) to [^;]*\banon\b/i.test(rideConfig),'ride configuration must not grant anon execution');
+const tariffObject=rideConfig.match(/return jsonb_build_object\(([\s\S]*?)\);/i)?.[1]||'';
+const sqlArgs=[];let depth=0,inString=false,start=0;
+for(let i=0;i<tariffObject.length;i++){
+  const char=tariffObject[i];
+  if(char==="'"&&inString&&tariffObject[i+1]==="'"){i++;continue;}
+  if(char==="'"){inString=!inString;continue;}
+  if(inString)continue;
+  if(char==='(')depth++;
+  else if(char===')')depth--;
+  else if(char===','&&depth===0){sqlArgs.push(tariffObject.slice(start,i).trim());start=i+1;}
+}
+sqlArgs.push(tariffObject.slice(start).trim());
+const tariffFields=sqlArgs.filter((_,index)=>index%2===0).map(argument=>argument.match(/^'([^']+)'$/)?.[1]||'INVALID_SQL_FIELD');
+const expectedTariffFields=['enabled','configured','base_fare','included_km','per_km','minimum_fare','long_distance_threshold_km','long_distance_per_km','platform_fee_percent','tariff'];
+ok(JSON.stringify(tariffFields)===JSON.stringify(expectedTariffFields),'ride configuration must expose exactly the reviewed tariff/config fields and no user data');
 
 const customer=read('index.html');
 for(const rpc of ['market_public_catalog_v2','market_public_markets_v1','market_public_shops_v2']){
