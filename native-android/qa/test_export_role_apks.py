@@ -50,6 +50,16 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertTrue(all("'fix/apk-export-**'" in line for line in trigger_lines),
                         'stacked APK exporter PR bases and pushes must trigger exact-head CI')
 
+    def test_rejects_invalid_git_head_before_staging(self):
+        for invalid in ('', 'not-a-commit', 'A' * 40, 'g' * 40, 'a' * 39):
+            with self.subTest(invalid=invalid):
+                with patch.object(module.subprocess, 'check_output', return_value=invalid + '\n'):
+                    with self.assertRaisesRegex(ValueError, 'valid 40-character Git source SHA'):
+                        module.export(self.manifest, self.output)
+                self.assertFalse((self.output / 'customer').exists())
+                self.assertFalse((self.output / 'merchant').exists())
+                self.assertFalse((self.output / 'rider').exists())
+
     def test_exports_three_verified_apks_with_debug_disclosure(self):
         signature_dir = self.output / 'rider'
         signature_dir.mkdir()
