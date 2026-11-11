@@ -172,6 +172,57 @@ class ExportRoleApksTest(unittest.TestCase):
             module.export(self.manifest, self.output)
         self.assertFalse((self.output / 'customer').exists())
 
+    def test_rejects_symlinked_manifest_before_writing(self):
+        real = self.root / 'real-manifest.json'
+        self.manifest.rename(real)
+        self.manifest.symlink_to(real)
+        with self.assertRaisesRegex(ValueError, 'APK manifest must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+        self.assertTrue(real.is_file())
+
+    def test_rejects_symlinked_manifest_ancestor_before_writing(self):
+        directory = self.root / 'manifest-real'
+        directory.mkdir()
+        real = directory / 'APK-MANIFEST.json'
+        real.write_bytes(self.manifest.read_bytes())
+        alias = self.root / 'manifest-alias'
+        alias.symlink_to(directory, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'APK manifest must be a regular file'):
+            module.export(alias / real.name, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_manifest_directory_before_writing(self):
+        self.manifest.unlink()
+        self.manifest.mkdir()
+        with self.assertRaisesRegex(ValueError, 'APK manifest must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_non_string_role_before_writing(self):
+        for invalid in (None, 42, ['rider']):
+            with self.subTest(invalid=invalid):
+                rows = json.loads(self.manifest.read_text())
+                rows[2]['role'] = invalid
+                self.manifest.write_text(json.dumps(rows))
+                with self.assertRaisesRegex(ValueError, 'role must be a string'):
+                    module.export(self.manifest, self.output)
+                self.assertFalse((self.output / 'customer').exists())
+                rows[2]['role'] = 'rider'
+                self.manifest.write_text(json.dumps(rows))
+
+    def test_rejects_missing_or_non_string_source_fields_before_writing(self):
+        for field, invalid in (('source_sha', None), ('apk', 123)):
+            with self.subTest(field=field):
+                rows = json.loads(self.manifest.read_text())
+                rows[2][field] = invalid
+                self.manifest.write_text(json.dumps(rows))
+                with self.assertRaisesRegex(ValueError, 'requires string source_sha and apk'):
+                    module.export(self.manifest, self.output)
+                self.assertFalse((self.output / 'customer').exists())
+                rows[2][field] = SHA if field == 'source_sha' else 'rider-debug.apk'
+                self.manifest.write_text(json.dumps(rows))
+
     def test_rejects_malformed_manifest(self):
         self.manifest.write_text('{"not": "a list"}')
         with self.assertRaisesRegex(ValueError, 'list of role records'):
