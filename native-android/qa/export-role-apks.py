@@ -9,6 +9,8 @@ import sys
 
 def export(manifest_path, output):
     source_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    if len(source_sha) != 40 or any(c not in '0123456789abcdef' for c in source_sha):
+        raise ValueError('APK export requires a valid 40-character Git source SHA')
     if any(part.is_symlink() for part in (manifest_path, *manifest_path.parents)) or not manifest_path.is_file():
         raise ValueError('APK manifest must be a regular file, not a symlink (including ancestors)')
     reports = json.loads(manifest_path.read_text())
