@@ -21,6 +21,10 @@ const countryEnd = workflow.indexOf('      - name: Tracking coordinate and termi
 assert.ok(countryStart >= 0 && countryEnd > countryStart, 'the nationwide map build step must be present');
 const countryGate = workflow.slice(countryStart, countryEnd);
 assert.ok(countryGate.includes("startsWith(github.head_ref, 'work-native-express-offline-map-')"), 'the explicit follow-up PR must build the pinned country archive');
+const navJobStart = workflow.indexOf('  navigation-map-runtime:');
+const navJobEnd = workflow.indexOf('\n    runs-on:', navJobStart);
+assert.ok(navJobStart >= 0 && navJobEnd > navJobStart, 'the standalone navigation map runtime job must be present');
+assert.ok(workflow.slice(navJobStart, navJobEnd).includes("startsWith(github.head_ref, 'work-native-express-offline-map-')"), 'the offline-map successor PR must execute the standalone navigation map runtime instead of silently skipping it');
 assert.ok(countryGate.includes('https://www.osmdata.org/download/water-polygons-split-3857.zip') && countryGate.includes('https://ftp.fau.de/mirrors/openstreetmapdata.com-archive/2026-10-28/water-polygons-split-3857.zip'), 'water polygon download must have the reachable daily mirror and a dated archive fallback');
 assert.ok(countryGate.includes('thailand-261109.osm.pbf'), 'the builder must use the available fixed Geofabrik snapshot');
 assert.ok(countryGate.includes('thailand-261109.osm.pbf.md5') && countryGate.includes('md5sum --check source-check.md5'), 'the downloaded snapshot must be checked against its official sidecar');

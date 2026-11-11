@@ -41,8 +41,20 @@
 - Rechecked main at `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`, PR #913 at `9b61e4dd1990dfd14a31127cb1a0d1f9cf7ead05`, and current stacked heads before refreshing this branch. The #913 source already invalidates the visible fare and disables the Rider request control immediately on input, and rejects quote responses whose live payload changed; this branch now carries that exact source instead of the stale #913 predecessor file.
 - Strengthened `tests/customer-express-quote-freshness.cjs` to execute production `formPayload()`, `bindForm()`, and `action('quote')` with a deferred API response. Regression covers sender/receiver phone, weight, vehicle, pickup, destination, hides the old fare synchronously, and rejects each stale response. The test is wired into `npm test`.
 - Local `node --check customer-express.js` and focused quote freshness/in-flight race regression PASS. No Production SQL, Auth, RLS, RPC, order, payment, or user data changed.
-- Exact-head Native Pilot for this refreshed branch is running as of update (run `42940840439`). No new CI success is claimed until it completes.
-- **NEXT:** retain the stacked Native offline acceptance, verify the newest APK artifacts, and continue the Production migration/security, non-Production E2E, backup, and signed Release gates. Express remains disabled in Production.
+- Exact-head Native Pilot run `42941106634` passed on `5dc08fbed0cafd29b9906ee4ec32edbc13ef3909`; the `navigation-map-runtime` job was skipped, so this is not evidence for nationwide offline routing. The three APKs are Debug artifacts, and Rider Firebase configuration was absent.
+- **NEXT:** retain the quote-freshness regression, complete exact-head offline-map/runtime CI, and continue Production migration/security, isolated E2E, backup, and signed Release gates. Express remains disabled in Production.
+
+
+## 2026-11-11 Source-bound APK manifest — PENDING EXACT-HEAD CI
+
+- PR #915 adds `native-android/qa/create-apk-manifest.py` to record each Customer/Merchant/Rider APK's exact size and SHA-256 with the checked-out source SHA and an explicit Debug/non-Production certification boundary. The primary Native Pilot artifact includes the manifest.
+- `tests/native-apk-manifest.py` (16 checks) and workflow assertions in `tests/native-offline-map-trigger.cjs` pass locally. The manifest does not certify signed release, Firebase background push, backup restore, or offline routing.
+
+## 2026-11-11 Offline-map navigation runtime selector — PENDING EXACT-HEAD CI
+
+- Native Pilot run `42949957095` on `ad8514ffa6a6cd708e67be46f3f1a11cb07da76c` passed Express race, RPC catalog and all three role APK jobs, then remained in the Android lifecycle capture step. The separate `navigation-map-runtime` job was skipped because its PR branch selector omitted `work-native-express-offline-map-*`.
+- Added that stacked PR branch to the job condition and a static regression so it cannot silently skip the dedicated map runtime acceptance again. Exact-head rerun is pending; no nationwide offline navigation acceptance is claimed until that job passes.
+- No Production data changed. Preserve #914 ancestry and Express disabled state.
 
 ## 2026-11-09 Bounded Rider offline routing metadata
 
