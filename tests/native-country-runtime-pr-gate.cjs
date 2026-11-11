@@ -35,6 +35,16 @@ for (const path of [
 }
 const pilotWorkflow = fs.readFileSync('.github/workflows/build-native-rider-pilot.yml', 'utf8');
 assert.match(exportWorkflow, /permissions:\n(?:  #[^\n]*\n)*  contents: write\n  actions: read/, 'reusable pilot currently requires caller write permission at startup');
+// Country APK evidence must come from the source commit, never GitHub's synthetic PR merge.
+for (const jobName of ['parallel-role-smoke', 'native-pilot']) {
+  const start = pilotWorkflow.indexOf('  ' + jobName + ':');
+  assert.ok(start >= 0, `pilot workflow must retain ${jobName}`);
+  const rest = pilotWorkflow.slice(start);
+  const nextJob = rest.slice(1).search(/\\n  [a-z][a-z0-9-]*:\\n/);
+  const job = nextJob < 0 ? rest : rest.slice(0, nextJob + 1);
+  assert.ok(job.includes('ref: ${{ github.event.pull_request.head.sha || github.sha }}'),
+    `${jobName} must checkout the exact PR source HEAD`);
+}
 assert.match(pilotWorkflow, /publish-rider-road-test:\n    if: \$\{\{ \(github\.ref == .*?\) && github\.event_name == 'push' \}\}/, 'legacy publisher must remain restricted to explicit road-test branches');
 assert.doesNotMatch(exportWorkflow, /gh release (create|upload)/, 'country export workflow must not publish releases directly');
 assert.match(exportWorkflow, /bundle_country: true/, 'country APK export must request the country build');
