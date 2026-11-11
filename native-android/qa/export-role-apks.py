@@ -14,7 +14,13 @@ def export(manifest_path, output):
     reports = json.loads(manifest_path.read_text())
     if not isinstance(reports, list) or not all(isinstance(row, dict) for row in reports):
         raise ValueError('APK manifest must be a list of role records')
-    roles = [row.get('role') for row in reports]
+    # Fail closed on malformed role metadata before any filesystem writes.
+    if any(not isinstance(row.get('role'), str) for row in reports):
+        raise ValueError('APK manifest role must be a string')
+    if any(not isinstance(row.get('source_sha'), str) or not isinstance(row.get('apk'), str)
+           for row in reports):
+        raise ValueError('APK manifest requires string source_sha and apk fields')
+    roles = [row['role'] for row in reports]
     if sorted(roles) != ['customer', 'merchant', 'rider']:
         raise ValueError('Expected exactly three unique APK roles')
     if any(parent.is_symlink() for parent in (output, *output.parents)):
