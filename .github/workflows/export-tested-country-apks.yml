@@ -3,7 +3,7 @@ name: QueueGo Export Tested Country APKs
 on:
   workflow_dispatch:
   pull_request:
-    branches: ['work-native-**', 'fix/native-country-export-**']
+    branches: ['work-native-**', 'fix/native-country-export-**', 'fix/apk-export-**']
     paths:
       - .github/workflows/export-tested-country-apks.yml
       - .github/workflows/build-native-rider-pilot.yml
@@ -19,7 +19,7 @@ on:
       - 'native-android/gradle/wrapper/**'
       - tests/native-country-runtime-pr-gate.cjs
   push:
-    branches: ['work-native-**', 'fix/native-country-export-**', 'fix/apk-signature-evidence-type-**']
+    branches: ['work-native-**', 'fix/native-country-export-**', 'fix/apk-signature-evidence-type-**', 'fix/apk-export-**']
     paths:
       - .github/workflows/export-tested-country-apks.yml
       - .github/workflows/build-native-rider-pilot.yml
