@@ -80,7 +80,21 @@ class RiderOfflineAssetPackTests(unittest.TestCase):
         self.assertEqual(set(result["packs"]), {"map", "routing"})
         self.assertEqual((self.map_output / "maps/thailand-shortbread.pmtiles").read_bytes(), self.map_bytes)
         self.assertEqual((self.routing_output / "routing/tiles.tar").read_bytes(), self.graph_bytes)
-        self.assertEqual(json.loads((self.map_output / "queuego-offline-assets.json").read_text())["source_sha"], self.source_sha)
+        manifest_paths = {
+            kind: self.map_output / pack["asset_manifest"] if kind == "map"
+            else self.routing_output / pack["asset_manifest"]
+            for kind, pack in asset_pack.PACKS.items()
+        }
+        self.assertEqual(len({pack["asset_manifest"] for pack in asset_pack.PACKS.values()}), 2)
+        self.assertEqual({manifest.name for manifest in manifest_paths.values()}, {
+            "queuego-offline-map-assets.json", "queuego-offline-routing-assets.json",
+        })
+        for kind, manifest_path in manifest_paths.items():
+            manifest = json.loads(manifest_path.read_text())
+            self.assertEqual(manifest["source_sha"], self.source_sha)
+            self.assertEqual(manifest["pack_name"], asset_pack.PACKS[kind]["name"])
+        self.assertFalse((self.map_output / "queuego-offline-assets.json").exists())
+        self.assertFalse((self.routing_output / "queuego-offline-assets.json").exists())
 
     def test_apk_source_commit_and_whole_file_digest_are_required(self) -> None:
         apk = self.root / "candidate.apk"
@@ -129,6 +143,15 @@ class RiderOfflineAssetPackTests(unittest.TestCase):
                 for file in root.rglob("*"):
                     if file.is_file():
                         archive.write(file, prefix + "assets/" + file.relative_to(root).as_posix())
+        with ZipFile(aab) as archive:
+            names = set(archive.namelist())
+        manifest_paths = {
+            pack["name"] + "/assets/" + pack["asset_manifest"]
+            for pack in asset_pack.PACKS.values()
+        }
+        self.assertEqual(len(manifest_paths), 2)
+        self.assertTrue(manifest_paths <= names)
+        self.assertFalse(any(name.endswith("/assets/queuego-offline-assets.json") for name in names))
         evidence = asset_pack.verify_aab(aab, self.source_sha)
         self.assertEqual(evidence["map"]["source_sha"], self.source_sha)
         with self.assertRaisesRegex(ValueError, "exact source"):

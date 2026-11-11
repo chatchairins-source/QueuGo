@@ -13,6 +13,7 @@ const certification = read('.github/workflows/native-release-certification.yml')
 const release = read('.github/workflows/build-native-release.yml');
 const verifier = read('native-android/qa/verify-native-release-artifacts.py');
 const packTool = read('native-android/qa/rider_offline_asset_pack.py');
+const packTests = read('tests/rider-offline-asset-pack.py');
 
 assert.ok(packageJson.scripts.test.includes('node tests/native-offline-asset-pack.cjs'), 'asset-pack contract must run in npm test');
 assert.ok(packageJson.scripts.test.includes('python3 tests/rider-offline-asset-pack.py'), 'asset-pack integrity fixtures must run in npm test');
@@ -35,6 +36,8 @@ assert.ok(release.includes(':rider:bundleRelease') && release.includes(':rider:a
 assert.ok(release.includes('verify-aab') && release.includes('verify-apk'), 'release must verify offline data in both Rider delivery artifacts');
 assert.ok(packTool.includes('1_500_000_000') && packTool.includes('ODbL-1.0'), 'pack preparation must enforce size and ODbL provenance');
 assert.ok(packTool.includes('Rider AAB must deliver nationwide data from asset packs'), 'Play AAB must keep nationwide files outside the base module');
+assert.ok(packTool.includes('queuego-offline-map-assets.json') && packTool.includes('queuego-offline-routing-assets.json'), 'each Android asset pack must use a distinct manifest path to avoid BundleTool cross-module entry conflicts');
+assert.ok(packTests.includes('test_source_packages_are_bound_and_hash_verified') && packTests.includes('asset_manifest'), 'Python pack regression must exercise generated per-module manifest paths');
 assert.ok(verifier.includes('verify_rider_offline_aab') && verifier.includes('verify_rider_standalone_apk'), 'signed artifact verification must check both Rider offline delivery forms');
 
-console.log(JSON.stringify({checks: 23, failures: 0, scope: 'Rider install-time Play Asset Delivery source binding and size gate'}));
+console.log(JSON.stringify({checks: 25, failures: 0, scope: 'Rider install-time Play Asset Delivery source binding and size gate'}));

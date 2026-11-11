@@ -19,6 +19,7 @@ MAX_MANIFEST_BYTES = 128 * 1024
 PACKS = {
     "map": {
         "name": "rider_offline_map_pack",
+        "asset_manifest": "queuego-offline-map-assets.json",
         "members": {
             "maps/thailand-shortbread.pmtiles": "rendering",
             "maps/thailand-shortbread.json": "rendering_manifest",
@@ -27,6 +28,7 @@ PACKS = {
     },
     "routing": {
         "name": "rider_offline_routing_pack",
+        "asset_manifest": "queuego-offline-routing-assets.json",
         "members": {
             "routing/tiles.tar": "graph",
             "routing/valhalla.json": "config",
@@ -202,7 +204,7 @@ def prepare(
                 "pack_name": pack["name"],
                 "files": files,
             }
-            (root / "queuego-offline-assets.json").write_text(
+            (root / pack["asset_manifest"]).write_text(
                 json.dumps(pack_manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
             )
             prepared[kind] = {"pack_name": pack["name"], "files": files}
@@ -229,7 +231,7 @@ def verify_aab(bundle: Path, source_sha: str) -> dict:
             raise ValueError("Rider AAB must deliver nationwide data from asset packs, not the 500 MB-limited base module")
         for kind, pack in PACKS.items():
             prefix = pack["name"] + "/assets/"
-            manifest_path = prefix + "queuego-offline-assets.json"
+            manifest_path = prefix + pack["asset_manifest"]
             if pack["name"] + "/manifest/AndroidManifest.xml" not in members:
                 raise ValueError("Rider AAB is missing install-time asset pack manifest: " + pack["name"])
             if manifest_path not in members:
