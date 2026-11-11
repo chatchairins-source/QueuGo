@@ -21,6 +21,11 @@ def export(manifest_path, output):
         directory = output / role
         if directory.is_symlink():
             raise ValueError(f'{role}: refusing symlinked artifact directory')
+        if directory.exists() and not directory.is_dir():
+            raise ValueError(f'{role}: artifact path must be a directory')
+        signature = directory / 'APK-SIGNATURE.txt'
+        if signature.is_symlink():
+            raise ValueError(f'{role}: refusing symlinked signature evidence')
         if directory.exists() and any(p.name != 'APK-SIGNATURE.txt' for p in directory.iterdir()):
             raise ValueError(f'{role}: refusing to mix fresh APKs with existing role artifacts')
     # Validate every file before writing any deliverable.
@@ -29,6 +34,10 @@ def export(manifest_path, output):
         source = Path(f'native-android/{role}/build/outputs/apk/debug/{role}-debug.apk')
         if source.is_symlink() or not source.is_file():
             raise ValueError(f'{role}: APK source must be a regular file, not a symlink')
+        if (not isinstance(row.get('sha256'), str) or len(row['sha256']) != 64
+                or any(c not in '0123456789abcdef' for c in row['sha256'])
+                or type(row.get('bytes')) is not int or row['bytes'] <= 0):
+            raise ValueError(f'{role}: invalid APK integrity metadata')
         if row['source_sha'] != source_sha or row['apk'] != source.name:
             raise ValueError(f'{role}: build source mismatch')
         with source.open('rb') as stream:
