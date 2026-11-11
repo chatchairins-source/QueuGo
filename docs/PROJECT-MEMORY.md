@@ -2546,3 +2546,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - After the first exact-head correction, QueueGo RC Tests `42985421431` passed on `f872e5d17057825c99dabb3831239ec07b81e10a`. Both Native Pilot attempts then failed at the Native release packaging guard because `tests/native-release-gate.cjs` still expected the old 142/189 mismatch before the current Auth warning; the actual gate correctly returned `Supabase Auth leaked-password protection is disabled`.
 - Updated that integration assertion to require the current Auth blocker. The separate `tests/security-auth-definer-review.cjs` regression still isolates the warning to zero and verifies the 142/189 live-function mismatch, so neither blocker is masked and no gate is weakened.
 - Exact-head CI after this follow-up is pending. No Production Auth setting, plan, permission, migration, data, order or payment was changed.
+
+## 2026-11-11 Capture canonical Production SECURITY DEFINER identities
+
+- Read-only Supabase `pg_proc` inventory at `2026-11-11T08:24:50.537896Z` reports 280 public SECURITY DEFINER functions, 189 executable by authenticated, 10 executable by anon, and 0 without an explicit `search_path`. The Advisor snapshot at `2026-11-11T08:14:52.927Z` still reports 189/10 and leaked-password protection warning 1; the two captures are within the 15-minute gate window.
+- Refreshed the checked-in inventory using `p.oid::regprocedure::text` identity signatures (argument types, without argument names). The live anonymous set now matches all 9 allowlisted public/guest identities plus the single unexpected `queuego_ride_config()`. This fixes metadata representation only; the function review remains unclassified and blocked.
+- Added regressions for canonical identity formatting and exact anonymous drift. No Production function, ACL, Auth setting, schema, migration ledger, order, payment or user data was changed.

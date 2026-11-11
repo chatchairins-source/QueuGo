@@ -34,6 +34,12 @@ ok(inventory?.status==='CAPTURED_UNREVIEWED','captured live signatures must rema
 ok(inventory?.authenticated_security_definer_signatures?.length===snapshot?.counts?.authenticated_security_definer_function_executable&&new Set(inventory.authenticated_security_definer_signatures).size===inventory.authenticated_security_definer_signatures.length,'captured authenticated signatures must be complete and unique');
 ok(inventory?.anonymous_security_definer_signatures?.length===snapshot?.counts?.anon_security_definer_function_executable&&new Set(inventory.anonymous_security_definer_signatures).size===inventory.anonymous_security_definer_signatures.length,'captured anonymous signatures must be complete and unique');
 ok(inventory?.public_security_definer_total===280&&inventory?.unfixed_or_unpinned_search_path_count===0,'live inventory must record all public SECURITY DEFINER functions and explicit search paths');
+const expectedLiveAnonymousSignatures=[...anon.rules.map(rule=>rule.signature),'queuego_ride_config()'].sort();
+ok(JSON.stringify([...inventory.anonymous_security_definer_signatures].sort())===JSON.stringify(expectedLiveAnonymousSignatures),
+  'live anonymous inventory must use PostgreSQL identity signatures and differ from the allowlist only by queuego_ride_config()');
+ok(inventory.authenticated_security_definer_signatures.includes('admin_cash_report(date,date)')&&
+   !inventory.authenticated_security_definer_signatures.includes('admin_cash_report(p_from date, p_to date)'),
+   'live authenticated inventory must use canonical argument-type identity signatures without parameter names');
 ok(Math.abs(Date.parse(inventory?.observed_at)-Date.parse(snapshot?.observed_at))<15*60*1000,'Advisor and pg_proc snapshots must be captured within the 15-minute review window');
 ok(review.review_status==='BLOCKED_UNREVIEWED_LIVE_DELTA','stale classification must remain blocked from release certification');
 ok(review.live_review?.anonymous_allowlist_exact_match===false&&review.live_review?.anonymous_allowlist_count===10,'the live anonymous Advisor set must not be reported as matching the 9-function source allowlist');
