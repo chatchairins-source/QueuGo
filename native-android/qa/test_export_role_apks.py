@@ -40,6 +40,16 @@ class ExportRoleApksTest(unittest.TestCase):
         self.git.start()
         self.addCleanup(self.git.stop)
 
+    def test_country_export_workflow_covers_stacked_apk_export_branches(self):
+        # GitHub pull_request filters match the target/base branch, while push
+        # filters match the source/head branch. Both must cover successor PRs.
+        workflow = (SCRIPT.parents[2] / '.github/workflows/export-tested-country-apks.yml').read_text()
+        trigger_lines = [line.strip() for line in workflow.splitlines()
+                         if line.strip().startswith('branches:')]
+        self.assertEqual(len(trigger_lines), 2)
+        self.assertTrue(all("'fix/apk-export-**'" in line for line in trigger_lines),
+                        'stacked APK exporter PR bases and pushes must trigger exact-head CI')
+
     def test_exports_three_verified_apks_with_debug_disclosure(self):
         signature_dir = self.output / 'rider'
         signature_dir.mkdir()
@@ -74,6 +84,32 @@ class ExportRoleApksTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'export manifest evidence must be a regular file'):
             module.export(self.manifest, self.output)
         self.assertEqual((retained / 'sentinel').read_text(), 'keep unchanged')
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_symlinked_export_metadata_before_writing(self):
+        for evidence_name in ('TESTED-SOURCE.json', 'SHA256SUMS'):
+            with self.subTest(evidence_name=evidence_name):
+                target = self.root / ('outside-' + evidence_name)
+                target.write_text('keep unchanged')
+                folder = self.output / 'rider'
+                folder.mkdir(exist_ok=True)
+                evidence = folder / evidence_name
+                evidence.symlink_to(target)
+                with self.assertRaisesRegex(ValueError, 'export metadata must be a regular file'):
+                    module.export(self.manifest, self.output)
+                self.assertEqual(target.read_text(), 'keep unchanged')
+                self.assertFalse((self.output / 'customer').exists())
+                evidence.unlink()
+
+    def test_rejects_directory_disguised_as_export_metadata(self):
+        folder = self.output / 'rider'
+        folder.mkdir()
+        evidence = folder / 'TESTED-SOURCE.json'
+        evidence.mkdir()
+        (evidence / 'sentinel').write_text('keep unchanged')
+        with self.assertRaisesRegex(ValueError, 'export metadata must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertEqual((evidence / 'sentinel').read_text(), 'keep unchanged')
         self.assertFalse((self.output / 'customer').exists())
 
     def test_rejects_existing_role_directory_without_overwrite(self):
