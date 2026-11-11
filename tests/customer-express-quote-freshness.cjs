@@ -41,7 +41,6 @@ for (const modified of [
   {...original,item:{weightKg:2}},
   {...original,pickup:{lat:15,lng:102}},
 ]) assert.notEqual(fingerprint(modified),quoted);
-console.log('Customer Express quote freshness regression PASS');
 
 /* Execute the production payload builder so every fare-bearing edit is covered. */
 const payloadStart = source.indexOf(' function formPayload(){');
@@ -115,3 +114,60 @@ for (const id of fields) {
   assert.equal(request.disabled,true,id+' edit must disable the old-fare request synchronously');
   assert.equal(input.value,'edited');
 }
+
+/* Resolve a real quote request only after editing each fare-bearing input. */
+async function exercisePendingQuoteEdits() {
+  const actionStart = source.indexOf(' async function action(kind){');
+  const actionEnd = source.indexOf(' V.express=', actionStart);
+  assert.ok(actionStart >= 0 && actionEnd > actionStart, 'production quote action must remain extractable');
+  const actionSource = source.slice(actionStart, actionEnd);
+  const quoteId = '123e4567-e89b-42d3-a456-426614174009';
+  for (const [label, change] of changes) {
+    const state = structuredClone(baseline);
+    let finishResponse;
+    let fetchStarted = false;
+    const response = new Promise(resolve => { finishResponse = resolve; });
+    const productionAction = new Function(
+      'state','payloadBuilder','token','same','actor','pending','render','config','fetch','AbortSignal','CFG','hdr',
+      'let form=state.form,pickup=state.pickup,destination=state.destination;'+
+      'const formPayload=payloadBuilder;let busy=false,quote=null,quoteSource=\'\',error=\'\';'+
+      actionSource+
+      ';return {run:()=>action(\'quote\'),state:()=>({busy,quote,quoteSource,error})};'
+    )(
+      state,
+      makePayload(state, validPhone),
+      () => Promise.resolve('test-access-token'),
+      () => true,
+      () => 'test-user',
+      () => null,
+      () => {},
+      {enabled:true,configured:true},
+      () => { fetchStarted=true; return response; },
+      AbortSignal,
+      {URL:'https://example.invalid'},
+      () => ({})
+    );
+    const pendingRequest = productionAction.run();
+    for (let attempt=0; !fetchStarted && attempt<20; attempt++) {
+      await new Promise(resolve => setImmediate(resolve));
+    }
+    assert.equal(fetchStarted,true,label+' quote request must reach the deferred API');
+    change(state);
+    finishResponse({
+      ok:true,
+      json:async()=>({quote_id:quoteId,fare:100,distance_km:2,duration_minutes:5})
+    });
+    await pendingRequest;
+    const result=productionAction.state();
+    assert.equal(result.quote,null,label+' stale API response must not install a quote');
+    assert.equal(result.quoteSource,'',label+' stale API response must not retain its payload source');
+    assert.match(result.error,/ข้อมูลพัสดุเปลี่ยนแล้ว/,label+' stale API response must require a fresh quote');
+    assert.equal(result.busy,false,label+' quote action must release its busy state');
+  }
+}
+exercisePendingQuoteEdits().then(() => {
+  console.log('Customer Express quote freshness and in-flight race regression PASS');
+}).catch(error => {
+  console.error(error);
+  process.exitCode=1;
+});
