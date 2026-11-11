@@ -7,10 +7,10 @@
     "anonymous_security_definer_total": 9
   },
   "current_live_advisor_snapshot": {
-    "observed_at": "2026-11-11T08:14:52.927Z",
+    "observed_at": "2026-11-11T11:14:03.485Z",
     "function_inventory": {
       "status": "CAPTURED_UNREVIEWED",
-      "observed_at": "2026-11-11T08:24:50.537896+00:00",
+      "observed_at": "2026-11-11T11:14:03.485Z",
       "public_security_definer_total": 280,
       "unfixed_or_unpinned_search_path_count": 0,
       "authenticated_security_definer_signatures": [
@@ -213,13 +213,12 @@
         "qg_table_catalog(uuid,uuid)",
         "qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision)",
         "qg_table_scan(uuid,uuid,double precision,double precision)",
-        "qg_table_session_status(uuid,uuid)",
-        "queuego_ride_config()"
+        "qg_table_session_status(uuid,uuid)"
       ]
     },
     "counts": {
       "rls_enabled_no_policy_info": 32,
-      "anon_security_definer_function_executable": 10,
+      "anon_security_definer_function_executable": 9,
       "authenticated_security_definer_function_executable": 189,
       "auth_leaked_password_protection": 1
     }
@@ -309,13 +308,11 @@
   ],
   "live_review": {
     "no_direct_guard_accounting": "9 intentional public/guest + 14 POS/table helper-guarded wrappers + 1 cash-order core-guarded wrapper = 24",
-    "anonymous_allowlist_exact_match": false,
-    "anonymous_allowlist_count": 10,
-    "unexpected_anonymous_security_definers": [
-      "queuego_ride_config()"
-    ],
-    "database_changes_required": null,
-    "note": "A fresh read-only pg_proc signature inventory has been captured, but the additional authenticated/anonymous signatures have not been reviewed and classified. The release gate remains BLOCKED; no Production grants or policies were changed."
+    "anonymous_allowlist_exact_match": true,
+    "anonymous_allowlist_count": 9,
+    "unexpected_anonymous_security_definers": [],
+    "database_changes_required": false,
+    "note": "The queuego_ride_config() anonymous EXECUTE drift was corrected by migration 20261111111354 and verified read-only. The 189 authenticated signatures remain captured but incompletely classified; the release gate remains BLOCKED."
   },
   "advisor_after_review": {
     "rls_enabled_no_policy_info": 6,

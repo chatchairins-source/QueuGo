@@ -2582,3 +2582,11 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Authenticated UI artifact `13844906311` on `e6c04d5a736165bd0d70b5a65a4fe6767ea4c241` showed Gboard covering the lower half of Merchant POS order entry, even though the app was focusing the USB/Bluetooth barcode field and issuing one IME hide after 150 ms.
 - The Android IME can finish its show animation after that first hide. The Merchant POS screen now waits for the animation to settle and issues a bounded second hide while keeping barcode-field focus for hardware scanners. The next authenticated review must confirm the screenshot shows the full POS page with the keyboard dismissed.
 - This is app UI code only. No Production database, Auth, migration, order, payment, or user data changed.
+
+
+## 2026-11-11 Apply the ride-config ACL correction safely
+
+- Exact live ACL for `public.queuego_ride_config()` was `anon=true`, `authenticated=true`, `service_role=true`; the existing source migration intended `authenticated,service_role` only and the Customer app uses authenticated sessions.
+- Applied the idempotent ACL migration through Supabase at ledger version `20261111111354`: revoke EXECUTE from `anon` and `PUBLIC`, retain `authenticated` and `service_role`. No function body, RLS, orders, payments or user data changed.
+- Read-only verification confirms `anon=false`, `authenticated=true`, `service_role=true`; Advisor anonymous SECURITY DEFINER count decreased from 10 to 9, while authenticated remains 189. Production migration count is now 392.
+- The source migration filename now matches the ledger version. The broader migration history drift and authenticated SECURITY DEFINER classification remain release blockers.

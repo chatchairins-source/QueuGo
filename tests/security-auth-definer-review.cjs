@@ -26,7 +26,7 @@ ok(review.classification.downstream_guarded_pos_or_table_wrappers.length===14,'a
 ok(new Set(review.classification.downstream_guarded_pos_or_table_wrappers).size===14,'POS/table wrapper review must not contain duplicates');
 ok(review.live_review?.no_direct_guard_accounting==='9 intentional public/guest + 14 POS/table helper-guarded wrappers + 1 cash-order core-guarded wrapper = 24','no-direct-guard accounting must remain exact');
 ok(review.current_live_advisor_snapshot?.counts?.authenticated_security_definer_function_executable===189,'current Production snapshot must record all 189 authenticated SECURITY DEFINER functions');
-ok(review.current_live_advisor_snapshot?.counts?.anon_security_definer_function_executable===10,'current Production snapshot must record all 10 anonymous SECURITY DEFINER functions');
+ok(review.current_live_advisor_snapshot?.counts?.anon_security_definer_function_executable===9,'current Production snapshot must record all 9 anonymous SECURITY DEFINER functions');
 ok(review.current_live_advisor_snapshot?.counts?.auth_leaked_password_protection===1,'current Production snapshot must retain the Auth platform warning');
 const snapshot=review.current_live_advisor_snapshot,inventory=snapshot?.function_inventory;
 ok(Number.isFinite(Date.parse(snapshot?.observed_at)),'current Production Advisor observation must be a valid timestamp');
@@ -34,17 +34,17 @@ ok(inventory?.status==='CAPTURED_UNREVIEWED','captured live signatures must rema
 ok(inventory?.authenticated_security_definer_signatures?.length===snapshot?.counts?.authenticated_security_definer_function_executable&&new Set(inventory.authenticated_security_definer_signatures).size===inventory.authenticated_security_definer_signatures.length,'captured authenticated signatures must be complete and unique');
 ok(inventory?.anonymous_security_definer_signatures?.length===snapshot?.counts?.anon_security_definer_function_executable&&new Set(inventory.anonymous_security_definer_signatures).size===inventory.anonymous_security_definer_signatures.length,'captured anonymous signatures must be complete and unique');
 ok(inventory?.public_security_definer_total===280&&inventory?.unfixed_or_unpinned_search_path_count===0,'live inventory must record all public SECURITY DEFINER functions and explicit search paths');
-const expectedLiveAnonymousSignatures=[...anon.rules.map(rule=>rule.signature),'queuego_ride_config()'].sort();
+const expectedLiveAnonymousSignatures=[...anon.rules.map(rule=>rule.signature)].sort();
 ok(JSON.stringify([...inventory.anonymous_security_definer_signatures].sort())===JSON.stringify(expectedLiveAnonymousSignatures),
-  'live anonymous inventory must use PostgreSQL identity signatures and differ from the allowlist only by queuego_ride_config()');
+  'live anonymous inventory must use PostgreSQL identity signatures and exactly match the source allowlist');
 ok(inventory.authenticated_security_definer_signatures.includes('admin_cash_report(date,date)')&&
    !inventory.authenticated_security_definer_signatures.includes('admin_cash_report(p_from date, p_to date)'),
    'live authenticated inventory must use canonical argument-type identity signatures without parameter names');
 ok(Math.abs(Date.parse(inventory?.observed_at)-Date.parse(snapshot?.observed_at))<15*60*1000,'Advisor and pg_proc snapshots must be captured within the 15-minute review window');
 ok(review.review_status==='BLOCKED_UNREVIEWED_LIVE_DELTA','stale classification must remain blocked from release certification');
-ok(review.live_review?.anonymous_allowlist_exact_match===false&&review.live_review?.anonymous_allowlist_count===10,'the live anonymous Advisor set must not be reported as matching the 9-function source allowlist');
-ok(JSON.stringify(review.live_review?.unexpected_anonymous_security_definers)===JSON.stringify(['queuego_ride_config()']),'the additional anon-executable SECURITY DEFINER function must be named for follow-up review');
-ok(review.live_review?.database_changes_required===null,'no Production grant or policy change may be inferred before reviewing the live delta');
+ok(review.live_review?.anonymous_allowlist_exact_match===true&&review.live_review?.anonymous_allowlist_count===9,'the corrected live anonymous Advisor set must match the 9-function source allowlist');
+ok(JSON.stringify(review.live_review?.unexpected_anonymous_security_definers)===JSON.stringify([]),'no unexpected anon-executable SECURITY DEFINER functions may remain');
+ok(review.live_review?.database_changes_required===false,'the anonymous ACL correction must be recorded as applied and verified');
 ok(review.classification.downstream_guarded_authenticated_wrapper[0].signature.startsWith('queuego_place_cash_order('),'cash order wrapper must be documented');
 ok(/auth\.uid\(\) is null/.test(cash)&&/u\.role='customer'/.test(cash),'cash checkout core must keep authenticated active-customer guard');
 ok(/create or replace function public\.pos_my_shop/.test(pos)&&/auth\.uid\(\)/.test(pos),'POS shop helper must bind the authenticated identity');
