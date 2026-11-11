@@ -31,4 +31,16 @@ for (const path of [
 assert.match(exportWorkflow, /bundle_country: true/, 'country APK export must request the country build');
 assert.match(exportWorkflow, /uses: \.\/\.github\/workflows\/build-native-rider-pilot\.yml/, 'country APK export must reuse the tested native pilot');
 
+const exportPush = exportWorkflow.match(/  push:\\n([\\s\\S]*?)(?=\\npermissions:)/);
+assert.ok(exportPush, 'country APK export must run on successor branch pushes');
+assert.match(exportPush[1], /branches: \\['work-native-\\*\\*'\\]/, 'all native successor pushes must trigger export');
+for (const path of [
+  'native-android/qa/prepare-thailand-map-assets.py',
+  'native-android/**/src/main/**',
+  'native-android/**/src/androidTest/**',
+  'native-android/**/build.gradle.kts',
+  'tests/native-country-runtime-pr-gate.cjs',
+]) {
+  assert.ok(exportPush[1].includes(path), `country export push must retrigger on ${path}`);
+}
 console.log('Installed-country runtime and APK export successor PR safety assertions PASS');
