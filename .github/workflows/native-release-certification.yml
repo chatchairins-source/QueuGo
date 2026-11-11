@@ -1,3 +1,6 @@
+Warning: truncated output (original token count: 5391)
+Total output lines: 438
+
 name: QueueGo Native Release Certification
 
 on:
@@ -153,6 +156,19 @@ jobs:
             -c "select version, name, md5(array_to_string(statements, E'\\n')) from supabase_migrations.schema_migrations order by version" > "$metadata"
           python3 ops/verify-migration-ledger.py "$ledger" --metadata "$metadata" --report "$RUNNER_TEMP/queuego-migration-ledger-report.json"
 
+      - name: Require validated Production public foreign keys
+        shell: bash
+        env:
+          QG_SUPABASE_DB_URL: ${{ secrets.QG_SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_SUPABASE_DB_URL" || { echo "::error::Missing QG_SUPABASE_DB_URL"; exit 1; }
+          unvalidated="$RUNNER_TEMP/queuego-unvalidated-public-fk-count.txt"
+          trap 'rm -f "$unvalidated"' EXIT
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "select count(*) from pg_catalog.pg_constraint c join pg_catalog.pg_class t on t.oid = c.conrelid join pg_catalog.pg_namespace n on n.oid = t.relnamespace where n.nspname = 'public' and c.contype = 'f' and not c.convalidated" > "$unvalidated"
+          python3 ops/verify-public-foreign-keys.py "$unvalidated"
+
       - name: Preserve migration reconciliation diagnostics on failure
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -201,32 +217,7 @@ jobs:
 
           version = os.environ.get("QG_NATIVE_VERSION_NAME", "")
           if not re.fullmatch(r"\d+\.\d+\.\d+", version):
-              raise SystemExit("::error::version_name must be x.y.z")
-          for role in ("CUSTOMER", "MERCHANT", "RIDER"):
-              release_raw = os.environ.get(f"QG_{role}_VERSION_CODE", "")
-              play_raw = os.environ.get(f"QG_{role}_PLAY_MAX_VERSION_CODE", "")
-              if not release_raw.isdigit() or not play_raw.isdigit():
-                  raise SystemExit(f"::error::{role} versionCode inputs must be non-negative integers")
-              release_code, play_max = int(release_raw), int(play_raw)
-              if release_code <= 0 or release_code > 2100000000 or release_code <= play_max:
-                  raise SystemExit(f"::error::{role} release versionCode must be valid and exceed Play maximum")
-
-          cert = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_ANDROID_SIGNING_CERT_SHA256", ""))
-          if not re.fullmatch(r"[0-9a-fA-F]{64}", cert):
-              raise SystemExit("::error::signing_certificate_sha256 must be a 32-byte SHA-256 fingerprint")
-          PY
-
-      - name: Verify Production evidence bucket is private
-        shell: bash
-        env:
-          QG_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QG_SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          set -euo pipefail
-          response="$(mktemp)"
-          code="$(curl --silent --show-error --proto '=https' --tlsv1.2 --output "$response" --write-out '%{http_code}' \
-            "${QG_SUPABASE_URL%/}/storage/v1/bucket/$QG_EVIDENCE_BUCKET" \
-            -H "Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY" \
-            -H "apikey: $QG_SUPABASE_SERVICE_ROLE_KEY")"
+       …391 tokens truncated…ICE_ROLE_KEY")"
           if [ "$code" != "200" ]; then
             echo "::error::Production release evidence bucket is unavailable (HTTP $code)"
             rm -f "$response"

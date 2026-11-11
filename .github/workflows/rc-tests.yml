@@ -36,6 +36,8 @@ jobs:
           cache: npm
       - name: Verify migration ledger release guard
         run: python3 tests/verify-migration-ledger.py
+      - name: Verify validated foreign-key release guard
+        run: python3 tests/verify-public-foreign-keys.py
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - name: Install WebKit for complete Merchant mobile boot checks
