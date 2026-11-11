@@ -76,6 +76,32 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertEqual((retained / 'sentinel').read_text(), 'keep unchanged')
         self.assertFalse((self.output / 'customer').exists())
 
+    def test_rejects_symlinked_export_metadata_before_writing(self):
+        for evidence_name in ('TESTED-SOURCE.json', 'SHA256SUMS'):
+            with self.subTest(evidence_name=evidence_name):
+                target = self.root / ('outside-' + evidence_name)
+                target.write_text('keep unchanged')
+                folder = self.output / 'rider'
+                folder.mkdir(exist_ok=True)
+                evidence = folder / evidence_name
+                evidence.symlink_to(target)
+                with self.assertRaisesRegex(ValueError, 'export metadata must be a regular file'):
+                    module.export(self.manifest, self.output)
+                self.assertEqual(target.read_text(), 'keep unchanged')
+                self.assertFalse((self.output / 'customer').exists())
+                evidence.unlink()
+
+    def test_rejects_directory_disguised_as_export_metadata(self):
+        folder = self.output / 'rider'
+        folder.mkdir()
+        evidence = folder / 'TESTED-SOURCE.json'
+        evidence.mkdir()
+        (evidence / 'sentinel').write_text('keep unchanged')
+        with self.assertRaisesRegex(ValueError, 'export metadata must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertEqual((evidence / 'sentinel').read_text(), 'keep unchanged')
+        self.assertFalse((self.output / 'customer').exists())
+
     def test_rejects_existing_role_directory_without_overwrite(self):
         folder = self.output / 'rider'
         folder.mkdir()
