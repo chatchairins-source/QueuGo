@@ -88,6 +88,26 @@ class ExportRoleApksTest(unittest.TestCase):
             self.assertFalse((self.output / role).exists())
         self.assertFalse(retained.exists())
 
+    def test_rejects_manifest_changed_during_validation(self):
+        # A source/retained pair replaced after JSON parsing must not certify
+        # bytes other than the snapshot actually parsed and validated.
+        original_loads = json.loads
+
+        def replace_evidence_after_parse(raw):
+            rows = original_loads(raw)
+            changed = original_loads(self.manifest.read_text())
+            changed[0]['bytes'] += 1
+            replacement = json.dumps(changed).encode()
+            self.manifest.write_bytes(replacement)
+            (self.output / 'APK-MANIFEST.json').write_bytes(replacement)
+            return rows
+
+        with patch.object(module.json, 'loads', side_effect=replace_evidence_after_parse):
+            with self.assertRaisesRegex(ValueError, 'retained manifest differs'):
+                module.export(self.manifest, self.output)
+        for role in ('customer', 'merchant', 'rider'):
+            self.assertFalse((self.output / role).exists())
+
     def test_rejects_stale_retained_manifest_before_writing(self):
         retained = self.output / 'APK-MANIFEST.json'
         retained.write_text('stale but regular manifest')
