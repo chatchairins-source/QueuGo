@@ -64,7 +64,7 @@ ok(/leaked-password protection/i.test(review.boundary),'platform Auth blocker mu
 
 const gate=path.join(root,'native-android/qa/security_review_gate.py');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'queuego-security-review-'));
-const runGate=(document,allowlist,now='2026-11-11T07:07:00Z')=>{
+const runGate=(document,allowlist,now='2026-11-11T08:30:00Z')=>{
   const reviewPath=path.join(temp,'review.json'),allowPath=path.join(temp,'allowlist.json');
   fs.writeFileSync(reviewPath,JSON.stringify(document));
   fs.writeFileSync(allowPath,JSON.stringify(allowlist));
