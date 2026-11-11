@@ -64,11 +64,15 @@ ok(/leaked-password protection/i.test(review.boundary),'platform Auth blocker mu
 
 const gate=path.join(root,'native-android/qa/security_review_gate.py');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'queuego-security-review-'));
-const runGate=(document,allowlist,now='2026-11-11T08:30:00Z')=>{
+const runGate=(document,allowlist,now)=>{
+  const snapshot=document?.current_live_advisor_snapshot??{};
+  const observedTimes=[snapshot.observed_at,snapshot.function_inventory?.observed_at]
+    .map(value=>Date.parse(value)).filter(Number.isFinite);
+  const gateNow=now??new Date((observedTimes.length?Math.max(...observedTimes):Date.parse('2026-11-11T08:30:00Z'))+60_000).toISOString();
   const reviewPath=path.join(temp,'review.json'),allowPath=path.join(temp,'allowlist.json');
   fs.writeFileSync(reviewPath,JSON.stringify(document));
   fs.writeFileSync(allowPath,JSON.stringify(allowlist));
-  return spawnSync('python3',[gate,'--review',reviewPath,'--allowlist',allowPath,'--now',now],{encoding:'utf8'});
+  return spawnSync('python3',[gate,'--review',reviewPath,'--allowlist',allowPath,'--now',gateNow],{encoding:'utf8'});
 };
 try{
   const current=runGate(review,anon);

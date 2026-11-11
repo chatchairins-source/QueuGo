@@ -2557,5 +2557,5 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 ## 2026-11-11 Align security regression clock with Production snapshot
 
 - Exact-head QueueGo RC Tests on `d830f1c9207b56457b9f73ca6b0e3be58c1114bb` failed because the deterministic regression time `07:07Z` preceded the checked-in Advisor snapshot at `08:14Z`; the security gate correctly rejected the fixture as future-dated before reaching the intended Auth warning assertion.
-- Advanced the shared fixture clock to `08:30Z`, which is after both live captures. This preserves the intended checks: the current leaked-password warning blocks first, and a zero-warning synthetic copy still detects the stale 142/189 authenticated-function review.
-- Fix committed as `58908196d436717bb84f7fdb7540e7b08d13e362`. Exact-head workflows are pending. No Production Auth setting, database permission, schema, data, order or payment was changed.
+- The first correction moved the deterministic test time to `08:30Z`. A follow-up now derives the gate time from each fixture’s Advisor and function-inventory timestamps, adding one minute after the later capture; this keeps the test deterministic as production snapshots refresh while preserving the Auth-warning-first and isolated 142/189 mismatch checks.
+- Initial fix committed as `58908196d436717bb84f7fdb7540e7b08d13e362`; snapshot-relative follow-up and this note are committed together. Exact-head workflows are pending. No Production Auth setting, database permission, schema, data, order or payment was changed.
