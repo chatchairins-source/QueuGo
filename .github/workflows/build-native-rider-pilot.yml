@@ -400,6 +400,7 @@ jobs:
             "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs \
               "native-android/$role/build/outputs/apk/debug/$role-debug.apk" > "artifacts/role-export/$role/APK-SIGNATURE.txt"
           done
+          python3 -m unittest discover -s native-android/qa -p 'test_export_role_apks.py' -v
           python3 native-android/qa/export-role-apks.py artifacts/role-export/APK-MANIFEST.json artifacts/role-export
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
