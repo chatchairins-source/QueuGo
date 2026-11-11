@@ -13,7 +13,9 @@ def export(manifest_path, output):
         raise ValueError('APK export requires a valid 40-character Git source SHA')
     if any(part.is_symlink() for part in (manifest_path, *manifest_path.parents)) or not manifest_path.is_file():
         raise ValueError('APK manifest must be a regular file, not a symlink (including ancestors)')
-    reports = json.loads(manifest_path.read_text())
+    # Bind parsing and retained-evidence comparison to the same source snapshot.
+    manifest_bytes = manifest_path.read_bytes()
+    reports = json.loads(manifest_bytes)
     if not isinstance(reports, list) or not all(isinstance(row, dict) for row in reports):
         raise ValueError('APK manifest must be a list of role records')
     # Fail closed on malformed role metadata before any filesystem writes.
@@ -36,7 +38,7 @@ def export(manifest_path, output):
         raise ValueError('APK export manifest evidence must be a regular file, not a symlink')
     if not retained_manifest.is_file():
         raise ValueError('APK export requires retained manifest evidence before staging')
-    if retained_manifest.read_bytes() != manifest_path.read_bytes():
+    if retained_manifest.read_bytes() != manifest_bytes:
         raise ValueError('APK export retained manifest differs from validated source manifest')
     for role in roles:
         directory = output / role
