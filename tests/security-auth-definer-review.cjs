@@ -72,7 +72,7 @@ try{
   const authSignatures=['direct_one()','direct_two()',...signatures];
   const passing={
     version:3,production_project:'pkypiqhlrmzocysgeqew',reviewed_at:'2026-11-11T06:30:30Z',review_status:'PASS',
-    current_live_advisor_snapshot:{observed_at:'2026-11-11T06:30:00Z',counts:{authenticated_security_definer_function_executable:4,anon_security_definer_function_executable:2,auth_leaked_password_protection:1},function_inventory:{observed_at:'2026-11-11T06:30:30Z',authenticated_security_definer_signatures:authSignatures,anonymous_security_definer_signatures:signatures}},
+    current_live_advisor_snapshot:{observed_at:'2026-11-11T06:30:00Z',counts:{authenticated_security_definer_function_executable:4,anon_security_definer_function_executable:2,auth_leaked_password_protection:0},function_inventory:{observed_at:'2026-11-11T06:30:30Z',authenticated_security_definer_signatures:authSignatures,anonymous_security_definer_signatures:signatures}},
     reviewed_surface:{authenticated_security_definer_total:4,anonymous_security_definer_total:2,authenticated_function_signatures:authSignatures},
     direct_auth_uid_count:2,helper_guarded_without_direct_auth_uid_count:0,
     direct_identity_or_role_guard_count:2,no_direct_identity_guard_count:2,
@@ -83,6 +83,10 @@ try{
   const passingAllowlist={rules:signatures.map(signature=>({signature}))};
   const accepted=runGate(passing,passingAllowlist);
   ok(accepted.status===0&&/PASS current Production/.test(accepted.stdout),'fresh complete security review with exact anonymous allowlist must be accepted');
+
+  const leakedPasswordDisabled={...passing,current_live_advisor_snapshot:{...passing.current_live_advisor_snapshot,counts:{...passing.current_live_advisor_snapshot.counts,auth_leaked_password_protection:1}}};
+  const leakedPasswordDisabledResult=runGate(leakedPasswordDisabled,passingAllowlist);
+  ok(leakedPasswordDisabledResult.status===1&&/Supabase Auth leaked-password protection is disabled/.test(leakedPasswordDisabledResult.stdout),'Production release review must fail closed while leaked-password protection is disabled');
 
   const stale={...passing,current_live_advisor_snapshot:{...passing.current_live_advisor_snapshot,observed_at:'2026-10-10T00:00:00Z'}};
   const staleResult=runGate(stale,passingAllowlist);

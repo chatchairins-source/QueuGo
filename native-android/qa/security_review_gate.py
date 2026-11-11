@@ -87,7 +87,9 @@ def verify_production_security_review(
         counts.get("anon_security_definer_function_executable"),
         "live anon SECURITY DEFINER Advisor count",
     )
-    _nonnegative_count(counts.get("auth_leaked_password_protection"), "live leaked-password protection Advisor count")
+    leaked_password_findings = _nonnegative_count(counts.get("auth_leaked_password_protection"), "live leaked-password protection Advisor count")
+    if leaked_password_findings != 0:
+        raise ValueError("Supabase Auth leaked-password protection is disabled")
     reviewed_auth = _nonnegative_count(
         reviewed.get("authenticated_security_definer_total"),
         "reviewed authenticated SECURITY DEFINER count",
