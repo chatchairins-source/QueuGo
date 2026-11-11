@@ -32,8 +32,10 @@ for (const path of [
 ]) {
   assert.ok(exportPr[1].includes(path), `country APK export must retrigger on ${path}`);
 }
-assert.match(exportWorkflow, /permissions:\n  contents: read\n  actions: read/, 'country APK export must use read-only GitHub token permissions');
-assert.doesNotMatch(exportWorkflow, /contents: write/, 'country APK export must not grant repository write permission');
+const pilotWorkflow = fs.readFileSync('.github/workflows/build-native-rider-pilot.yml', 'utf8');
+assert.match(exportWorkflow, /permissions:\n(?:  #[^\n]*\n)*  contents: write\n  actions: read/, 'reusable pilot currently requires caller write permission at startup');
+assert.match(pilotWorkflow, /publish-rider-road-test:\n    if: \$\{\{ \(github\.ref == .*?\) && github\.event_name == 'push' \}\}/, 'legacy publisher must remain restricted to explicit road-test branches');
+assert.doesNotMatch(exportWorkflow, /gh release (create|upload)/, 'country export workflow must not publish releases directly');
 assert.match(exportWorkflow, /bundle_country: true/, 'country APK export must request the country build');
 assert.match(exportWorkflow, /uses: \.\/\.github\/workflows\/build-native-rider-pilot\.yml/, 'country APK export must reuse the tested native pilot');
 
