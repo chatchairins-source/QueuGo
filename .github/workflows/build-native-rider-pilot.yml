@@ -340,10 +340,21 @@ jobs:
             native-android/customer/build/outputs/apk/debug/customer-debug.apk \
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
             native-android/rider/build/outputs/apk/debug/rider-debug.apk
+      - name: Verify and record source-bound APK checksums
+        run: |
+          set -euo pipefail
+          python3 tests/native-apk-manifest.py
+          python3 native-android/qa/create-apk-manifest.py \
+            --source-sha "$(git rev-parse HEAD)" \
+            --output artifacts/native-pilot-apks/APK-MANIFEST.json \
+            --customer native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            --merchant native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            --rider native-android/rider/build/outputs/apk/debug/rider-debug.apk
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-native-pilot-apks
           path: |
+            artifacts/native-pilot-apks/APK-MANIFEST.json
             native-android/customer/build/outputs/apk/debug/customer-debug.apk
             native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
             native-android/rider/build/outputs/apk/debug/rider-debug.apk
