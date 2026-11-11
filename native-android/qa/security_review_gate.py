@@ -10,6 +10,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 EXPECTED_PROJECT = "pkypiqhlrmzocysgeqew"
 MAX_AGE = timedelta(hours=24)
+MAX_SNAPSHOT_SKEW = timedelta(minutes=15)
 
 
 def parse_time(value: object, label: str) -> datetime:
@@ -28,6 +29,20 @@ def _nonnegative_count(value: object, label: str) -> int:
     if type(value) is not int or value < 0:
         raise ValueError(f"{label} must be a non-negative integer")
     return value
+
+
+def _string_signatures(value: object, label: str) -> list[str]:
+    if not isinstance(value, list) or any(not isinstance(item, str) or not item.strip() for item in value):
+        raise ValueError(f"{label} must be a list of exact function signatures")
+    if len(set(value)) != len(value):
+        raise ValueError(f"{label} contains duplicate signatures")
+    return value
+
+
+def _object_signatures(value: object, label: str) -> list[str]:
+    if not isinstance(value, list) or any(not isinstance(item, dict) for item in value):
+        raise ValueError(f"{label} must contain signature objects")
+    return _string_signatures([item.get("signature") for item in value], label)
 
 
 def verify_production_security_review(
@@ -90,10 +105,34 @@ def verify_production_security_review(
             f"reviewed anonymous SECURITY DEFINER count {reviewed_anon} does not match current live Advisor count {live_anon}"
         )
 
+    inventory = snapshot.get("function_inventory")
+    if not isinstance(inventory, dict):
+        raise ValueError("current live SECURITY DEFINER signature inventory is missing")
+    inventory_observed = parse_time(inventory.get("observed_at"), "function inventory observed_at")
+    if inventory_observed > current + timedelta(minutes=5):
+        raise ValueError("function inventory is from the future")
+    if current - inventory_observed > MAX_AGE:
+        raise ValueError("function inventory is stale; refresh and review Production before release")
+    if abs(inventory_observed - observed) > MAX_SNAPSHOT_SKEW:
+        raise ValueError("Advisor counts and SECURITY DEFINER inventory are too far apart to be one review snapshot")
+    live_auth_signatures = _string_signatures(
+        inventory.get("authenticated_security_definer_signatures"), "live authenticated function inventory"
+    )
+    live_anon_signatures = _string_signatures(
+        inventory.get("anonymous_security_definer_signatures"), "live anonymous function inventory"
+    )
+    reviewed_auth_signatures = _string_signatures(
+        reviewed.get("authenticated_function_signatures"), "reviewed authenticated function inventory"
+    )
+    if len(live_auth_signatures) != live_auth or len(live_anon_signatures) != live_anon:
+        raise ValueError("live SECURITY DEFINER signature inventory does not match Advisor counts")
+    if sorted(reviewed_auth_signatures) != sorted(live_auth_signatures):
+        raise ValueError("reviewed authenticated signatures do not match the exact live function inventory")
+
     reviewed_at = parse_time(review.get("reviewed_at"), "security review reviewed_at")
     if reviewed_at > current + timedelta(minutes=5):
         raise ValueError("security review reviewed_at is from the future")
-    if reviewed_at < observed:
+    if reviewed_at < max(observed, inventory_observed):
         raise ValueError("security review predates the current live Advisor snapshot")
 
     classification = review.get("classification")
@@ -111,28 +150,38 @@ def verify_production_security_review(
     )
     if direct_auth_uid + helper_guarded != direct:
         raise ValueError("direct and helper-guarded function counts do not reconcile")
-    if direct + unguarded != live_auth:
-        raise ValueError("reviewed authenticated function classifications do not cover the live Advisor count")
 
     public_review = classification.get("intentional_public_or_guest")
     allow_rules = allowlist.get("rules")
     if not isinstance(public_review, list) or not isinstance(allow_rules, list):
         raise ValueError("anonymous SECURITY DEFINER review/allowlist is missing")
-    reviewed_public = [item.get("signature") for item in public_review if isinstance(item, dict)]
+    reviewed_public = _object_signatures(public_review, "anonymous SECURITY DEFINER review")
     allowed_public = [item.get("signature") for item in allow_rules if isinstance(item, dict)]
-    if len(reviewed_public) != len(public_review) or len(allowed_public) != len(allow_rules):
+    if len(allowed_public) != len(allow_rules) or any(not isinstance(item, str) or not item.strip() for item in allowed_public):
         raise ValueError("anonymous SECURITY DEFINER entries must have exact signatures")
     if len(set(reviewed_public)) != len(reviewed_public) or len(set(allowed_public)) != len(allowed_public):
         raise ValueError("anonymous SECURITY DEFINER review contains duplicate signatures")
-    if sorted(reviewed_public) != sorted(allowed_public) or len(allowed_public) != live_anon:
+    if sorted(live_anon_signatures) != sorted(allowed_public) or sorted(reviewed_public) != sorted(allowed_public) or len(allowed_public) != live_anon:
         raise ValueError("anonymous SECURITY DEFINER review does not exactly match the current live Advisor surface")
 
     downstream = classification.get("downstream_guarded_authenticated_wrapper")
     pos_wrappers = classification.get("downstream_guarded_pos_or_table_wrappers")
-    if not isinstance(downstream, list) or not isinstance(pos_wrappers, list):
-        raise ValueError("downstream authenticated SECURITY DEFINER classifications are missing")
-    if len(reviewed_public) + len(downstream) + len(pos_wrappers) != unguarded:
+    direct_signatures = _string_signatures(classification.get("direct_auth_uid_signatures"), "direct auth.uid classifications")
+    helper_signatures = _string_signatures(
+        classification.get("helper_guarded_without_direct_auth_uid_signatures"), "helper-guarded classifications"
+    )
+    downstream_signatures = _object_signatures(downstream, "downstream authenticated wrapper classifications")
+    pos_signatures = _string_signatures(pos_wrappers, "POS/table wrapper classifications")
+    if len(direct_signatures) != direct_auth_uid or len(helper_signatures) != helper_guarded:
+        raise ValueError("authenticated signature classifications do not match direct/helper guard counts")
+    if len(direct_signatures) + len(helper_signatures) != direct:
+        raise ValueError("direct and helper-guarded signature groups do not reconcile")
+    unguarded_signatures = reviewed_public + downstream_signatures + pos_signatures
+    if len(unguarded_signatures) != unguarded or len(set(unguarded_signatures)) != len(unguarded_signatures):
         raise ValueError("public, POS/table and downstream wrapper counts do not cover the reviewed unguarded surface")
+    all_classified = direct_signatures + helper_signatures + unguarded_signatures
+    if len(set(all_classified)) != len(all_classified) or sorted(all_classified) != sorted(live_auth_signatures):
+        raise ValueError("authenticated SECURITY DEFINER classifications must partition the exact live inventory")
 
     live_review = review.get("live_review")
     if not isinstance(live_review, dict):

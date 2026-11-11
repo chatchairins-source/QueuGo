@@ -8,6 +8,9 @@
   },
   "current_live_advisor_snapshot": {
     "observed_at": "2026-11-11T06:30:24.358Z",
+    "function_inventory": {
+      "status": "NOT_CAPTURED"
+    },
     "counts": {
       "rls_enabled_no_policy_info": 32,
       "anon_security_definer_function_executable": 10,

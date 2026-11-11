@@ -29,6 +29,7 @@ ok(review.current_live_advisor_snapshot?.counts?.authenticated_security_definer_
 ok(review.current_live_advisor_snapshot?.counts?.anon_security_definer_function_executable===10,'current Production snapshot must record all 10 anonymous SECURITY DEFINER functions');
 ok(review.current_live_advisor_snapshot?.counts?.auth_leaked_password_protection===1,'current Production snapshot must retain the Auth platform warning');
 ok(review.current_live_advisor_snapshot?.observed_at==='2026-11-11T06:30:24.358Z','current Production Advisor observation must retain its exact timestamp');
+ok(review.current_live_advisor_snapshot?.function_inventory?.status==='NOT_CAPTURED','the snapshot must disclose that complete live function signatures have not been inventoried');
 ok(review.review_status==='BLOCKED_UNREVIEWED_LIVE_DELTA','stale classification must remain blocked from release certification');
 ok(review.live_review?.anonymous_allowlist_exact_match===false&&review.live_review?.anonymous_allowlist_count===10,'the live anonymous Advisor set must not be reported as matching the 9-function source allowlist');
 ok(JSON.stringify(review.live_review?.unexpected_anonymous_security_definers)===JSON.stringify(['queuego_ride_config()']),'the additional anon-executable SECURITY DEFINER function must be named for follow-up review');
@@ -63,13 +64,14 @@ try{
   ok(current.status===1&&/reviewed authenticated SECURITY DEFINER count 142 does not match current live Advisor count 189/.test(current.stdout),'stale Production function review must fail the release gate on the live authenticated delta');
 
   const signatures=['public_one()','public_two()'];
+  const authSignatures=['direct_one()','direct_two()',...signatures];
   const passing={
-    version:3,production_project:'pkypiqhlrmzocysgeqew',reviewed_at:'2026-11-11T06:30:00Z',review_status:'PASS',
-    current_live_advisor_snapshot:{observed_at:'2026-11-11T06:30:00Z',counts:{authenticated_security_definer_function_executable:4,anon_security_definer_function_executable:2,auth_leaked_password_protection:1}},
-    reviewed_surface:{authenticated_security_definer_total:4,anonymous_security_definer_total:2},
-    direct_auth_uid_count:1,helper_guarded_without_direct_auth_uid_count:1,
+    version:3,production_project:'pkypiqhlrmzocysgeqew',reviewed_at:'2026-11-11T06:30:30Z',review_status:'PASS',
+    current_live_advisor_snapshot:{observed_at:'2026-11-11T06:30:00Z',counts:{authenticated_security_definer_function_executable:4,anon_security_definer_function_executable:2,auth_leaked_password_protection:1},function_inventory:{observed_at:'2026-11-11T06:30:30Z',authenticated_security_definer_signatures:authSignatures,anonymous_security_definer_signatures:signatures}},
+    reviewed_surface:{authenticated_security_definer_total:4,anonymous_security_definer_total:2,authenticated_function_signatures:authSignatures},
+    direct_auth_uid_count:2,helper_guarded_without_direct_auth_uid_count:0,
     direct_identity_or_role_guard_count:2,no_direct_identity_guard_count:2,
-    classification:{intentional_public_or_guest:signatures.map(signature=>({signature})),downstream_guarded_authenticated_wrapper:[],downstream_guarded_pos_or_table_wrappers:[]},
+    classification:{direct_auth_uid_signatures:['direct_one()','direct_two()'],helper_guarded_without_direct_auth_uid_signatures:[],intentional_public_or_guest:signatures.map(signature=>({signature})),downstream_guarded_authenticated_wrapper:[],downstream_guarded_pos_or_table_wrappers:[]},
     live_review:{anonymous_allowlist_exact_match:true,database_changes_required:false,unexpected_anonymous_security_definers:[]},
     conclusion:'PASS_CODE_DATABASE_REVIEW_CURRENT_SURFACE'
   };
@@ -86,8 +88,21 @@ try{
   ok(mismatchResult.status===1&&/reviewed anonymous SECURITY DEFINER count 1 does not match current live Advisor count 2/.test(mismatchResult.stdout),'an unmatched anonymous function must block release certification');
 
   const badClassification={...passing,direct_auth_uid_count:2};
+  badClassification.direct_identity_or_role_guard_count=3;
   const badClassificationResult=runGate(badClassification,passingAllowlist);
   ok(badClassificationResult.status===1&&/direct and helper-guarded function counts do not reconcile/.test(badClassificationResult.stdout),'inconsistent authenticated guard classifications must block release certification');
+
+  const missingInventory={...passing,current_live_advisor_snapshot:{...passing.current_live_advisor_snapshot,function_inventory:{...passing.current_live_advisor_snapshot.function_inventory,authenticated_security_definer_signatures:authSignatures.slice(1)}}};
+  const missingInventoryResult=runGate(missingInventory,passingAllowlist);
+  ok(missingInventoryResult.status===1&&/signature inventory does not match Advisor counts/.test(missingInventoryResult.stdout),'partial live signature inventory must block release certification');
+
+  const wrongInventory={...passing,current_live_advisor_snapshot:{...passing.current_live_advisor_snapshot,function_inventory:{...passing.current_live_advisor_snapshot.function_inventory,authenticated_security_definer_signatures:['unknown()',...authSignatures.slice(1)]}}};
+  const wrongInventoryResult=runGate(wrongInventory,passingAllowlist);
+  ok(wrongInventoryResult.status===1&&/reviewed authenticated signatures do not match the exact live function inventory/.test(wrongInventoryResult.stdout),'unreviewed live signatures must block release certification even when counts match');
+
+  const futureReview={...passing,reviewed_at:'2026-11-12T00:00:00Z'};
+  const futureReviewResult=runGate(futureReview,passingAllowlist);
+  ok(futureReviewResult.status===1&&/reviewed_at is from the future/.test(futureReviewResult.stdout),'future-dated reviews must not pass');
 }finally{fs.rmSync(temp,{recursive:true,force:true});}
 
 console.log(JSON.stringify({checks,failures:0,scope:'Live Production SECURITY DEFINER freshness gate, exact anon allowlist, historical guard review and scoped GP access'}));
