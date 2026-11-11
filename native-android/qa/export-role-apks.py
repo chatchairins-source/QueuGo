@@ -15,8 +15,10 @@ def export(manifest_path, output):
     roles = [row.get('role') for row in reports]
     if sorted(roles) != ['customer', 'merchant', 'rider']:
         raise ValueError('Expected exactly three unique APK roles')
-    if output.is_symlink():
-        raise ValueError('Refusing symlinked APK export root')
+    if any(parent.is_symlink() for parent in (output, *output.parents)):
+        raise ValueError('Refusing symlinked APK export root or ancestor')
+    if output.exists() and not output.is_dir():
+        raise ValueError('APK export root must be a directory')
     for role in roles:
         directory = output / role
         if directory.is_symlink():
