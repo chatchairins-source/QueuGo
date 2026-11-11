@@ -34,8 +34,8 @@ def export(manifest_path, output):
     for row in reports:
         role = row['role']
         source = Path(f'native-android/{role}/build/outputs/apk/debug/{role}-debug.apk')
-        if source.is_symlink() or not source.is_file():
-            raise ValueError(f'{role}: APK source must be a regular file, not a symlink')
+        if any(part.is_symlink() for part in (source, *source.parents)) or not source.is_file():
+            raise ValueError(f'{role}: APK source and ancestors must be regular paths, not symlinks')
         if (not isinstance(row.get('sha256'), str) or len(row['sha256']) != 64
                 or any(c not in '0123456789abcdef' for c in row['sha256'])
                 or type(row.get('bytes')) is not int or row['bytes'] <= 0):
