@@ -1,3 +1,11 @@
+## 2026-11-11 Customer Express quote freshness regression — IN PROGRESS
+
+- Rechecked main at `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`, PR #913 at `9b61e4dd1990dfd14a31127cb1a0d1f9cf7ead05`, and current stacked heads before refreshing this branch. The #913 source already invalidates the visible fare and disables the Rider request control immediately on input, and rejects quote responses whose live payload changed; this branch now carries that exact source instead of the stale #913 predecessor file.
+- Strengthened `tests/customer-express-quote-freshness.cjs` to execute production `formPayload()`, `bindForm()`, and `action('quote')` with a deferred API response. Regression covers sender/receiver phone, weight, vehicle, pickup, destination, hides the old fare synchronously, and rejects each stale response. The test is wired into `npm test`.
+- Local `node --check customer-express.js` and focused quote freshness/in-flight race regression PASS. No Production SQL, Auth, RLS, RPC, order, payment, or user data changed.
+- Exact-head Native Pilot for this refreshed branch is running as of update (run `42940840439`). No new CI success is claimed until it completes.
+- **NEXT:** retain the stacked Native offline acceptance, verify the newest APK artifacts, and continue the Production migration/security, non-Production E2E, backup, and signed Release gates. Express remains disabled in Production.
+
 ## 2026-11-09 Bounded Rider offline routing metadata
 
 - Rider bundled routing now reads manifest bytes under a strict 64 KiB cap instead of trusting `InputStream.available()`, and rejects a config manifest declaring more than 64 KiB before copying and parsing it. The actual graph remains checksum verified and offline-only.
