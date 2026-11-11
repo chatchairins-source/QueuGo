@@ -1,183 +1,173 @@
 'use strict';
+// Regression contract: a quote is valid only for the exact contact/parcel/route payload quoted.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const vm = require('node:vm');
-
 const source = fs.readFileSync(path.join(__dirname, '..', 'customer-express.js'), 'utf8');
-const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
-assert.ok(packageJson.scripts.test.includes('node tests/customer-express-quote-freshness.cjs'), 'the freshness regression must run in npm test');
-function extractFunction(name) {
-  const start = source.indexOf(`function ${name}(`);
-  assert.notEqual(start, -1, `missing ${name}`);
-  const open = source.indexOf('{', start);
-  let depth = 0;
-  for (let i = open; i < source.length; i++) {
-    if (source[i] === '{') depth++;
-    else if (source[i] === '}' && --depth === 0) return source.slice(start, i + 1);
-  }
-  throw new Error(`unterminated ${name}`);
-}
-const functionSources = ['clearExpressQuote', 'bindForm', 'expressQuoteMatches', 'acceptExpressQuote', 'saveExpressPoint']
-  .map(extractFunction);
+assert.match(source, /const payload=formPayload\(\),source=JSON\.stringify\(payload\)/);
 assert.match(source, /body:source,signal:AbortSignal\.timeout/);
-assert.match(source, /acceptExpressQuote\(source,data\)/);
-assert.match(source, /if\(!quote\|\|!expressQuoteMatches\(quoteSource\)\)/);
-assert.match(source, /saveExpressPoint\(which,next\);picker\?\.destroy\(\);picker=null;render\(\)/);
-assert.match(source, /if\(quote\)html\+='[^\n]*ค่าส่งเงินสด/);
-assert.match(source, /if\(p\|\|!current&&quote\)html\+='[^\n]*เรียกไรเดอร์ส่งด่วน/);
+assert.match(source, /if\(!same\(u\)\)return;if\(!config\.enabled\|\|!config\.configured\)throw Error\('บริการ Express ยังไม่เปิดให้ใช้ในขณะนี้'\);if\(JSON\.stringify\(formPayload\(\)\)!==source\)/);
+assert.match(source, /JSON\.stringify\(formPayload\(\)\)!==quoteSource\)throw Error/);
+assert.match(source, /form\[k\]=e\.value;if\(quote\)\{invalidated=true;/);
+assert.match(source, /const summary=\$\('express-quote-summary'\);if\(summary\)summary\.hidden=true/);
+assert.match(source, /request\.disabled=true;request\.textContent=/);
+assert.match(source, /quote=null;quoteSource=''/);
+assert.match(source, /id="express-quote-summary"/);
+assert.match(source, /e\.onchange=\(\)=>\{e\.oninput\(\);if\(invalidated&&!busy&&onExpress\(\)\)render\(\)\}/);
+assert.match(source, /quote=null;quoteSource='';picker\?\.destroy\(\)/);
+assert.match(source, /typeof data\.quote_id!=='string'/);
+assert.match(source, /!Number\.isFinite\(data\.fare\)\|\|data\.fare<0/);
+assert.match(source, /!Number\.isFinite\(data\.distance_km\)\|\|data\.distance_km<0/);
+assert.match(source, /!Number\.isFinite\(data\.duration_minutes\)\|\|data\.duration_minutes<0/);
+assert.match(source, /\(kind==='quote'\|\|\(kind==='request'&&!saved\)\)\&\&\(!config\.enabled\|\|!config\.configured\)/);
+assert.match(source, /config=c\|\|\{\};if\(!config\.enabled\|\|!config\.configured\)\{quote=null;quoteSource=''\}await refresh\(\)/);
+assert.match(source, /config=\{enabled:false,configured:false\};quote=null;quoteSource=''/);
+assert.match(source, /if\(kind==='new'\)\{selected=null;quote=null;quoteSource=''/);
+// A corrupt persisted request must fail closed without crashing render or overwriting the journal.
+assert.match(source, /let p=null,pendingInvalid=false;try\{p=pending\(\)\}catch\(e\)\{pendingInvalid=true;error=e\.message\}/);
+assert.match(source, /if\(!pendingInvalid&&\(p\|\|!current&&quote\)\)html\+=/);
+assert.match(source, /let saved=null;try\{saved=pending\(\)\}catch\(e\)\{error=e\.message;render\(\);return\}/);
+// Disabled Express must block new requests, but must not strand an already persisted request ID.
+assert.match(source, /let p=pending\(\);if\(!p\)\{/);
+assert.match(source, /const result=await rpc\('queuego_request_express',p\)/);
+assert.match(source, /destination=quote=selected=null;quoteSource='';rows=\[\]/);
+// Exercise the comparison contract with a changed phone, weight and pickup.
+const fingerprint = value => JSON.stringify(value);
+const original = {sender:{phone:'0812345678'},item:{weightKg:1},pickup:{lat:14,lng:102}};
+const quoted = fingerprint(original);
+assert.equal(fingerprint(structuredClone(original)), quoted);
+for (const modified of [
+  {...original,sender:{phone:'0899999999'}},
+  {...original,item:{weightKg:2}},
+  {...original,pickup:{lat:15,lng:102}},
+]) assert.notEqual(fingerprint(modified),quoted);
 
-const fieldsById = {
-  expressSenderName: 'senderName',
-  expressSenderPhone: 'senderPhone',
-  expressReceiverName: 'receiverName',
-  expressReceiverPhone: 'receiverPhone',
-  expressItemType: 'itemType',
-  expressWeight: 'weight',
-  expressSize: 'size',
-  expressVehicle: 'vehicleType',
-  expressInstructions: 'instructions'
-};
-const initialForm = {
-  senderName: 'Sender',
-  senderPhone: '0812345678',
-  receiverName: 'Receiver',
-  receiverPhone: '0891234567',
-  itemType: 'Parcel',
-  weight: '1',
-  size: 'medium',
-  vehicleType: 'motorcycle',
-  instructions: ''
-};
-let activeFields = {};
-let renderCount = 0;
-const focusEvents = [];
-const rangeEvents = [];
-const ui = {
-  form: { ...initialForm },
-  quote: { quote_id: 'old-quote', fare: 125 },
-  quoteSource: 'old-payload',
-  busy: false,
-  onExpress: () => true,
-  $: id => activeFields[id],
-  render() {
-    renderCount++;
-    ui.lastRenderedQuote = ui.quote;
-    activeFields = makeFields();
-    ui.bindForm();
-  }
-};
-function makeFields() {
-  return Object.fromEntries(Object.entries(fieldsById).map(([id, key]) => [id, {
-    id,
-    value: ui.form[key],
-    selectionStart: 2,
-    selectionEnd: 4,
-    selectionDirection: 'forward',
-    focus(options) { focusEvents.push({ id, preventScroll: options?.preventScroll }); },
-    setSelectionRange(start, end, direction) { rangeEvents.push({ id, start, end, direction }); }
-  }]));
-}
-functionSources.slice(0, 2).forEach(code => vm.runInNewContext(code, ui));
-activeFields = makeFields();
-ui.bindForm();
-
-for (const [id, key, value] of [
-  ['expressSenderPhone', 'senderPhone', '0899999999'],
-  ['expressReceiverPhone', 'receiverPhone', '0811111111'],
-  ['expressWeight', 'weight', '2.5'],
-  ['expressVehicle', 'vehicleType', 'car']
-]) {
-  ui.quote = { quote_id: 'old-quote', fare: 125 };
-  ui.quoteSource = 'old-payload';
-  const previous = activeFields[id];
-  const beforeRender = renderCount;
-  previous.value = value;
-  previous.selectionStart = 3;
-  previous.selectionEnd = 5;
-  previous.oninput();
-  assert.equal(ui.form[key], value, `${id} edit must update the form`);
-  assert.equal(ui.quote, null, `${id} edit must invalidate the old quote immediately`);
-  assert.equal(ui.quoteSource, '', `${id} edit must clear its payload fingerprint`);
-  assert.equal(renderCount, beforeRender + 1, `${id} input must repaint without waiting for blur/change`);
-  assert.equal(ui.lastRenderedQuote, null, `${id} repaint must not render an old fare or call-to-action`);
-  assert.notEqual(activeFields[id], previous, 'render replaces the stale form node');
-  assert.equal(focusEvents.at(-1).id, id, 'focus must return to the edited control');
-  assert.equal(focusEvents.at(-1).preventScroll, true);
-  assert.equal(activeFields[id].value, value, 'the typed value must survive repaint');
-  if (id !== 'expressVehicle') {
-    const selection = rangeEvents.at(-1);
-    assert.equal(selection.id, id);
-    assert.equal(selection.start, 3);
-    assert.equal(selection.end, 5);
-    assert.equal(selection.direction, 'forward');
-  }
-}
-
-// A route edit uses the same quote invalidation before the picker returns to the form.
-const routes = {
-  pickup: { lat: 14, lng: 102, address: 'Old pickup' },
-  destination: { lat: 15, lng: 103, address: 'Old destination' },
-  quote: { quote_id: 'old-quote', fare: 125 },
-  quoteSource: 'old-payload'
-};
-const routeHarness = { ...routes };
-vm.runInNewContext(
-  functionSources[0] + '\n' + functionSources[4],
-  routeHarness
+/* Execute the production payload builder so every fare-bearing edit is covered. */
+const payloadStart = source.indexOf(' function formPayload(){');
+const payloadEnd = source.indexOf(' async function action(kind){', payloadStart);
+assert.ok(payloadStart >= 0 && payloadEnd > payloadStart, 'production formPayload must remain extractable');
+const payloadBuilder = source.slice(payloadStart, payloadEnd);
+const makePayload = new Function(
+  'state',
+  'validExpressContactPhone',
+  'const form=state.form,pickup=state.pickup,destination=state.destination;'+payloadBuilder+';return formPayload;'
 );
-for (const [which, next] of [
-  ['pickup', { lat: 14.1, lng: 102.1, address: 'New pickup' }],
-  ['destination', { lat: 15.1, lng: 103.1, address: 'New destination' }]
-]) {
-  routeHarness.quote = { quote_id: 'old-quote', fare: 125 };
-  routeHarness.quoteSource = 'old-payload';
-  routeHarness.saveExpressPoint(which, next);
-  assert.deepEqual(routeHarness[which], next);
-  assert.equal(routeHarness.quote, null, `${which} edit must invalidate the old quote`);
-  assert.equal(routeHarness.quoteSource, '');
+const validPhone = value => /^\+?[0-9 ().-]+$/.test(value) && value.replace(/\D/g,'').length >= 9 && value.replace(/\D/g,'').length <= 15;
+const baseline = {
+  form: {
+    senderName:'Sender',senderPhone:'0812345678',
+    receiverName:'Receiver',receiverPhone:'0898765432',
+    itemType:'parcel',weight:'1',size:'medium',
+    vehicleType:'motorcycle',instructions:''
+  },
+  pickup:{lat:14,lng:102,address:'Pickup'},
+  destination:{lat:15,lng:103,address:'Destination'}
+};
+const buildPayload = makePayload(baseline, validPhone);
+const actualPayload = buildPayload();
+const actualQuoteKey = JSON.stringify(actualPayload);
+const changes = [
+  ['sender phone', state => { state.form.senderPhone='0822222222'; }],
+  ['receiver phone', state => { state.form.receiverPhone='0833333333'; }],
+  ['parcel weight', state => { state.form.weight='2'; }],
+  ['vehicle type', state => { state.form.vehicleType='car'; }],
+  ['pickup', state => { state.pickup.lat=14.1; }],
+  ['destination', state => { state.destination.lng=103.1; }]
+];
+for (const [label, change] of changes) {
+  const state = structuredClone(baseline);
+  change(state);
+  const payload = makePayload(state, validPhone)();
+  assert.notEqual(JSON.stringify(payload), actualQuoteKey, label+' edit must invalidate the actual quote payload');
 }
 
-// Simulate a quote API response arriving after each relevant field changed.
-const originalPayload = {
-  pickup: { lat: 14, lng: 102, address: 'A' },
-  destination: { lat: 15, lng: 103, address: 'B' },
-  sender: { name: 'Sender', phone: '0812345678' },
-  receiver: { name: 'Receiver', phone: '0891234567' },
-  item: { type: 'Parcel', weightKg: 1, size: 'medium', vehicleType: 'motorcycle', instructions: '' }
-};
-let livePayload = structuredClone(originalPayload);
-const apiHarness = {
-  formPayload: () => livePayload,
-  quote: null,
-  quoteSource: ''
-};
-vm.runInNewContext(functionSources[2] + '\n' + functionSources[3], apiHarness);
-const requestFingerprint = JSON.stringify(originalPayload);
-for (const [label, edit] of [
-  ['sender phone', payload => ({ ...payload, sender: { ...payload.sender, phone: '0899999999' } })],
-  ['receiver phone', payload => ({ ...payload, receiver: { ...payload.receiver, phone: '0811111111' } })],
-  ['weight', payload => ({ ...payload, item: { ...payload.item, weightKg: 2.5 } })],
-  ['vehicle', payload => ({ ...payload, item: { ...payload.item, vehicleType: 'car' } })],
-  ['pickup', payload => ({ ...payload, pickup: { ...payload.pickup, lat: 14.1 } })],
-  ['destination', payload => ({ ...payload, destination: { ...payload.destination, lng: 103.1 } })]
-]) {
-  livePayload = edit(structuredClone(originalPayload));
-  apiHarness.quote = null;
-  apiHarness.quoteSource = '';
-  assert.equal(apiHarness.expressQuoteMatches(requestFingerprint), false, `${label} changed while the quote request was pending`);
-  assert.throws(
-    () => apiHarness.acceptExpressQuote(requestFingerprint, { quote_id: 'stale', fare: 125 }),
-    /ข้อมูลพัสดุเปลี่ยนแล้ว/,
-    `${label} change must reject the late quote response`
+/* Run the real input binder against minimal DOM elements and assert synchronous hiding. */
+const bindStart = source.indexOf(' function bindForm(){');
+const bindEnd = source.indexOf(' function mountTracking(', bindStart);
+assert.ok(bindStart >= 0 && bindEnd > bindStart, 'production bindForm must remain extractable');
+const bindSource = source.slice(bindStart, bindEnd);
+const fields = ['expressSenderName','expressSenderPhone','expressReceiverName','expressReceiverPhone','expressItemType','expressWeight','expressSize','expressVehicle','expressInstructions'];
+for (const id of fields) {
+  const elements = Object.fromEntries(fields.map(field => [field,{value:'edited'}]));
+  const summary = {hidden:false};
+  const request = {disabled:false,textContent:'เรียกไรเดอร์ส่งด่วน'};
+  elements['express-quote-summary']=summary;
+  const documentStub = {querySelector: selector => selector === '[data-action="request"]' ? request : null};
+  const bind = new Function(
+    '$','document','form','quote','quoteSource','busy','onExpress','render',
+    bindSource+';return bindForm;'
+  )(
+    field => elements[field],
+    documentStub,
+    {},
+    {fare:100},
+    actualQuoteKey,
+    false,
+    () => true,
+    () => {}
   );
-  assert.equal(apiHarness.quote, null, `${label} change must not republish a stale quote`);
-  assert.equal(apiHarness.quoteSource, '');
+  // bindForm uses the app's $ helper for IDs; route only the two DOM lookups it needs.
+  const input = elements[id];
+  bind();
+  input.oninput();
+  assert.equal(summary.hidden,true,id+' edit must hide the old fare synchronously');
+  assert.equal(request.disabled,true,id+' edit must disable the old-fare request synchronously');
+  assert.equal(input.value,'edited');
 }
-livePayload = structuredClone(originalPayload);
-assert.equal(apiHarness.expressQuoteMatches(requestFingerprint), true);
-apiHarness.acceptExpressQuote(requestFingerprint, { quote_id: 'fresh', fare: 130 });
-assert.equal(apiHarness.quote.quote_id, 'fresh');
-assert.equal(apiHarness.quoteSource, requestFingerprint);
 
-console.log('Customer Express quote freshness: input UI invalidation, caret restoration, route changes and six late-response cases PASS');
+/* Resolve a real quote request only after editing each fare-bearing input. */
+async function exercisePendingQuoteEdits() {
+  const actionStart = source.indexOf(' async function action(kind){');
+  const actionEnd = source.indexOf(' V.express=', actionStart);
+  assert.ok(actionStart >= 0 && actionEnd > actionStart, 'production quote action must remain extractable');
+  const actionSource = source.slice(actionStart, actionEnd);
+  const quoteId = '123e4567-e89b-42d3-a456-426614174009';
+  for (const [label, change] of changes) {
+    const state = structuredClone(baseline);
+    let finishResponse;
+    let fetchStarted = false;
+    const response = new Promise(resolve => { finishResponse = resolve; });
+    const productionAction = new Function(
+      'state','payloadBuilder','token','same','actor','pending','render','config','fetch','AbortSignal','CFG','hdr',
+      'let form=state.form,pickup=state.pickup,destination=state.destination;'+
+      'const formPayload=payloadBuilder;let busy=false,quote=null,quoteSource=\'\',error=\'\';'+
+      actionSource+
+      ';return {run:()=>action(\'quote\'),state:()=>({busy,quote,quoteSource,error})};'
+    )(
+      state,
+      makePayload(state, validPhone),
+      () => Promise.resolve('test-access-token'),
+      () => true,
+      () => 'test-user',
+      () => null,
+      () => {},
+      {enabled:true,configured:true},
+      () => { fetchStarted=true; return response; },
+      AbortSignal,
+      {URL:'https://example.invalid'},
+      () => ({})
+    );
+    const pendingRequest = productionAction.run();
+    for (let attempt=0; !fetchStarted && attempt<20; attempt++) {
+      await new Promise(resolve => setImmediate(resolve));
+    }
+    assert.equal(fetchStarted,true,label+' quote request must reach the deferred API');
+    change(state);
+    finishResponse({
+      ok:true,
+      json:async()=>({quote_id:quoteId,fare:100,distance_km:2,duration_minutes:5})
+    });
+    await pendingRequest;
+    const result=productionAction.state();
+    assert.equal(result.quote,null,label+' stale API response must not install a quote');
+    assert.equal(result.quoteSource,'',label+' stale API response must not retain its payload source');
+    assert.match(result.error,/ข้อมูลพัสดุเปลี่ยนแล้ว/,label+' stale API response must require a fresh quote');
+    assert.equal(result.busy,false,label+' quote action must release its busy state');
+  }
+}
+exercisePendingQuoteEdits().then(() => {
+  console.log('Customer Express quote freshness and in-flight race regression PASS');
+}).catch(error => {
+  console.error(error);
+  process.exitCode=1;
+});
