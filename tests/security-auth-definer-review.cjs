@@ -40,4 +40,9 @@ ok(triage.anonymous_executable_without_inline_identity_marker.count===anon.rules
 ok(triage.anonymous_executable_without_inline_identity_marker.signatures.map(x=>x.replace(/\s+/g,'')).sort().join('|')===anon.rules.map(x=>x.signature.replace(/\s+/g,'')).sort().join('|'),'live anonymous triage signatures must exactly match reviewed allowlist signatures');
 ok(triage.authenticated_only_without_inline_identity_marker.length===4&&triage.authenticated_only_without_inline_identity_marker.every(x=>x.anon_executable===false&&x.delegated_guard),'authenticated-only delegated guard cases must remain enumerated');
 ok(triage.full_current_security_review_status==='PENDING_FULL_CURRENT_SECURITY_REVIEW'&&!triage.production_mutations_performed,'heuristic triage cannot certify full current Production security');
+ok(triage.search_path_assessment.authenticated_executable_security_definer_count===189&&triage.search_path_assessment.functions_without_fixed_search_path===0,'all current authenticated definer functions must have an explicit fixed search_path');
+ok(triage.search_path_assessment.functions_with_fixed_search_path===189&&triage.search_path_assessment.functions_with_nondefault_fixed_search_path===2,'search_path triage must account for every elevated function');
+ok(triage.search_path_assessment.role_schema_privileges.anon.public_create===false&&triage.search_path_assessment.role_schema_privileges.authenticated.public_create===false,'untrusted API roles must not be able to create objects in public schema');
+ok(triage.search_path_assessment.role_schema_privileges.anon.market_private_usage===false&&triage.search_path_assessment.role_schema_privileges.authenticated.market_private_usage===false,'private market helper schema must remain inaccessible to API roles');
+
 console.log(JSON.stringify({checks,failures:0,scope:'Authenticated SECURITY DEFINER review, public allowlist, downstream checkout guard and scoped GP access'}));
