@@ -40,6 +40,10 @@ class ExportRoleApksTest(unittest.TestCase):
         self.git.start()
         self.addCleanup(self.git.stop)
 
+    def sync_retained_manifest(self):
+        # Tests targeting source validation must not fail earlier on stale retained evidence.
+        (self.output / 'APK-MANIFEST.json').write_bytes(self.manifest.read_bytes())
+
     def test_country_export_workflow_covers_stacked_apk_export_branches(self):
         # GitHub pull_request filters match the target/base branch, while push
         # filters match the source/head branch. Both must cover successor PRs.
@@ -235,6 +239,7 @@ class ExportRoleApksTest(unittest.TestCase):
                 rows = json.loads(self.manifest.read_text())
                 rows[2][field] = invalid
                 self.manifest.write_text(json.dumps(rows))
+                self.sync_retained_manifest()
                 with self.assertRaisesRegex(ValueError, 'invalid APK integrity metadata'):
                     module.export(self.manifest, self.output)
                 self.assertFalse((self.output / 'customer').exists())
@@ -282,6 +287,7 @@ class ExportRoleApksTest(unittest.TestCase):
                 rows = json.loads(self.manifest.read_text())
                 rows[2]['role'] = invalid
                 self.manifest.write_text(json.dumps(rows))
+                self.sync_retained_manifest()
                 with self.assertRaisesRegex(ValueError, 'role must be a string'):
                     module.export(self.manifest, self.output)
                 self.assertFalse((self.output / 'customer').exists())
@@ -294,6 +300,7 @@ class ExportRoleApksTest(unittest.TestCase):
                 rows = json.loads(self.manifest.read_text())
                 rows[2][field] = invalid
                 self.manifest.write_text(json.dumps(rows))
+                self.sync_retained_manifest()
                 with self.assertRaisesRegex(ValueError, 'requires string source_sha and apk'):
                     module.export(self.manifest, self.output)
                 self.assertFalse((self.output / 'customer').exists())
@@ -302,6 +309,7 @@ class ExportRoleApksTest(unittest.TestCase):
 
     def test_rejects_malformed_manifest(self):
         self.manifest.write_text('{"not": "a list"}')
+        self.sync_retained_manifest()
         with self.assertRaisesRegex(ValueError, 'list of role records'):
             module.export(self.manifest, self.output)
 
