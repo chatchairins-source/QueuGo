@@ -20,11 +20,12 @@ const exportPr = exportWorkflow.match(/  pull_request:\n([\s\S]*?)(?=\n  push:)/
 assert.ok(exportPr, 'country APK export must have a pull_request trigger');
 assert.match(exportPr[1], /branches: \['work-native-\*\*'\]/, 'successor PR bases must trigger country APK export');
 for (const path of [
-  'native-android/qa/prepare-thailand-map-assets.py',
+  'native-android/qa/**',
   'native-android/**/src/main/**',
   'native-android/**/src/androidTest/**',
   'native-android/**/src/test/**',
   'native-android/**/build.gradle.kts',
+  'native-android/build.gradle.kts',
   'native-android/settings.gradle.kts',
   'native-android/gradle.properties',
   'native-android/gradle/wrapper/**',
@@ -43,11 +44,12 @@ const exportPush = exportWorkflow.match(/  push:\n([\s\S]*?)(?=\npermissions:)/)
 assert.ok(exportPush, 'country APK export must run on successor branch pushes');
 assert.ok(exportPush[1].includes("branches: ['work-native-**', 'fix/native-country-export-**']"), 'native successor and isolated country-export fix pushes must trigger export');
 for (const path of [
-  'native-android/qa/prepare-thailand-map-assets.py',
+  'native-android/qa/**',
   'native-android/**/src/main/**',
   'native-android/**/src/androidTest/**',
   'native-android/**/src/test/**',
   'native-android/**/build.gradle.kts',
+  'native-android/build.gradle.kts',
   'native-android/settings.gradle.kts',
   'native-android/gradle.properties',
   'native-android/gradle/wrapper/**',
