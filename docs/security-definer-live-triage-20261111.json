@@ -50,5 +50,28 @@
     }
   ],
   "full_current_security_review_status": "PENDING_FULL_CURRENT_SECURITY_REVIEW",
-  "production_mutations_performed": false
+  "production_mutations_performed": false,
+  "search_path_assessment": {
+    "authenticated_executable_security_definer_count": 189,
+    "functions_without_fixed_search_path": 0,
+    "functions_with_fixed_search_path": 189,
+    "functions_with_nondefault_fixed_search_path": 2,
+    "observed_nondefault_paths": [
+      "pg_catalog, public, pg_temp",
+      "public, market_private, pg_temp"
+    ],
+    "role_schema_privileges": {
+      "anon": {
+        "public_create": false,
+        "market_private_usage": false,
+        "market_private_create": false
+      },
+      "authenticated": {
+        "public_create": false,
+        "market_private_usage": false,
+        "market_private_create": false
+      }
+    },
+    "caveat": "Read-only snapshot. Fixed search_path and schema privilege observations are useful hardening signals, not a substitute for reviewing each function's query, ownership checks, and reachable object resolution."
+  }
 }
