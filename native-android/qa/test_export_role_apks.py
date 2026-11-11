@@ -35,7 +35,7 @@ class ExportRoleApksTest(unittest.TestCase):
         self.manifest.write_text(json.dumps(rows))
         self.output = self.root / 'artifacts'
         self.output.mkdir()
-        (self.output / 'APK-MANIFEST.json').write_text('pre-existing manifest is allowed')
+        (self.output / 'APK-MANIFEST.json').write_bytes(self.manifest.read_bytes())
         self.git = patch.object(module.subprocess, 'check_output', return_value=SHA + '\n')
         self.git.start()
         self.addCleanup(self.git.stop)
@@ -74,6 +74,16 @@ class ExportRoleApksTest(unittest.TestCase):
             self.assertEqual(meta['source_sha'], SHA)
             self.assertEqual(meta['build_type'], 'debug')
             self.assertFalse(meta['production_certified'])
+
+    def test_rejects_stale_retained_manifest_before_writing(self):
+        retained = self.output / 'APK-MANIFEST.json'
+        retained.write_text('stale but regular manifest')
+        with self.assertRaisesRegex(ValueError, 'retained manifest differs'):
+            module.export(self.manifest, self.output)
+        self.assertEqual(retained.read_text(), 'stale but regular manifest')
+        self.assertFalse((self.output / 'customer').exists())
+        self.assertFalse((self.output / 'merchant').exists())
+        self.assertFalse((self.output / 'rider').exists())
 
     def test_rejects_symlinked_retained_manifest_before_writing(self):
         retained = self.output / 'APK-MANIFEST.json'
