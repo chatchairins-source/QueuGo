@@ -66,7 +66,13 @@ const runGate=(document,allowlist,now='2026-11-11T07:07:00Z')=>{
 };
 try{
   const current=runGate(review,anon);
-  ok(current.status===1&&/reviewed authenticated SECURITY DEFINER count 142 does not match current live Advisor count 189/.test(current.stdout),'stale Production function review must fail the release gate on the live authenticated delta');
+  ok(current.status===1&&/Supabase Auth leaked-password protection is disabled/.test(current.stdout),
+    'current Production review must fail closed on its disabled leaked-password protection finding');
+
+  const staleAuthReview={...review,current_live_advisor_snapshot:{...snapshot,counts:{...snapshot.counts,auth_leaked_password_protection:0}}};
+  const staleAuth=runGate(staleAuthReview,anon);
+  ok(staleAuth.status===1&&/reviewed authenticated SECURITY DEFINER count 142 does not match current live Advisor count 189/.test(staleAuth.stdout),
+    'stale Production function review must still fail on the live authenticated delta when the Auth warning is isolated');
 
   const signatures=['public_one()','public_two()'];
   const authSignatures=['direct_one()','direct_two()',...signatures];

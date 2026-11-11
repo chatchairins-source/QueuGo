@@ -2533,3 +2533,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Created `supabase/migrations/20261111072204_qg_table_catalog_pos_availability.sql` locally with Supabase CLI v3.0.0; it replaces only the catalog function body and includes no grants, RLS changes, or data writes. The migration was not applied to Production.
 - Extended isolated PGlite QR validation: POS-only items appear at their POS price, delivery-only items stay excluded and checkout continues to reject them. Local result: 36 checks / 0 failures. After the migration and test update, full `npm test` exited 0; `native-release-gate.cjs` passed its negative authorization checks, and the posttest Map Field QA gate passed 28 checks.
 - Production function/migration drift remains open. Do not apply this migration or claim Supabase/JWT/RLS E2E until the Production migration ledger is reconciled safely.
+
+## 2026-11-11 Correct exact-head release review regression ordering
+
+- Exact-head CI at PR #915 commit `5d6ac5dd94e11243cee3d376d2f21e6998caf13f` showed three workflows failing on the same `tests/security-auth-definer-review.cjs` assertion: QueueGo RC Tests `42983448306`, Native Pilot `42983448349`, and Map Engine `42983448357`. Customer P0 `42983448289` passed; Rider offline routing and authenticated review were still running when checked.
+- The current checked-in Production snapshot has `auth_leaked_password_protection=1`. `security_review_gate.py` correctly rejects that first, before comparing the old reviewed 142 authenticated functions with the 189 live Advisor count. The regression incorrectly expected the latter error first.
+- Updated the regression to assert the real Auth blocker, then isolate that blocker to zero and assert the stale 142/189 function review still fails. No release gate was weakened; no Supabase plan, Auth setting, Production schema, ACL, data, order or payment was changed.
+- Exact-head verification after this correction is pending. QueueGo remains blocked from release by the unresolved leaked-password setting, unreviewed live function inventory, Express rollout/RPC, signed-release evidence and remaining runtime acceptance.
