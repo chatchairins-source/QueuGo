@@ -97,6 +97,36 @@ class ExportRoleApksTest(unittest.TestCase):
             module.export(self.manifest, self.output)
         self.assertEqual(list(outside.iterdir()), [])
 
+    def test_rejects_symlinked_signature_evidence(self):
+        target = self.root / 'outside-signature.txt'
+        target.write_text('do not modify')
+        folder = self.output / 'rider'
+        folder.mkdir()
+        (folder / 'APK-SIGNATURE.txt').symlink_to(target)
+        with self.assertRaisesRegex(ValueError, 'symlinked signature evidence'):
+            module.export(self.manifest, self.output)
+        self.assertEqual(target.read_text(), 'do not modify')
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_role_artifact_path_that_is_a_file(self):
+        (self.output / 'rider').write_text('not a directory')
+        with self.assertRaisesRegex(ValueError, 'must be a directory'):
+            module.export(self.manifest, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_invalid_integrity_metadata(self):
+        for field, invalid in [('sha256', 'not-a-sha'), ('bytes', True), ('bytes', -1)]:
+            with self.subTest(field=field, invalid=invalid):
+                rows = json.loads(self.manifest.read_text())
+                rows[2][field] = invalid
+                self.manifest.write_text(json.dumps(rows))
+                with self.assertRaisesRegex(ValueError, 'invalid APK integrity metadata'):
+                    module.export(self.manifest, self.output)
+                self.assertFalse((self.output / 'customer').exists())
+                rows[2][field] = (hashlib.sha256(b'rider-apk').hexdigest()
+                                  if field == 'sha256' else len(b'rider-apk'))
+                self.manifest.write_text(json.dumps(rows))
+
     def test_rejects_modified_source_before_writing(self):
         apk = Path('native-android/rider/build/outputs/apk/debug/rider-debug.apk')
         apk.write_bytes(b'changed')
