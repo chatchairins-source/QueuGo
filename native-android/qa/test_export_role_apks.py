@@ -199,6 +199,30 @@ class ExportRoleApksTest(unittest.TestCase):
             module.export(self.manifest, self.output)
         self.assertFalse((self.output / 'customer').exists())
 
+    def test_rejects_non_string_role_before_writing(self):
+        for invalid in (None, 42, ['rider']):
+            with self.subTest(invalid=invalid):
+                rows = json.loads(self.manifest.read_text())
+                rows[2]['role'] = invalid
+                self.manifest.write_text(json.dumps(rows))
+                with self.assertRaisesRegex(ValueError, 'role must be a string'):
+                    module.export(self.manifest, self.output)
+                self.assertFalse((self.output / 'customer').exists())
+                rows[2]['role'] = 'rider'
+                self.manifest.write_text(json.dumps(rows))
+
+    def test_rejects_missing_or_non_string_source_fields_before_writing(self):
+        for field, invalid in (('source_sha', None), ('apk', 123)):
+            with self.subTest(field=field):
+                rows = json.loads(self.manifest.read_text())
+                rows[2][field] = invalid
+                self.manifest.write_text(json.dumps(rows))
+                with self.assertRaisesRegex(ValueError, 'requires string source_sha and apk'):
+                    module.export(self.manifest, self.output)
+                self.assertFalse((self.output / 'customer').exists())
+                rows[2][field] = SHA if field == 'source_sha' else 'rider-debug.apk'
+                self.manifest.write_text(json.dumps(rows))
+
     def test_rejects_malformed_manifest(self):
         self.manifest.write_text('{"not": "a list"}')
         with self.assertRaisesRegex(ValueError, 'list of role records'):
