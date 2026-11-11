@@ -16,8 +16,8 @@ const tableQr=read('QueueGo-Table-QR-v1-Migration.sql');
 ok(review.reviewed_surface?.authenticated_security_definer_total===142,'historical review must retain its reviewed authenticated SECURITY DEFINER count');
 ok(review.reviewed_surface?.anonymous_security_definer_total===9,'historical review must retain its reviewed anonymous SECURITY DEFINER count');
 ok(review.direct_identity_or_role_guard_count===118,'review must record directly/helper guarded functions');
-ok(review.direct_auth_uid_count===76,'review must record current direct auth.uid() count');
-ok(review.helper_guarded_without_direct_auth_uid_count===42,'review must record current helper-guarded count');
+ok(review.direct_auth_uid_count===76,'historical review must record direct auth.uid() count');
+ok(review.helper_guarded_without_direct_auth_uid_count===42,'historical review must record helper-guarded count');
 ok(review.no_direct_identity_guard_count===24,'review must account for every no-direct-guard function');
 ok(review.classification.intentional_public_or_guest.length===9,'exactly 9 functions were classified in the historical review');
 ok(JSON.stringify([...review.classification.intentional_public_or_guest].sort())===JSON.stringify(anon.rules.map(x=>x.signature).sort()),'authenticated no-direct-guard public set must equal anonymous reviewed allowlist');
@@ -65,10 +65,11 @@ try{
   const signatures=['public_one()','public_two()'];
   const passing={
     version:3,production_project:'pkypiqhlrmzocysgeqew',reviewed_at:'2026-11-11T06:30:00Z',review_status:'PASS',
-    current_live_advisor_snapshot:{observed_at:'2026-11-11T06:30:00Z',counts:{authenticated_security_definer_function_executable:3,anon_security_definer_function_executable:2,auth_leaked_password_protection:1}},
-    reviewed_surface:{authenticated_security_definer_total:3,anonymous_security_definer_total:2},
-    direct_identity_or_role_guard_count:2,no_direct_identity_guard_count:1,
-    classification:{intentional_public_or_guest:signatures.map(signature=>({signature}))},
+    current_live_advisor_snapshot:{observed_at:'2026-11-11T06:30:00Z',counts:{authenticated_security_definer_function_executable:4,anon_security_definer_function_executable:2,auth_leaked_password_protection:1}},
+    reviewed_surface:{authenticated_security_definer_total:4,anonymous_security_definer_total:2},
+    direct_auth_uid_count:1,helper_guarded_without_direct_auth_uid_count:1,
+    direct_identity_or_role_guard_count:2,no_direct_identity_guard_count:2,
+    classification:{intentional_public_or_guest:signatures.map(signature=>({signature})),downstream_guarded_authenticated_wrapper:[],downstream_guarded_pos_or_table_wrappers:[]},
     live_review:{anonymous_allowlist_exact_match:true,database_changes_required:false,unexpected_anonymous_security_definers:[]},
     conclusion:'PASS_CODE_DATABASE_REVIEW_CURRENT_SURFACE'
   };
@@ -83,6 +84,10 @@ try{
   const mismatch={...passing,reviewed_surface:{...passing.reviewed_surface,anonymous_security_definer_total:1}};
   const mismatchResult=runGate(mismatch,passingAllowlist);
   ok(mismatchResult.status===1&&/reviewed anonymous SECURITY DEFINER count 1 does not match current live Advisor count 2/.test(mismatchResult.stdout),'an unmatched anonymous function must block release certification');
+
+  const badClassification={...passing,direct_auth_uid_count:2};
+  const badClassificationResult=runGate(badClassification,passingAllowlist);
+  ok(badClassificationResult.status===1&&/direct and helper-guarded function counts do not reconcile/.test(badClassificationResult.stdout),'inconsistent authenticated guard classifications must block release certification');
 }finally{fs.rmSync(temp,{recursive:true,force:true});}
 
 console.log(JSON.stringify({checks,failures:0,scope:'Live Production SECURITY DEFINER freshness gate, exact anon allowlist, historical guard review and scoped GP access'}));

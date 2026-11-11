@@ -91,6 +91,8 @@ def verify_production_security_review(
         )
 
     reviewed_at = parse_time(review.get("reviewed_at"), "security review reviewed_at")
+    if reviewed_at > current + timedelta(minutes=5):
+        raise ValueError("security review reviewed_at is from the future")
     if reviewed_at < observed:
         raise ValueError("security review predates the current live Advisor snapshot")
 
@@ -100,9 +102,15 @@ def verify_production_security_review(
     direct = _nonnegative_count(
         review.get("direct_identity_or_role_guard_count"), "direct/helper-guarded function count"
     )
+    direct_auth_uid = _nonnegative_count(review.get("direct_auth_uid_count"), "direct auth.uid function count")
+    helper_guarded = _nonnegative_count(
+        review.get("helper_guarded_without_direct_auth_uid_count"), "helper-guarded function count"
+    )
     unguarded = _nonnegative_count(
         review.get("no_direct_identity_guard_count"), "downstream/public-guarded function count"
     )
+    if direct_auth_uid + helper_guarded != direct:
+        raise ValueError("direct and helper-guarded function counts do not reconcile")
     if direct + unguarded != live_auth:
         raise ValueError("reviewed authenticated function classifications do not cover the live Advisor count")
 
@@ -118,6 +126,13 @@ def verify_production_security_review(
         raise ValueError("anonymous SECURITY DEFINER review contains duplicate signatures")
     if sorted(reviewed_public) != sorted(allowed_public) or len(allowed_public) != live_anon:
         raise ValueError("anonymous SECURITY DEFINER review does not exactly match the current live Advisor surface")
+
+    downstream = classification.get("downstream_guarded_authenticated_wrapper")
+    pos_wrappers = classification.get("downstream_guarded_pos_or_table_wrappers")
+    if not isinstance(downstream, list) or not isinstance(pos_wrappers, list):
+        raise ValueError("downstream authenticated SECURITY DEFINER classifications are missing")
+    if len(reviewed_public) + len(downstream) + len(pos_wrappers) != unguarded:
+        raise ValueError("public, POS/table and downstream wrapper counts do not cover the reviewed unguarded surface")
 
     live_review = review.get("live_review")
     if not isinstance(live_review, dict):
