@@ -43,6 +43,10 @@ def export(manifest_path, output):
             raise ValueError(f'{role}: refusing symlinked signature evidence')
         if signature.exists() and not signature.is_file():
             raise ValueError(f'{role}: signature evidence must be a regular file')
+        for evidence_name in ('TESTED-SOURCE.json', 'SHA256SUMS'):
+            evidence = directory / evidence_name
+            if evidence.is_symlink() or (evidence.exists() and not evidence.is_file()):
+                raise ValueError(f'{role}: export metadata must be a regular file, not a symlink')
         if directory.exists() and any(p.name != 'APK-SIGNATURE.txt' for p in directory.iterdir()):
             raise ValueError(f'{role}: refusing to mix fresh APKs with existing role artifacts')
     # Validate every file before writing any deliverable.
