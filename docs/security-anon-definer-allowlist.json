@@ -101,6 +101,7 @@
   ],
   "explicitly_not_anonymous": [
     "market_public_catalog()",
-    "queuego_nearest_market(double precision,double precision,numeric)"
+    "queuego_nearest_market(double precision,double precision,numeric)",
+    "queuego_ride_config()"
   ]
 }
