@@ -84,6 +84,15 @@ class ExportRoleApksTest(unittest.TestCase):
             module.export(self.manifest, self.output)
         self.assertFalse((self.output / 'customer').exists())
 
+    def test_rejects_symlinked_source_ancestor_before_writing(self):
+        source_dir = Path('native-android/rider/build/outputs/apk/debug')
+        real_dir = source_dir.with_name('debug-real')
+        source_dir.rename(real_dir)
+        source_dir.symlink_to(real_dir.name, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'including ancestors'):
+            module.export(self.manifest, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+
     def test_rejects_symlinked_export_root(self):
         outside = self.root / 'outside'
         outside.mkdir()
