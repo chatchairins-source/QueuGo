@@ -40,6 +40,16 @@ class ExportRoleApksTest(unittest.TestCase):
         self.git.start()
         self.addCleanup(self.git.stop)
 
+    def test_country_export_workflow_covers_stacked_apk_export_branches(self):
+        # GitHub pull_request filters match the target/base branch, while push
+        # filters match the source/head branch. Both must cover successor PRs.
+        workflow = (SCRIPT.parents[2] / '.github/workflows/export-tested-country-apks.yml').read_text()
+        trigger_lines = [line.strip() for line in workflow.splitlines()
+                         if line.strip().startswith('branches:')]
+        self.assertEqual(len(trigger_lines), 2)
+        self.assertTrue(all("'fix/apk-export-**'" in line for line in trigger_lines),
+                        'stacked APK exporter PR bases and pushes must trigger exact-head CI')
+
     def test_exports_three_verified_apks_with_debug_disclosure(self):
         signature_dir = self.output / 'rider'
         signature_dir.mkdir()
