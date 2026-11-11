@@ -31,4 +31,12 @@ ok(live.status==='PENDING_FULL_CURRENT_SECURITY_REVIEW'&&!live.production_mutati
 ok(live.remaining_findings.leaked_password_protection_disabled===true,'disabled leaked-password protection remains an explicit platform blocker');
 ok(/leaked-password protection/i.test(review.boundary),'platform Auth blocker must remain separate from code/database review');
 
+const triage=JSON.parse(read('docs/security-definer-live-triage-20261111.json'));
+ok(triage.snapshot_date==='2026-11-11'&&triage.project_ref===review.production_project,'live triage must identify the current Production snapshot');
+ok(triage.classification_method.authenticated_executable_security_definer_count===live.public_schema_authenticated_security_definer_count,'triage count must match live authenticated definer count');
+ok(triage.classification_method.definitions_with_inline_identity_or_role_marker+triage.classification_method.without_inline_marker===189,'marker triage must account for all current authenticated definers');
+ok(triage.classification_method.without_inline_marker_but_containing_common_authorization_helper_marker+triage.classification_method.without_inline_marker_or_common_helper_marker===triage.classification_method.without_inline_marker,'helper-marker triage groups must account for every definition without inline markers');
+ok(triage.anonymous_executable_without_inline_identity_marker.count===anon.rules.length&&triage.anonymous_executable_without_inline_identity_marker.signatures.length===anon.rules.length,'all current anonymous definers without inline identity markers must remain explicitly allowlisted');
+ok(triage.authenticated_only_without_inline_identity_marker.length===4&&triage.authenticated_only_without_inline_identity_marker.every(x=>x.anon_executable===false&&x.delegated_guard),'authenticated-only delegated guard cases must remain enumerated');
+ok(triage.full_current_security_review_status==='PENDING_FULL_CURRENT_SECURITY_REVIEW'&&!triage.production_mutations_performed,'heuristic triage cannot certify full current Production security');
 console.log(JSON.stringify({checks,failures:0,scope:'Authenticated SECURITY DEFINER review, public allowlist, downstream checkout guard and scoped GP access'}));
