@@ -61,6 +61,13 @@ ok(workflow.includes('Reject WebView before release packaging')&&workflow.includ
 ok(workflow.includes('bundletool-all-1.18.3.jar'),'release workflow must pin bundletool 1.18.3');
 ok(workflow.includes('a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29'),'release workflow must pin the certified bundletool SHA-256');
 ok(workflow.includes('QG_BUNDLETOOL_JAR')&&workflow.includes('QG_BUNDLETOOL_SHA256'),'release workflow must pass pinned bundletool identity to artifact verification');
+ok(workflow.includes('Prepare audited source-built MapLibre component')&&
+   workflow.includes('prepare-repository.py prepare')&&
+   workflow.includes('QG_MAPLIBRE_COMPAT_REPOSITORY'),
+   'Rider release must use the audited source-built MapLibre component exercised by offline acceptance');
+ok(workflow.includes('prepare-repository.py verify-apk')&&workflow.includes('prepare-repository.py verify-aab')&&
+   workflow.includes('QG_MAPLIBRE_COMPAT_REPOSITORY/component.json'),
+   'both signed Rider release formats must contain the exact verified source-built MapLibre native libraries');
 ok(!/LongdoMapAndroidSDK|longdo\.map|api\.longdo|ms\.longdo/i.test(workflow),
   'certified release must never download, configure or package legacy Longdo');
 for(const task of [

@@ -101,11 +101,14 @@ def verify(args):
     manifest = json.loads((root / 'component.json').read_text())
     assert manifest['version'] == VERSION and manifest['source_commit'] == SOURCE
     assert manifest['patch_sha256'] == PATCH and manifest['builder_commit'] == BUILDER
-    with zipfile.ZipFile(args.apk) as package:
+    assert set(manifest['components']) == set(ZIP_HASHES), 'component manifest must include both audited 64-bit ABIs'
+    artifact = Path(args.apk if args.action == 'verify-apk' else args.aab)
+    prefix = 'lib/' if args.action == 'verify-apk' else 'base/lib/'
+    with zipfile.ZipFile(artifact) as package:
         for abi, component in manifest['components'].items():
-            actual = package.read(f'lib/{abi}/libmaplibre.so')
-            assert digest(actual) == component['native_sha256'], 'APK does not contain source-built SDK: ' + abi
-    print(json.dumps({'apk': args.apk, 'source_built_sdk_abis': sorted(manifest['components'])}))
+            actual = package.read(f'{prefix}{abi}/libmaplibre.so')
+            assert digest(actual) == component['native_sha256'], 'Artifact does not contain source-built SDK: ' + abi
+    print(json.dumps({'artifact': str(artifact), 'source_built_sdk_abis': sorted(manifest['components'])}))
 
 
 parser = argparse.ArgumentParser(description=__doc__)
@@ -116,5 +119,8 @@ for name in ('baseline-aar', 'baseline-pom', 'x86-zip', 'arm64-zip', 'repository
 v = sub.add_parser('verify-apk')
 v.add_argument('--repository', required=True)
 v.add_argument('--apk', required=True)
+v = sub.add_parser('verify-aab')
+v.add_argument('--repository', required=True)
+v.add_argument('--aab', required=True)
 args = parser.parse_args()
 prepare(args) if args.action == 'prepare' else verify(args)

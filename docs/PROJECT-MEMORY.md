@@ -62,6 +62,14 @@
 - Added that stacked PR branch to the job condition and a static regression so it cannot silently skip the dedicated map runtime acceptance again. Exact-head rerun is pending; no nationwide offline navigation acceptance is claimed until that job passes.
 - No Production data changed. Preserve #914 ancestry and Express disabled state.
 
+## 2026-11-11 Rider offline data in signed Play bundles — PENDING EXACT-HEAD CI
+
+- The Rider field-test APK contains a 404 MB ODbL Thailand PMTiles map and a 1.1 GB ODbL Valhalla motorcycle graph. Putting both in the base Play module would exceed its 500 MB compressed-download limit. The signed-release workflow previously produced a Rider AAB without these offline assets.
+- Added separate install-time Play Asset Packs for map and routing data. A source-bound pack manifest records source SHA, file inventory, byte counts and SHA-256. The verifier rejects missing/changed assets, wrong source, oversized packs, and map/routing payloads under base/assets.
+- Release workflow also selects the already audited source-built MapLibre 13.7.1-qg4625.1 component used by offline acceptance and verifies both native-library hashes in the signed Rider APK and AAB. This prevents a release from silently reverting to the unmodified upstream renderer.
+- Release certification now requires successful exact-HEAD Rider offline-routing evidence and unexpired contiguous candidate-APK parts. The signed-release job reassembles the certified APK, verifies its whole-file hash and source SHA, extracts both payloads, builds the signed Play AAB and standalone Rider APK separately, then verifies both outputs. The run ID is read from the persisted job environment at execution time.
+- Full npm test passed in a clean isolated source snapshot; the added source-built MapLibre APK/AAB hash fixtures also pass independently. Targeted checks cover pack preparation, offline APK/AAB integrity, renderer identity, fail-closed manifests, release selectors and Customer Express quote freshness. Exact-source Gradle builds, install-time split runtime and post-change hosted CI are still required; this does not certify a signed release or Production readiness. No Production data/configuration changed.
+
 ## 2026-11-09 Bounded Rider offline routing metadata
 
 - Rider bundled routing now reads manifest bytes under a strict 64 KiB cap instead of trusting `InputStream.available()`, and rejects a config manifest declaring more than 64 KiB before copying and parsing it. The actual graph remains checksum verified and offline-only.

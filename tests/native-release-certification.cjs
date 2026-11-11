@@ -91,7 +91,13 @@ ok(release.includes('Certification references an invalid Backup Restore Drill ru
 ok(release.includes('Certification Backup Restore Drill artifact is unavailable or expired'),'final release must require the backup artifact to remain live');
 ok(release.includes('QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id')&&
   release.includes('Certification references an invalid Rider offline routing run')&&
-  release.includes('Certification Rider offline routing artifact is unavailable or expired'),
+  release.includes('Certification Rider offline routing evidence is unavailable or expired')&&
+  release.includes('Exact-HEAD Rider offline-routing run is required')&&
+  release.includes('ROUTING_RUN_ID="${QG_CERTIFIED_RIDER_OFFLINE_RUN_ID:-}"')&&
+  !release.includes('ROUTING_RUN_ID: ${{ env.QG_CERTIFIED_RIDER_OFFLINE_RUN_ID }}')&&
+  release.includes('rider_offline_asset_pack.py prepare')&&
+  release.includes('rider_offline_asset_pack.py verify-aab')&&
+  release.includes('rider_offline_asset_pack.py verify-apk'),
   'final release must independently revalidate and export the certified Rider offline run');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Trusted external physical evidence intake and exact-metadata Native release certification'}));

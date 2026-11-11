@@ -4,6 +4,8 @@ map-assets/
 native-android/**/build/
 native-android/**/.gradle/
 native-android/**/.kotlin/
+native-android/rider_offline_map_pack/src/main/assets/
+native-android/rider_offline_routing_pack/src/main/assets/
 native-android/rider/libs/*.aar
 
 native-android/**/google-services.json
