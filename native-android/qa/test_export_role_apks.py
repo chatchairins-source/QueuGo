@@ -172,6 +172,33 @@ class ExportRoleApksTest(unittest.TestCase):
             module.export(self.manifest, self.output)
         self.assertFalse((self.output / 'customer').exists())
 
+    def test_rejects_symlinked_manifest_before_writing(self):
+        real = self.root / 'real-manifest.json'
+        self.manifest.rename(real)
+        self.manifest.symlink_to(real)
+        with self.assertRaisesRegex(ValueError, 'APK manifest must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+        self.assertTrue(real.is_file())
+
+    def test_rejects_symlinked_manifest_ancestor_before_writing(self):
+        directory = self.root / 'manifest-real'
+        directory.mkdir()
+        real = directory / 'APK-MANIFEST.json'
+        real.write_bytes(self.manifest.read_bytes())
+        alias = self.root / 'manifest-alias'
+        alias.symlink_to(directory, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'APK manifest must be a regular file'):
+            module.export(alias / real.name, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_manifest_directory_before_writing(self):
+        self.manifest.unlink()
+        self.manifest.mkdir()
+        with self.assertRaisesRegex(ValueError, 'APK manifest must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+
     def test_rejects_malformed_manifest(self):
         self.manifest.write_text('{"not": "a list"}')
         with self.assertRaisesRegex(ValueError, 'list of role records'):
