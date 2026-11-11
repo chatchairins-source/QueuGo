@@ -7,6 +7,7 @@ on:
       - '.github/workflows/rider-android-authenticated-review.yml'
       - 'native-android/rider/**'
       - 'native-android/qa/capture-rider-authenticated-review.py'
+      - 'native-android/qa/capture-merchant-authenticated-review.py'
       - 'native-android/qa/fetch-rider-offline-candidate.py'
   push:
     branches:
