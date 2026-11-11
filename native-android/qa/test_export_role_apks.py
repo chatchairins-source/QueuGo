@@ -55,6 +55,27 @@ class ExportRoleApksTest(unittest.TestCase):
             self.assertEqual(meta['build_type'], 'debug')
             self.assertFalse(meta['production_certified'])
 
+    def test_rejects_symlinked_retained_manifest_before_writing(self):
+        retained = self.output / 'APK-MANIFEST.json'
+        target = self.root / 'outside-manifest.json'
+        target.write_text('keep unchanged')
+        retained.unlink()
+        retained.symlink_to(target)
+        with self.assertRaisesRegex(ValueError, 'export manifest evidence must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertEqual(target.read_text(), 'keep unchanged')
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_directory_retained_manifest_before_writing(self):
+        retained = self.output / 'APK-MANIFEST.json'
+        retained.unlink()
+        retained.mkdir()
+        (retained / 'sentinel').write_text('keep unchanged')
+        with self.assertRaisesRegex(ValueError, 'export manifest evidence must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertEqual((retained / 'sentinel').read_text(), 'keep unchanged')
+        self.assertFalse((self.output / 'customer').exists())
+
     def test_rejects_existing_role_directory_without_overwrite(self):
         folder = self.output / 'rider'
         folder.mkdir()
