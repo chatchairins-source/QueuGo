@@ -65,6 +65,38 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertEqual(sentinel.read_bytes(), b'old')
         self.assertFalse((self.output / 'customer').exists())
 
+    def test_rejects_symlinked_role_directory_before_writing(self):
+        target = self.root / 'outside'
+        target.mkdir()
+        (self.output / 'rider').symlink_to(target, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'symlinked artifact directory'):
+            module.export(self.manifest, self.output)
+        self.assertEqual(list(target.iterdir()), [])
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_symlinked_source_apk_before_writing(self):
+        source = Path('native-android/rider/build/outputs/apk/debug/rider-debug.apk')
+        outside = self.root / 'outside.apk'
+        outside.write_bytes(source.read_bytes())
+        source.unlink()
+        source.symlink_to(outside)
+        with self.assertRaisesRegex(ValueError, 'regular file, not a symlink'):
+            module.export(self.manifest, self.output)
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_symlinked_export_root(self):
+        outside = self.root / 'outside'
+        outside.mkdir()
+        # The existing manifest is intentionally retained; remove it before replacing root.
+        manifest_copy = self.output / 'APK-MANIFEST.json'
+        if manifest_copy.exists():
+            manifest_copy.unlink()
+        self.output.rmdir()
+        self.output.symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'symlinked APK export root'):
+            module.export(self.manifest, self.output)
+        self.assertEqual(list(outside.iterdir()), [])
+
     def test_rejects_modified_source_before_writing(self):
         apk = Path('native-android/rider/build/outputs/apk/debug/rider-debug.apk')
         apk.write_bytes(b'changed')
