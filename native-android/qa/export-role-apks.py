@@ -34,6 +34,8 @@ def export(manifest_path, output):
     retained_manifest = output / 'APK-MANIFEST.json'
     if retained_manifest.is_symlink() or (retained_manifest.exists() and not retained_manifest.is_file()):
         raise ValueError('APK export manifest evidence must be a regular file, not a symlink')
+    if retained_manifest.exists() and retained_manifest.read_bytes() != manifest_path.read_bytes():
+        raise ValueError('APK export retained manifest differs from validated source manifest')
     for role in roles:
         directory = output / role
         if directory.is_symlink():
