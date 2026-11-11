@@ -40,6 +40,8 @@ jobs:
         run: python3 tests/verify-public-foreign-keys.py
       - name: Verify safe Production public-table access release guard
         run: python3 tests/verify-public-table-access.py
+      - name: Verify reviewed Production SECURITY DEFINER release guard
+        run: python3 tests/verify-production-security-definers.py
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - name: Install WebKit for complete Merchant mobile boot checks
