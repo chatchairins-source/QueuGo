@@ -5,6 +5,16 @@ const fs = require('node:fs');
 const workflow = fs.readFileSync('.github/workflows/build-native-rider-pilot.yml', 'utf8');
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 assert.ok(packageJson.scripts.test.includes('node tests/native-offline-map-trigger.cjs'), 'offline-map workflow gate regression must run in npm test');
+const manifestStart = workflow.indexOf('      - name: Verify and record source-bound APK checksums');
+const bundleStart = workflow.indexOf('          name: queuego-native-pilot-apks', manifestStart);
+const bundleEnd = workflow.indexOf('      - name: Regression test bounded Android SDK download recovery', bundleStart);
+assert.ok(manifestStart >= 0 && bundleStart > manifestStart && bundleEnd > bundleStart, 'the Native Pilot APK manifest must be generated before upload');
+const manifestStep = workflow.slice(manifestStart, bundleStart);
+assert.ok(manifestStep.includes('python3 tests/native-apk-manifest.py'), 'APK manifest regression must run in the artifact build job');
+assert.ok(manifestStep.includes('--source-sha "$(git rev-parse HEAD)"'), 'manifest must bind byte hashes to the exact checked out source commit');
+assert.ok(manifestStep.includes('create-apk-manifest.py') && manifestStep.includes('APK-MANIFEST.json'), 'artifact must contain the generated source-bound checksum manifest');
+assert.ok(workflow.slice(bundleStart, bundleEnd).includes('artifacts/native-pilot-apks/APK-MANIFEST.json'), 'the uploaded primary APK bundle must include its manifest');
+
 
 const countryStart = workflow.indexOf('      - name: Build and bundle pinned nationwide offline map');
 const countryEnd = workflow.indexOf('      - name: Tracking coordinate and terminal-state unit tests', countryStart);
@@ -42,4 +52,4 @@ assert.equal(builderDryRun.status, 0, builderDryRun.stderr);
 assert.ok(builderDryRun.stdout.includes('--ocean-path=/data/native-offline-map-trigger.cjs'), 'builder must pass the staged ocean polygons file to Planetiler');
 assert.ok(!builderDryRun.stdout.includes('--download'), 'offline map CI must not ask Planetiler to redownload checked inputs');
 
-console.log('Native acceptance selectors: country archive, no-network runtime, gated APK export and Express PR race tests PASS');
+console.log('Native acceptance selectors: country archive, no-network runtime, source-bound APK manifest, gated APK export and Express PR race tests PASS');
