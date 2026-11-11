@@ -2575,3 +2575,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Follow-up inspection found the authenticated-review workflow's pull-request path filter covered the Rider capture script but omitted `native-android/qa/capture-merchant-authenticated-review.py`. Therefore the corrected Merchant capture would otherwise not schedule another real emulator review.
 - Commit `a93a2f91c3e0a9f4042e195131bdfa5b6775e585` adds the Merchant capture script to the workflow trigger paths. The PR changes the workflow file itself, so the next exact-head pull-request evaluation should schedule the authenticated review.
 - This repairs test selection only; no production state or data changed. Awaiting exact-head workflow evidence.
+
+
+## 2026-11-11 Keep the Merchant barcode page visible without the soft keyboard
+
+- Authenticated UI artifact `13844906311` on `e6c04d5a736165bd0d70b5a65a4fe6767ea4c241` showed Gboard covering the lower half of Merchant POS order entry, even though the app was focusing the USB/Bluetooth barcode field and issuing one IME hide after 150 ms.
+- The Android IME can finish its show animation after that first hide. The Merchant POS screen now waits for the animation to settle and issues a bounded second hide while keeping barcode-field focus for hardware scanners. The next authenticated review must confirm the screenshot shows the full POS page with the keyboard dismissed.
+- This is app UI code only. No Production database, Auth, migration, order, payment, or user data changed.

@@ -1024,7 +1024,10 @@ fun MerchantPosScreen(
     LaunchedEffect(kitchenEnabled, view, snap?.shopId, snapshotLoading) {
         if (!snapshotLoading && snap != null && !kitchenEnabled && view == "counter") {
             barcodeFocusRequester.requestFocus()
-            delay(150)
+            // Wait for the Android IME show animation to settle, then dismiss it twice.
+            delay(350)
+            softwareKeyboardController?.hide()
+            delay(250)
             softwareKeyboardController?.hide()
         }
     }
