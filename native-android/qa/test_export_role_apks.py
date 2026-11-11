@@ -97,6 +97,24 @@ class ExportRoleApksTest(unittest.TestCase):
             module.export(self.manifest, self.output)
         self.assertEqual(list(outside.iterdir()), [])
 
+    def test_rejects_symlinked_export_ancestor(self):
+        outside = self.root / 'outside'
+        outside.mkdir()
+        alias = self.root / 'alias'
+        alias.symlink_to(outside, target_is_directory=True)
+        with self.assertRaisesRegex(ValueError, 'symlinked APK export root or ancestor'):
+            module.export(self.manifest, alias / 'nested' / 'artifacts')
+        self.assertEqual(list(outside.iterdir()), [])
+        self.assertFalse((self.output / 'customer').exists())
+
+    def test_rejects_export_root_as_regular_file(self):
+        root_file = self.root / 'export-file'
+        root_file.write_text('do not modify')
+        with self.assertRaisesRegex(ValueError, 'APK export root must be a directory'):
+            module.export(self.manifest, root_file)
+        self.assertEqual(root_file.read_text(), 'do not modify')
+        self.assertFalse((self.output / 'customer').exists())
+
     def test_rejects_symlinked_signature_evidence(self):
         target = self.root / 'outside-signature.txt'
         target.write_text('do not modify')
