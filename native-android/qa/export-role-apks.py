@@ -9,6 +9,8 @@ import sys
 
 def export(manifest_path, output):
     source_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+    if any(part.is_symlink() for part in (manifest_path, *manifest_path.parents)) or not manifest_path.is_file():
+        raise ValueError('APK manifest must be a regular file, not a symlink (including ancestors)')
     reports = json.loads(manifest_path.read_text())
     if not isinstance(reports, list) or not all(isinstance(row, dict) for row in reports):
         raise ValueError('APK manifest must be a list of role records')
