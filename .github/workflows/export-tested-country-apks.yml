@@ -11,7 +11,11 @@ on:
       - native-android/qa/prepare-thailand-map-assets.py
       - 'native-android/**/src/main/**'
       - 'native-android/**/src/androidTest/**'
+      - 'native-android/**/src/test/**'
       - 'native-android/**/build.gradle.kts'
+      - 'native-android/settings.gradle.kts'
+      - 'native-android/gradle.properties'
+      - 'native-android/gradle/wrapper/**'
       - tests/native-country-runtime-pr-gate.cjs
   push:
     branches: ['work-native-**']
@@ -22,7 +26,11 @@ on:
       - native-android/qa/prepare-thailand-map-assets.py
       - 'native-android/**/src/main/**'
       - 'native-android/**/src/androidTest/**'
+      - 'native-android/**/src/test/**'
       - 'native-android/**/build.gradle.kts'
+      - 'native-android/settings.gradle.kts'
+      - 'native-android/gradle.properties'
+      - 'native-android/gradle/wrapper/**'
       - tests/native-country-runtime-pr-gate.cjs
 
 permissions:
