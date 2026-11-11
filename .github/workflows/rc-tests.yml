@@ -23,7 +23,8 @@ concurrency:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Playwright 1.58.2 WebKit does not support the ubuntu-26.04 runner selected by ubuntu-latest.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -33,6 +34,14 @@ jobs:
         with:
           node-version: '22'
           cache: npm
+      - name: Verify migration ledger release guard
+        run: python3 tests/verify-migration-ledger.py
+      - name: Verify validated foreign-key release guard
+        run: python3 tests/verify-public-foreign-keys.py
+      - name: Verify safe Production public-table access release guard
+        run: python3 tests/verify-public-table-access.py
+      - name: Verify reviewed Production SECURITY DEFINER release guard
+        run: python3 tests/verify-production-security-definers.py
       - run: npm ci --no-audit --no-fund
       - run: npm test
       - name: Install WebKit for complete Merchant mobile boot checks

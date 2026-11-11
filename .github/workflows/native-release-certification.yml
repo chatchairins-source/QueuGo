@@ -137,6 +137,70 @@ jobs:
           echo "Certified exact-HEAD Backup Restore Drill run: $backup_run_id"
           echo "QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id" >> "$GITHUB_ENV"
 
+      - name: Require reconciled Production migration ledger
+        shell: bash
+        env:
+          QG_SUPABASE_DB_URL: ${{ secrets.QG_SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_SUPABASE_DB_URL" || { echo "::error::Missing QG_SUPABASE_DB_URL"; exit 1; }
+          ledger="$RUNNER_TEMP/queuego-release-migrations.txt"
+          metadata="$RUNNER_TEMP/queuego-release-migration-metadata.tsv"
+          trap 'rm -f "$ledger" "$metadata"' EXIT
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'select version from supabase_migrations.schema_migrations order by version' > "$ledger"
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -F $'\t' -v ON_ERROR_STOP=1 \
+            -c "select version, name, md5(array_to_string(statements, E'\\n')) from supabase_migrations.schema_migrations order by version" > "$metadata"
+          python3 ops/verify-migration-ledger.py "$ledger" --metadata "$metadata" --report "$RUNNER_TEMP/queuego-migration-ledger-report.json"
+
+      - name: Require validated Production public foreign keys
+        shell: bash
+        env:
+          QG_SUPABASE_DB_URL: ${{ secrets.QG_SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_SUPABASE_DB_URL" || { echo "::error::Missing QG_SUPABASE_DB_URL"; exit 1; }
+          unvalidated="$RUNNER_TEMP/queuego-unvalidated-public-fk-count.txt"
+          trap 'rm -f "$unvalidated"' EXIT
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "select count(*) from pg_catalog.pg_constraint c join pg_catalog.pg_class t on t.oid = c.conrelid join pg_catalog.pg_namespace n on n.oid = t.relnamespace where n.nspname = 'public' and c.contype = 'f' and not c.convalidated" > "$unvalidated"
+          python3 ops/verify-public-foreign-keys.py "$unvalidated"
+
+      - name: Require safe Production public table access
+        shell: bash
+        env:
+          QG_SUPABASE_DB_URL: ${{ secrets.QG_SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_SUPABASE_DB_URL" || { echo "::error::Missing QG_SUPABASE_DB_URL"; exit 1; }
+          unsafe="$RUNNER_TEMP/queuego-unsafe-public-table-count.txt"
+          trap 'rm -f "$unsafe"' EXIT
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "select (select count(distinct c.oid) from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r','p') and (not c.relrowsecurity or (not exists (select 1 from pg_catalog.pg_policy p where p.polrelid = c.oid) and (has_table_privilege('anon', c.oid, 'SELECT') or has_table_privilege('anon', c.oid, 'INSERT') or has_table_privilege('anon', c.oid, 'UPDATE') or has_table_privilege('anon', c.oid, 'DELETE') or has_table_privilege('authenticated', c.oid, 'SELECT') or has_table_privilege('authenticated', c.oid, 'INSERT') or has_table_privilege('authenticated', c.oid, 'UPDATE') or has_table_privilege('authenticated', c.oid, 'DELETE'))) or exists (select 1 from (values ('anon'::name), ('authenticated'::name)) as grantee(role_name) where has_table_privilege(grantee.role_name, c.oid, 'TRUNCATE') or has_table_privilege(grantee.role_name, c.oid, 'TRIGGER') or has_table_privilege(grantee.role_name, c.oid, 'REFERENCES') or has_table_privilege(grantee.role_name, c.oid, 'MAINTAIN')))) + (select count(*) from pg_catalog.pg_default_acl d join pg_catalog.pg_namespace n on n.oid = d.defaclnamespace where n.nspname = 'public' and d.defaclobjtype = 'r' and d.defaclrole = (select r.oid from pg_catalog.pg_roles r where r.rolname = 'postgres') and exists (select 1 from pg_catalog.aclexplode(d.defaclacl) acl where acl.grantee = 0 or acl.grantee in (select r.oid from pg_catalog.pg_roles r where r.rolname in ('anon','authenticated'))))" > "$unsafe"
+          python3 ops/verify-public-table-access.py "$unsafe"
+
+      - name: Require reviewed Production SECURITY DEFINER inventory
+        shell: bash
+        env:
+          QG_SUPABASE_DB_URL: ${{ secrets.QG_SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_SUPABASE_DB_URL" || { echo "::error::Missing QG_SUPABASE_DB_URL"; exit 1; }
+          inventory="$RUNNER_TEMP/queuego-security-definer-inventory.json"
+          trap 'rm -f "$inventory"' EXIT
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c "with public_definers as (select p.oid,p.proconfig,p.proname,pg_catalog.oidvectortypes(p.proargtypes) as args,has_function_privilege('anon',p.oid,'EXECUTE') as anon_exec,has_function_privilege('authenticated',p.oid,'EXECUTE') as auth_exec from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prosecdef), public_tables as (select count(*) as unsafe_count from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind in ('r','p') and c.relrowsecurity and not exists(select 1 from pg_catalog.pg_policy policy where policy.polrelid=c.oid) and (has_table_privilege('anon',c.oid,'SELECT') or has_table_privilege('anon',c.oid,'INSERT') or has_table_privilege('anon',c.oid,'UPDATE') or has_table_privilege('anon',c.oid,'DELETE') or has_table_privilege('authenticated',c.oid,'SELECT') or has_table_privilege('authenticated',c.oid,'INSERT') or has_table_privilege('authenticated',c.oid,'UPDATE') or has_table_privilege('authenticated',c.oid,'DELETE'))) select jsonb_build_object('anon_signatures',coalesce(jsonb_agg(proname||'('||args||')' order by proname||'('||args||')') filter(where anon_exec),'[]'::jsonb),'authenticated_security_definer_count',count(*) filter(where auth_exec),'unpinned_search_path_count',count(*) filter(where (anon_exec or auth_exec) and not exists(select 1 from unnest(coalesce(proconfig,array[]::text[])) config where config like 'search_path=%')),'rls_no_policy_with_crud_grants',(select unsafe_count from public_tables)) from public_definers" > "$inventory"
+          python3 ops/verify-production-security-definers.py "$inventory"
+
+      - name: Preserve migration reconciliation diagnostics on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: migration-reconciliation-${{ github.sha }}
+          path: ${{ runner.temp }}/queuego-migration-ledger-report.json
+          if-no-files-found: ignore
+          retention-days: 14
+
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
