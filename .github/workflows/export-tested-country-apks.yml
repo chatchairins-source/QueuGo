@@ -15,7 +15,6 @@ on:
       - tests/native-country-runtime-pr-gate.cjs
   push:
     branches: ['work-native-**']
-    branches: ['work-native-**']
     paths:
       - .github/workflows/export-tested-country-apks.yml
       - .github/workflows/build-native-rider-pilot.yml
