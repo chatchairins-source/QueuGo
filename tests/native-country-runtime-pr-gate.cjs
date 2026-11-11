@@ -32,6 +32,8 @@ for (const path of [
 ]) {
   assert.ok(exportPr[1].includes(path), `country APK export must retrigger on ${path}`);
 }
+assert.match(exportWorkflow, /permissions:\n  contents: read\n  actions: read/, 'country APK export must use read-only GitHub token permissions');
+assert.doesNotMatch(exportWorkflow, /contents: write/, 'country APK export must not grant repository write permission');
 assert.match(exportWorkflow, /bundle_country: true/, 'country APK export must request the country build');
 assert.match(exportWorkflow, /uses: \.\/\.github\/workflows\/build-native-rider-pilot\.yml/, 'country APK export must reuse the tested native pilot');
 
