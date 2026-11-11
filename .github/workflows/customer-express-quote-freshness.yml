@@ -1,0 +1,46 @@
+name: Customer Express Quote Freshness
+
+on:
+  push:
+    branches:
+      - 'work-native-**'
+    paths:
+      - 'customer-express.js'
+      - 'tests/customer-express-quote-freshness.cjs'
+      - 'tests/customer-express-web.cjs'
+      - '.github/workflows/customer-express-quote-freshness.yml'
+  pull_request:
+    branches:
+      - main
+      - 'work-native-**'
+    paths:
+      - 'customer-express.js'
+      - 'tests/customer-express-quote-freshness.cjs'
+      - 'tests/customer-express-web.cjs'
+      - '.github/workflows/customer-express-quote-freshness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: customer-express-quote-freshness-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  quote-freshness:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Check Express source syntax
+        run: node --check customer-express.js
+      - name: Exercise quote payload freshness and synchronous UI invalidation
+        run: node tests/customer-express-quote-freshness.cjs
+      - name: Check Customer Express Web contract
+        run: node tests/customer-express-web.cjs
