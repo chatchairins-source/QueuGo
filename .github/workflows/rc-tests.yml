@@ -1,6 +1,13 @@
 name: QueueGo RC Tests
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/rc-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'supabase/migrations/**'
+      - 'tests/**'
   push:
     branches:
       - queuego-market-bundle-laundry-rc
