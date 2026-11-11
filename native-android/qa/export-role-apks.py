@@ -15,14 +15,20 @@ def export(manifest_path, output):
     roles = [row.get('role') for row in reports]
     if sorted(roles) != ['customer', 'merchant', 'rider']:
         raise ValueError('Expected exactly three unique APK roles')
+    if output.is_symlink():
+        raise ValueError('Refusing symlinked APK export root')
     for role in roles:
         directory = output / role
+        if directory.is_symlink():
+            raise ValueError(f'{role}: refusing symlinked artifact directory')
         if directory.exists() and any(p.name != 'APK-SIGNATURE.txt' for p in directory.iterdir()):
             raise ValueError(f'{role}: refusing to mix fresh APKs with existing role artifacts')
     # Validate every file before writing any deliverable.
     for row in reports:
         role = row['role']
         source = Path(f'native-android/{role}/build/outputs/apk/debug/{role}-debug.apk')
+        if source.is_symlink() or not source.is_file():
+            raise ValueError(f'{role}: APK source must be a regular file, not a symlink')
         if row['source_sha'] != source_sha or row['apk'] != source.name:
             raise ValueError(f'{role}: build source mismatch')
         with source.open('rb') as stream:
