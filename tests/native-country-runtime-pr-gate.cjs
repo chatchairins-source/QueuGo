@@ -36,7 +36,7 @@ for (const path of [
 const pilotWorkflow = fs.readFileSync('.github/workflows/build-native-rider-pilot.yml', 'utf8');
 assert.match(exportWorkflow, /permissions:\n(?:  #[^\n]*\n)*  contents: write\n  actions: read/, 'reusable pilot currently requires caller write permission at startup');
 // Country APK evidence must come from the source commit, never GitHub's synthetic PR merge.
-for (const jobName of ['parallel-role-smoke', 'native-pilot']) {
+for (const jobName of ['parallel-role-smoke', 'native-pilot', 'navigation-map-runtime', 'maplibre-osm-runtime']) {
   const start = pilotWorkflow.indexOf('  ' + jobName + ':');
   assert.ok(start >= 0, `pilot workflow must retain ${jobName}`);
   const rest = pilotWorkflow.slice(start);
