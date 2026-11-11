@@ -2568,3 +2568,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Commit `1f5343b638b5456ccd59b66ab84ee5905d78d11a` makes the visual capture require order-entry and payment tabs, capture table/kitchen tabs as a matched optional pair only when enabled for the shop, and wait for each page's own content marker before saving. Expected screenshots and available POS views are now recorded from the actual review surface instead of hard-coding a restaurant-only screen.
 - Verification before push: Python syntax check PASS; synthetic retail and restaurant/cafe selector and content-marker checks PASS. The exact-head Android authenticated review must still run to validate the real account/emulator path.
 - No Production database, Auth, ACL, migration, order, payment, or user data changed. Production release remains blocked by the previously recorded security review, Express RPC/migration, release signing, backup, and device evidence gates.
+
+
+## 2026-11-11 Trigger Merchant authenticated review for its capture script
+
+- Follow-up inspection found the authenticated-review workflow's pull-request path filter covered the Rider capture script but omitted `native-android/qa/capture-merchant-authenticated-review.py`. Therefore the corrected Merchant capture would otherwise not schedule another real emulator review.
+- Commit `a93a2f91c3e0a9f4042e195131bdfa5b6775e585` adds the Merchant capture script to the workflow trigger paths. The PR changes the workflow file itself, so the next exact-head pull-request evaluation should schedule the authenticated review.
+- This repairs test selection only; no production state or data changed. Awaiting exact-head workflow evidence.
