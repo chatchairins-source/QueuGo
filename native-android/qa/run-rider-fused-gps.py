@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import subprocess
 import time
+from adb_screenshot import capture_png
 
 ROOT = Path(__file__).resolve().parents[2]
 SDK = Path(os.environ["ANDROID_HOME"])
@@ -77,20 +78,8 @@ def run_case(label, longitude, latitude):
         # lifecycle recreation. Retry transport only; never retry a failed GPS
         # assertion or manufacture a screenshot.
         screenshot = OUT / (label + ".png")
-        screenshot_ok = False
-        for attempt in range(3):
-            with screenshot.open("wb") as stream:
-                capture = subprocess.run([*ADB_TARGET, "exec-out", "screencap", "-p"],
-                                         stdout=stream, stderr=subprocess.PIPE,
-                                         timeout=30)
-            if capture.returncode == 0 and screenshot.read_bytes().startswith(b"\x89PNG\r\n\x1a\n") and screenshot.stat().st_size > 1024:
-                screenshot_ok = True
-                break
-            (OUT / (label + "-screencap-error.txt")).write_text(
-                "attempt=" + str(attempt + 1) + " returncode=" + str(capture.returncode) +
-                " stderr=" + capture.stderr.decode(errors="replace") + "\n")
-            screenshot.unlink(missing_ok=True)
-            time.sleep(3)
+        screenshot_ok = capture_png(
+            ADB_TARGET, screenshot, OUT / (label + "-screencap-error.txt"))
         assert screenshot_ok, "ADB screenshot transport failed after 3 attempts; GPS test result retained"
         dump = adb("shell", "dumpsys", "activity", "services", PACKAGE,
                    capture_output=True, text=True).stdout
@@ -140,7 +129,12 @@ def main():
                 assert "com.google.android.gms" in provider, "Google Play services absent"
                 run_case(label, longitude, latitude)
             finally:
-                subprocess.run([*ADB_TARGET, "emu", "kill"], capture_output=True, timeout=15)
+                try:
+                    subprocess.run([*ADB_TARGET, "emu", "kill"], capture_output=True, timeout=15)
+                except subprocess.TimeoutExpired as error:
+                    (OUT / (label + "-emulator-kill-timeout.txt")).write_text(
+                        "ADB emulator shutdown timed out; terminating the host emulator process.\n"
+                        + str(error) + "\n")
                 emulator.terminate()
                 try:
                     emulator.wait(timeout=15)

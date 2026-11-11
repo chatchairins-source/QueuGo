@@ -1,3 +1,9 @@
+## 2026-11-11 Rider Fused GPS capture transport — IN PROGRESS
+
+- Exact-head Rider offline-routing run `42954010332` passed the real installed Valhalla route, cold-process restart, country rendering and GPS-camera instrumentation, and software-renderer comparison. Its later Fused GPS acceptance reached screenshot capture after the instrumentation returned successfully, then failed because `adb exec-out screencap -p` timed out after 30 seconds; `adb emu kill` also timed out and masked the original failure during cleanup.
+- The failure is in screenshot/ADB transport handling, not evidence that GPS passed or failed. Added a bounded retry helper for genuine PNG captures, preserves each timeout in the artifact, adds cleanup-timeout handling, and tests recovered timeout, exhausted timeout and invalid screenshot output. The GPS assertion remains unchanged and a screenshot remains required.
+- **NEXT:** exact-head offline-routing CI must pass the Fused GPS step; only then retain the exact-source transfer candidate. Physical road/GPS acceptance, Firebase background push and signed release remain separate gates.
+
 ## 2026-11-10 Relative PBF mount path correction — PENDING EXACT-HEAD CI
 
 - Run `42829494568` passed full npm regression, Express PostgreSQL race tests, and Customer/Merchant/Rider Kotlin/JVM + Debug APK package-integrity jobs. Planetiler parsed the staged ocean file successfully, then failed because the PBF symlink target was an absolute host path outside the container's `/data` mount.
