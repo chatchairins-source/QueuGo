@@ -92,7 +92,7 @@ for (const id of fields) {
   const elements = Object.fromEntries(fields.map(field => [field,{value:'edited'}]));
   const summary = {hidden:false};
   const request = {disabled:false,textContent:'เรียกไรเดอร์ส่งด่วน'};
-  const lookup = selector => selector === 'express-quote-summary' ? summary : null;
+  elements['express-quote-summary']=summary;
   const documentStub = {querySelector: selector => selector === '[data-action="request"]' ? request : null};
   const bind = new Function(
     '$','document','form','quote','quoteSource','busy','onExpress','render',
