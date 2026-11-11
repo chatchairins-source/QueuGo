@@ -34,8 +34,11 @@ on:
       - tests/native-country-runtime-pr-gate.cjs
 
 permissions:
-  # APK export only reads source and artifacts; never grant repository write access.
-  contents: read
+  # The called pilot contains a separate, branch-gated legacy publisher that
+  # declares contents: write. GitHub validates reusable-job permissions at
+  # startup even when that publisher is skipped on country-export branches.
+  # Keep the caller permission compatible until the publisher is extracted.
+  contents: write
   actions: read
 
 # Reuse the current checkout's complete build/test pipeline. Never redistribute
