@@ -23,7 +23,11 @@ for (const path of [
   'native-android/qa/prepare-thailand-map-assets.py',
   'native-android/**/src/main/**',
   'native-android/**/src/androidTest/**',
+  'native-android/**/src/test/**',
   'native-android/**/build.gradle.kts',
+  'native-android/settings.gradle.kts',
+  'native-android/gradle.properties',
+  'native-android/gradle/wrapper/**',
   'tests/native-country-runtime-pr-gate.cjs',
 ]) {
   assert.ok(exportPr[1].includes(path), `country APK export must retrigger on ${path}`);
@@ -38,7 +42,11 @@ for (const path of [
   'native-android/qa/prepare-thailand-map-assets.py',
   'native-android/**/src/main/**',
   'native-android/**/src/androidTest/**',
+  'native-android/**/src/test/**',
   'native-android/**/build.gradle.kts',
+  'native-android/settings.gradle.kts',
+  'native-android/gradle.properties',
+  'native-android/gradle/wrapper/**',
   'tests/native-country-runtime-pr-gate.cjs',
 ]) {
   assert.ok(exportPush[1].includes(path), `country export push must retrigger on ${path}`);
