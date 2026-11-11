@@ -79,6 +79,15 @@ class ExportRoleApksTest(unittest.TestCase):
             self.assertEqual(meta['build_type'], 'debug')
             self.assertFalse(meta['production_certified'])
 
+    def test_rejects_missing_retained_manifest_before_writing(self):
+        retained = self.output / 'APK-MANIFEST.json'
+        retained.unlink()
+        with self.assertRaisesRegex(ValueError, 'requires retained manifest evidence'):
+            module.export(self.manifest, self.output)
+        for role in ('customer', 'merchant', 'rider'):
+            self.assertFalse((self.output / role).exists())
+        self.assertFalse(retained.exists())
+
     def test_rejects_stale_retained_manifest_before_writing(self):
         retained = self.output / 'APK-MANIFEST.json'
         retained.write_text('stale but regular manifest')
