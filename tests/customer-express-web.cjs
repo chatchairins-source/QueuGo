@@ -22,5 +22,27 @@ for(const phone of ['', 'abcde','12345','0812345678 ext 9','0812345678901234','+
 ok(express.includes('!validExpressContactPhone(form.senderPhone)')&&express.includes('!validExpressContactPhone(form.receiverPhone)'),
    'Web sender and receiver must both be validated before quoting');
 ok(express.includes('weight<=0||weight>1000'),'Web parcel weight must match the 1,000 kg Native and backend boundary');
+for(const control of ['pickup','destination'])ok(express.includes("(busy||p||!config.enabled||!config.configured?'disabled':'')"),'Express location selection must be disabled when service configuration is incomplete: '+control);
+ok(express.includes("(busy||!config.enabled||!config.configured||!pickup||!destination?'disabled':'')"),'Express quote control must be disabled when service configuration is incomplete');
+ok(express.includes("(busy||(!p&&(!config.enabled||!config.configured))?'disabled':'')"),
+   'New Express request must be disabled while service is unavailable, without blocking saved-request recovery');
 
+// Exercise persisted Express request parsing with malformed and tampered local state.
+const pendingStart=express.indexOf(' const pending=()=>');
+const pendingEnd=express.indexOf(' const status=',pendingStart);
+ok(pendingStart>=0&&pendingEnd>pendingStart,'Express must validate persisted request IDs');
+let persisted;
+const uuidA='123e4567-e89b-42d3-a456-426614174000';
+const uuidB='123e4567-e89b-42d3-a456-426614174001';
+const getPending=vm.runInNewContext('const key=()=>"test";'+express.slice(pendingStart,pendingEnd)+';pending',{
+  localStorage:{getItem:()=>persisted}
+});
+persisted=null;ok(getPending()===null,'No pending Express request is valid');
+persisted=JSON.stringify({p_request_id:uuidA,p_quote_id:uuidB,extra:'ignored'});
+const parsed=getPending();
+ok(parsed.p_request_id===uuidA&&parsed.p_quote_id===uuidB&&!('extra' in parsed),'Only allowlisted pending request fields may reach RPC');
+for(const bad of ['{', 'null','[]','"hello"',JSON.stringify({p_request_id:'x'.repeat(36),p_quote_id:uuidB}),JSON.stringify({p_request_id:uuidA,p_quote_id:'00000000-0000-0000-0000-000000000000'})]){
+  persisted=bad;
+  ok((()=>{try{getPending();return false}catch{return true}})(),'Reject corrupt or forged pending Express state');
+}
 console.log(JSON.stringify({checks,failures:0,scope:'Customer Web Express category/form/trusted quote/request/recovery/state/tracking; no Production mutation'}));
