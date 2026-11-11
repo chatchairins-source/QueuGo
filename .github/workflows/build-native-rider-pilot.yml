@@ -95,6 +95,7 @@ on:
       - 'tests/verify-migration-ledger.py'
       - 'tests/play-store-readiness.cjs'
       - 'tests/security-auth-definer-review.cjs'
+      - 'native-android/qa/security_review_gate.py'
       - 'docs/security-auth-definer-review.json'
       - 'docs/security-anon-definer-allowlist.json'
       - 'docs/play-closed-beta-readiness.md'

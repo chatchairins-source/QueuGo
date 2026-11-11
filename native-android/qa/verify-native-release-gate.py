@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 from datetime import datetime, timezone
+from security_review_gate import verify_production_security_review
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -368,6 +369,12 @@ def verify():
     version_name = os.environ.get("QG_NATIVE_VERSION_NAME", "")
     if not re.fullmatch(r"\d+\.\d+\.\d+", version_name):
         raise ValueError("release versionName must be explicitly set to x.y.z")
+
+    verify_production_security_review(
+        ROOT / "docs/security-auth-definer-review.json",
+        ROOT / "docs/security-anon-definer-allowlist.json",
+    )
+
     release_codes = {}
     play_max_codes = {}
     projects = set()

@@ -1,9 +1,21 @@
 {
-  "version": 2,
+  "version": 3,
   "reviewed_at": "2026-10-10T11:00:57.307Z",
   "production_project": "pkypiqhlrmzocysgeqew",
-  "live_advisor_observed_at": "2026-10-10T11:00:57.307Z",
-  "authenticated_security_definer_total": 142,
+  "reviewed_surface": {
+    "authenticated_security_definer_total": 142,
+    "anonymous_security_definer_total": 9
+  },
+  "current_live_advisor_snapshot": {
+    "observed_at": "2026-11-11T06:30:24.358Z",
+    "counts": {
+      "rls_enabled_no_policy_info": 32,
+      "anon_security_definer_function_executable": 10,
+      "authenticated_security_definer_function_executable": 189,
+      "auth_leaked_password_protection": 1
+    }
+  },
+  "review_status": "BLOCKED_UNREVIEWED_LIVE_DELTA",
   "direct_identity_or_role_guard_count": 118,
   "direct_auth_uid_count": 76,
   "helper_guarded_without_direct_auth_uid_count": 42,
@@ -88,11 +100,13 @@
   ],
   "live_review": {
     "no_direct_guard_accounting": "9 intentional public/guest + 14 POS/table helper-guarded wrappers + 1 cash-order core-guarded wrapper = 24",
-    "anonymous_allowlist_exact_match": true,
-    "anonymous_allowlist_count": 9,
-    "unexpected_anonymous_security_definers": [],
-    "database_changes_required": false,
-    "note": "Production definitions were reviewed live. The authenticated advisor total changed from the 2026-10-07 snapshot, so the current 142-function surface replaces the stale count rather than assuming every count delta represents a newly created function."
+    "anonymous_allowlist_exact_match": false,
+    "anonymous_allowlist_count": 10,
+    "unexpected_anonymous_security_definers": [
+      "queuego_ride_config()"
+    ],
+    "database_changes_required": null,
+    "note": "The live surface exceeds the 2026-10-10 reviewed surface. The newly observed anonymous execution grant for queuego_ride_config() and the expanded authenticated SECURITY DEFINER surface require a fresh complete review before any release PASS. No Production grants or policies were changed."
   },
   "advisor_after_review": {
     "rls_enabled_no_policy_info": 6,
@@ -100,6 +114,6 @@
     "authenticated_security_definer_executable": 142,
     "leaked_password_protection": 1
   },
-  "conclusion": "PASS_CODE_DATABASE_REVIEW_CURRENT_SURFACE",
-  "boundary": "Supabase Auth leaked-password protection remains a separate Free-plan platform warning. This code/database review does not certify physical Android, Firebase, TURN, signing, Backup/Restore, or Play Console gates."
+  "conclusion": "BLOCKED_UNREVIEWED_LIVE_SECURITY_DELTA",
+  "boundary": "The 2026-10-10 function classification is historical only and does not certify the current Production surface. Supabase Auth leaked-password protection remains a separate platform gate. This snapshot does not certify physical Android, Firebase, TURN, signing, Backup/Restore, or Play Console gates."
 }
