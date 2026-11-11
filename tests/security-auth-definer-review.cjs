@@ -79,6 +79,14 @@ try{
   ok(current.status===1&&/Supabase Auth leaked-password protection is disabled/.test(current.stdout),
     'current Production review must fail closed on its disabled leaked-password protection finding');
 
+  const refreshedSnapshot={...review,current_live_advisor_snapshot:{
+    ...snapshot,observed_at:'2026-11-11T09:14:52Z',
+    function_inventory:{...inventory,observed_at:'2026-11-11T09:24:50Z'}
+  }};
+  const refreshed=runGate(refreshedSnapshot,anon);
+  ok(refreshed.status===1&&/Supabase Auth leaked-password protection is disabled/.test(refreshed.stdout),
+    'the deterministic gate time must advance with later live snapshots instead of treating valid captures as future-dated');
+
   const staleAuthReview={...review,current_live_advisor_snapshot:{...snapshot,counts:{...snapshot.counts,auth_leaked_password_protection:0}}};
   const staleAuth=runGate(staleAuthReview,anon);
   ok(staleAuth.status===1&&/reviewed authenticated SECURITY DEFINER count 142 does not match current live Advisor count 189/.test(staleAuth.stdout),
