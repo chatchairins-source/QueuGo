@@ -135,6 +135,17 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertEqual(target.read_text(), 'do not modify')
         self.assertFalse((self.output / 'customer').exists())
 
+    def test_rejects_directory_disguised_as_signature_evidence(self):
+        folder = self.output / 'rider'
+        folder.mkdir()
+        signature = folder / 'APK-SIGNATURE.txt'
+        signature.mkdir()
+        (signature / 'sentinel').write_text('keep intact')
+        with self.assertRaisesRegex(ValueError, 'signature evidence must be a regular file'):
+            module.export(self.manifest, self.output)
+        self.assertEqual((signature / 'sentinel').read_text(), 'keep intact')
+        self.assertFalse((self.output / 'customer').exists())
+
     def test_rejects_role_artifact_path_that_is_a_file(self):
         (self.output / 'rider').write_text('not a directory')
         with self.assertRaisesRegex(ValueError, 'must be a directory'):
