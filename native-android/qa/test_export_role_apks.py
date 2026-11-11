@@ -36,7 +36,7 @@ class ExportRoleApksTest(unittest.TestCase):
         self.output = self.root / 'artifacts'
         self.output.mkdir()
         (self.output / 'APK-MANIFEST.json').write_text('pre-existing manifest is allowed')
-        self.git = patch.object(module.subprocess, 'check_output', return_value=SHA + '\\n')
+        self.git = patch.object(module.subprocess, 'check_output', return_value=SHA + '\n')
         self.git.start()
         self.addCleanup(self.git.stop)
 
