@@ -2552,3 +2552,10 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - Read-only Supabase `pg_proc` inventory at `2026-11-11T08:24:50.537896Z` reports 280 public SECURITY DEFINER functions, 189 executable by authenticated, 10 executable by anon, and 0 without an explicit `search_path`. The Advisor snapshot at `2026-11-11T08:14:52.927Z` still reports 189/10 and leaked-password protection warning 1; the two captures are within the 15-minute gate window.
 - Refreshed the checked-in inventory using `p.oid::regprocedure::text` identity signatures (argument types, without argument names). The live anonymous set now matches all 9 allowlisted public/guest identities plus the single unexpected `queuego_ride_config()`. This fixes metadata representation only; the function review remains unclassified and blocked.
 - Added regressions for canonical identity formatting and exact anonymous drift. No Production function, ACL, Auth setting, schema, migration ledger, order, payment or user data was changed.
+
+
+## 2026-11-11 Align security regression clock with Production snapshot
+
+- Exact-head QueueGo RC Tests on `d830f1c9207b56457b9f73ca6b0e3be58c1114bb` failed because the deterministic regression time `07:07Z` preceded the checked-in Advisor snapshot at `08:14Z`; the security gate correctly rejected the fixture as future-dated before reaching the intended Auth warning assertion.
+- Advanced the shared fixture clock to `08:30Z`, which is after both live captures. This preserves the intended checks: the current leaked-password warning blocks first, and a zero-warning synthetic copy still detects the stale 142/189 authenticated-function review.
+- Fix committed as `58908196d436717bb84f7fdb7540e7b08d13e362`. Exact-head workflows are pending. No Production Auth setting, database permission, schema, data, order or payment was changed.
