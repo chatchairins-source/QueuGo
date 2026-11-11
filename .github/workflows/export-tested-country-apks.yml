@@ -34,9 +34,8 @@ on:
       - tests/native-country-runtime-pr-gate.cjs
 
 permissions:
-  # The reused workflow declares a separately guarded legacy road-test publisher.
-  # Native build jobs retain their own read-only permissions.
-  contents: write
+  # APK export only reads source and artifacts; never grant repository write access.
+  contents: read
   actions: read
 
 # Reuse the current checkout's complete build/test pipeline. Never redistribute
