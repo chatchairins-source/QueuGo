@@ -8,12 +8,13 @@ on:
       - .github/workflows/export-tested-country-apks.yml
       - .github/workflows/build-native-rider-pilot.yml
       - native-android/qa/export-role-apks.py
-      - native-android/qa/prepare-thailand-map-assets.py
+      - native-android/qa/**
       - 'native-android/**/src/main/**'
       - 'native-android/**/src/androidTest/**'
       - 'native-android/**/src/test/**'
       - 'native-android/**/build.gradle.kts'
       - 'native-android/settings.gradle.kts'
+      - 'native-android/build.gradle.kts'
       - 'native-android/gradle.properties'
       - 'native-android/gradle/wrapper/**'
       - tests/native-country-runtime-pr-gate.cjs
@@ -23,12 +24,13 @@ on:
       - .github/workflows/export-tested-country-apks.yml
       - .github/workflows/build-native-rider-pilot.yml
       - native-android/qa/export-role-apks.py
-      - native-android/qa/prepare-thailand-map-assets.py
+      - native-android/qa/**
       - 'native-android/**/src/main/**'
       - 'native-android/**/src/androidTest/**'
       - 'native-android/**/src/test/**'
       - 'native-android/**/build.gradle.kts'
       - 'native-android/settings.gradle.kts'
+      - 'native-android/build.gradle.kts'
       - 'native-android/gradle.properties'
       - 'native-android/gradle/wrapper/**'
       - tests/native-country-runtime-pr-gate.cjs
