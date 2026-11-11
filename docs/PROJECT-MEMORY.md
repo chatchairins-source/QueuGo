@@ -36,14 +36,18 @@
 - Source review found the `express-races` job selected push refs but omitted `github.head_ref`, so PR-triggered Express PostgreSQL race coverage was skipped. Added the PR head selector and expanded the same regression to fail if this returns.
 - No Production database or data changed. Offline-map acceptance remains pending the new exact-head CI run; Debug APKs are not Production releases.
 
-## 2026-11-10 Customer Express stale quote UI and test wiring — IN PROGRESS
+## 2026-11-11 Customer Express quote freshness regression — IN PROGRESS
 
-- Verified source heads before editing: main `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`, PR #908 `000e9c73fb3a2b72b07c7649778a87b85e2eed4d`, and PR #913 `890f3146f9c6f905f7d405fa0a515d4f8b562b6d`. #913 is 16 commits ahead of #908 and directly based on it; it remains stacked. The PR lineage is diverged from main (merge base `65638570b670b3949457d2fd8317bf4f65d8c0a5`; PR head is 4,128 ahead and 1,080 behind main).
-- Found a Web Customer bug in #913: typing into a quoted form cleared the quote variables but deferred the repaint until `change`/blur, leaving the previous fare and Rider request button visible while editing. The existing quote freshness file was also not included in `npm test`.
-- Follow-up changes on a new branch based exactly on #913: clear quote state and repaint on input; preserve focus and text selection; clear quote source when route/order state resets; compare the live payload before accepting a delayed quote response or submitting a quote; add behavioral regressions for sender/receiver phone, weight, vehicle, pickup and destination edits and six late API responses; include the regression in `npm test`.
-- Local verification: `node --check customer-express.js` and the focused quote freshness regression pass. No Production SQL, RLS, RPC, order, payment, or user data was changed.
-- Current exact predecessor CI at review time: PR #908 Native Pilot exact head passed, with map/navigation runtime jobs skipped; PR #913 Customer P0 API 26 passed while APIs 30/33/35 were still running, and its Native Pilot was queued. Check the new stacked PR's exact-head run before reporting CI as complete.
-- **NEXT:** inspect the follow-up PR's exact-head Native Pilot/full npm regression and Customer P0 evidence; then continue the Native release, migration reconciliation, non-Production E2E, and signing gates. No Production Express rollout or Production release claim.
+- Rechecked main at `2c44d6f9313d2efdeb6dceef4c03d3f1ea9aa27e`, PR #913 at `9b61e4dd1990dfd14a31127cb1a0d1f9cf7ead05`, and current stacked heads before refreshing this branch. The #913 source already invalidates the visible fare and disables the Rider request control immediately on input, and rejects quote responses whose live payload changed; this branch now carries that exact source instead of the stale #913 predecessor file.
+- Strengthened `tests/customer-express-quote-freshness.cjs` to execute production `formPayload()`, `bindForm()`, and `action('quote')` with a deferred API response. Regression covers sender/receiver phone, weight, vehicle, pickup, destination, hides the old fare synchronously, and rejects each stale response. The test is wired into `npm test`.
+- Local `node --check customer-express.js` and focused quote freshness/in-flight race regression PASS. No Production SQL, Auth, RLS, RPC, order, payment, or user data changed.
+- Exact-head Native Pilot for this refreshed branch is running as of update (run `42940840439`). No new CI success is claimed until it completes.
+- **NEXT:** retain the stacked Native offline acceptance, verify the newest APK artifacts, and continue the Production migration/security, non-Production E2E, backup, and signed Release gates. Express remains disabled in Production.
+
+## 2026-11-09 Bounded Rider offline routing metadata
+
+- Rider bundled routing now reads manifest bytes under a strict 64 KiB cap instead of trusting `InputStream.available()`, and rejects a config manifest declaring more than 64 KiB before copying and parsing it. The actual graph remains checksum verified and offline-only.
+- Added a JVM regression with an input stream reporting zero `available()` despite containing data. Source checks passed; hosted exact-head Rider JVM and Native Pilot verification remain required. No Production data or map assets changed.
 
 ## 2026-11-09 Bounded Rider offline routing metadata
 
