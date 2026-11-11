@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 
 const workflow = fs.readFileSync('.github/workflows/build-native-rider-pilot.yml', 'utf8');
+const routingWorkflow = fs.readFileSync('.github/workflows/rider-offline-routing.yml', 'utf8');
 const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
 assert.ok(packageJson.scripts.test.includes('node tests/native-offline-map-trigger.cjs'), 'offline-map workflow gate regression must run in npm test');
 const manifestStart = workflow.indexOf('      - name: Verify and record source-bound APK checksums');
@@ -25,6 +26,7 @@ const navJobStart = workflow.indexOf('  navigation-map-runtime:');
 const navJobEnd = workflow.indexOf('\n    runs-on:', navJobStart);
 assert.ok(navJobStart >= 0 && navJobEnd > navJobStart, 'the standalone navigation map runtime job must be present');
 assert.ok(workflow.slice(navJobStart, navJobEnd).includes("startsWith(github.head_ref, 'work-native-express-offline-map-')"), 'the offline-map successor PR must execute the standalone navigation map runtime instead of silently skipping it');
+assert.ok(routingWorkflow.includes("      - '.github/workflows/build-native-rider-pilot.yml'"), 'changes to country-map build/runtime gates must also trigger installed Rider offline-routing acceptance');
 assert.ok(countryGate.includes('https://www.osmdata.org/download/water-polygons-split-3857.zip') && countryGate.includes('https://ftp.fau.de/mirrors/openstreetmapdata.com-archive/2026-10-28/water-polygons-split-3857.zip'), 'water polygon download must have the reachable daily mirror and a dated archive fallback');
 assert.ok(countryGate.includes('thailand-261109.osm.pbf'), 'the builder must use the available fixed Geofabrik snapshot');
 assert.ok(countryGate.includes('thailand-261109.osm.pbf.md5') && countryGate.includes('md5sum --check source-check.md5'), 'the downloaded snapshot must be checked against its official sidecar');
