@@ -39,7 +39,7 @@ assert.match(exportWorkflow, /uses: \.\/\.github\/workflows\/build-native-rider-
 
 const exportPush = exportWorkflow.match(/  push:\n([\s\S]*?)(?=\npermissions:)/);
 assert.ok(exportPush, 'country APK export must run on successor branch pushes');
-assert.ok(exportPush[1].includes("branches: ['work-native-**']"), 'all native successor pushes must trigger export');
+assert.ok(exportPush[1].includes("branches: ['work-native-**', 'fix/native-country-export-**']"), 'native successor and isolated country-export fix pushes must trigger export');
 for (const path of [
   'native-android/qa/prepare-thailand-map-assets.py',
   'native-android/**/src/main/**',
