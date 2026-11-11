@@ -41,7 +41,11 @@ class ExportRoleApksTest(unittest.TestCase):
         self.addCleanup(self.git.stop)
 
     def test_exports_three_verified_apks_with_debug_disclosure(self):
+        signature_dir = self.output / 'rider'
+        signature_dir.mkdir()
+        (signature_dir / 'APK-SIGNATURE.txt').write_text('verified signature evidence')
         module.export(self.manifest, self.output)
+        self.assertTrue((signature_dir / 'APK-SIGNATURE.txt').exists())
         for role in ('customer', 'merchant', 'rider'):
             folder = self.output / role
             apk = next(folder.glob('*.apk'))
@@ -56,7 +60,7 @@ class ExportRoleApksTest(unittest.TestCase):
         folder.mkdir()
         sentinel = folder / 'old.apk'
         sentinel.write_bytes(b'old')
-        with self.assertRaisesRegex(ValueError, 'existing role directories'):
+        with self.assertRaisesRegex(ValueError, 'existing role artifacts'):
             module.export(self.manifest, self.output)
         self.assertEqual(sentinel.read_bytes(), b'old')
         self.assertFalse((self.output / 'customer').exists())
