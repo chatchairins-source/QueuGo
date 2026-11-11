@@ -6,7 +6,7 @@ const path = require('node:path');
 const { PGlite } = require('@electric-sql/pglite');
 
 const root = path.resolve(__dirname, '..');
-const migrationPath = path.join(root, 'supabase/migrations/20261111073652_revoke_anon_ride_config_execute.sql');
+const migrationPath = path.join(root, 'supabase/migrations/20261111111354_revoke_anon_ride_config_execute.sql');
 const migration = fs.readFileSync(migrationPath, 'utf8');
 
 async function main() {
