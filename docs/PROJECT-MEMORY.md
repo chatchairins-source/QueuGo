@@ -2540,3 +2540,9 @@ The user-supplied Rider reference screens are the acceptance reference for workf
 - The current checked-in Production snapshot has `auth_leaked_password_protection=1`. `security_review_gate.py` correctly rejects that first, before comparing the old reviewed 142 authenticated functions with the 189 live Advisor count. The regression incorrectly expected the latter error first.
 - Updated the regression to assert the real Auth blocker, then isolate that blocker to zero and assert the stale 142/189 function review still fails. No release gate was weakened; no Supabase plan, Auth setting, Production schema, ACL, data, order or payment was changed.
 - Exact-head verification after this correction is pending. QueueGo remains blocked from release by the unresolved leaked-password setting, unreviewed live function inventory, Express rollout/RPC, signed-release evidence and remaining runtime acceptance.
+
+## 2026-11-11 Align Native release regression with Auth gate precedence
+
+- After the first exact-head correction, QueueGo RC Tests `42985421431` passed on `f872e5d17057825c99dabb3831239ec07b81e10a`. Both Native Pilot attempts then failed at the Native release packaging guard because `tests/native-release-gate.cjs` still expected the old 142/189 mismatch before the current Auth warning; the actual gate correctly returned `Supabase Auth leaked-password protection is disabled`.
+- Updated that integration assertion to require the current Auth blocker. The separate `tests/security-auth-definer-review.cjs` regression still isolates the warning to zero and verifies the 142/189 live-function mismatch, so neither blocker is masked and no gate is weakened.
+- Exact-head CI after this follow-up is pending. No Production Auth setting, plan, permission, migration, data, order or payment was changed.

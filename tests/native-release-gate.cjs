@@ -355,8 +355,8 @@ try{
     releaseEnv[`QG_${role}_PLAY_MAX_VERSION_CODE`]='0';
   }
   const staleSecurity=spawnSync('python3',[script],{env:releaseEnv,encoding:'utf8'});
-  assert.equal(staleSecurity.status,1,'Native release must reject a stale Production SECURITY DEFINER review');
-  assert.match(staleSecurity.stderr,/reviewed authenticated SECURITY DEFINER count 142 does not match current live Advisor count 189/);
+  assert.equal(staleSecurity.status,1,'Native release must remain blocked by the current Production security review');
+  assert.match(staleSecurity.stderr,/Supabase Auth leaked-password protection is disabled/);
 }finally{fs.rmSync(bindingDir,{recursive:true,force:true});}
 
 const verifier=fs.readFileSync(script,'utf8');
