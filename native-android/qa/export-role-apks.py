@@ -27,6 +27,11 @@ def export(manifest_path, output):
         raise ValueError('Refusing symlinked APK export root or ancestor')
     if output.exists() and not output.is_dir():
         raise ValueError('APK export root must be a directory')
+    # The root manifest is retained by the workflow. Never allow it to redirect
+    # or disguise the evidence used to identify the exported APK set.
+    retained_manifest = output / 'APK-MANIFEST.json'
+    if retained_manifest.is_symlink() or (retained_manifest.exists() and not retained_manifest.is_file()):
+        raise ValueError('APK export manifest evidence must be a regular file, not a symlink')
     for role in roles:
         directory = output / role
         if directory.is_symlink():
