@@ -1,6 +1,3 @@
-Warning: truncated output (original token count: 5391)
-Total output lines: 438
-
 name: QueueGo Native Release Certification
 
 on:
@@ -179,7 +176,7 @@ jobs:
           unsafe="$RUNNER_TEMP/queuego-unsafe-public-table-count.txt"
           trap 'rm -f "$unsafe"' EXIT
           psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
-            -c "select (select count(distinct c.oid) from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r','p') and (not c.relrowsecurity or (not exists (select 1 from pg_catalog.pg_policy p where p.polrelid = c.oid) and (has_table_privilege('anon', c.oid, 'SELECT') or has_table_privilege('anon', c.oid, 'INSERT') or has_table_privilege('anon', c.oid, 'UPDATE') or has_table_privilege('anon', c.oid, 'DELETE') or has_table_privilege('authenticated', c.oid, 'SELECT') or has_table_privilege('authenticated', c.oid, 'INSERT') or has_table_privilege('authenticated', c.oid, 'UPDATE') or has_table_privilege('authenticated', c.oid, 'DELETE'))) or exists (select 1 from (values ('anon'::name), ('authenticated'::name)) as grantee(role_name) where has_table_privilege(grantee.role_name, c.oid, 'TRUNCATE') or has_table_privilege(grantee.role_name, c.oid, 'TRIGGER') or has_table_privilege(grantee.role_name, c.oid, 'REFERENCES')))) + (select count(*) from pg_catalog.pg_default_acl d join pg_catalog.pg_namespace n on n.oid = d.defaclnamespace where n.nspname = 'public' and d.defaclobjtype = 'r' and exists (select 1 from pg_catalog.aclexplode(d.defaclacl) acl where acl.grantee = 0 or acl.grantee in (select r.oid from pg_catalog.pg_roles r where r.rolname in ('anon','authenticated'))))" > "$unsafe"
+            -c "select (select count(distinct c.oid) from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind in ('r','p') and (not c.relrowsecurity or (not exists (select 1 from pg_catalog.pg_policy p where p.polrelid = c.oid) and (has_table_privilege('anon', c.oid, 'SELECT') or has_table_privilege('anon', c.oid, 'INSERT') or has_table_privilege('anon', c.oid, 'UPDATE') or has_table_privilege('anon', c.oid, 'DELETE') or has_table_privilege('authenticated', c.oid, 'SELECT') or has_table_privilege('authenticated', c.oid, 'INSERT') or has_table_privilege('authenticated', c.oid, 'UPDATE') or has_table_privilege('authenticated', c.oid, 'DELETE'))) or exists (select 1 from (values ('anon'::name), ('authenticated'::name)) as grantee(role_name) where has_table_privilege(grantee.role_name, c.oid, 'TRUNCATE') or has_table_privilege(grantee.role_name, c.oid, 'TRIGGER') or has_table_privilege(grantee.role_name, c.oid, 'REFERENCES') or has_table_privilege(grantee.role_name, c.oid, 'MAINTAIN')))) + (select count(*) from pg_catalog.pg_default_acl d join pg_catalog.pg_namespace n on n.oid = d.defaclnamespace where n.nspname = 'public' and d.defaclobjtype = 'r' and d.defaclrole = (select r.oid from pg_catalog.pg_roles r where r.rolname = 'postgres') and exists (select 1 from pg_catalog.aclexplode(d.defaclacl) acl where acl.grantee = 0 or acl.grantee in (select r.oid from pg_catalog.pg_roles r where r.rolname in ('anon','authenticated'))))" > "$unsafe"
           python3 ops/verify-public-table-access.py "$unsafe"
 
       - name: Preserve migration reconciliation diagnostics on failure
@@ -230,7 +227,32 @@ jobs:
 
           version = os.environ.get("QG_NATIVE_VERSION_NAME", "")
           if not re.fullmatch(r"\d+\.\d+\.\d+", version):
-       …391 tokens truncated…ICE_ROLE_KEY")"
+              raise SystemExit("::error::version_name must be x.y.z")
+          for role in ("CUSTOMER", "MERCHANT", "RIDER"):
+              release_raw = os.environ.get(f"QG_{role}_VERSION_CODE", "")
+              play_raw = os.environ.get(f"QG_{role}_PLAY_MAX_VERSION_CODE", "")
+              if not release_raw.isdigit() or not play_raw.isdigit():
+                  raise SystemExit(f"::error::{role} versionCode inputs must be non-negative integers")
+              release_code, play_max = int(release_raw), int(play_raw)
+              if release_code <= 0 or release_code > 2100000000 or release_code <= play_max:
+                  raise SystemExit(f"::error::{role} release versionCode must be valid and exceed Play maximum")
+
+          cert = re.sub(r"[^0-9a-fA-F]", "", os.environ.get("QG_ANDROID_SIGNING_CERT_SHA256", ""))
+          if not re.fullmatch(r"[0-9a-fA-F]{64}", cert):
+              raise SystemExit("::error::signing_certificate_sha256 must be a 32-byte SHA-256 fingerprint")
+          PY
+
+      - name: Verify Production evidence bucket is private
+        shell: bash
+        env:
+          QG_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QG_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+          response="$(mktemp)"
+          code="$(curl --silent --show-error --proto '=https' --tlsv1.2 --output "$response" --write-out '%{http_code}' \
+            "${QG_SUPABASE_URL%/}/storage/v1/bucket/$QG_EVIDENCE_BUCKET" \
+            -H "Authorization: Bearer $QG_SUPABASE_SERVICE_ROLE_KEY" \
+            -H "apikey: $QG_SUPABASE_SERVICE_ROLE_KEY")"
           if [ "$code" != "200" ]; then
             echo "::error::Production release evidence bucket is unavailable (HTTP $code)"
             rm -f "$response"

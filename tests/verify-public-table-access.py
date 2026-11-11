@@ -14,10 +14,12 @@ assert "pg_catalog.pg_class" in workflow and "not c.relrowsecurity" in workflow
 assert "pg_catalog.pg_policy" in workflow and "has_table_privilege('anon'" in workflow
 assert "has_table_privilege('authenticated'" in workflow
 assert "'TRUNCATE'" in workflow and "'TRIGGER'" in workflow and "'REFERENCES'" in workflow
+assert "'MAINTAIN'" in workflow
 assert "pg_catalog.pg_default_acl" in workflow and "pg_catalog.aclexplode" in workflow
 normalized_workflow = "".join(workflow.split())
 assert "rolnamein('anon','authenticated')" in normalized_workflow
 assert "acl.grantee=0" in normalized_workflow
+assert "d.defaclrole=(selectr.oidfrompg_catalog.pg_rolesrwherer.rolname='postgres')" in normalized_workflow
 assert "python3 ops/verify-public-table-access.py" in workflow
 
 with tempfile.TemporaryDirectory() as directory:
@@ -33,8 +35,8 @@ with tempfile.TemporaryDirectory() as directory:
     safe = verify("0\n")
     assert safe.returncode == 0 and "enable RLS" in safe.stdout
 
-    unsafe = verify("13\n")
-    assert unsafe.returncode == 1 and "unsafe access: 13" in unsafe.stdout
+    unsafe = verify("42\n")
+    assert unsafe.returncode == 1 and "unsafe access: 42" in unsafe.stdout
     assert "Revoke anon/authenticated" in unsafe.stderr
     assert "default grants" in unsafe.stderr
 

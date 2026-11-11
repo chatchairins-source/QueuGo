@@ -27,7 +27,7 @@ def main() -> int:
     print(f"Production public table/default ACL entries with unsafe access: {unsafe_objects}")
     if unsafe_objects:
         print(
-            "::error::Revoke anon/authenticated TRUNCATE, TRIGGER and REFERENCES grants; "
+            "::error::Revoke anon/authenticated TRUNCATE, TRIGGER, REFERENCES and MAINTAIN grants; "
             "remove broad anon/authenticated/PUBLIC table default grants; enable RLS on every public table "
             "and add policies wherever direct CRUD is granted",
             file=sys.stderr,
