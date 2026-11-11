@@ -53,7 +53,7 @@ const makePayload = new Function(
   'validExpressContactPhone',
   'const form=state.form,pickup=state.pickup,destination=state.destination;'+payloadBuilder+';return formPayload;'
 );
-const validPhone = value => /^\\+?[0-9 ().-]+$/.test(value) && value.replace(/\\D/g,'').length >= 9 && value.replace(/\\D/g,'').length <= 15;
+const validPhone = value => /^\+?[0-9 ().-]+$/.test(value) && value.replace(/\D/g,'').length >= 9 && value.replace(/\D/g,'').length <= 15;
 const baseline = {
   form: {
     senderName:'Sender',senderPhone:'0812345678',
