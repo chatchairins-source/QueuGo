@@ -28,8 +28,13 @@ ok(review.live_review?.no_direct_guard_accounting==='9 intentional public/guest 
 ok(review.current_live_advisor_snapshot?.counts?.authenticated_security_definer_function_executable===189,'current Production snapshot must record all 189 authenticated SECURITY DEFINER functions');
 ok(review.current_live_advisor_snapshot?.counts?.anon_security_definer_function_executable===10,'current Production snapshot must record all 10 anonymous SECURITY DEFINER functions');
 ok(review.current_live_advisor_snapshot?.counts?.auth_leaked_password_protection===1,'current Production snapshot must retain the Auth platform warning');
-ok(review.current_live_advisor_snapshot?.observed_at==='2026-11-11T06:30:24.358Z','current Production Advisor observation must retain its exact timestamp');
-ok(review.current_live_advisor_snapshot?.function_inventory?.status==='NOT_CAPTURED','the snapshot must disclose that complete live function signatures have not been inventoried');
+const snapshot=review.current_live_advisor_snapshot,inventory=snapshot?.function_inventory;
+ok(Number.isFinite(Date.parse(snapshot?.observed_at)),'current Production Advisor observation must be a valid timestamp');
+ok(inventory?.status==='CAPTURED_UNREVIEWED','captured live signatures must remain explicitly unreviewed');
+ok(inventory?.authenticated_security_definer_signatures?.length===snapshot?.counts?.authenticated_security_definer_function_executable&&new Set(inventory.authenticated_security_definer_signatures).size===inventory.authenticated_security_definer_signatures.length,'captured authenticated signatures must be complete and unique');
+ok(inventory?.anonymous_security_definer_signatures?.length===snapshot?.counts?.anon_security_definer_function_executable&&new Set(inventory.anonymous_security_definer_signatures).size===inventory.anonymous_security_definer_signatures.length,'captured anonymous signatures must be complete and unique');
+ok(inventory?.public_security_definer_total===280&&inventory?.unfixed_or_unpinned_search_path_count===0,'live inventory must record all public SECURITY DEFINER functions and explicit search paths');
+ok(Math.abs(Date.parse(inventory?.observed_at)-Date.parse(snapshot?.observed_at))<15*60*1000,'Advisor and pg_proc snapshots must be captured within the 15-minute review window');
 ok(review.review_status==='BLOCKED_UNREVIEWED_LIVE_DELTA','stale classification must remain blocked from release certification');
 ok(review.live_review?.anonymous_allowlist_exact_match===false&&review.live_review?.anonymous_allowlist_count===10,'the live anonymous Advisor set must not be reported as matching the 9-function source allowlist');
 ok(JSON.stringify(review.live_review?.unexpected_anonymous_security_definers)===JSON.stringify(['queuego_ride_config()']),'the additional anon-executable SECURITY DEFINER function must be named for follow-up review');
@@ -53,7 +58,7 @@ ok(/leaked-password protection/i.test(review.boundary),'platform Auth blocker mu
 
 const gate=path.join(root,'native-android/qa/security_review_gate.py');
 const temp=fs.mkdtempSync(path.join(os.tmpdir(),'queuego-security-review-'));
-const runGate=(document,allowlist,now='2026-11-11T06:31:00Z')=>{
+const runGate=(document,allowlist,now='2026-11-11T07:07:00Z')=>{
   const reviewPath=path.join(temp,'review.json'),allowPath=path.join(temp,'allowlist.json');
   fs.writeFileSync(reviewPath,JSON.stringify(document));
   fs.writeFileSync(allowPath,JSON.stringify(allowlist));
