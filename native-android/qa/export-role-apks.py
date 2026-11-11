@@ -15,8 +15,8 @@ def export(manifest_path, output):
     roles = [row.get('role') for row in reports]
     if sorted(roles) != ['customer', 'merchant', 'rider']:
         raise ValueError('Expected exactly three unique APK roles')
-    if output.exists() and any(output.iterdir()):
-        raise ValueError('Refusing to mix freshly exported APKs with existing output')
+    if any((output / role).exists() for role in roles):
+        raise ValueError('Refusing to mix freshly exported APKs with existing role directories')
     # Validate every file before writing any deliverable.
     for row in reports:
         role = row['role']
