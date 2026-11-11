@@ -40,7 +40,7 @@ for (const jobName of ['parallel-role-smoke', 'native-pilot']) {
   const start = pilotWorkflow.indexOf('  ' + jobName + ':');
   assert.ok(start >= 0, `pilot workflow must retain ${jobName}`);
   const rest = pilotWorkflow.slice(start);
-  const nextJob = rest.slice(1).search(/\\n  [a-z][a-z0-9-]*:\\n/);
+  const nextJob = rest.slice(1).search(/\n  [a-z][a-z0-9-]*:\n/);
   const job = nextJob < 0 ? rest : rest.slice(0, nextJob + 1);
   assert.ok(job.includes('ref: ${{ github.event.pull_request.head.sha || github.sha }}'),
     `${jobName} must checkout the exact PR source HEAD`);
