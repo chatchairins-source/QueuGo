@@ -14,4 +14,21 @@ assert.match(workflow, /actual\['sha256'\] == manifest\['sha256'\]/, 'archive SH
 assert.ok(pr[1].includes('native-android/rider-navigation-map/src/main/**'), 'production map source must retrigger country runtime');
 assert.ok(pr[1].includes('native-android/rider-navigation-map/build.gradle.kts'), 'map Gradle changes must retrigger country runtime');
 assert.ok(pr[1].includes('tests/native-country-runtime-pr-gate.cjs'), 'gate test edits must retrigger country runtime');
-console.log('Installed-country runtime PR trigger and exact-source safety assertions PASS');
+
+const exportWorkflow = fs.readFileSync('.github/workflows/export-tested-country-apks.yml', 'utf8');
+const exportPr = exportWorkflow.match(/  pull_request:\n([\s\S]*?)(?=\n  push:)/);
+assert.ok(exportPr, 'country APK export must have a pull_request trigger');
+assert.match(exportPr[1], /branches: \['work-native-\*\*'\]/, 'successor PR bases must trigger country APK export');
+for (const path of [
+  'native-android/qa/prepare-thailand-map-assets.py',
+  'native-android/**/src/main/**',
+  'native-android/**/src/androidTest/**',
+  'native-android/**/build.gradle.kts',
+  'tests/native-country-runtime-pr-gate.cjs',
+]) {
+  assert.ok(exportPr[1].includes(path), `country APK export must retrigger on ${path}`);
+}
+assert.match(exportWorkflow, /bundle_country: true/, 'country APK export must request the country build');
+assert.match(exportWorkflow, /uses: \.\/\.github\/workflows\/build-native-rider-pilot\.yml/, 'country APK export must reuse the tested native pilot');
+
+console.log('Installed-country runtime and APK export successor PR safety assertions PASS');
