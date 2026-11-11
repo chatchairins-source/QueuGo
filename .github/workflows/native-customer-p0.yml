@@ -5,6 +5,10 @@ on:
     paths:
       - 'native-android/customer/**'
       - 'native-android/shared/**'
+      - 'native-android/build.gradle.kts'
+      - 'native-android/settings.gradle.kts'
+      - 'native-android/rider_offline_map_pack/**'
+      - 'native-android/rider_offline_routing_pack/**'
       - 'native-android/qa/run-customer-p0.py'
       - '.github/workflows/native-customer-p0.yml'
       - '.github/workflows/build-native-rider-pilot.yml'
@@ -12,6 +16,10 @@ on:
     paths:
       - 'native-android/customer/**'
       - 'native-android/shared/**'
+      - 'native-android/build.gradle.kts'
+      - 'native-android/settings.gradle.kts'
+      - 'native-android/rider_offline_map_pack/**'
+      - 'native-android/rider_offline_routing_pack/**'
       - 'native-android/qa/run-customer-p0.py'
       - '.github/workflows/native-customer-p0.yml'
       - '.github/workflows/build-native-rider-pilot.yml'

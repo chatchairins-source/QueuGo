@@ -42,6 +42,14 @@ const p0Start = customerP0Workflow.indexOf('  pull_request:\n    paths:');
 const p0End = customerP0Workflow.indexOf('\n  workflow_dispatch:', p0Start);
 assert.ok(p0Start >= 0 && p0End > p0Start, 'Customer P0 must retain an explicit pull-request path filter');
 assert.ok(customerP0Workflow.slice(p0Start, p0End).includes("      - '.github/workflows/build-native-rider-pilot.yml'"), 'Customer P0 must run on the current native-pilot successor PR and map workflow changes');
+for (const path of [
+  "      - 'native-android/build.gradle.kts'",
+  "      - 'native-android/settings.gradle.kts'",
+  "      - 'native-android/rider_offline_map_pack/**'",
+  "      - 'native-android/rider_offline_routing_pack/**'",
+]) {
+  assert.ok(customerP0Workflow.slice(p0Start, p0End).includes(path), `Customer P0 must run when shared Gradle or Rider asset-pack wiring changes: ${path}`);
+}
 assert.ok(countryGate.includes('https://www.osmdata.org/download/water-polygons-split-3857.zip') && countryGate.includes('https://ftp.fau.de/mirrors/openstreetmapdata.com-archive/2026-10-28/water-polygons-split-3857.zip'), 'water polygon download must have the reachable daily mirror and a dated archive fallback');
 assert.ok(countryGate.includes('thailand-261109.osm.pbf'), 'the builder must use the available fixed Geofabrik snapshot');
 assert.ok(countryGate.includes('thailand-261109.osm.pbf.md5') && countryGate.includes('md5sum --check source-check.md5'), 'the downloaded snapshot must be checked against its official sidecar');
