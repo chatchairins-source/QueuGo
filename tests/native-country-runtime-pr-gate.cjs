@@ -20,15 +20,51 @@ const exportPr = exportWorkflow.match(/  pull_request:\n([\s\S]*?)(?=\n  push:)/
 assert.ok(exportPr, 'country APK export must have a pull_request trigger');
 assert.match(exportPr[1], /branches: \['work-native-\*\*'\]/, 'successor PR bases must trigger country APK export');
 for (const path of [
-  'native-android/qa/prepare-thailand-map-assets.py',
+  'native-android/qa/**',
   'native-android/**/src/main/**',
   'native-android/**/src/androidTest/**',
+  'native-android/**/src/test/**',
   'native-android/**/build.gradle.kts',
+  'native-android/build.gradle.kts',
+  'native-android/settings.gradle.kts',
+  'native-android/gradle.properties',
+  'native-android/gradle/wrapper/**',
   'tests/native-country-runtime-pr-gate.cjs',
 ]) {
   assert.ok(exportPr[1].includes(path), `country APK export must retrigger on ${path}`);
 }
+const pilotWorkflow = fs.readFileSync('.github/workflows/build-native-rider-pilot.yml', 'utf8');
+assert.match(exportWorkflow, /permissions:\n(?:  #[^\n]*\n)*  contents: write\n  actions: read/, 'reusable pilot currently requires caller write permission at startup');
+// Country APK evidence must come from the source commit, never GitHub's synthetic PR merge.
+for (const jobName of ['parallel-role-smoke', 'native-pilot', 'navigation-map-runtime', 'maplibre-osm-runtime']) {
+  const start = pilotWorkflow.indexOf('  ' + jobName + ':');
+  assert.ok(start >= 0, `pilot workflow must retain ${jobName}`);
+  const rest = pilotWorkflow.slice(start);
+  const nextJob = rest.slice(1).search(/\n  [a-z][a-z0-9-]*:\n/);
+  const job = nextJob < 0 ? rest : rest.slice(0, nextJob + 1);
+  assert.ok(job.includes('ref: ${{ github.event.pull_request.head.sha || github.sha }}'),
+    `${jobName} must checkout the exact PR source HEAD`);
+}
+assert.match(pilotWorkflow, /publish-rider-road-test:\n    if: \$\{\{ \(github\.ref == .*?\) && github\.event_name == 'push' \}\}/, 'legacy publisher must remain restricted to explicit road-test branches');
+assert.doesNotMatch(exportWorkflow, /gh release (create|upload)/, 'country export workflow must not publish releases directly');
 assert.match(exportWorkflow, /bundle_country: true/, 'country APK export must request the country build');
 assert.match(exportWorkflow, /uses: \.\/\.github\/workflows\/build-native-rider-pilot\.yml/, 'country APK export must reuse the tested native pilot');
 
+const exportPush = exportWorkflow.match(/  push:\n([\s\S]*?)(?=\npermissions:)/);
+assert.ok(exportPush, 'country APK export must run on successor branch pushes');
+assert.ok(exportPush[1].includes("branches: ['work-native-**', 'fix/native-country-export-**']"), 'native successor and isolated country-export fix pushes must trigger export');
+for (const path of [
+  'native-android/qa/**',
+  'native-android/**/src/main/**',
+  'native-android/**/src/androidTest/**',
+  'native-android/**/src/test/**',
+  'native-android/**/build.gradle.kts',
+  'native-android/build.gradle.kts',
+  'native-android/settings.gradle.kts',
+  'native-android/gradle.properties',
+  'native-android/gradle/wrapper/**',
+  'tests/native-country-runtime-pr-gate.cjs',
+]) {
+  assert.ok(exportPush[1].includes(path), `country export push must retrigger on ${path}`);
+}
 console.log('Installed-country runtime and APK export successor PR safety assertions PASS');
