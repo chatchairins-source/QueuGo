@@ -14,11 +14,17 @@ on:
       - 'native-android/**/build.gradle.kts'
       - tests/native-country-runtime-pr-gate.cjs
   push:
-    branches: [work-native-rider-nav-unified-offline-20261030]
+    branches: ['work-native-**']
+    branches: ['work-native-**']
     paths:
       - .github/workflows/export-tested-country-apks.yml
       - .github/workflows/build-native-rider-pilot.yml
       - native-android/qa/export-role-apks.py
+      - native-android/qa/prepare-thailand-map-assets.py
+      - 'native-android/**/src/main/**'
+      - 'native-android/**/src/androidTest/**'
+      - 'native-android/**/build.gradle.kts'
+      - tests/native-country-runtime-pr-gate.cjs
 
 permissions:
   # The reused workflow declares a separately guarded legacy road-test publisher.
