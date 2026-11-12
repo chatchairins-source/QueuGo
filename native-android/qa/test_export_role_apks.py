@@ -93,8 +93,9 @@ class ExportRoleApksTest(unittest.TestCase):
         # bytes other than the snapshot actually parsed and validated.
         original_loads = json.loads
 
-        def replace_evidence_after_parse(raw):
-            rows = original_loads(raw)
+        def replace_evidence_after_parse(raw, **kwargs):
+            # Preserve the exporter's strict JSON object_pairs_hook contract.
+            rows = original_loads(raw, **kwargs)
             changed = original_loads(self.manifest.read_text())
             changed[0]['bytes'] += 1
             replacement = json.dumps(changed).encode()
