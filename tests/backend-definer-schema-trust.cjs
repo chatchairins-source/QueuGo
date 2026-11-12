@@ -10,4 +10,7 @@ assert.match(sql, /has_schema_privilege\('anon', path_schema, 'CREATE'\)/);
 assert.match(sql, /has_schema_privilege\('authenticated', path_schema, 'CREATE'\)/);
 assert.match(sql, /to_regnamespace\(path_schema\) IS NOT NULL/);
 assert.doesNotMatch(sql.replace(/^--.*$/gm, ''), /\b(?:INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE)\s+(?:TABLE|FROM|INTO|SCHEMA|FUNCTION)?\b/i);
+assert.match(sql, /missing_search_path/);
+assert.match(sql, /AND NOT EXISTS \(/);
+assert.match(sql, /setting LIKE 'search_path=%'/);
 console.log('definer search_path schema trust audit query: static checks passed');
