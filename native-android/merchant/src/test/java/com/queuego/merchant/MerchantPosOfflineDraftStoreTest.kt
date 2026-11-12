@@ -466,4 +466,35 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+
+    @Test fun sameTimestampCatalogRefreshMustBeIdempotent() {
+        val root = Files.createTempDirectory("pos-catalog-same-time").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val original = PosOfflineCatalog(actor, shop, device, "ร้านเดิม", 500L,
+                emptyList(), emptyList())
+            store.saveCatalog(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val originalBytes = file.readText()
+
+            // An identical replay is safe and does not change the snapshot.
+            store.saveCatalog(original)
+            assertEquals(originalBytes, file.readText())
+
+            // A different payload at the same timestamp must not overwrite it.
+            assertThrows(IllegalStateException::class.java) {
+                store.saveCatalog(original.copy(shopName = "ข้อมูลที่ขัดแย้ง"))
+            }
+            assertEquals(originalBytes, file.readText())
+            assertEquals(original, store.loadCatalog(actor, device))
+
+            // A genuinely newer refresh remains permitted.
+            val newer = original.copy(shopName = "ข้อมูลใหม่", savedAtMs = 501L)
+            store.saveCatalog(newer)
+            assertEquals(newer, store.loadCatalog(actor, device))
+        } finally { root.deleteRecursively() }
+    }
 }
