@@ -312,6 +312,22 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertEqual(retained.read_text(), 'replaced during staging')
         self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
 
+    def test_rolls_back_if_retained_manifest_changes_during_publication(self):
+        retained = self.output / 'APK-MANIFEST.json'
+        original_link = Path.hardlink_to
+
+        def replace_evidence_on_last_link(destination, target):
+            result = original_link(destination, target)
+            if destination.parent.name == 'rider' and destination.suffix == '.apk':
+                retained.write_text('replaced during publication')
+            return result
+
+        with patch.object(Path, 'hardlink_to', replace_evidence_on_last_link):
+            with self.assertRaisesRegex(ValueError, 'retained manifest changed during publication'):
+                module.export(self.manifest, self.output)
+        self.assertEqual(retained.read_text(), 'replaced during publication')
+        self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
+
     def test_rolls_back_published_files_if_a_later_link_fails(self):
         original_link = Path.hardlink_to
 
