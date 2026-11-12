@@ -9,6 +9,15 @@ import sys
 from tempfile import TemporaryDirectory
 
 
+def reject_duplicate_manifest_keys(pairs):
+    record = {}
+    for key, value in pairs:
+        if key in record:
+            raise ValueError(f'APK manifest contains duplicate JSON key: {key}')
+        record[key] = value
+    return record
+
+
 def export(manifest_path, output):
     source_sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
     if len(source_sha) != 40 or any(c not in '0123456789abcdef' for c in source_sha):
@@ -17,7 +26,7 @@ def export(manifest_path, output):
         raise ValueError('APK manifest must be a regular file, not a symlink (including ancestors)')
     # Bind parsing and retained-evidence comparison to the same source snapshot.
     manifest_bytes = manifest_path.read_bytes()
-    reports = json.loads(manifest_bytes)
+    reports = json.loads(manifest_bytes, object_pairs_hook=reject_duplicate_manifest_keys)
     if not isinstance(reports, list) or not all(isinstance(row, dict) for row in reports):
         raise ValueError('APK manifest must be a list of role records')
     # Fail closed on malformed role metadata before any filesystem writes.
