@@ -21,6 +21,16 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   await api.saveCatalog(scope,[{id:'p1',name:'ชาไทย',price:30,pos_price:35,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'size',name:'ขนาด',type:'single',required:true,options:[{key:'large',name:'ใหญ่',price_delta:5}]}],accessToken:'must-not-cache',image:'https://must-not-cache',stock:7}],[]);
   const cached=await api.getCatalog(scope);eq(cached.products.length,1);eq(cached.products[0].stock,7);eq(cached.products[0].variants[0].options[0].key,'large');ok(!JSON.stringify(cached).includes('must-not-cache'),'catalog snapshot contains only allowed fields');eq(await api.getCatalog({shopId:'shop-a',actorId:'cashier-b',deviceId:scope.deviceId}),null,'catalog snapshot is isolated by actor');
   let invalidRejected=false;try{await api.save({...first,id:'bad',items:[{productId:'p1',quantity:0,priceSnapshot:35,nameSnapshot:'ชาไทย',options:{}}]})}catch(_){invalidRejected=true}ok(invalidRejected,'invalid quantities are rejected');
+  // Another tab can delete/recreate the IndexedDB database; a closed connection must not be reused.
+  await new Promise((resolve,reject)=>{
+    const deletion=indexedDB.deleteDatabase('queuego-pos-offline-drafts-v1');
+    deletion.onsuccess=resolve;
+    deletion.onerror=()=>reject(deletion.error||Error('IndexedDB test deletion failed'));
+    deletion.onblocked=()=>reject(Error('Other POS tabs did not close on versionchange'));
+  });
+  const recovered=await reopened.api.save({...first,id:'draft-after-versionchange'});
+  eq(recovered.id,'draft-after-versionchange','POS can save again after another tab invalidates its IndexedDB connection');
+  eq((await api.list(scope)).map(d=>d.id),['draft-after-versionchange'],'all open POS tabs recover their own closed IndexedDB connections');
   one.d.window.close();reopened.d.window.close();
   console.log(JSON.stringify({checks,failures:0,scope:'identity and device scoped local POS drafts; no order/payment RPC or Production data'}));
 })().catch(e=>{console.error(e);process.exit(1)});
