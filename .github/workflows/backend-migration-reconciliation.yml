@@ -7,6 +7,8 @@ on:
       - 'tests/backend-migration-reconciliation.cjs'
       - 'scripts/audit-supabase-definer-exposure.cjs'
       - 'tests/backend-definer-exposure.cjs'
+      - 'scripts/audit-supabase-no-policy-grants.cjs'
+      - 'tests/backend-no-policy-grants.cjs'
       - '.github/workflows/backend-migration-reconciliation.yml'
       - 'supabase/migrations/**'
   workflow_dispatch:
@@ -28,7 +30,11 @@ jobs:
           node --check tests/backend-migration-reconciliation.cjs
           node --check scripts/audit-supabase-definer-exposure.cjs
           node --check tests/backend-definer-exposure.cjs
+          node --check scripts/audit-supabase-no-policy-grants.cjs
+          node --check tests/backend-no-policy-grants.cjs
       - name: Read-only migration history regression
         run: node tests/backend-migration-reconciliation.cjs
       - name: Read-only SECURITY DEFINER exposure regression
         run: node tests/backend-definer-exposure.cjs
+      - name: Read-only RLS no-policy grants regression
+        run: node tests/backend-no-policy-grants.cjs
