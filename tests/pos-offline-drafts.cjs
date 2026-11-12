@@ -21,6 +21,9 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   await api.saveCatalog(scope,[{id:'p1',name:'ชาไทย',price:30,pos_price:35,available:true,pos_available:true,category:'เครื่องดื่ม',variants:[{schema:'queuego.menu-options.v1',key:'size',name:'ขนาด',type:'single',required:true,options:[{key:'large',name:'ใหญ่',price_delta:5}]}],accessToken:'must-not-cache',image:'https://must-not-cache',stock:7}],[]);
   const cached=await api.getCatalog(scope);eq(cached.products.length,1);eq(cached.products[0].stock,7);eq(cached.products[0].category,'เครื่องดื่ม','offline POS keeps the product category for its category filter');eq(cached.products[0].variants[0].options[0].key,'large');ok(!JSON.stringify(cached).includes('must-not-cache'),'catalog snapshot contains only allowed fields');eq(await api.getCatalog({shopId:'shop-a',actorId:'cashier-b',deviceId:scope.deviceId}),null,'catalog snapshot is isolated by actor');
   await api.saveCatalog(scope,[
+    null, // A malformed API/catalog row must not abort the whole offline cache.
+    undefined,
+    7,
     {id:'valid-zero',name:'สินค้าฟรี',price:0,pos_price:0,available:true,pos_available:true},
     {id:'invalid-negative',name:'ราคาไม่ถูกต้อง',price:-10,pos_price:10,available:true,pos_available:true},
     {id:'invalid-pos',name:'ราคาหน้าร้านไม่ถูกต้อง',price:20,pos_price:-1,available:true,pos_available:true},
