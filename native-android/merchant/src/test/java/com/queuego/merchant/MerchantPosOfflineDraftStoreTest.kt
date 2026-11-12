@@ -222,6 +222,28 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun staleOfflineDraftUpdateCannotReplaceNewerSavedCart() {
+        val root = Files.createTempDirectory("pos-offline-stale-draft").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val original = draft(actor, shop, device).copy(savedAtMs = 100L)
+            store.save(original)
+            val newer = original.copy(savedAtMs = 200L,
+                items = original.items.map { it.copy(quantity = 3) })
+            store.save(newer)
+            val persisted = root.listFiles()!!.single { it.name.endsWith(".json") }.readText()
+            assertThrows(IllegalStateException::class.java) {
+                store.save(original.copy(savedAtMs = 150L))
+            }
+            assertEquals(persisted, root.listFiles()!!.single { it.name.endsWith(".json") }.readText())
+            assertEquals(newer, MerchantPosOfflineDraftStore(root).loadForActor(actor, device))
+            store.save(newer.copy(savedAtMs = 200L))
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun refusesToOverwriteAnotherShopDraftEvenWithMatchingReplayIdentity() {
         val root = Files.createTempDirectory("pos-offline-cross-shop").toFile()
         try {
