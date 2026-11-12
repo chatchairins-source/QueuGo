@@ -517,4 +517,36 @@ class MerchantPosOfflineDraftStoreTest {
             assertEquals(newer, store.loadCatalog(actor, device))
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun rejectsOversizedPersistedDraftArraysBeforeDecodeWithoutReplacingFile() {
+        val root = Files.createTempDirectory("pos-bounded-decode").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val original = draft(actor, shop, device)
+            store.save(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val valid = JSONObject(file.readText())
+
+            val tooManyItems = JSONObject(valid.toString())
+            val item = valid.getJSONArray("items").getJSONObject(0)
+            tooManyItems.put("items", JSONArray().apply { repeat(101) { put(JSONObject(item.toString())) } })
+            val itemBytes = tooManyItems.toString()
+            file.writeText(itemBytes)
+            assertThrows(IllegalStateException::class.java) {
+                store.load(PosOfflineDraftScope(actor, shop, device))
+            }
+            assertEquals(itemBytes, file.readText())
+
+            val tooManyRequests = JSONObject(valid.toString())
+            val requestIds = JSONArray().apply { repeat(100) { put(UUID.randomUUID().toString()) } }
+            tooManyRequests.getJSONArray("items").getJSONObject(0).put("request_ids", requestIds)
+            val requestBytes = tooManyRequests.toString()
+            file.writeText(requestBytes)
+            assertThrows(IllegalStateException::class.java) { store.loadForActor(actor, device) }
+            assertEquals(requestBytes, file.readText())
+        } finally { root.deleteRecursively() }
+    }
 }
