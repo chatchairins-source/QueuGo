@@ -8,6 +8,7 @@ const check=(condition,message)=>{assert.ok(condition,message);checks++};
 const row={schema_name:'public',table_name:'private_receipts',rls_enabled:true,policy_count:0,
   anon_select:false,anon_insert:false,anon_update:false,anon_delete:false,
   authenticated_select:false,authenticated_insert:false,authenticated_update:false,authenticated_delete:false};
+assert.throws(()=>auditNoPolicyTables([]),/nonempty metadata rows/);checks++;
 const safe=auditNoPolicyTables([row]);
 check(safe.assessment==='NO_POLICY_TABLE_GRANTS_ABSENT_NOT_SECURITY_CERTIFIED','deny-only snapshot is not certification');
 check(safe.counts.noPolicyTables===1 && safe.counts.grantsFound===0,'no direct grants');
@@ -23,6 +24,8 @@ try {
   const run=(...args)=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8'});
   fs.writeFileSync(file,JSON.stringify({tables:[row]}));
   check(run(file).status===0,'safe metadata exit zero');
+  fs.writeFileSync(file,JSON.stringify({tables:[]}));
+  check(run(file).status===1,'empty snapshot fails closed');
   fs.writeFileSync(file,JSON.stringify({tables:[{...row,anon_select:true}]}));
   check(run(file).status===2,'grant risk exit two');
   fs.writeFileSync(file,'bad');
