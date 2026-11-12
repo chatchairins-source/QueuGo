@@ -325,4 +325,29 @@ class MerchantPosOfflineDraftStoreTest {
             assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
         } finally { root.deleteRecursively() }
     }
+    @Test fun refusesToOverwriteCatalogWithOversizedPersistedCollections() {
+        val root = Files.createTempDirectory("pos-catalog-corrupt-count").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val catalog = PosOfflineCatalog(actor, shop, device, "ร้าน", 1L,
+                listOf(PosProduct(UUID.randomUUID().toString(), "ชา", 30.0, null, true)),
+                emptyList())
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(catalog)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val tampered = JSONObject(file.readText())
+            tampered.put("tables", JSONArray().apply {
+                repeat(301) { put(JSONObject().put("id", UUID.randomUUID().toString())) }
+            })
+            val tamperedText = tampered.toString()
+            file.writeText(tamperedText)
+            assertThrows(IllegalStateException::class.java) {
+                store.saveCatalog(catalog.copy(savedAtMs = 2L))
+            }
+            assertEquals(tamperedText, file.readText())
+        } finally { root.deleteRecursively() }
+    }
+
 }
