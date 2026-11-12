@@ -222,6 +222,26 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun equalTimestampCannotReplaceDifferentOfflineCart() {
+        val root = Files.createTempDirectory("pos-offline-equal-timestamp").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val original = draft(actor, shop, device).copy(savedAtMs = 100L)
+            store.save(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val originalBytes = file.readText()
+            val conflicting = original.copy(items = original.items.map { it.copy(quantity = 3) })
+            assertThrows(IllegalStateException::class.java) { store.save(conflicting) }
+            assertEquals(originalBytes, file.readText())
+            assertEquals(original, store.loadForActor(actor, device))
+            store.save(original)
+            assertEquals(original, store.loadForActor(actor, device))
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun staleOfflineDraftUpdateCannotReplaceNewerSavedCart() {
         val root = Files.createTempDirectory("pos-offline-stale-draft").toFile()
         try {
