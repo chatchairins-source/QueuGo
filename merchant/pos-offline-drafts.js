@@ -36,6 +36,7 @@
       const requestIds=Array.isArray(i.requestIds)?i.requestIds:[];if(requestIds.length&&requestIds.length!==i.quantity)throw Error('รหัสส่งร่าง POS ไม่ครบ');if(requestIds.some(x=>typeof x!=='string'||x.length>100)||new Set(requestIds).size!==requestIds.length)throw Error('รหัสส่งร่าง POS ไม่ถูกต้อง');
       return {productId:i.productId,quantity:i.quantity,priceSnapshot:i.priceSnapshot,basePriceSnapshot:i.basePriceSnapshot,nameSnapshot:i.nameSnapshot,options,optionLabel:String(i.optionLabel||'').slice(0,300),requestIds};
     });
+    const replayIds=items.flatMap(i=>i.requestIds);if(new Set(replayIds).size!==replayIds.length)throw Error('รหัสส่งร่าง POS ซ้ำระหว่างรายการสินค้า');
     return {id:d.id,shopId:d.shopId,actorId:d.actorId,deviceId:d.deviceId,type:d.type,tableId:d.type==='DINE_IN'?(typeof d.tableId==='string'?d.tableId:null):null,requestId:typeof d.requestId==='string'&&d.requestId?d.requestId:uuid(),status:'NOT_SUBMITTED',createdAt:typeof d.createdAt==='string'?d.createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),items};
   }
   async function save(draft){
