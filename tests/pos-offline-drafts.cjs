@@ -81,6 +81,12 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     {...replayItem,productId:'p2',requestIds:['unit-3','unit-4']}
   ]});
   eq(uniqueAcrossLines.items[1].requestIds,['unit-3','unit-4'],'unique replay keys across product lines remain valid');
+  // A bill-create idempotency key must never be reused for a product-unit mutation.
+  let billCollisionRejected=false;
+  try{await api.save({...first,id:'draft-bill-replay-collision',requestId:'unit-2',items:[replayItem]})}catch(_){billCollisionRejected=true}
+  ok(billCollisionRejected,'bill creation request ID cannot collide with any item replay key');
+  const distinctBill=await api.save({...first,id:'draft-distinct-bill-replay',requestId:'bill-distinct',items:[replayItem]});
+  eq(distinctBill.requestId,'bill-distinct','a distinct bill creation key remains valid');
   // Another tab can delete/recreate the IndexedDB database; a closed connection must not be reused.
   await new Promise((resolve,reject)=>{
     const deletion=indexedDB.deleteDatabase('queuego-pos-offline-drafts-v1');
