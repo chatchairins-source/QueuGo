@@ -137,6 +137,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 existing.getString("shop_id") == catalog.shopId) {
                 "แคตตาล็อก POS ไม่ตรงกับบัญชี ร้านค้า หรืออุปกรณ์นี้"
             }
+            // A delayed offline refresh must never replace a newer catalog snapshot.
+            check(existing.getLong("saved_at_ms") <= catalog.savedAtMs) {
+                "แคตตาล็อก POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
+            }
             // Do not silently replace a malformed persisted catalog before it can be inspected.
             check(existing.getJSONArray("products").length() <= 20_000 &&
                 existing.getJSONArray("tables").length() <= 300) {
