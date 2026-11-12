@@ -67,3 +67,7 @@ FROM no_policy;
 ```
 
 The offline no-policy audit now rejects an empty metadata snapshot rather than issuing a misleading zero-grant result. This protects against a truncated/failed export but does not prove that a nonempty snapshot is complete; compare its row count against the current catalog query before accepting evidence.
+
+## Snapshot completeness guard (2026-11-12)
+
+The no-policy grants audit input must include `expected_catalog_count`, an integer obtained from a fresh, independent count query against the same schema scope and observation window. The audit fails closed if `tables.length` differs from that count or if the count is missing. For example, `{ "expected_catalog_count": 14, "tables": [/* all 14 metadata rows */] }`. Never include application row data or credentials. A matching count is necessary but not sufficient: validate unique table identifiers and all grant booleans, and avoid treating this as proof of RPC security. The regression suite covers missing and truncated snapshots. No Production changes are made.
