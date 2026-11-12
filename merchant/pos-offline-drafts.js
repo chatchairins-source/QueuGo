@@ -18,7 +18,7 @@
     if(!dbTask)dbTask=new Promise((resolve,reject)=>{
       const request=window.indexedDB.open(DB_NAME,2);
       request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'id'});if(!db.objectStoreNames.contains('catalogs'))db.createObjectStore('catalogs',{keyPath:'key'})};
-      request.onsuccess=()=>{const db=request.result;db.onversionchange=()=>db.close();resolve(db)};
+      request.onsuccess=()=>{const db=request.result;db.onversionchange=()=>{db.close();dbTask=null};resolve(db)};
       request.onerror=()=>{dbTask=null;reject(request.error||Error('เปิดที่เก็บร่าง POS ไม่สำเร็จ'))};
       request.onblocked=()=>{dbTask=null;reject(Error('ปิดแท็บ POS ที่ค้างอยู่แล้วลองใหม่'))};
     });
