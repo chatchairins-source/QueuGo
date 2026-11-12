@@ -94,6 +94,10 @@ def export(manifest_path, output):
                             authenticated_e2e=False, physical_device=False)
             (directory / 'TESTED-SOURCE.json').write_text(json.dumps(metadata, indent=2) + '\n')
             (directory / 'SHA256SUMS').write_text(f"{row['sha256']}  {filename}\n")
+        # A retained manifest may change while large APKs are copied. Recheck
+        # the exact validated snapshot before publishing any role artifact.
+        if retained_manifest.is_symlink() or not retained_manifest.is_file() or retained_manifest.read_bytes() != manifest_bytes:
+            raise ValueError('APK export retained manifest changed during staging')
         with ExitStack() as rollback:
             for role in roles:
                 directory = output / role
