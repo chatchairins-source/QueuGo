@@ -85,6 +85,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         val target = file(PosOfflineDraftScope(draft.actorId, draft.shopId, draft.deviceId))
         if (target.exists()) {
             val existing = decode(JSONObject(target.readText()))
+            // Never replace a persisted draft with invalid replay identities: require explicit recovery.
+            validate(existing)
             check(existing.id == draft.id && existing.requestId == draft.requestId) {
                 "มีร่าง POS เดิมที่ยังไม่ส่ง กรุณาตรวจร่างนั้นก่อน"
             }
