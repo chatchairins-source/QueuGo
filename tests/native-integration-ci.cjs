@@ -80,3 +80,11 @@ for (const event of ['push','pull_request']) {
  assert.equal(selected('publish-rider-road-test','work-native-unrelated-branch-20261112',event,true),false,'country export must never publish a road-test release'); checks++;
 }
 console.log(JSON.stringify({checks,failures:0,scope:'workflow_call bundle_country input is defined and both map runtime gates are enforced without permitting release publication'}));
+
+// The exporter must run this harness on subsequent changes, not silently
+// reuse previous APK evidence when job predicate tests are modified.
+const exportWorkflow=fs.readFileSync('.github/workflows/export-tested-country-apks.yml','utf8');
+const exportHarnessPath='      - tests/native-integration-ci.cjs';
+const exportTriggerCount=exportWorkflow.split(exportHarnessPath).length-1;
+assert.equal(exportTriggerCount,2,'Country export workflows must retrigger on integration job predicate harness changes in both PR and push');checks++;
+console.log(JSON.stringify({checks,failures:0,scope:'country export CI test infrastructure changes retrigger both PR and push workflows'}));
