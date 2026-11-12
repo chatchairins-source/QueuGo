@@ -143,6 +143,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 "แคตตาล็อก POS ไม่ตรงกับบัญชี ร้านค้า หรืออุปกรณ์นี้"
             }
             // A delayed offline refresh must never replace a newer catalog snapshot.
+            check(existing.getLong("saved_at_ms") >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
             check(existing.getLong("saved_at_ms") <= catalog.savedAtMs) {
                 "แคตตาล็อก POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
             }
@@ -161,6 +162,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         if (!file.exists()) return null
         check(file.length() <= MAX_CATALOG_BYTES) { "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง" }
         val json = JSONObject(file.readText())
+        check(json.getLong("saved_at_ms") >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
         val storedActor = json.getString("actor_id")
         val storedDevice = json.getString("device_id")
         check(storedActor == actorId && storedDevice == deviceId) { "แคตตาล็อก POS ไม่ตรงกับบัญชีหรืออุปกรณ์นี้" }
