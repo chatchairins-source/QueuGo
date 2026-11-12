@@ -162,4 +162,33 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+
+    @Test fun rejectsDuplicateReplayIdsAcrossOfflinePosLinesAndBillCreation() {
+        val root = Files.createTempDirectory("pos-offline-replay-uniqueness").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val replay = UUID.randomUUID().toString()
+            val first = PosOfflineDraftItem(UUID.randomUUID().toString(), "กาแฟ", 40.0, 1, listOf(replay))
+            val second = PosOfflineDraftItem(UUID.randomUUID().toString(), "ชา", 35.0, 1, listOf(replay))
+            val original = draft(actor, shop, device).copy(items = listOf(first, second))
+            val store = MerchantPosOfflineDraftStore(root)
+            assertThrows(IllegalArgumentException::class.java) { store.save(original) }
+            assertThrows(IllegalArgumentException::class.java) {
+                store.save(original.copy(items = listOf(first.copy(requestIds = listOf(original.requestId)),
+                    second.copy(requestIds = listOf(UUID.randomUUID().toString())))))
+            }
+            assertNull(store.loadForActor(actor, device))
+
+            val safe = original.copy(items = listOf(first,
+                second.copy(requestIds = listOf(UUID.randomUUID().toString()))))
+            store.save(safe)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val stored = JSONObject(file.readText())
+            stored.getJSONArray("items").getJSONObject(1).getJSONArray("request_ids").put(0, replay)
+            file.writeText(stored.toString())
+            assertThrows(IllegalArgumentException::class.java) { store.loadForActor(actor, device) }
+        } finally { root.deleteRecursively() }
+    }
 }
