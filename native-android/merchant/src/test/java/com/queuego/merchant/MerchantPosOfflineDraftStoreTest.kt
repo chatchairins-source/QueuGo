@@ -415,4 +415,33 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+
+    @Test fun rejectsNegativeOfflineSnapshotTimestampsWithoutChangingPersistedData() {
+        val root = Files.createTempDirectory("pos-negative-snapshot-time").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val validDraft = draft(actor, shop, device).copy(savedAtMs = 100L)
+            store.save(validDraft)
+            val draftFile = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val draftBytes = draftFile.readText()
+            assertThrows(IllegalArgumentException::class.java) {
+                store.save(validDraft.copy(savedAtMs = -1L))
+            }
+            assertEquals(draftBytes, draftFile.readText())
+
+            val validCatalog = PosOfflineCatalog(actor, shop, device, "ร้าน", 100L,
+                emptyList(), emptyList())
+            store.saveCatalog(validCatalog)
+            val catalogFile = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val catalogBytes = catalogFile.readText()
+            assertThrows(IllegalArgumentException::class.java) {
+                store.saveCatalog(validCatalog.copy(savedAtMs = -1L))
+            }
+            assertEquals(catalogBytes, catalogFile.readText())
+        } finally { root.deleteRecursively() }
+    }
+
 }
