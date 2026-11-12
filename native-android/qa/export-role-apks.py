@@ -1,10 +1,12 @@
 """Stage validated, freshly built Debug APKs; never reuse predecessor binaries."""
+from contextlib import ExitStack
 import hashlib
 import json
 from pathlib import Path
 import shutil
 import subprocess
 import sys
+from tempfile import TemporaryDirectory
 
 
 def export(manifest_path, output):
@@ -73,24 +75,43 @@ def export(manifest_path, output):
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
         if digest != row['sha256'] or source.stat().st_size != row['bytes']:
             raise ValueError(f'{role}: APK changed after validation')
+    # Verify the entire batch before adding any files to the published role directories.
+    with TemporaryDirectory(prefix='.apk-export-', dir=output) as temporary:
+        staging = Path(temporary)
+        for row in reports:
+            role = row['role']
+            source = Path(f'native-android/{role}/build/outputs/apk/debug/{role}-debug.apk')
+            directory = staging / role
+            directory.mkdir(parents=True, exist_ok=True)
+            filename = f'QueueGo-{role.title()}-Test-{source_sha[:12]}.apk'
+            destination = directory / filename
+            shutil.copyfile(source, destination)
+            with destination.open('rb') as stream:
+                copied_digest = hashlib.file_digest(stream, 'sha256').hexdigest()
+            if copied_digest != row['sha256'] or destination.stat().st_size != row['bytes']:
+                raise ValueError(f'{role}: staged APK integrity mismatch')
+            metadata = dict(row, apk=filename, build_type='debug', production_certified=False,
+                            authenticated_e2e=False, physical_device=False)
+            (directory / 'TESTED-SOURCE.json').write_text(json.dumps(metadata, indent=2) + '\n')
+            (directory / 'SHA256SUMS').write_text(f"{row['sha256']}  {filename}\n")
+        with ExitStack() as rollback:
+            for role in roles:
+                directory = output / role
+                try:
+                    directory.mkdir()
+                except FileExistsError:
+                    if directory.is_symlink() or not directory.is_dir():
+                        raise
+                else:
+                    rollback.callback(directory.rmdir)
+                for staged_file in (staging / role).iterdir():
+                    published_file = directory / staged_file.name
+                    # Link on the same filesystem without replacing an existing file.
+                    published_file.hardlink_to(staged_file)
+                    rollback.callback(published_file.unlink)
+            rollback.pop_all()
     for row in reports:
-        role = row['role']
-        source = Path(f'native-android/{role}/build/outputs/apk/debug/{role}-debug.apk')
-        directory = output / role
-        directory.mkdir(parents=True, exist_ok=True)
-        filename = f'QueueGo-{role.title()}-Test-{source_sha[:12]}.apk'
-        destination = directory / filename
-        shutil.copyfile(source, destination)
-        with destination.open('rb') as stream:
-            copied_digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-        if copied_digest != row['sha256'] or destination.stat().st_size != row['bytes']:
-            destination.unlink(missing_ok=True)
-            raise ValueError(f'{role}: staged APK integrity mismatch')
-        metadata = dict(row, apk=filename, build_type='debug', production_certified=False,
-                        authenticated_e2e=False, physical_device=False)
-        (directory / 'TESTED-SOURCE.json').write_text(json.dumps(metadata, indent=2) + '\n')
-        (directory / 'SHA256SUMS').write_text(f"{row['sha256']}  {filename}\n")
-        print(f"{role}: {row['bytes']} bytes SHA-256 {row['sha256']}")
+        print(f"{row['role']}: {row['bytes']} bytes SHA-256 {row['sha256']}")
 
 
 if __name__ == '__main__':

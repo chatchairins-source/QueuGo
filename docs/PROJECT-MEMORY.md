@@ -1,3 +1,8 @@
+## 2026-11-12 Stage all three APKs before publication
+
+- Debug APK export now verifies every staged copy and its metadata before publishing role files. Publication failures roll back files created by this invocation and preserve existing signature evidence.
+- Local exporter regression suite: 30 tests passed, including a Rider source change during copy and a publication failure after earlier roles. Hosted APK export and signed Production release are separate verification steps.
+
 ## 2026-11-10 Relative PBF mount path correction — PENDING EXACT-HEAD CI
 
 - Run `42829494568` passed full npm regression, Express PostgreSQL race tests, and Customer/Merchant/Rider Kotlin/JVM + Debug APK package-integrity jobs. Planetiler parsed the staged ocean file successfully, then failed because the PBF symlink target was an absolute host path outside the container's `/data` mount.

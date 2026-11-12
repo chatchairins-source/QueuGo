@@ -276,6 +276,39 @@ class ExportRoleApksTest(unittest.TestCase):
                                   if field == 'sha256' else len(b'rider-apk'))
                 self.manifest.write_text(json.dumps(rows))
 
+    def test_discards_batch_if_last_source_changes_during_copy(self):
+        customer = self.output / 'customer'
+        customer.mkdir()
+        signature = customer / 'APK-SIGNATURE.txt'
+        signature.write_text('original signature')
+        copyfile = module.shutil.copyfile
+
+        def copy_with_change(source, destination):
+            if source.name == 'rider-debug.apk':
+                source.write_bytes(b'changed during copy')
+            return copyfile(source, destination)
+
+        with patch.object(module.shutil, 'copyfile', side_effect=copy_with_change):
+            with self.assertRaisesRegex(ValueError, 'rider: staged APK integrity mismatch'):
+                module.export(self.manifest, self.output)
+        self.assertEqual(list(customer.iterdir()), [signature])
+        self.assertEqual(signature.read_text(), 'original signature')
+        self.assertEqual({p.name for p in self.output.iterdir()},
+                         {'customer', 'APK-MANIFEST.json'})
+
+    def test_rolls_back_published_files_if_a_later_link_fails(self):
+        original_link = Path.hardlink_to
+
+        def fail_rider(destination, target):
+            if destination.parent.name == 'rider':
+                raise OSError('publication failed')
+            return original_link(destination, target)
+
+        with patch.object(Path, 'hardlink_to', fail_rider):
+            with self.assertRaisesRegex(OSError, 'publication failed'):
+                module.export(self.manifest, self.output)
+        self.assertEqual(list(self.output.iterdir()), [self.output / 'APK-MANIFEST.json'])
+
     def test_rejects_modified_source_before_writing(self):
         apk = Path('native-android/rider/build/outputs/apk/debug/rider-debug.apk')
         apk.write_bytes(b'changed')
