@@ -444,4 +444,26 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun rejectsNegativeTimestampInPersistedCatalogOnLoadAndOverwrite() {
+        val root = Files.createTempDirectory("pos-catalog-negative-persisted-time").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val catalog = PosOfflineCatalog(actor, shop, device, "ร้าน", 100L,
+                emptyList(), emptyList())
+            store.saveCatalog(catalog)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val corrupted = JSONObject(file.readText()).put("saved_at_ms", -1L).toString()
+            file.writeText(corrupted)
+
+            assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
+            assertThrows(IllegalStateException::class.java) {
+                store.saveCatalog(catalog.copy(savedAtMs = 101L))
+            }
+            assertEquals(corrupted, file.readText())
+        } finally { root.deleteRecursively() }
+    }
+
 }
