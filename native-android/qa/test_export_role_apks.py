@@ -318,6 +318,24 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
         self.assertEqual(outside.read_bytes(), b'rider-apk')
 
+    def test_rejects_identical_regular_apk_replacement_during_copy(self):
+        # A different regular inode with the same bytes/hash is not the validated build.
+        source = Path('native-android/rider/build/outputs/apk/debug/rider-debug.apk')
+        replacement = self.root / 'identical-regular.apk'
+        replacement.write_bytes(source.read_bytes())
+        original_copy = module.shutil.copyfile
+
+        def replace_after_copy(src, destination):
+            result = original_copy(src, destination)
+            if src.name == 'rider-debug.apk':
+                replacement.replace(src)
+            return result
+
+        with patch.object(module.shutil, 'copyfile', side_effect=replace_after_copy):
+            with self.assertRaisesRegex(ValueError, 'APK source identity changed during staging'):
+                module.export(self.manifest, self.output)
+        self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
+
     def test_rejects_retained_manifest_replaced_during_staging(self):
         original_copy = module.shutil.copyfile
         retained = self.output / 'APK-MANIFEST.json'

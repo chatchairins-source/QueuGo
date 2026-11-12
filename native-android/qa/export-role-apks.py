@@ -98,7 +98,11 @@ def export(manifest_path, output):
             # an APK for a symlink after validation but before/during copying.
             if any(part.is_symlink() for part in (source, *source.parents)) or not source.is_file():
                 raise ValueError(f'{role}: APK source changed to a symlink during staging')
+            source_identity = source.stat()
             shutil.copyfile(source, destination)
+            copied_source_identity = source.stat()
+            if (source_identity.st_dev, source_identity.st_ino) != (copied_source_identity.st_dev, copied_source_identity.st_ino):
+                raise ValueError(f'{role}: APK source identity changed during staging')
             if any(part.is_symlink() for part in (source, *source.parents)) or not source.is_file():
                 raise ValueError(f'{role}: APK source changed to a symlink during staging')
             with destination.open('rb') as stream:
