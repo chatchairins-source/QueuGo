@@ -18,7 +18,10 @@ assert.ok(pr[1].includes('tests/native-country-runtime-pr-gate.cjs'), 'gate test
 const exportWorkflow = fs.readFileSync('.github/workflows/export-tested-country-apks.yml', 'utf8');
 const exportPr = exportWorkflow.match(/  pull_request:\n([\s\S]*?)(?=\n  push:)/);
 assert.ok(exportPr, 'country APK export must have a pull_request trigger');
-assert.match(exportPr[1], /branches: \['work-native-\*\*', 'fix\/native-country-export-\*\*'\]/, 'successor and country-export PR bases must trigger country APK export');
+for (const branch of ['work-native-**', 'fix/native-country-export-**', 'fix/apk-export-**']) {
+  assert.ok(exportPr[1].match(/^    branches: (.*)$/m)?.[1].includes(`'${branch}'`),
+    `country APK export must run for PRs targeting ${branch}`);
+}
 for (const path of [
   'native-android/qa/**',
   'native-android/**/src/main/**',
@@ -34,6 +37,9 @@ for (const path of [
   assert.ok(exportPr[1].includes(path), `country APK export must retrigger on ${path}`);
 }
 const pilotWorkflow = fs.readFileSync('.github/workflows/build-native-rider-pilot.yml', 'utf8');
+const nativePilot = pilotWorkflow.split('\n  native-pilot:\n')[1];
+assert.match(nativePilot, /Verify APK exporter before Android setup\n        run: python3 -m unittest[^\n]+test_export_role_apks\.py[^\n]*\n      - uses: actions\/setup-java@/,
+  'exporter regressions must fail before Android SDK setup or offline map generation');
 assert.match(exportWorkflow, /permissions:\n(?:  #[^\n]*\n)*  contents: write\n  actions: read/, 'reusable pilot currently requires caller write permission at startup');
 // Country APK evidence must come from the source commit, never GitHub's synthetic PR merge.
 for (const jobName of ['parallel-role-smoke', 'native-pilot', 'navigation-map-runtime', 'maplibre-osm-runtime']) {
@@ -52,7 +58,10 @@ assert.match(exportWorkflow, /uses: \.\/\.github\/workflows\/build-native-rider-
 
 const exportPush = exportWorkflow.match(/  push:\n([\s\S]*?)(?=\npermissions:)/);
 assert.ok(exportPush, 'country APK export must run on successor branch pushes');
-assert.ok(exportPush[1].includes("branches: ['work-native-**', 'fix/native-country-export-**', 'fix/apk-signature-evidence-type-**']"), 'native successor and isolated country-export fix pushes must trigger export');
+for (const branch of ['work-native-**', 'fix/native-country-export-**', 'fix/apk-signature-evidence-type-**', 'fix/apk-export-**']) {
+  assert.ok(exportPush[1].match(/^    branches: (.*)$/m)?.[1].includes(`'${branch}'`),
+    `country APK export must run for pushes to ${branch}`);
+}
 for (const path of [
   'native-android/qa/**',
   'native-android/**/src/main/**',

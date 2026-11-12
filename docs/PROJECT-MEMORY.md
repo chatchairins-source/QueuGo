@@ -1,3 +1,8 @@
+## 2026-11-12 Run APK exporter regressions before Android setup
+
+- Native Pilot runs the exporter tests immediately after checkout, before Android SDK and offline map setup. The actual three-role export stays after the runtime checks.
+- Updated outdated branch assertions to cover the APK-export successors and verified the workflow contract and all 30 exporter tests locally.
+
 ## 2026-11-12 Stage all three APKs before publication
 
 - Debug APK export now verifies every staged copy and its metadata before publishing role files. Publication failures roll back files created by this invocation and preserve existing signature evidence.
