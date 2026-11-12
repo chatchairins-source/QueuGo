@@ -49,7 +49,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
     @Synchronized fun deviceId(): String {
         check(root.isDirectory || root.mkdirs()) { "เตรียมพื้นที่เก็บร่าง POS ไม่สำเร็จ" }
         val file = File(root, "device-id")
-        if (file.exists()) return file.readText().also(::requireUuid)
+        if (file.exists()) {
+            check(file.isFile && file.length() in 1..36) { "รหัสอุปกรณ์ POS ไม่ถูกต้อง" }
+            return file.readText(Charsets.UTF_8).also(::requireUuid)
+        }
         val id = UUID.randomUUID().toString()
         atomicWrite(file, id.toByteArray(Charsets.UTF_8))
         return id
