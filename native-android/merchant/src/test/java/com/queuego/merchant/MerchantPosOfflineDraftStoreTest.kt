@@ -370,4 +370,27 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+
+    @Test fun staleOfflineCatalogCannotOverwriteNewerSnapshot() {
+        val root = Files.createTempDirectory("pos-offline-stale-catalog").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val current = PosOfflineCatalog(actor, shop, device, "ร้านล่าสุด", 200L,
+                emptyList(), emptyList())
+            store.saveCatalog(current)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val savedBytes = file.readText()
+            assertThrows(IllegalStateException::class.java) {
+                store.saveCatalog(current.copy(shopName = "ข้อมูลเก่า", savedAtMs = 100L))
+            }
+            assertEquals(savedBytes, file.readText())
+            assertEquals(current, store.loadCatalog(actor, device))
+            store.saveCatalog(current.copy(shopName = "ข้อมูลใหม่", savedAtMs = 201L))
+            assertEquals(201L, store.loadCatalog(actor, device)!!.savedAtMs)
+        } finally { root.deleteRecursively() }
+    }
+
 }
