@@ -298,4 +298,31 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+
+    @Test fun rejectsTamperedOfflineCatalogWithExcessiveItemCountsOrInvalidShopId() {
+        val root = Files.createTempDirectory("pos-offline-catalog-bounds").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val original = PosOfflineCatalog(actor, UUID.randomUUID().toString(), device,
+                "ร้าน", 123L, emptyList(), emptyList())
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val valid = JSONObject(file.readText())
+
+            file.writeText(JSONObject(valid.toString()).put("shop_id", "not-a-uuid").toString())
+            assertThrows(IllegalArgumentException::class.java) { store.loadCatalog(actor, device) }
+
+            val excessiveProducts = JSONArray()
+            repeat(20_001) { excessiveProducts.put(JSONObject()) }
+            file.writeText(JSONObject(valid.toString()).put("products", excessiveProducts).toString())
+            assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
+
+            val excessiveTables = JSONArray()
+            repeat(301) { excessiveTables.put(JSONObject()) }
+            file.writeText(JSONObject(valid.toString()).put("tables", excessiveTables).toString())
+            assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
+        } finally { root.deleteRecursively() }
+    }
 }
