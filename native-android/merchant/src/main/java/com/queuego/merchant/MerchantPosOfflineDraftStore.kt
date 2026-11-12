@@ -84,9 +84,12 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         check(root.isDirectory || root.mkdirs()) { "บันทึกร่าง POS ไม่สำเร็จ" }
         val target = file(PosOfflineDraftScope(draft.actorId, draft.shopId, draft.deviceId))
         if (target.exists()) {
+            check(target.length() <= MAX_BYTES) { "ข้อมูลร่าง POS ไม่ถูกต้อง" }
             val existing = decode(JSONObject(target.readText()))
-            // Never replace a persisted draft with invalid replay identities: require explicit recovery.
+            // Never replace a persisted draft with invalid replay identities or another shop's data.
             validate(existing)
+            check(existing.actorId == draft.actorId && existing.shopId == draft.shopId &&
+                existing.deviceId == draft.deviceId) { "ร่าง POS ไม่ตรงกับบัญชี ร้านค้า หรืออุปกรณ์นี้" }
             check(existing.id == draft.id && existing.requestId == draft.requestId) {
                 "มีร่าง POS เดิมที่ยังไม่ส่ง กรุณาตรวจร่างนั้นก่อน"
             }
