@@ -54,7 +54,8 @@ if (require.main === module) {
     try {
       const load = filename => JSON.parse(fs.readFileSync(filename,'utf8'));
       const prior = historicalFile ? load(historicalFile).authenticated_security_definer_total : null;
-      const result = auditDefinerExposure(load(snapshotFile).functions,load(allowlistFile),prior,load(snapshotFile).expected_catalog_count);
+      const snapshot = load(snapshotFile);
+      const result = auditDefinerExposure(snapshot.functions,load(allowlistFile),prior,snapshot.expected_catalog_count);
       process.stdout.write(JSON.stringify(result,null,2) + '\n');
       if (result.assessment === 'RPC_EXPOSURE_REVIEW_REQUIRED') process.exitCode = 2;
     } catch (error) {
