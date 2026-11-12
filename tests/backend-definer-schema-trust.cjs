@@ -1,0 +1,13 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const sql = fs.readFileSync(path.join(__dirname, '../scripts/sql/audit-definer-search-path-schema-trust.sql'), 'utf8');
+assert.match(sql, /p\.prosecdef/);
+assert.match(sql, /has_function_privilege\('anon'/);
+assert.match(sql, /has_function_privilege\('authenticated'/);
+assert.match(sql, /has_schema_privilege\('anon', path_schema, 'CREATE'\)/);
+assert.match(sql, /has_schema_privilege\('authenticated', path_schema, 'CREATE'\)/);
+assert.match(sql, /to_regnamespace\(path_schema\) IS NOT NULL/);
+assert.doesNotMatch(sql.replace(/^--.*$/gm, ''), /\b(?:INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE)\s+(?:TABLE|FROM|INTO|SCHEMA|FUNCTION)?\b/i);
+console.log('definer search_path schema trust audit query: static checks passed');
