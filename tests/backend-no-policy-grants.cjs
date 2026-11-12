@@ -8,7 +8,8 @@ const check=(condition,message)=>{assert.ok(condition,message);checks++};
 const row={schema_name:'public',table_name:'private_receipts',rls_enabled:true,policy_count:0,
   anon_select:false,anon_insert:false,anon_update:false,anon_delete:false,
   authenticated_select:false,authenticated_insert:false,authenticated_update:false,authenticated_delete:false};
-assert.throws(()=>auditNoPolicyTables([],1),/nonempty metadata rows/);checks++;
+assert.throws(()=>auditNoPolicyTables([],1),/Snapshot count differs/);checks++;
+assert.throws(()=>auditNoPolicyTables([],0),/nonempty metadata rows/);checks++;
 assert.throws(()=>auditNoPolicyTables([row]),/catalog count/);checks++;
 assert.throws(()=>auditNoPolicyTables([row],2),/Snapshot count differs/);checks++;
 assert.throws(()=>auditNoPolicyTables([row],-1),/catalog count/);checks++;
