@@ -39,3 +39,31 @@ Then run:
 Exit 0 means the snapshot matches the allowlist and historical count; NOT certified. Exit 2 means review required. Exit 1 means invalid input.
 
 Never automatically issue GRANT, REVOKE, or schema changes based solely on this report. Inspect privileged function bodies, per-role permissions, RPC call chains, payment/order state transition guards, and independent backup/restore proof first.
+
+## Read-only verification: public no-policy tables (2026-11-12 20:30 ICT)
+
+A fresh aggregate-only Production catalog query returned **14** public RLS-enabled tables without policies, **0** with anon/authenticated SELECT grants, and **0** with anon/authenticated INSERT/UPDATE/DELETE grants. This verifies direct table grants only; it does **not** verify SECURITY DEFINER RPC paths, function bodies, or role isolation. No application rows were read.
+
+Run this read-only SQL to reproduce the aggregate check:
+
+```sql
+WITH no_policy AS (
+  SELECT n.nspname AS schema_name, c.relname AS table_name, c.oid AS relid
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE c.relkind IN ('r', 'p') AND c.relrowsecurity
+    AND n.nspname = 'public'
+    AND NOT EXISTS (SELECT 1 FROM pg_policy p WHERE p.polrelid = c.oid)
+)
+SELECT count(*)::int AS public_no_policy_tables,
+  count(*) FILTER (WHERE has_table_privilege('anon',relid,'SELECT')
+    OR has_table_privilege('authenticated',relid,'SELECT'))::int AS tables_with_select_grant,
+  count(*) FILTER (WHERE has_table_privilege('anon',relid,'INSERT')
+    OR has_table_privilege('authenticated',relid,'INSERT')
+    OR has_table_privilege('anon',relid,'UPDATE')
+    OR has_table_privilege('authenticated',relid,'UPDATE')
+    OR has_table_privilege('anon',relid,'DELETE')
+    OR has_table_privilege('authenticated',relid,'DELETE'))::int AS tables_with_write_grant
+FROM no_policy;
+```
+
+The offline no-policy audit now rejects an empty metadata snapshot rather than issuing a misleading zero-grant result. This protects against a truncated/failed export but does not prove that a nonempty snapshot is complete; compare its row count against the current catalog query before accepting evidence.
