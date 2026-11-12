@@ -100,6 +100,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             check(existing.savedAtMs <= draft.savedAtMs) {
                 "ร่าง POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
             }
+            // The same timestamp cannot represent two different cart revisions.
+            check(existing.savedAtMs != draft.savedAtMs || encode(existing).similar(encode(draft))) {
+                "ร่าง POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
+            }
         }
         val json = encode(draft).toString().toByteArray(Charsets.UTF_8)
         check(json.size <= MAX_BYTES) { "ร่าง POS มีรายการมากเกินไป" }
