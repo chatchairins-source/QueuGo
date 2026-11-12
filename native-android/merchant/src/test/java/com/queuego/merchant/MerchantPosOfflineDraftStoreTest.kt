@@ -260,4 +260,42 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun refusesToOverwriteOfflineCatalogFromAnotherShop() {
+        val root = Files.createTempDirectory("pos-offline-catalog-cross-shop").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val original = PosOfflineCatalog(actor, UUID.randomUUID().toString(), device,
+                "ร้านแรก", 123L, emptyList(), emptyList())
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val originalBytes = file.readText()
+
+            val differentShop = original.copy(shopId = UUID.randomUUID().toString(), shopName = "ร้านอื่น")
+            assertThrows(IllegalStateException::class.java) { store.saveCatalog(differentShop) }
+            assertEquals(originalBytes, file.readText())
+            assertEquals(original, store.loadCatalog(actor, device))
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun refusesToOverwriteTamperedOfflineCatalogIdentity() {
+        val root = Files.createTempDirectory("pos-offline-catalog-tampered").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val original = PosOfflineCatalog(actor, UUID.randomUUID().toString(), device,
+                "ร้านแรก", 123L, emptyList(), emptyList())
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val tampered = JSONObject(file.readText())
+                .put("shop_id", UUID.randomUUID().toString()).toString()
+            file.writeText(tampered)
+
+            assertThrows(IllegalStateException::class.java) { store.saveCatalog(original.copy(savedAtMs = 124L)) }
+            assertEquals(tampered, file.readText())
+        } finally { root.deleteRecursively() }
+    }
+
 }
