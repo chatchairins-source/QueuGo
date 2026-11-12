@@ -25,9 +25,14 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     {id:'invalid-negative',name:'ราคาไม่ถูกต้อง',price:-10,pos_price:10,available:true,pos_available:true},
     {id:'invalid-pos',name:'ราคาหน้าร้านไม่ถูกต้อง',price:20,pos_price:-1,available:true,pos_available:true},
     {id:'invalid-nan',name:'ราคาเสีย',price:'not-a-price',pos_price:20,available:true,pos_available:true},
-    {id:'invalid-pos-nan',name:'ราคา POS เสีย',price:20,pos_price:'not-a-price',available:true,pos_available:true}
+    {id:'invalid-pos-nan',name:'ราคา POS เสีย',price:20,pos_price:'not-a-price',available:true,pos_available:true},
+    {id:'missing-price',name:'ไม่มีราคา',pos_price:20,available:true,pos_available:true},
+    {id:'null-price',name:'ราคา null',price:null,pos_price:20,available:true,pos_available:true},
+    {id:'blank-price',name:'ราคาว่าง',price:'  ',pos_price:20,available:true,pos_available:true},
+    {id:'blank-pos-price',name:'ราคา POS ว่าง',price:20,pos_price:' ',available:true,pos_available:true},
+    {id:'null-pos-price',name:'ไม่มีราคาหน้าร้าน',price:20,pos_price:null,available:true,pos_available:true}
   ],[]);
-  eq((await api.getCatalog(scope)).products.map(p=>p.id),['valid-zero'],'offline catalog rejects invalid price snapshots but retains valid zero-price products');
+  eq((await api.getCatalog(scope)).products.map(p=>p.id),['valid-zero'],'offline catalog rejects missing, blank and invalid price snapshots, permits nullable POS price and retains valid zero-price products');
   let invalidRejected=false;try{await api.save({...first,id:'bad',items:[{productId:'p1',quantity:0,priceSnapshot:35,nameSnapshot:'ชาไทย',options:{}}]})}catch(_){invalidRejected=true}ok(invalidRejected,'invalid quantities are rejected');
   // Submission replay IDs must be exactly one per unit, never silently truncated.
   const replayItem={...first.items[0],requestIds:['unit-1','unit-2']};
