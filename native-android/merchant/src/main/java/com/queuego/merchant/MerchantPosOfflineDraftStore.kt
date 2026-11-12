@@ -134,6 +134,11 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 existing.getString("shop_id") == catalog.shopId) {
                 "แคตตาล็อก POS ไม่ตรงกับบัญชี ร้านค้า หรืออุปกรณ์นี้"
             }
+            // Do not silently replace a malformed persisted catalog before it can be inspected.
+            check(existing.getJSONArray("products").length() <= 20_000 &&
+                existing.getJSONArray("tables").length() <= 300) {
+                "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง"
+            }
         }
         atomicWrite(target, bytes)
     }
