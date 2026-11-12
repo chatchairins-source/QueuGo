@@ -350,4 +350,24 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun refusesOversizedOrMalformedPersistedDeviceIdWithoutReplacingIt() {
+        val root = Files.createTempDirectory("pos-device-id-corrupt").toFile()
+        try {
+            val store = MerchantPosOfflineDraftStore(root)
+            val deviceFile = java.io.File(root, "device-id")
+            val oversized = "x".repeat(64 * 1024)
+            deviceFile.writeText(oversized)
+            assertThrows(IllegalStateException::class.java) { store.deviceId() }
+            assertEquals(oversized, deviceFile.readText())
+
+            deviceFile.writeText("not-a-uuid")
+            assertThrows(IllegalArgumentException::class.java) { store.deviceId() }
+            assertEquals("not-a-uuid", deviceFile.readText())
+
+            val valid = UUID.randomUUID().toString()
+            deviceFile.writeText(valid)
+            assertEquals(valid, MerchantPosOfflineDraftStore(root).deviceId())
+        } finally { root.deleteRecursively() }
+    }
+
 }
