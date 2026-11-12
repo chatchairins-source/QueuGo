@@ -39,6 +39,19 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   let missingRejected=false;
   try{await api.save({...first,id:'draft-missing-keys',items:[{...replayItem,requestIds:['unit-1']}]})}catch(_){missingRejected=true}
   ok(missingRejected,'partial replay keys must fail before storing an ambiguous submission');
+  // The server uses replay IDs to deduplicate units across the entire bill, not per line.
+  const duplicateAcrossLines=[
+    {...replayItem,productId:'p1'},
+    {...replayItem,productId:'p2',requestIds:['unit-2','unit-3']}
+  ];
+  let crossLineRejected=false;
+  try{await api.save({...first,id:'draft-cross-line-duplicate',items:duplicateAcrossLines})}catch(_){crossLineRejected=true}
+  ok(crossLineRejected,'duplicate replay keys across different product lines are rejected');
+  const uniqueAcrossLines=await api.save({...first,id:'draft-cross-line-unique',items:[
+    {...replayItem,productId:'p1'},
+    {...replayItem,productId:'p2',requestIds:['unit-3','unit-4']}
+  ]});
+  eq(uniqueAcrossLines.items[1].requestIds,['unit-3','unit-4'],'unique replay keys across product lines remain valid');
   // Another tab can delete/recreate the IndexedDB database; a closed connection must not be reused.
   await new Promise((resolve,reject)=>{
     const deletion=indexedDB.deleteDatabase('queuego-pos-offline-drafts-v1');
