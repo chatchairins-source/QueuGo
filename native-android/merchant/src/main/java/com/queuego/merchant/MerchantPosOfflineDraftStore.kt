@@ -147,7 +147,14 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         val storedActor = json.getString("actor_id")
         val storedDevice = json.getString("device_id")
         check(storedActor == actorId && storedDevice == deviceId) { "แคตตาล็อก POS ไม่ตรงกับบัญชีหรืออุปกรณ์นี้" }
-        val products = json.getJSONArray("products").let { array -> (0 until array.length()).map { i ->
+        // Fail closed on corrupted local catalog metadata before allocating product/table lists.
+        requireUuid(json.getString("shop_id"))
+        val productArray = json.getJSONArray("products")
+        val tableArray = json.getJSONArray("tables")
+        check(productArray.length() <= 20_000 && tableArray.length() <= 300) {
+            "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง"
+        }
+        val products = productArray.let { array -> (0 until array.length()).map { i ->
             val p = array.getJSONObject(i)
             PosProduct(p.getString("id"), p.getString("name"), p.getDouble("price"),
                 if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
@@ -159,7 +166,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()),
                 category = if (!p.has("category") || p.isNull("category")) null else p.optString("category"))
         } }
-        val tables = json.getJSONArray("tables").let { array -> (0 until array.length()).map { i ->
+        val tables = tableArray.let { array -> (0 until array.length()).map { i ->
             val t = array.getJSONObject(i)
             PosTable(t.getString("id"), t.getString("label"), t.getBoolean("active"),
                 if (t.isNull("qr_token")) null else t.getString("qr_token"))
