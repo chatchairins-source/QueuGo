@@ -29,6 +29,16 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   ],[]);
   eq((await api.getCatalog(scope)).products.map(p=>p.id),['valid-zero'],'offline catalog rejects invalid price snapshots but retains valid zero-price products');
   let invalidRejected=false;try{await api.save({...first,id:'bad',items:[{productId:'p1',quantity:0,priceSnapshot:35,nameSnapshot:'ชาไทย',options:{}}]})}catch(_){invalidRejected=true}ok(invalidRejected,'invalid quantities are rejected');
+  // Submission replay IDs must be exactly one per unit, never silently truncated.
+  const replayItem={...first.items[0],requestIds:['unit-1','unit-2']};
+  const replaySaved=await api.save({...first,id:'draft-replay-keys',items:[replayItem]});
+  eq(replaySaved.items[0].requestIds,['unit-1','unit-2'],'valid replay keys survive persistence unchanged');
+  let surplusRejected=false;
+  try{await api.save({...first,id:'draft-surplus-keys',items:[{...replayItem,requestIds:['unit-1','unit-2','unit-3']}]})}catch(_){surplusRejected=true}
+  ok(surplusRejected,'surplus replay keys must fail instead of being silently truncated');
+  let missingRejected=false;
+  try{await api.save({...first,id:'draft-missing-keys',items:[{...replayItem,requestIds:['unit-1']}]})}catch(_){missingRejected=true}
+  ok(missingRejected,'partial replay keys must fail before storing an ambiguous submission');
   // Another tab can delete/recreate the IndexedDB database; a closed connection must not be reused.
   await new Promise((resolve,reject)=>{
     const deletion=indexedDB.deleteDatabase('queuego-pos-offline-drafts-v1');
