@@ -227,6 +227,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             item.requestIds.forEach(::requireUuid)
             require(item.requestIds.toSet().size == item.requestIds.size)
         }
+        // Each replay UUID must identify exactly one mutation, including the bill creation.
+        val replayIds = d.items.flatMap { it.requestIds }
+        require(replayIds.size == replayIds.toSet().size && d.requestId !in replayIds)
     }
 
     private fun atomicWrite(target: File, bytes: ByteArray) {
