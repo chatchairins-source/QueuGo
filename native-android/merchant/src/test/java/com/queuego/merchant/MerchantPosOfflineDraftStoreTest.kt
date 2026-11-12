@@ -221,4 +221,43 @@ class MerchantPosOfflineDraftStoreTest {
             }
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun refusesToOverwriteAnotherShopDraftEvenWithMatchingReplayIdentity() {
+        val root = Files.createTempDirectory("pos-offline-cross-shop").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val original = draft(actor, UUID.randomUUID().toString(), device)
+            val store = MerchantPosOfflineDraftStore(root)
+            store.save(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val originalBytes = file.readText()
+
+            val differentShop = original.copy(shopId = UUID.randomUUID().toString())
+            assertThrows(IllegalStateException::class.java) { store.save(differentShop) }
+            assertEquals(originalBytes, file.readText())
+            assertEquals(original, store.loadForActor(actor, device))
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun refusesToOverwriteOversizedPersistedDraftWithoutTruncatingIt() {
+        val root = Files.createTempDirectory("pos-offline-oversized").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val original = draft(actor, UUID.randomUUID().toString(), device)
+            val store = MerchantPosOfflineDraftStore(root)
+            store.save(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val oversizedBytes = "x".repeat(256 * 1024 + 1)
+            file.writeText(oversizedBytes)
+
+            assertThrows(IllegalStateException::class.java) {
+                store.save(original.copy(savedAtMs = original.savedAtMs + 1))
+            }
+            assertEquals(oversizedBytes, file.readText())
+            assertThrows(IllegalStateException::class.java) { store.loadForActor(actor, device) }
+        } finally { root.deleteRecursively() }
+    }
+
 }
