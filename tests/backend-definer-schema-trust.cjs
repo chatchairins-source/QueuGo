@@ -13,4 +13,8 @@ assert.doesNotMatch(sql.replace(/^--.*$/gm, ''), /\b(?:INSERT|UPDATE|DELETE|ALTE
 assert.match(sql, /missing_search_path/);
 assert.match(sql, /AND NOT EXISTS \(/);
 assert.match(sql, /setting LIKE 'search_path=%'/);
+assert.match(sql, /unresolved_search_path_schema/);
+assert.match(sql, /to_regnamespace\(path_schema\) IS NULL/);
+assert.match(sql, /path_schema NOT IN \('pg_temp', 'pg_catalog', '\$user'\)/);
+assert.match(sql, /SELECT proname, args, path_schema, 'unresolved_search_path_schema' AS audit_finding/);
 console.log('definer search_path schema trust audit query: static checks passed');
