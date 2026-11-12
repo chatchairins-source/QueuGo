@@ -40,6 +40,9 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     null,undefined,7,[],{id:'table-1',label:'โต๊ะ 1',active:true},{id:'',label:'ไม่มีรหัส',active:true},{id:'table-2',label:'โต๊ะ 2',active:false}
   ]);
   eq((await api.getCatalog(scope)).tables.map(t=>t.id),['table-1','table-2'],'offline POS skips malformed table rows without losing valid restaurant tables');
+  await api.saveCatalog(scope,[{id:'options-valid',name:'ตัวเลือกสินค้า',price:40,pos_price:40,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'size',name:'ขนาด',type:'single',required:false,options:[null,undefined,7,[],{key:'large',name:'ใหญ่',price_delta:5}]}]}],[]);
+  const safeOptions=(await api.getCatalog(scope)).products[0].variants[0].options;
+  eq(safeOptions.map(o=>o.key),['large'],'malformed option rows are skipped without discarding valid menu options');
   let invalidRejected=false;try{await api.save({...first,id:'bad',items:[{productId:'p1',quantity:0,priceSnapshot:35,nameSnapshot:'ชาไทย',options:{}}]})}catch(_){invalidRejected=true}ok(invalidRejected,'invalid quantities are rejected');
   // Submission replay IDs must be exactly one per unit, never silently truncated.
   const replayItem={...first.items[0],requestIds:['unit-1','unit-2']};
