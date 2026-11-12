@@ -316,6 +316,8 @@ class ExportRoleApksTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'APK source changed to a symlink during staging'):
                 module.export(self.manifest, self.output)
         self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
+        self.assertTrue(source.is_symlink(), 'the test must exercise a real symlink swap')
+        self.assertEqual(source.resolve(), outside)
         self.assertEqual(outside.read_bytes(), b'rider-apk')
 
     def test_rejects_identical_regular_apk_replacement_during_copy(self):
