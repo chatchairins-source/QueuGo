@@ -144,8 +144,13 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             }
             // A delayed offline refresh must never replace a newer catalog snapshot.
             check(existing.getLong("saved_at_ms") >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
-            check(existing.getLong("saved_at_ms") <= catalog.savedAtMs) {
+            val existingSavedAtMs = existing.getLong("saved_at_ms")
+            check(existingSavedAtMs <= catalog.savedAtMs) {
                 "แคตตาล็อก POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
+            }
+            // Equal timestamps may only be replayed with identical data.
+            check(existingSavedAtMs != catalog.savedAtMs || existing.similar(json)) {
+                "แคตตาล็อก POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
             }
             // Do not silently replace a malformed persisted catalog before it can be inspected.
             check(existing.getJSONArray("products").length() <= 20_000 &&
