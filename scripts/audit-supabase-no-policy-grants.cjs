@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const operations = ['select','insert','update','delete'];
 const roles = ['anon','authenticated'];
 function auditNoPolicyTables(rows) {
-  if (!Array.isArray(rows)) throw new TypeError('Expected metadata rows');
+  if (!Array.isArray(rows) || rows.length === 0) throw new TypeError('Expected nonempty metadata rows; empty snapshots cannot prove no-policy grants are absent');
   const seen = new Set(), exposed = [];
   for (const [i,row] of rows.entries()) {
     if (!row || typeof row.schema_name !== 'string' || !row.schema_name ||
