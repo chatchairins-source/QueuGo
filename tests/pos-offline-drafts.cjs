@@ -54,6 +54,14 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   let missingRejected=false;
   try{await api.save({...first,id:'draft-missing-keys',items:[{...replayItem,requestIds:['unit-1']}]})}catch(_){missingRejected=true}
   ok(missingRejected,'partial replay keys must fail before storing an ambiguous submission');
+  // Malformed replay-key containers must not be treated as a new unsent draft.
+  for(const malformed of ['unit-1',{'0':'unit-1'},42]){
+    let rejected=false;
+    try{await api.save({...first,id:'draft-malformed-replay-'+typeof malformed,items:[{...replayItem,requestIds:malformed}]})}catch(_){rejected=true}
+    ok(rejected,'non-array replay IDs are rejected instead of silently discarded');
+  }
+  const legacyNoIds=await api.save({...first,id:'draft-legacy-no-ids',items:[{...first.items[0]}]});
+  eq(legacyNoIds.items[0].requestIds,[],'legacy unsent drafts without replay IDs remain supported');
   // The server uses replay IDs to deduplicate units across the entire bill, not per line.
   const duplicateAcrossLines=[
     {...replayItem,productId:'p1'},
