@@ -60,6 +60,12 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     try{await api.save({...first,id:'draft-malformed-replay-'+typeof malformed,items:[{...replayItem,requestIds:malformed}]})}catch(_){rejected=true}
     ok(rejected,'non-array replay IDs are rejected instead of silently discarded');
   }
+  // Empty and whitespace-only replay keys cannot safely identify a sale unit.
+  for(const badKey of ['', '   ']){
+    let rejected=false;
+    try{await api.save({...first,id:'draft-blank-replay-'+badKey.length,items:[{...replayItem,requestIds:[badKey,'unit-2']}]})}catch(_){rejected=true}
+    ok(rejected,'blank replay IDs must not be persisted as valid idempotency keys');
+  }
   const legacyNoIds=await api.save({...first,id:'draft-legacy-no-ids',items:[{...first.items[0]}]});
   eq(legacyNoIds.items[0].requestIds,[],'legacy unsent drafts without replay IDs remain supported');
   // The server uses replay IDs to deduplicate units across the entire bill, not per line.
