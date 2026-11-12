@@ -100,11 +100,14 @@ def export(manifest_path, output):
                 raise ValueError(f'{role}: APK source changed to a symlink during staging')
             source_identity = source.stat()
             shutil.copyfile(source, destination)
+            # Preserve the explicit symlink rejection before the inode check:
+            # both guards must fail closed, and the symlink regression expects
+            # the more specific provenance error.
+            if any(part.is_symlink() for part in (source, *source.parents)) or not source.is_file():
+                raise ValueError(f'{role}: APK source changed to a symlink during staging')
             copied_source_identity = source.stat()
             if (source_identity.st_dev, source_identity.st_ino) != (copied_source_identity.st_dev, copied_source_identity.st_ino):
                 raise ValueError(f'{role}: APK source identity changed during staging')
-            if any(part.is_symlink() for part in (source, *source.parents)) or not source.is_file():
-                raise ValueError(f'{role}: APK source changed to a symlink during staging')
             with destination.open('rb') as stream:
                 copied_digest = hashlib.file_digest(stream, 'sha256').hexdigest()
             if copied_digest != row['sha256'] or destination.stat().st_size != row['bytes']:
