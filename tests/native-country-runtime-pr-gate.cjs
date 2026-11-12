@@ -54,6 +54,13 @@ for (const jobName of ['parallel-role-smoke', 'native-pilot', 'navigation-map-ru
 assert.match(pilotWorkflow, /publish-rider-road-test:\n    if: \$\{\{ \(github\.ref == .*?\) && github\.event_name == 'push' \}\}/, 'legacy publisher must remain restricted to explicit road-test branches');
 assert.doesNotMatch(exportWorkflow, /gh release (create|upload)/, 'country export workflow must not publish releases directly');
 assert.match(exportWorkflow, /bundle_country: true/, 'country APK export must request the country build');
+for (const jobName of ['navigation-map-runtime', 'maplibre-osm-runtime']) {
+  const start = pilotWorkflow.indexOf('  ' + jobName + ':');
+  const condition = pilotWorkflow.slice(start).match(/^  [a-z][a-z0-9-]*:\n    if: ([^\n]+)/);
+  assert.ok(condition && condition[1].includes('inputs.bundle_country ||'),
+    `country export must execute ${jobName} rather than silently skip its map runtime gate`);
+}
+
 assert.match(exportWorkflow, /uses: \.\/\.github\/workflows\/build-native-rider-pilot\.yml/, 'country APK export must reuse the tested native pilot');
 
 const exportPush = exportWorkflow.match(/  push:\n([\s\S]*?)(?=\npermissions:)/);
