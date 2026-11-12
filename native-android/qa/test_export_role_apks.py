@@ -1,4 +1,5 @@
 """Regression tests for the three-role debug APK artifact exporter."""
+from contextlib import contextmanager
 import hashlib
 import importlib.util
 import json
@@ -319,6 +320,24 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertTrue(source.is_symlink(), 'the test must exercise a real symlink swap')
         self.assertEqual(source.resolve(), outside)
         self.assertEqual(outside.read_bytes(), b'rider-apk')
+
+    def test_rejects_identical_regular_apk_replacement_between_validation_and_staging(self):
+        # Preflight hash alone cannot prove that the staged file is the validated inode.
+        source = Path('native-android/rider/build/outputs/apk/debug/rider-debug.apk')
+        replacement = self.root / 'identical-prestage.apk'
+        replacement.write_bytes(source.read_bytes())
+        original_temporary = module.TemporaryDirectory
+
+        @contextmanager
+        def swap_before_staging(*args, **kwargs):
+            with original_temporary(*args, **kwargs) as temporary:
+                replacement.replace(source)
+                yield temporary
+
+        with patch.object(module, 'TemporaryDirectory', side_effect=swap_before_staging):
+            with self.assertRaisesRegex(ValueError, 'rider: APK source identity changed after validation'):
+                module.export(self.manifest, self.output)
+        self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
 
     def test_rejects_identical_regular_apk_replacement_during_copy(self):
         # A different regular inode with the same bytes/hash is not the validated build.

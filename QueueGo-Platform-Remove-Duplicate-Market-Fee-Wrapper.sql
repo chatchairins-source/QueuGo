@@ -1,1 +1,0 @@
-drop function if exists public.queuego_market_multi_shop_fee(integer);

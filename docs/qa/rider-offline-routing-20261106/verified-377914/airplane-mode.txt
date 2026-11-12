@@ -1,2 +1,0 @@
-airplane_mode_on=1
-wifi_on=0
