@@ -32,7 +32,7 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     {id:'blank-pos-price',name:'ราคา POS ว่าง',price:20,pos_price:' ',available:true,pos_available:true},
     {id:'null-pos-price',name:'ไม่มีราคาหน้าร้าน',price:20,pos_price:null,available:true,pos_available:true}
   ],[]);
-  eq((await api.getCatalog(scope)).products.map(p=>p.id),['valid-zero'],'offline catalog rejects missing, blank and invalid price snapshots, permits nullable POS price and retains valid zero-price products');
+  eq((await api.getCatalog(scope)).products.map(p=>p.id),['valid-zero','null-pos-price'],'offline catalog rejects missing, blank and invalid price snapshots, permits nullable POS price and retains valid zero-price products');
   let invalidRejected=false;try{await api.save({...first,id:'bad',items:[{productId:'p1',quantity:0,priceSnapshot:35,nameSnapshot:'ชาไทย',options:{}}]})}catch(_){invalidRejected=true}ok(invalidRejected,'invalid quantities are rejected');
   // Submission replay IDs must be exactly one per unit, never silently truncated.
   const replayItem={...first.items[0],requestIds:['unit-1','unit-2']};
