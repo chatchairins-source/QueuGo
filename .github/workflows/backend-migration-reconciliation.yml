@@ -5,6 +5,8 @@ on:
     paths:
       - 'scripts/reconcile-supabase-migrations.cjs'
       - 'tests/backend-migration-reconciliation.cjs'
+      - 'scripts/audit-supabase-definer-exposure.cjs'
+      - 'tests/backend-definer-exposure.cjs'
       - '.github/workflows/backend-migration-reconciliation.yml'
       - 'supabase/migrations/**'
   workflow_dispatch:
@@ -24,5 +26,9 @@ jobs:
         run: |
           node --check scripts/reconcile-supabase-migrations.cjs
           node --check tests/backend-migration-reconciliation.cjs
+          node --check scripts/audit-supabase-definer-exposure.cjs
+          node --check tests/backend-definer-exposure.cjs
       - name: Read-only migration history regression
         run: node tests/backend-migration-reconciliation.cjs
+      - name: Read-only SECURITY DEFINER exposure regression
+        run: node tests/backend-definer-exposure.cjs
