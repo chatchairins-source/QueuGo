@@ -96,6 +96,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             check(existing.id == draft.id && existing.requestId == draft.requestId) {
                 "มีร่าง POS เดิมที่ยังไม่ส่ง กรุณาตรวจร่างนั้นก่อน"
             }
+            // An out-of-order offline update must not roll a newer local draft back.
+            check(existing.savedAtMs <= draft.savedAtMs) {
+                "ร่าง POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
+            }
         }
         val json = encode(draft).toString().toByteArray(Charsets.UTF_8)
         check(json.size <= MAX_BYTES) { "ร่าง POS มีรายการมากเกินไป" }
