@@ -36,6 +36,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Verify RC WebKit runner and browser gates
+        run: node tests/rc-webkit-runner-contract.cjs
       - run: npm test
       - name: Install WebKit for complete Merchant mobile boot checks
         run: npx playwright-core install --with-deps webkit
