@@ -113,6 +113,12 @@ def export(manifest_path, output):
                     # Link on the same filesystem without replacing an existing file.
                     published_file.hardlink_to(staged_file)
                     rollback.callback(published_file.unlink)
+            # The retained evidence is shared with the published batch. A writer
+            # can replace it after staging but before the final hardlink; fail
+            # closed and roll back every role file if that happens.
+            if (retained_manifest.is_symlink() or not retained_manifest.is_file()
+                    or retained_manifest.read_bytes() != manifest_bytes):
+                raise ValueError('APK export retained manifest changed during publication')
             rollback.pop_all()
     for row in reports:
         print(f"{row['role']}: {row['bytes']} bytes SHA-256 {row['sha256']}")
