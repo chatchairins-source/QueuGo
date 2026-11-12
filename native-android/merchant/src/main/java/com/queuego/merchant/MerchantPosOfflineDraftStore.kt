@@ -125,7 +125,17 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         val bytes = json.toString().toByteArray(Charsets.UTF_8)
         check(bytes.size <= MAX_CATALOG_BYTES) { "แคตตาล็อก POS มีขนาดมากเกินไปสำหรับออฟไลน์" }
         check(root.isDirectory || root.mkdirs()) { "เตรียมพื้นที่เก็บ POS ออฟไลน์ไม่สำเร็จ" }
-        atomicWrite(catalogFile(catalog.actorId, catalog.deviceId), bytes)
+        val target = catalogFile(catalog.actorId, catalog.deviceId)
+        if (target.exists()) {
+            check(target.length() <= MAX_CATALOG_BYTES) { "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง" }
+            val existing = JSONObject(target.readText())
+            check(existing.getString("actor_id") == catalog.actorId &&
+                existing.getString("device_id") == catalog.deviceId &&
+                existing.getString("shop_id") == catalog.shopId) {
+                "แคตตาล็อก POS ไม่ตรงกับบัญชี ร้านค้า หรืออุปกรณ์นี้"
+            }
+        }
+        atomicWrite(target, bytes)
     }
 
     @Synchronized fun loadCatalog(actorId: String, deviceId: String): PosOfflineCatalog? {
