@@ -297,6 +297,27 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertEqual({p.name for p in self.output.iterdir()},
                          {'customer', 'APK-MANIFEST.json'})
 
+    def test_rejects_source_swapped_for_symlink_during_copy(self):
+        # Even an identical-byte replacement must not change the APK's
+        # provenance from a validated build output to an external symlink.
+        source = Path('native-android/rider/build/outputs/apk/debug/rider-debug.apk')
+        outside = self.root / 'external-identical.apk'
+        outside.write_bytes(source.read_bytes())
+        original_copy = module.shutil.copyfile
+
+        def swap_after_copy(src, destination):
+            result = original_copy(src, destination)
+            if src.name == 'rider-debug.apk':
+                src.unlink()
+                src.symlink_to(outside)
+            return result
+
+        with patch.object(module.shutil, 'copyfile', side_effect=swap_after_copy):
+            with self.assertRaisesRegex(ValueError, 'APK source changed to a symlink during staging'):
+                module.export(self.manifest, self.output)
+        self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
+        self.assertEqual(outside.read_bytes(), b'rider-apk')
+
     def test_rejects_retained_manifest_replaced_during_staging(self):
         original_copy = module.shutil.copyfile
         retained = self.output / 'APK-MANIFEST.json'
