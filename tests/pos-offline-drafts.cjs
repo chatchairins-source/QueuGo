@@ -87,6 +87,14 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   ok(billCollisionRejected,'bill creation request ID cannot collide with any item replay key');
   const distinctBill=await api.save({...first,id:'draft-distinct-bill-replay',requestId:'bill-distinct',items:[replayItem]});
   eq(distinctBill.requestId,'bill-distinct','a distinct bill creation key remains valid');
+  // A malformed bill-level idempotency key must not be silently reused or normalized.
+  for(const badId of ['', '   ', 42, {}, 'x'.repeat(101)]){
+    let rejected=false;
+    try{await api.save({...first,id:'draft-bad-bill-id-'+String(badId).length,requestId:badId})}catch(_){rejected=true}
+    ok(rejected,'invalid bill creation request IDs must be rejected');
+  }
+  const legacyBill=await api.save({...first,id:'draft-legacy-generated-bill',requestId:undefined});
+  ok(typeof legacyBill.requestId==='string'&&legacyBill.requestId.length>0,'legacy draft without bill request ID receives a generated key');
   // Another tab can delete/recreate the IndexedDB database; a closed connection must not be reused.
   await new Promise((resolve,reject)=>{
     const deletion=indexedDB.deleteDatabase('queuego-pos-offline-drafts-v1');
