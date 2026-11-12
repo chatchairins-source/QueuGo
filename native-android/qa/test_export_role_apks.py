@@ -401,6 +401,17 @@ class ExportRoleApksTest(unittest.TestCase):
                 rows[2][field] = SHA if field == 'source_sha' else 'rider-debug.apk'
                 self.manifest.write_text(json.dumps(rows))
 
+    def test_rejects_duplicate_manifest_keys_before_writing(self):
+        # Duplicate keys can make provenance ambiguous to downstream JSON readers.
+        rows = json.loads(self.manifest.read_text())
+        rider = json.dumps(rows[2])
+        rider = rider[:-1] + ', "sha256": "' + '0' * 64 + '"}'
+        self.manifest.write_text('[' + ','.join(json.dumps(row) for row in rows[:2]) + ',' + rider + ']')
+        self.sync_retained_manifest()
+        with self.assertRaisesRegex(ValueError, 'duplicate JSON key: sha256'):
+            module.export(self.manifest, self.output)
+        self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
+
     def test_rejects_malformed_manifest(self):
         self.manifest.write_text('{"not": "a list"}')
         self.sync_retained_manifest()
