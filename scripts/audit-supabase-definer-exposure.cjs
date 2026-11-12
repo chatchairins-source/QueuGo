@@ -2,7 +2,11 @@
 const fs = require('node:fs');
 
 // Analyze a supplied read-only SQL snapshot, never connect to Production.
-function auditDefinerExposure(rows, allowlist, historicalCount = null) {
+function auditDefinerExposure(rows, allowlist, historicalCount = null, expectedCatalogCount) {
+  if (!Number.isSafeInteger(expectedCatalogCount) || expectedCatalogCount <= 0)
+    throw new TypeError('Expected positive integer catalog count for snapshot completeness');
+  if (!Array.isArray(rows) || rows.length !== expectedCatalogCount)
+    throw new TypeError('Function snapshot count differs from catalog count');
   if (!Array.isArray(rows) || !allowlist || !Array.isArray(allowlist.rules))
     throw new TypeError('Expected function rows and reviewed allowlist');
   if (historicalCount !== null && (!Number.isInteger(historicalCount) || historicalCount < 0))
@@ -49,7 +53,7 @@ if (require.main === module) {
     try {
       const load = filename => JSON.parse(fs.readFileSync(filename,'utf8'));
       const prior = historicalFile ? load(historicalFile).authenticated_security_definer_total : null;
-      const result = auditDefinerExposure(load(snapshotFile).functions,load(allowlistFile),prior);
+      const result = auditDefinerExposure(load(snapshotFile).functions,load(allowlistFile),prior,load(snapshotFile).expected_catalog_count);
       process.stdout.write(JSON.stringify(result,null,2) + '\n');
       if (result.assessment === 'RPC_EXPOSURE_REVIEW_REQUIRED') process.exitCode = 2;
     } catch (error) {
