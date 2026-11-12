@@ -18,6 +18,7 @@ on:
       - 'native-android/gradle.properties'
       - 'native-android/gradle/wrapper/**'
       - tests/native-country-runtime-pr-gate.cjs
+      - tests/native-integration-ci.cjs
   push:
     branches: ['work-native-**', 'fix/native-country-export-**', 'fix/apk-signature-evidence-type-**', 'fix/apk-export-**']
     paths:
@@ -34,6 +35,7 @@ on:
       - 'native-android/gradle.properties'
       - 'native-android/gradle/wrapper/**'
       - tests/native-country-runtime-pr-gate.cjs
+      - tests/native-integration-ci.cjs
 
 permissions:
   # The called pilot contains a separate, branch-gated legacy publisher that
