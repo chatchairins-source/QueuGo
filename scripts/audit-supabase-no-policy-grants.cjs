@@ -2,7 +2,12 @@
 const fs = require('node:fs');
 const operations = ['select','insert','update','delete'];
 const roles = ['anon','authenticated'];
-function auditNoPolicyTables(rows) {
+function auditNoPolicyTables(rows, expectedCount) {
+  if (!Number.isSafeInteger(expectedCount) || expectedCount < 0)
+    throw new TypeError('Expected a nonnegative integer catalog count to verify snapshot completeness');
+  if (!Array.isArray(rows) || rows.length !== expectedCount)
+    throw new TypeError('Snapshot count differs from catalog count: expected ' + expectedCount + ', got ' + (Array.isArray(rows) ? rows.length : 'invalid'));
+
   if (!Array.isArray(rows) || rows.length === 0) throw new TypeError('Expected nonempty metadata rows; empty snapshots cannot prove no-policy grants are absent');
   const seen = new Set(), exposed = [];
   for (const [i,row] of rows.entries()) {
@@ -32,7 +37,7 @@ if (require.main===module) {
   if (!file) { console.error('Usage: node scripts/audit-supabase-no-policy-grants.cjs metadata.json'); process.exitCode=1; }
   else try {
     const data=JSON.parse(fs.readFileSync(file,'utf8'));
-    const result=auditNoPolicyTables(data.tables);
+    const result=auditNoPolicyTables(data.tables,data.expected_catalog_count);
     console.log(JSON.stringify(result,null,2));
     if (result.counts.grantsFound) process.exitCode=2;
   } catch(e) { console.error('No-policy audit failed: '+e.message); process.exitCode=1; }
