@@ -1,0 +1,46 @@
+'use strict';
+const assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const {spawnSync}=require('node:child_process');
+const {auditDefinerExposure}=require('../scripts/audit-supabase-definer-exposure.cjs');
+let checks=0; const check=(v,m)=>{assert.ok(v,m);checks++};
+const r=(signature,anon,auth=true,pinned=true)=>({signature,security_definer:true,
+  anon_execute:anon,authenticated_execute:auth,search_path_pinned:pinned});
+const allow={rules:[{signature:'public_catalog()'},{signature:'guest_checkout(uuid)'}]};
+const rows=[r('public_catalog()',true),r('guest_checkout(uuid)',true),r('admin_rpc()',false)];
+const valid=auditDefinerExposure(rows,allow,3);
+check(valid.assessment==='SNAPSHOT_MATCHES_ALLOWLIST_NOT_SECURITY_CERTIFIED','matching snapshot not full certification');
+check(valid.counts.anonymousExecutable===2,'counts anonymous RPCs');
+check(valid.counts.authenticatedExecutable===3,'counts authenticated RPCs');
+const exposed=auditDefinerExposure([...rows,r('unsafe()',true)],allow,4);
+check(exposed.unexpectedAnonymous.includes('unsafe()'),'unreviewed anonymous endpoint reported');
+check(exposed.assessment==='RPC_EXPOSURE_REVIEW_REQUIRED','unexpected endpoint blocks review');
+const missing=auditDefinerExposure(rows.slice(0,1),allow,1);
+check(missing.approvedNotAnonymous.includes('guest_checkout(uuid)'),'missing public endpoint detected');
+const pathRisk=auditDefinerExposure([r('public_catalog()',true,true,false),r('guest_checkout(uuid)',true)],allow);
+check(pathRisk.anonWithoutSearchPath.includes('public_catalog()'),'missing pinned search_path detected');
+const drift=auditDefinerExposure(rows,allow,123);
+check(drift.counts.historicalDrift,'stale historical count flagged');
+check(drift.assessment==='RPC_EXPOSURE_REVIEW_REQUIRED','stale review not silently certified');
+check(drift.warning.includes('Do not automatically'),'never apply privilege changes');
+assert.throws(()=>auditDefinerExposure([rows[0],rows[0]],allow),/Duplicate function/);checks++;
+assert.throws(()=>auditDefinerExposure([{signature:'x()'}],allow),/Invalid snapshot/);checks++;
+assert.throws(()=>auditDefinerExposure(rows,{rules:[{signature:'x()'},{signature:'x()'}]}),/duplicate approved/);checks++;
+assert.throws(()=>auditDefinerExposure(rows,allow,-1),/Invalid historical/);checks++;
+const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'qg-rpc-'));
+try {
+  const snap=path.join(tmp,'snapshot.json'),al=path.join(tmp,'allow.json'),hist=path.join(tmp,'history.json');
+  fs.writeFileSync(snap,JSON.stringify({functions:rows}));
+  fs.writeFileSync(al,JSON.stringify(allow));
+  fs.writeFileSync(hist,JSON.stringify({authenticated_security_definer_total:3}));
+  const cli=path.join(__dirname,'../scripts/audit-supabase-definer-exposure.cjs');
+  const run=(...args)=>spawnSync(process.execPath,[cli,...args],{encoding:'utf8'});
+  check(run(snap,al,hist).status===0,'CLI exits zero only on matching snapshot');
+  fs.writeFileSync(hist,JSON.stringify({authenticated_security_definer_total:2}));
+  const flagged=run(snap,al,hist);
+  check(flagged.status===2,'CLI exits 2 for drift');
+  check(JSON.parse(flagged.stdout).counts.historicalDrift,'CLI prints drift evidence');
+  fs.writeFileSync(snap,'bad');
+  check(run(snap,al).status===1,'CLI rejects malformed JSON');
+  check(run().status===1,'CLI rejects missing arguments');
+} finally {fs.rmSync(tmp,{recursive:true,force:true});}
+console.log(JSON.stringify({checks,failures:0,scope:'Read-only SECURITY DEFINER grant audit'}));
