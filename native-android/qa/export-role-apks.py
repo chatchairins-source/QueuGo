@@ -68,6 +68,8 @@ def export(manifest_path, output):
                 raise ValueError(f'{role}: export metadata must be a regular file, not a symlink')
         if directory.exists() and any(p.name != 'APK-SIGNATURE.txt' for p in directory.iterdir()):
             raise ValueError(f'{role}: refusing to mix fresh APKs with existing role artifacts')
+    # Pin validated source file identities across the preflight/staging boundary.
+    source_identities = {}
     # Validate every file before writing any deliverable.
     for row in reports:
         role = row['role']
@@ -80,9 +82,14 @@ def export(manifest_path, output):
             raise ValueError(f'{role}: invalid APK integrity metadata')
         if row['source_sha'] != source_sha or row['apk'] != source.name:
             raise ValueError(f'{role}: build source mismatch')
+        validated_identity = source.stat()
         with source.open('rb') as stream:
             digest = hashlib.file_digest(stream, 'sha256').hexdigest()
-        if digest != row['sha256'] or source.stat().st_size != row['bytes']:
+        after_validation = source.stat()
+        if (validated_identity.st_dev, validated_identity.st_ino) != (after_validation.st_dev, after_validation.st_ino):
+            raise ValueError(f'{role}: APK source identity changed during validation')
+        source_identities[role] = (validated_identity.st_dev, validated_identity.st_ino)
+        if digest != row['sha256'] or after_validation.st_size != row['bytes']:
             raise ValueError(f'{role}: APK changed after validation')
     # Verify the entire batch before adding any files to the published role directories.
     with TemporaryDirectory(prefix='.apk-export-', dir=output) as temporary:
@@ -99,6 +106,8 @@ def export(manifest_path, output):
             if any(part.is_symlink() for part in (source, *source.parents)) or not source.is_file():
                 raise ValueError(f'{role}: APK source changed to a symlink during staging')
             source_identity = source.stat()
+            if (source_identity.st_dev, source_identity.st_ino) != source_identities[role]:
+                raise ValueError(f'{role}: APK source identity changed after validation')
             shutil.copyfile(source, destination)
             # Preserve the explicit symlink rejection before the inode check:
             # both guards must fail closed, and the symlink regression expects
