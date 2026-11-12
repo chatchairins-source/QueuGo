@@ -109,6 +109,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
 
     @Synchronized fun saveCatalog(catalog: PosOfflineCatalog) {
         requireUuid(catalog.actorId); requireUuid(catalog.shopId); requireUuid(catalog.deviceId)
+        require(catalog.savedAtMs >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
         require(catalog.shopName.length <= 200 && catalog.products.size <= 20_000 && catalog.tables.size <= 300)
         val json = JSONObject().put("actor_id", catalog.actorId).put("shop_id", catalog.shopId)
             .put("device_id", catalog.deviceId).put("shop_name", catalog.shopName.take(200))
@@ -247,6 +248,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
     }
 
     private fun validate(d: PosOfflineDraft) {
+        require(d.savedAtMs >= 0) { "เวลาร่าง POS ไม่ถูกต้อง" }
         requireUuid(d.id); requireUuid(d.requestId); requireUuid(d.actorId)
         requireUuid(d.shopId); requireUuid(d.deviceId); d.tableId?.let(::requireUuid)
         require(d.type in setOf("DINE_IN", "TAKEAWAY"))
