@@ -1,7 +1,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const workflow=fs.readFileSync('.github/workflows/build-native-rider-pilot.yml','utf8');
 let checks=0;
-function selected(job,ref,event='push'){
+function selected(job,ref,event='push',bundleCountry=false){
  const block=workflow.split('\n  '+job+':\n')[1]?.split(/\n  [a-z][a-z-]+:\n/)[0];
  assert.ok(block,'workflow job exists: '+job);
  const condition=block.match(/^    if: \$\{\{ (.*) \}\}$/m)?.[1];
@@ -9,7 +9,7 @@ function selected(job,ref,event='push'){
  const github=event==='pull_request'
   ? {ref:'refs/pull/123/merge',head_ref:ref,event_name:event}
   : {ref:'refs/heads/'+ref,head_ref:'',event_name:event};
- return vm.runInNewContext(condition,{github,startsWith:(a,b)=>String(a??'').startsWith(String(b??''))});
+ return vm.runInNewContext(condition,{github,inputs:{bundle_country:bundleCountry},startsWith:(a,b)=>String(a??'').startsWith(String(b??''))});
 }
 for(const ref of ['work-native-rider-queuego-route-authority-20261017','work-native-ride-entry-recovery-20261018']){
  for(const job of ['native-pilot','continuous-dispatch-races','passenger-ride-races','credit-races','map-display-only','navigation-map-runtime','maplibre-osm-runtime']){
@@ -67,3 +67,32 @@ for (const event of ['push','pull_request']) {
  assert.equal(selected('publish-rider-road-test',branch,event),false,event+' must not publish any APK'); checks++;
 }
 console.log(JSON.stringify({checks,failures:0,scope:'navigation connected XML gate push/PR selection, release remains blocked'}));
+
+// A reusable country export sets the workflow_call input, even on unrelated
+// branch names. Exercise both input states: the map runtime gates must not be
+// silently skipped, but a normal PR/push must still respect branch selection.
+for (const event of ['push','pull_request']) {
+ for (const job of ['navigation-map-runtime','maplibre-osm-runtime']) {
+  const branch='work-native-unrelated-branch-20261112';
+  assert.equal(selected(job,branch,event,false),false,event+' must not run '+job+' on an unrelated branch without country export'); checks++;
+  assert.equal(selected(job,branch,event,true),true,event+' with bundle_country must run '+job+' for a country export'); checks++;
+ }
+ assert.equal(selected('publish-rider-road-test','work-native-unrelated-branch-20261112',event,true),false,'country export must never publish a road-test release'); checks++;
+}
+console.log(JSON.stringify({checks,failures:0,scope:'workflow_call bundle_country input is defined and both map runtime gates are enforced without permitting release publication'}));
+
+// The exporter must run this harness on subsequent changes, not silently
+// reuse previous APK evidence when job predicate tests are modified.
+const exportWorkflow=fs.readFileSync('.github/workflows/export-tested-country-apks.yml','utf8');
+const exportHarnessPath='      - tests/native-integration-ci.cjs';
+const exportTriggerCount=exportWorkflow.split(exportHarnessPath).length-1;
+assert.equal(exportTriggerCount,2,'Country export workflows must retrigger on integration job predicate harness changes in both PR and push');checks++;
+
+// Stacked country export PRs target fix/country-export-* bases. A push-only
+// green check cannot substitute the pull_request event's merge-context gate.
+const exportPullRequestSection=exportWorkflow.split('  pull_request:\n')[1]?.split('\n  push:\n')[0];
+assert.ok(exportPullRequestSection?.includes("'fix/country-export-**'"),'Country export PR base branches must trigger pull_request CI');checks++;
+const exportPushSection=exportWorkflow.split('  push:\n')[1]?.split('\npermissions:')[0];
+assert.ok(exportPushSection?.includes("'fix/apk-export-**'"),'Worker 4 export branch commits must trigger push CI');checks++;
+console.log(JSON.stringify({checks,failures:0,scope:'stacked country-export PR merge context and Worker 4 push both trigger CI'}));
+console.log(JSON.stringify({checks,failures:0,scope:'country export CI test infrastructure changes retrigger both PR and push workflows'}));
