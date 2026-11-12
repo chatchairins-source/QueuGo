@@ -296,6 +296,22 @@ class ExportRoleApksTest(unittest.TestCase):
         self.assertEqual({p.name for p in self.output.iterdir()},
                          {'customer', 'APK-MANIFEST.json'})
 
+    def test_rejects_retained_manifest_replaced_during_staging(self):
+        original_copy = module.shutil.copyfile
+        retained = self.output / 'APK-MANIFEST.json'
+
+        def replace_evidence_on_last_copy(source, destination):
+            result = original_copy(source, destination)
+            if source.name == 'rider-debug.apk':
+                retained.write_text('replaced during staging')
+            return result
+
+        with patch.object(module.shutil, 'copyfile', side_effect=replace_evidence_on_last_copy):
+            with self.assertRaisesRegex(ValueError, 'retained manifest changed during staging'):
+                module.export(self.manifest, self.output)
+        self.assertEqual(retained.read_text(), 'replaced during staging')
+        self.assertEqual({p.name for p in self.output.iterdir()}, {'APK-MANIFEST.json'})
+
     def test_rolls_back_published_files_if_a_later_link_fails(self):
         original_link = Path.hardlink_to
 
