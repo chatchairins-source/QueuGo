@@ -31,14 +31,15 @@ function auditDefinerExposure(rows, allowlist, historicalCount = null, expectedC
   const approvedNotAnonymous = names.filter(x => !observedAnon.has(x));
   const anonWithoutSearchPath = anon.filter(x => !x.search_path_pinned).map(x => x.signature);
   const authenticatedExecutable = rows.filter(x => x.authenticated_execute).length;
+  const authenticatedWithoutSearchPath = rows.filter(x => x.authenticated_execute && !x.search_path_pinned).map(x => x.signature);
   const historicalDrift = historicalCount !== null && historicalCount !== authenticatedExecutable;
   const requiresReview = !!(unexpectedAnonymous.length || approvedNotAnonymous.length ||
-    anonWithoutSearchPath.length || historicalDrift);
+    anonWithoutSearchPath.length || authenticatedWithoutSearchPath.length || historicalDrift);
   return {
     assessment: requiresReview ? 'RPC_EXPOSURE_REVIEW_REQUIRED' : 'SNAPSHOT_MATCHES_ALLOWLIST_NOT_SECURITY_CERTIFIED',
     counts: {publicDefiner:rows.length,anonymousExecutable:anon.length,
       authenticatedExecutable,historicalCount,historicalDrift},
-    unexpectedAnonymous,approvedNotAnonymous,anonWithoutSearchPath,
+    unexpectedAnonymous,approvedNotAnonymous,anonWithoutSearchPath,authenticatedWithoutSearchPath,
     warning:'Do not automatically GRANT, REVOKE or modify Production from this report.'
   };
 }
