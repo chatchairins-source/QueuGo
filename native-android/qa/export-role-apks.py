@@ -94,7 +94,13 @@ def export(manifest_path, output):
             directory.mkdir(parents=True, exist_ok=True)
             filename = f'QueueGo-{role.title()}-Test-{source_sha[:12]}.apk'
             destination = directory / filename
+            # The preflight path check is not enough: another process can swap
+            # an APK for a symlink after validation but before/during copying.
+            if any(part.is_symlink() for part in (source, *source.parents)) or not source.is_file():
+                raise ValueError(f'{role}: APK source changed to a symlink during staging')
             shutil.copyfile(source, destination)
+            if any(part.is_symlink() for part in (source, *source.parents)) or not source.is_file():
+                raise ValueError(f'{role}: APK source changed to a symlink during staging')
             with destination.open('rb') as stream:
                 copied_digest = hashlib.file_digest(stream, 'sha256').hexdigest()
             if copied_digest != row['sha256'] or destination.stat().st_size != row['bytes']:
