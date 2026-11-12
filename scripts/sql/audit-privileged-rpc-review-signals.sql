@@ -13,8 +13,8 @@ WITH funcs AS (
         has_function_privilege('authenticated',oid,'EXECUTE') AS authenticated_execute,
         EXISTS (SELECT 1 FROM unnest(COALESCE(proconfig,ARRAY[]::text[])) AS cfg(v)
                 WHERE cfg.v LIKE 'search_path=%') AS search_path_configured,
-        body ~* '\\mEXECUTE\\M' AS dynamic_sql_signal,
-        body ~* 'set_config[[:space:]]*\\(' AS set_config_signal,
+        body ~* '\mEXECUTE\M' AS dynamic_sql_signal,
+        body ~* 'set_config[[:space:]]*\(' AS set_config_signal,
         body ~* 'auth[.]uid|auth[.]jwt|current_setting|session_id' AS auth_signal,
         body ~* 'FOR[[:space:]]+UPDATE|pg_advisory_xact_lock|ON[[:space:]]+CONFLICT' AS concurrency_signal
  FROM funcs
