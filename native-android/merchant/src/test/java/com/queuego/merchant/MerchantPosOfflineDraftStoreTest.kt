@@ -191,4 +191,34 @@ class MerchantPosOfflineDraftStoreTest {
             assertThrows(IllegalArgumentException::class.java) { store.loadForActor(actor, device) }
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun refusesToOverwritePersistedDraftWithDuplicateReplayIds() {
+        val root = Files.createTempDirectory("pos-offline-replay-recovery").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val firstReplay = UUID.randomUUID().toString()
+            val original = draft(actor, shop, device).copy(items = listOf(
+                PosOfflineDraftItem(UUID.randomUUID().toString(), "กาแฟ", 40.0, 1, listOf(firstReplay)),
+                PosOfflineDraftItem(UUID.randomUUID().toString(), "ชา", 35.0, 1,
+                    listOf(UUID.randomUUID().toString()))
+            ))
+            val store = MerchantPosOfflineDraftStore(root)
+            store.save(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val corrupted = JSONObject(file.readText())
+            corrupted.getJSONArray("items").getJSONObject(1)
+                .put("request_ids", JSONArray().put(firstReplay))
+            val corruptedBytes = corrupted.toString()
+            file.writeText(corruptedBytes)
+
+            val replacement = original.copy(savedAtMs = original.savedAtMs + 1)
+            assertThrows(IllegalArgumentException::class.java) { store.save(replacement) }
+            assertEquals(corruptedBytes, file.readText())
+            assertThrows(IllegalArgumentException::class.java) {
+                MerchantPosOfflineDraftStore(root).loadForActor(actor, device)
+            }
+        } finally { root.deleteRecursively() }
+    }
 }
