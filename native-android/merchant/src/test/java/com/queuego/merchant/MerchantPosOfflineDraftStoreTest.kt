@@ -665,4 +665,27 @@ class MerchantPosOfflineDraftStoreTest {
             assertEquals(original, store.loadForActor(actor, device))
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun rejectsTamperedOfflineCatalogShopNameWithoutChangingSnapshot() {
+        val root = Files.createTempDirectory("pos-catalog-shop-name").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val catalog = PosOfflineCatalog(actor, shop, device, "ร้านค้า", 100L,
+                emptyList(), emptyList())
+            store.saveCatalog(catalog)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val original = file.readText()
+            for (invalidName in listOf("", " ", "x".repeat(201))) {
+                val corrupted = JSONObject(original).put("shop_name", invalidName).toString()
+                file.writeText(corrupted)
+                assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
+                assertEquals(corrupted, file.readText())
+            }
+            file.writeText(original)
+            assertEquals(catalog, store.loadCatalog(actor, device))
+        } finally { root.deleteRecursively() }
+    }
 }
