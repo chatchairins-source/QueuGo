@@ -1,6 +1,6 @@
 -- REVIEW REQUIRED: forward-only change; do not apply to Production automatically.
 -- QR table catalog must advertise the same POS-eligible products that
--- qg_table_checkout accepts. Preserve session and active-table authorization.
+-- qg_table_checkout accepts. Preserve session and active-table authorization, binding the table to the session shop.
 CREATE OR REPLACE FUNCTION public.qg_table_catalog(p_session uuid, p_device_key uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -17,7 +17,7 @@ begin
     and expires_at>now();
 
   if not found or not exists(
-    select 1 from public.pos_tables where id=v.table_id and active
+    select 1 from public.pos_tables where id=v.table_id and shop_id=v.shop_id and active
   ) then
     raise exception 'สิทธิ์การสั่งอาหารจากโต๊ะนี้หมดอายุแล้ว กรุณาสแกน QR Code ที่โต๊ะอีกครั้ง';
   end if;
