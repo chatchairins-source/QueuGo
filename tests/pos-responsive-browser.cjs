@@ -101,7 +101,23 @@ async function main() {
         assert.equal(geometry.columns, 4);
       }
       if (['desktop', 'landscape'].includes(layout)) assert(geometry.cart > geometry.catalog);
-      if (layout === 'mobile') assert.equal(geometry.columns, 2);
+      if (layout === 'mobile') {
+        assert.equal(geometry.columns, 2);
+        const headerHandle = await page.waitForFunction(() => {
+          const el = document.querySelector('.qg-pos-header');
+          if (!el?.getBoundingClientRect().height || !el.querySelector('.qg-pos-printer')) return false;
+          return {
+          height: el.getBoundingClientRect().height,
+          buttons: [...el.querySelectorAll('button')].map(button => {
+            const { width, height } = button.getBoundingClientRect();
+            return { width, height };
+          })
+          };
+        });
+        const header = await headerHandle.jsonValue();
+        assert(header.height <= 48, 'compact mobile header');
+        assert(header.buttons.every(({ width, height }) => width >= 44 && height >= 44), 'header touch targets ' + JSON.stringify(header));
+      }
       await page.locator('#qg-pos-search').fill('ลาเต้');
       assert.equal(await cards.count(), 2);
       await page.locator('#qg-pos-search').fill('');

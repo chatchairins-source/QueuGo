@@ -497,7 +497,15 @@
   .qg-pos-cart .qg-pos-actions { position: static; }
 }
 @media (max-width: 650px) {
-  .qg-pos .qg-pos-header { margin-inline: -10px; padding-inline: 10px; }
+  .qg-pos .qg-pos-header {
+    min-height: 48px;
+    margin: 0 -10px 4px;
+    padding: 2px 10px;
+    gap: 6px;
+  }
+  .qg-pos .qg-pos-header strong { font-size: 17px; }
+  .qg-pos .qg-pos-header button { font-size: 19px; }
+  .qg-pos-workspace .qg-pos-tabs { padding-block: 0 2px; margin-bottom: 6px; }
   .qg-pos-counter > .qg-pos-panel > .qg-pos-draft-start { width: 100%; margin-inline-start: 0; }
   .qg-pos-workspace .qg-pos-grid > .qg-pos-catalog { padding: 8px; }
   .qg-pos-workspace .qg-pos-products { grid-template-columns: repeat(2, minmax(0, 1fr)); }
