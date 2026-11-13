@@ -13,6 +13,8 @@ on:
       - 'supabase/migrations/**'
       - 'scripts/sql/audit-definer-search-path-schema-trust.sql'
       - 'tests/backend-definer-schema-trust.cjs'
+      - 'scripts/sql/audit-privileged-rpc-review-signals.sql'
+      - 'tests/backend-privileged-rpc-signals.cjs'
   workflow_dispatch:
 
 permissions:
@@ -35,11 +37,14 @@ jobs:
           node --check scripts/audit-supabase-no-policy-grants.cjs
           node --check tests/backend-no-policy-grants.cjs
           node --check tests/backend-definer-schema-trust.cjs
+          node --check tests/backend-privileged-rpc-signals.cjs
       - name: Read-only migration history regression
         run: node tests/backend-migration-reconciliation.cjs
       - name: Read-only SECURITY DEFINER exposure regression
         run: node tests/backend-definer-exposure.cjs
       - name: Read-only definer schema trust query regression
         run: node tests/backend-definer-schema-trust.cjs
+      - name: Read-only privileged RPC review signals regression
+        run: node tests/backend-privileged-rpc-signals.cjs
       - name: Read-only RLS no-policy grants regression
         run: node tests/backend-no-policy-grants.cjs
