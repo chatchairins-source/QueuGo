@@ -824,4 +824,29 @@ class MerchantPosOfflineDraftStoreTest {
             assertEquals(101L, store.loadForActor(actor, device)!!.savedAtMs)
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun corruptPersistedCatalogCannotBeSilentlyReplacedByRefresh() {
+        val root = Files.createTempDirectory("pos-catalog-corrupt-refresh").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val product = PosProduct(UUID.randomUUID().toString(), "ชา", 35.0, null, true)
+            val original = PosOfflineCatalog(actor, shop, device, "ร้าน", 100L,
+                listOf(product), emptyList())
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val invalid = JSONObject(file.readText())
+            invalid.getJSONArray("products").getJSONObject(0).put("price", -10.0)
+            val corruptedBytes = invalid.toString()
+            file.writeText(corruptedBytes)
+
+            assertThrows(IllegalStateException::class.java) {
+                store.saveCatalog(original.copy(savedAtMs = 101L))
+            }
+            assertEquals(corruptedBytes, file.readText())
+            assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
+        } finally { root.deleteRecursively() }
+    }
 }
