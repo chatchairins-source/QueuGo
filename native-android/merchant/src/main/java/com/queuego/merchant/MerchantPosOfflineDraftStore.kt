@@ -227,11 +227,11 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             }
             PosProduct(p.getString("id"), p.getString("name"), price,
                 if (p.isNull("image")) null else p.getString("image"), strictCatalogBoolean(p, "available"),
-                p.optBoolean("delivery_available", true), deliveryPrice,
+                strictOptionalCatalogBoolean(p, "delivery_available", true), deliveryPrice,
                 stock = stock,
-                inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
+                inventoryStockTracking = strictOptionalCatalogBoolean(p, "inventory_stock_tracking", false),
                 groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
-                groceryStockTracking = p.optBoolean("grocery_stock_tracking", false),
+                groceryStockTracking = strictOptionalCatalogBoolean(p, "grocery_stock_tracking", false),
                 optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()),
                 category = if (!p.has("category") || p.isNull("category")) null else p.optString("category"))
         } }
@@ -283,6 +283,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
 
     private fun strictCatalogBoolean(json: JSONObject, key: String): Boolean =
         (json.get(key) as? Boolean) ?: error("ข้อมูลสถานะ POS ออฟไลน์ไม่ถูกต้อง: $key")
+
+    private fun strictOptionalCatalogBoolean(json: JSONObject, key: String, default: Boolean): Boolean =
+        if (json.has(key)) strictCatalogBoolean(json, key) else default
 
     private fun strictCatalogTimestamp(json: JSONObject): Long {
         // JSONObject.getLong silently truncates fractional values and coerces numeric strings.
