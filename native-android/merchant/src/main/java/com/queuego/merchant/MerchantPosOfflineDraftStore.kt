@@ -116,7 +116,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         require(catalog.savedAtMs >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
         require(catalog.shopName.isNotBlank() && catalog.shopName.length <= 200 &&
             catalog.products.size <= 20_000 && catalog.tables.size <= 300)
-        require(catalog.products.all { it.price.isFinite() && it.price >= 0 &&
+        require(catalog.products.all { it.id.isNotBlank() && it.name.isNotBlank() && it.name.length <= 200 &&
+            it.price.isFinite() && it.price >= 0 &&
             (it.deliveryPrice == null || (it.deliveryPrice.isFinite() && it.deliveryPrice >= 0)) &&
             it.stock >= 0 }) {
             "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
@@ -203,7 +204,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 }
                 else -> error("จำนวนสินค้า POS ออฟไลน์ไม่ถูกต้อง")
             }
-            check(price.isFinite() && price >= 0 &&
+            check(p.getString("id").isNotBlank() && p.getString("name").isNotBlank() &&
+                p.getString("name").length <= 200 && price.isFinite() && price >= 0 &&
                 (deliveryPrice == null || (deliveryPrice.isFinite() && deliveryPrice >= 0)) &&
                 stock >= 0) {
                 "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
