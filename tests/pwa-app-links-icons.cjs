@@ -18,7 +18,7 @@ function luminance(hex){
     .reduce((sum,v,i)=>sum+v*[0.2126,0.7152,0.0722][i],0);
 }
 for(const selector of ['.note','footer']){
-  const rule=apps.match(new RegExp('(?:\\\\.|^)'+selector.replace('.','\\\\.')+'\\\\{([^}]+)\\\\}'));
+  const rule=apps.match(new RegExp(selector.replace('.', '\\\\.')+'\\\\{([^}]+)\\\\}'));
   assert.ok(rule,selector+' style rule missing');
   const color=rule[1].match(/color:(#[0-9a-f]{6})/i)?.[1];
   assert.ok(color,selector+' text color missing');
