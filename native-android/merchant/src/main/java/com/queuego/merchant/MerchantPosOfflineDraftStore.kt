@@ -169,6 +169,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             check(existingSavedAtMs != catalog.savedAtMs || existing.similar(json)) {
                 "แคตตาล็อก POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
             }
+            // Validate the complete persisted snapshot before replacing it. Bounds and metadata
+            // checks alone miss corrupted prices, stock, table data and product option groups.
+            loadCatalog(catalog.actorId, catalog.deviceId)
             // Do not silently replace a malformed persisted catalog before it can be inspected.
             check(existing.getJSONArray("products").length() <= 20_000 &&
                 existing.getJSONArray("tables").length() <= 300) {
