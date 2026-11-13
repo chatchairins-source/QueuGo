@@ -1,5 +1,5 @@
 -- REVIEW REQUIRED: never apply to Production automatically.
--- Preserve checkout semantics except reject replay for revoked or expired sessions.
+-- Reject checkout replays when session, table, shop, or location is no longer authorized.
 CREATE OR REPLACE FUNCTION public.qg_table_checkout(p_session uuid, p_device_key uuid, p_request uuid, p_items jsonb, p_lat double precision, p_lng double precision)
  RETURNS jsonb
  LANGUAGE plpgsql
@@ -48,22 +48,6 @@ begin
 
   v_hash:=encode(extensions.digest(p_items::text,'sha256'),'hex');
 
-  select * into v_old
-  from public.qg_table_requests
-  where session_id=p_session and request_id=p_request;
-  if found then
-    if v_old.payload_hash<>v_hash then
-      raise exception 'รหัสคำขอถูกใช้กับรายการอาหารอื่น';
-    end if;
-    select o.order_number into v_order_number from public.orders o where o.id=v_old.order_id;
-    return jsonb_build_object(
-      'order_id',v_old.order_id,
-      'order_number',v_order_number,
-      'duplicate',true,
-      'reason','same_request'
-    );
-  end if;
-
   select * into t
   from public.pos_tables
   where id=v.table_id and shop_id=v.shop_id and active;
@@ -78,6 +62,23 @@ begin
 
   if public.qg_table_distance_m(p_lat,p_lng,s.latitude,s.longitude)>100 then
     raise exception 'กรุณาสั่งอาหารภายในระยะ 100 เมตรจากร้าน';
+  end if;
+
+  -- Apply table/shop and proximity authorization to exact-request replays too.
+  select * into v_old
+  from public.qg_table_requests
+  where session_id=p_session and request_id=p_request;
+  if found then
+    if v_old.payload_hash<>v_hash then
+      raise exception 'รหัสคำขอถูกใช้กับรายการอาหารอื่น';
+    end if;
+    select o.order_number into v_order_number from public.orders o where o.id=v_old.order_id;
+    return jsonb_build_object(
+      'order_id',v_old.order_id,
+      'order_number',v_order_number,
+      'duplicate',true,
+      'reason','same_request'
+    );
   end if;
 
   select * into v_old
