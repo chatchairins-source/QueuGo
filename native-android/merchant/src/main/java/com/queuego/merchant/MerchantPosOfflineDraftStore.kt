@@ -222,8 +222,12 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             PosTable(t.getString("id"), t.getString("label"), t.getBoolean("active"),
                 if (t.isNull("qr_token")) null else t.getString("qr_token"))
         } }
+        // Persisted catalog metadata may have been tampered with after the atomic write.
+        // Do not expose oversized or blank shop names as trusted offline UI data.
+        val shopName = json.optString("shop_name", "ร้านค้า")
+        check(shopName.isNotBlank() && shopName.length <= 200) { "ชื่อร้านค้า POS ออฟไลน์ไม่ถูกต้อง" }
         return PosOfflineCatalog(actorId, json.getString("shop_id"), deviceId,
-            json.optString("shop_name", "ร้านค้า"), json.getLong("saved_at_ms"), products, tables)
+            shopName, json.getLong("saved_at_ms"), products, tables)
     }
 
     @Synchronized fun remove(scope: PosOfflineDraftScope, id: String) {
