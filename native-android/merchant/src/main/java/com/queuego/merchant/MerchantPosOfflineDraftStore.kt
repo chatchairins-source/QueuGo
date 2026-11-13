@@ -122,6 +122,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             it.stock >= 0 }) {
             "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
         }
+        require(catalog.tables.all { it.id.isNotBlank() && it.label.isNotBlank() && it.label.length <= 100 }) {
+            "ข้อมูลโต๊ะ POS ออฟไลน์ไม่ถูกต้อง"
+        }
         val json = JSONObject().put("actor_id", catalog.actorId).put("shop_id", catalog.shopId)
             .put("device_id", catalog.deviceId).put("shop_name", catalog.shopName.take(200))
             .put("saved_at_ms", catalog.savedAtMs)
@@ -226,6 +229,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         } }
         val tables = tableArray.let { array -> (0 until array.length()).map { i ->
             val t = array.getJSONObject(i)
+            check(t.getString("id").isNotBlank() && t.getString("label").isNotBlank() &&
+                t.getString("label").length <= 100) { "ข้อมูลโต๊ะ POS ออฟไลน์ไม่ถูกต้อง" }
             PosTable(t.getString("id"), t.getString("label"), t.getBoolean("active"),
                 if (t.isNull("qr_token")) null else t.getString("qr_token"))
         } }
