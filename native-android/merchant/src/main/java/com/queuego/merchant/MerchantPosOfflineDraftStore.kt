@@ -122,6 +122,12 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             it.stock >= 0 }) {
             "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
         }
+        require(catalog.products.map { it.id }.distinct().size == catalog.products.size) {
+            "รหัสสินค้า POS ออฟไลน์ซ้ำกัน"
+        }
+        require(catalog.tables.map { it.id }.distinct().size == catalog.tables.size) {
+            "รหัสโต๊ะ POS ออฟไลน์ซ้ำกัน"
+        }
         require(catalog.tables.all { it.id.isNotBlank() && it.label.isNotBlank() && it.label.length <= 100 }) {
             "ข้อมูลโต๊ะ POS ออฟไลน์ไม่ถูกต้อง"
         }
@@ -169,6 +175,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             check(existingSavedAtMs != catalog.savedAtMs || existing.similar(json)) {
                 "แคตตาล็อก POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
             }
+            // Validate the complete persisted snapshot before replacing it. Bounds and metadata
+            // checks alone miss corrupted prices, stock, table data and product option groups.
+            loadCatalog(catalog.actorId, catalog.deviceId)
             // Do not silently replace a malformed persisted catalog before it can be inspected.
             check(existing.getJSONArray("products").length() <= 20_000 &&
                 existing.getJSONArray("tables").length() <= 300) {
@@ -217,12 +226,12 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
             }
             PosProduct(p.getString("id"), p.getString("name"), price,
-                if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
-                p.optBoolean("delivery_available", true), deliveryPrice,
+                if (p.isNull("image")) null else p.getString("image"), strictCatalogBoolean(p, "available"),
+                strictOptionalCatalogBoolean(p, "delivery_available", true), deliveryPrice,
                 stock = stock,
-                inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
+                inventoryStockTracking = strictOptionalCatalogBoolean(p, "inventory_stock_tracking", false),
                 groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
-                groceryStockTracking = p.optBoolean("grocery_stock_tracking", false),
+                groceryStockTracking = strictOptionalCatalogBoolean(p, "grocery_stock_tracking", false),
                 optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()),
                 category = if (!p.has("category") || p.isNull("category")) null else p.optString("category"))
         } }
@@ -230,9 +239,13 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             val t = array.getJSONObject(i)
             check(t.getString("id").isNotBlank() && t.getString("label").isNotBlank() &&
                 t.getString("label").length <= 100) { "ข้อมูลโต๊ะ POS ออฟไลน์ไม่ถูกต้อง" }
-            PosTable(t.getString("id"), t.getString("label"), t.getBoolean("active"),
+            PosTable(t.getString("id"), t.getString("label"), strictCatalogBoolean(t, "active"),
                 if (t.isNull("qr_token")) null else t.getString("qr_token"))
         } }
+        check(products.map { it.id }.distinct().size == products.size &&
+            tables.map { it.id }.distinct().size == tables.size) {
+            "แคตตาล็อก POS ออฟไลน์มีรหัสสินค้าหรือโต๊ะซ้ำกัน"
+        }
         // Persisted catalog metadata may have been tampered with after the atomic write.
         // Do not expose oversized or blank shop names as trusted offline UI data.
         val shopName = json.optString("shop_name", "ร้านค้า")
@@ -266,6 +279,21 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         val hash = MessageDigest.getInstance("SHA-256").digest(key.toByteArray(Charsets.UTF_8))
             .joinToString("") { "%02x".format(it) }
         return File(root, "$hash.catalog.json")
+    }
+
+    private fun strictCatalogBoolean(json: JSONObject, key: String): Boolean =
+        (json.get(key) as? Boolean) ?: error("ข้อมูลสถานะ POS ออฟไลน์ไม่ถูกต้อง: $key")
+
+    private fun strictOptionalCatalogBoolean(json: JSONObject, key: String, default: Boolean): Boolean =
+        if (json.has(key)) strictCatalogBoolean(json, key) else default
+
+    private fun strictDraftPrice(json: JSONObject, key: String): Double {
+        // Reject strings, booleans and null rather than allowing JSONObject.getDouble coercion.
+        val raw = json.opt(key)
+        check(raw is Number) { "ราคาสินค้าร่าง POS ไม่ถูกต้อง: $key" }
+        return raw.toDouble().also {
+            check(it.isFinite() && it >= 0) { "ราคาสินค้าร่าง POS ไม่ถูกต้อง: $key" }
+        }
     }
 
     private fun strictCatalogTimestamp(json: JSONObject): Long {
@@ -308,9 +336,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                     else -> error("จำนวนสินค้าร่าง POS ไม่ถูกต้อง")
                 }
                 PosOfflineDraftItem(item.getString("product_id"), item.getString("name"),
-                    item.getDouble("price"), quantity,
+                    strictDraftPrice(item, "price"), quantity,
                     (0 until requests.length()).map(requests::getString),
-                    basePriceSnapshot = item.optDouble("base_price", item.getDouble("price")),
+                    basePriceSnapshot = if (item.has("base_price")) strictDraftPrice(item, "base_price") else strictDraftPrice(item, "price"),
                     optionsJson = canonicalPosOptionJson((item.optJSONObject("options") ?: JSONObject()).toString()),
                     optionLabel = item.optString("option_label", ""))
             })
