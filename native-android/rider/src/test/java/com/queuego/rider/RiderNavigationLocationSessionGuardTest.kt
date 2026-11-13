@@ -29,6 +29,17 @@ class RiderNavigationLocationSessionGuardTest {
         assertFalse(allowed(bindingCurrent = false))
     }
 
+    @Test fun blankSessionUserOrOrderCannotUpload() {
+        assertFalse(allowed(boundUser = ""))
+        assertFalse(allowed(currentUser = ""))
+        assertFalse(allowed(boundSession = ""))
+        assertFalse(allowed(currentSession = ""))
+        assertFalse(allowed(orderId = ""))
+        assertFalse(allowed(orderId = "   "))
+        assertFalse(allowed(boundUser = " ", currentUser = " "))
+        assertFalse(allowed(boundSession = " ", currentSession = " "))
+    }
+
     @Test fun revokedGpsOrInactiveJobCannotUpload() {
         assertFalse(allowed(gps = false))
         assertFalse(allowed(ready = false))
