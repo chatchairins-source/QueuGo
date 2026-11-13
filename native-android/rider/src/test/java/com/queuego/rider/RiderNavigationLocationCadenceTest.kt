@@ -65,6 +65,14 @@ class RiderNavigationLocationCadenceTest {
     }
 
     @Test
+    fun foregroundDispatchCannotRenewReadyLeaseWithoutLocationPermission() {
+        assertEquals(false, riderNavigationForegroundReady(true, false))
+        assertEquals(false, riderNavigationForegroundReady(false, true))
+        assertEquals(false, riderNavigationForegroundReady(false, false))
+        assertTrue(riderNavigationForegroundReady(true, true))
+    }
+
+    @Test
     fun dispatchGpsPermissionAllowsFineOrCoarseButNeverNeither() {
         assertTrue(riderNavigationPermissionGranted(fineGranted = true, coarseGranted = true))
         assertTrue(riderNavigationPermissionGranted(fineGranted = true, coarseGranted = false))
