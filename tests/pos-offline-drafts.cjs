@@ -162,6 +162,14 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   }
   const legacyBill=await api.save({...first,id:'draft-legacy-generated-bill',requestId:undefined});
   ok(typeof legacyBill.requestId==='string'&&legacyBill.requestId.length>0,'legacy draft without bill request ID receives a generated key');
+  // Colon-delimited scope keys used to alias different shop/actor combinations.
+  const colonA={shopId:'shop:cashier',actorId:'one',deviceId:scope.deviceId};
+  const colonB={shopId:'shop',actorId:'cashier:one',deviceId:scope.deviceId};
+  await api.saveCatalog(colonA,[{id:'only-a',name:'A',price:10,stock:1}],[]);
+  await api.saveCatalog(colonB,[{id:'only-b',name:'B',price:20,stock:2}],[]);
+  eq((await api.getCatalog(colonA)).products.map(p=>p.id),['only-a'],'catalog scope A must not be overwritten by colon-colliding scope B');
+  eq((await api.getCatalog(colonB)).products.map(p=>p.id),['only-b'],'catalog scope B must retain its own product snapshot');
+  eq((await reopened.api.getCatalog(colonA)).products.map(p=>p.id),['only-a'],'scope isolation persists across POS tabs');
   // Another tab can delete/recreate the IndexedDB database; a closed connection must not be reused.
   await new Promise((resolve,reject)=>{
     const deletion=indexedDB.deleteDatabase('queuego-pos-offline-drafts-v1');
