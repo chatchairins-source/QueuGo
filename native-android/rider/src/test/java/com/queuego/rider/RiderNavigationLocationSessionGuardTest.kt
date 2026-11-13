@@ -1,0 +1,37 @@
+package com.queuego.rider
+
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class RiderNavigationLocationSessionGuardTest {
+    private fun allowed(
+        boundUser: String = "rider-a",
+        boundSession: String = "session-a",
+        currentUser: String = "rider-a",
+        currentSession: String = "session-a",
+        ready: Boolean = true,
+        orderId: String? = "order-a",
+        gps: Boolean = true,
+        bindingCurrent: Boolean = true
+    ) = riderNavigationLocationUpdateEligible(
+        boundUser, boundSession, currentUser, currentSession,
+        ready, orderId, gps, bindingCurrent
+    )
+
+    @Test fun validActiveNavigationCanUpload() {
+        assertTrue(allowed())
+    }
+
+    @Test fun accountOrSessionSwitchCannotUploadOldCallback() {
+        assertFalse(allowed(currentUser = "rider-b"))
+        assertFalse(allowed(currentSession = "session-b"))
+        assertFalse(allowed(bindingCurrent = false))
+    }
+
+    @Test fun revokedGpsOrInactiveJobCannotUpload() {
+        assertFalse(allowed(gps = false))
+        assertFalse(allowed(ready = false))
+        assertFalse(allowed(orderId = null))
+    }
+}
