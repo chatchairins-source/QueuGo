@@ -19,6 +19,36 @@ class RiderNavigationLocationSessionGuardTest {
         ready, orderId, gps, bindingCurrent
     )
 
+
+    private fun foregroundAllowed(
+        boundUser: String = "rider-a",
+        boundSession: String = "session-a",
+        currentUser: String = "rider-a",
+        currentSession: String = "session-a",
+        bindingCurrent: Boolean = true
+    ) = riderNavigationForegroundSessionEligible(
+        boundUser, boundSession, currentUser, currentSession, bindingCurrent
+    )
+
+    @Test fun validForegroundSessionCanSyncDispatchPreference() {
+        assertTrue(foregroundAllowed())
+    }
+
+    @Test fun staleForegroundBindingOrAccountSwitchCannotSyncDispatchPreference() {
+        assertFalse(foregroundAllowed(bindingCurrent = false))
+        assertFalse(foregroundAllowed(currentUser = "rider-b"))
+        assertFalse(foregroundAllowed(currentSession = "session-b"))
+    }
+
+    @Test fun blankForegroundIdentityCannotSyncDispatchPreference() {
+        assertFalse(foregroundAllowed(boundUser = ""))
+        assertFalse(foregroundAllowed(boundSession = " "))
+        assertFalse(foregroundAllowed(currentUser = ""))
+        assertFalse(foregroundAllowed(currentSession = " "))
+        assertFalse(foregroundAllowed(boundUser = " ", currentUser = " "))
+        assertFalse(foregroundAllowed(boundSession = " ", currentSession = " "))
+    }
+
     @Test fun validActiveNavigationCanUpload() {
         assertTrue(allowed())
     }
