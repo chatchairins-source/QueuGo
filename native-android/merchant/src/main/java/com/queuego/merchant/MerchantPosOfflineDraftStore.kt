@@ -153,6 +153,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 existing.getString("shop_id") == catalog.shopId) {
                 "แคตตาล็อก POS ไม่ตรงกับบัญชี ร้านค้า หรืออุปกรณ์นี้"
             }
+            val storedShopName = existing.optString("shop_name", "")
+            check(storedShopName.isNotBlank() && storedShopName.length <= 200) {
+                "ชื่อร้านค้า POS ออฟไลน์ไม่ถูกต้อง"
+            }
             // A delayed offline refresh must never replace a newer catalog snapshot.
             check(existing.getLong("saved_at_ms") >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
             val existingSavedAtMs = existing.getLong("saved_at_ms")
