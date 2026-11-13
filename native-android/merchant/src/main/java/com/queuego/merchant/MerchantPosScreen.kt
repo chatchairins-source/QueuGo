@@ -2743,10 +2743,9 @@ private fun PosCounterView(
         }
         Spacer(Modifier.height(28.dp))
     }
-    val checkout: @Composable () -> Unit = {
-        if (selectedBill != null && canClose &&
-            (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED"))
-        ) {
+    val checkout: @Composable () -> Unit = checkout@{
+        if (selectedBill == null) return@checkout
+        if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED"))) {
             Button(
                 onClick = onPay,
                 enabled = !busy,
