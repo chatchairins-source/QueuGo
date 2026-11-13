@@ -45,6 +45,17 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     {id:'stock-missing',name:'สินค้าไม่ติดตามสต็อก',price:20,pos_price:20}
   ],[]);
   eq((await api.getCatalog(scope)).products.map(p=>[p.id,p.stock]),[['stock-valid',3],['stock-zero',0],['stock-missing',0]],'offline catalog rejects negative/nonfinite stock and preserves zero or absent stock');
+  // Boolean API fields must not silently coerce into monetary or inventory quantities.
+  await api.saveCatalog(scope,[
+    {id:'bool-price',name:'bad',price:true,pos_price:20,stock:2},
+    {id:'bool-pos-price',name:'bad',price:20,pos_price:false,stock:2},
+    {id:'bool-stock',name:'bad',price:20,pos_price:20,stock:true},
+    {id:'numeric-string',name:'valid',price:'20',pos_price:'25',stock:'3'},
+    {id:'zero-stock',name:'valid',price:0,pos_price:0,stock:0}
+  ],[]);
+  eq((await api.getCatalog(scope)).products.map(p=>[p.id,p.price,p.pos_price,p.stock]),[
+    ['numeric-string',20,25,3],['zero-stock',0,0,0]
+  ],'boolean price/POS price/stock are rejected rather than coerced to 0 or 1; valid numeric strings and zero remain supported');
   await api.saveCatalog(scope,[{id:'p1',name:'ชาไทย',price:30,pos_price:35,available:true,pos_available:true}],[
     null,undefined,7,[],{id:'table-1',label:'โต๊ะ 1',active:true},{id:'',label:'ไม่มีรหัส',active:true},{id:'table-2',label:'โต๊ะ 2',active:false}
   ]);
