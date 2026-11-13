@@ -20,7 +20,7 @@ WITH funcs AS (
  FROM funcs
 )
 SELECT proname AS function_name, arguments, anon_execute, authenticated_execute,
-       search_path_configured, dynamic_sql_signal, set_config_signal,
+       search_path_configured, temp_schema_first_signal, dynamic_sql_signal, set_config_signal,
        auth_signal, concurrency_signal
 FROM signals
 WHERE anon_execute OR authenticated_execute
