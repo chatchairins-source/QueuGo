@@ -25,6 +25,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -72,6 +73,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -2384,6 +2386,11 @@ private fun PosTabs(
     HorizontalDivider(color = Color(0xFFE8EBEF))
 }
 
+private val PosCounterRed = Color(0xFFC81025)
+private val PosCounterTint = Color(0xFFFBECEF)
+private val PosCounterBackground = Color(0xFFFAF6F7)
+private val PosCounterBorder = Color(0xFFE9DFE2)
+
 @Composable
 private fun PosCounterView(
     snapshot: PosSnapshot,
@@ -2433,7 +2440,7 @@ private fun PosCounterView(
 ) {
     val openBills = snapshot.bills.filter { it.open }
     val lines = selectedBill?.let { snapshot.linesByOrder[it.id].orEmpty() }.orEmpty()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+    val catalog: @Composable () -> Unit = {
         if (pendingCreate) {
             Surface(
                 color = Color(0xFFFFF5E8),
@@ -2581,7 +2588,7 @@ private fun PosCounterView(
                                 Column {
                                     QgRemoteImage(
                                         product.image,
-                                        Modifier.fillMaxWidth().height(if (menuColumns >= 3) 100.dp else 106.dp),
+                                        Modifier.fillMaxWidth().aspectRatio(4f / 3f).clip(RoundedCornerShape(12.dp)),
                                         product.name
                                     )
                                     Spacer(Modifier.height(8.dp))
@@ -2591,9 +2598,19 @@ private fun PosCounterView(
                                         fontSize = 13.sp,
                                         maxLines = 2
                                     )
-                                    Text("฿" + money(product.price),
-                                        color = QgRed, fontSize = 16.sp,
-                                        fontWeight = FontWeight.ExtraBold)
+                                    Row(
+                                        Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text("฿" + money(product.price), Modifier.weight(1f),
+                                            color = PosCounterRed, fontSize = 16.sp,
+                                            fontWeight = FontWeight.ExtraBold)
+                                        if (canReceive && !posProductSoldOut(product)) {
+                                            Surface(shape = RoundedCornerShape(7.dp), color = PosCounterRed) {
+                                                Text("+", Modifier.padding(horizontal = 7.dp), color = Color.White)
+                                            }
+                                        }
+                                    }
                                     if (posProductInventoryTracked(product)) {
                                         Text(
                                             if (posProductSoldOut(product)) "สินค้าหมดสต็อก · เหลือ 0" else "เหลือ ${product.stock}",
@@ -2621,6 +2638,8 @@ private fun PosCounterView(
             QgCard(Modifier.fillMaxWidth()) { Text("ไม่พบสินค้าที่ขายหน้าร้าน", color = QgMuted) }
         }
 
+    }
+    val cartDetails: @Composable () -> Unit = {
         if (selectedBill != null) {
             Spacer(Modifier.height(10.dp))
             QgCard(Modifier.fillMaxWidth()) {
@@ -2660,7 +2679,7 @@ private fun PosCounterView(
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(Modifier.weight(1f))
-                        Text("฿" + money(selectedBill.total), color = QgRed, fontWeight = FontWeight.Black)
+                        Text("฿" + money(selectedBill.total), color = PosCounterRed, fontWeight = FontWeight.Black)
                     }
                 }
             }
@@ -2687,11 +2706,6 @@ private fun PosCounterView(
                         Text("ส่วนลด")
                     }
                 }
-                if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED"))) {
-                    Button(onClick = onPay, enabled = !busy, modifier = Modifier.weight(1f)) {
-                        Text("คิดเงิน")
-                    }
-                }
                 if (canCancel) {
                     OutlinedButton(onClick = onCancel, enabled = !busy, modifier = Modifier.weight(1f)) {
                         Text("ยกเลิกบิล")
@@ -2700,6 +2714,8 @@ private fun PosCounterView(
             }
         }
 
+    }
+    val openBillsList: @Composable () -> Unit = {
         Spacer(Modifier.height(16.dp))
         QgSectionTitle("บิลที่ยังไม่ปิด")
         Spacer(Modifier.height(7.dp))
@@ -2727,6 +2743,79 @@ private fun PosCounterView(
             }
         }
         Spacer(Modifier.height(28.dp))
+    }
+    val checkout: @Composable () -> Unit = checkout@{
+        if (selectedBill == null) return@checkout
+        if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED"))) {
+            Button(
+                onClick = onPay,
+                enabled = !busy,
+                colors = ButtonDefaults.buttonColors(containerColor = PosCounterRed),
+                shape = RoundedCornerShape(10.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            ) {
+                Text("ชำระเงิน", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+
+    var cartExpanded by rememberSaveable { mutableStateOf(false) }
+    BoxWithConstraints(Modifier.fillMaxSize().background(PosCounterBackground)) {
+        if (maxWidth >= 760.dp && maxWidth > maxHeight) {
+            Row(Modifier.fillMaxSize().padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                    catalog()
+                    openBillsList()
+                }
+                Surface(
+                    modifier = Modifier.width(300.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, PosCounterBorder)
+                ) {
+                    Column(Modifier.padding(10.dp)) {
+                        if (selectedBill == null) Text("รายการในบิล", fontWeight = FontWeight.Bold)
+                        Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                            cartDetails()
+                        }
+                        checkout()
+                    }
+                }
+            }
+        } else {
+            val cartDetailsHeight = maxHeight * 0.45f
+            Column(Modifier.fillMaxSize().padding(horizontal = 10.dp)) {
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState())) {
+                    catalog()
+                    openBillsList()
+                }
+                if (selectedBill != null) {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, PosCounterBorder),
+                        color = Color.White
+                    ) {
+                        Column(Modifier.padding(8.dp)) {
+                            TextButton(
+                                onClick = { cartExpanded = !cartExpanded },
+                                colors = ButtonDefaults.textButtonColors(containerColor = PosCounterTint, contentColor = PosCounterRed),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            ) {
+                                Text("รายการในบิล (" + lines.sumOf { it.quantity } + ")")
+                                Spacer(Modifier.weight(1f))
+                                Text("฿" + money(selectedBill.total) + if (cartExpanded) " ▾" else " ▴")
+                            }
+                            if (cartExpanded) {
+                                Column(Modifier.heightIn(max = cartDetailsHeight).verticalScroll(rememberScrollState())) {
+                                    cartDetails()
+                                }
+                            }
+                            checkout()
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -3433,11 +3522,20 @@ private fun PosReportsView(
 ) {
     val paid = snapshot.bills.filter { it.paymentStatus == "PAID" }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("รายได้ทั้งหมด")
+        QgSectionTitle("ยอดขายและสินค้าขายดี")
         Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(1 to "วันนี้", 7 to "7 วัน", 30 to "30 วัน").forEach { (value, label) ->
-                PosChoiceButton(label, days == value) { onDays(value) }
+                val active = days == value
+                OutlinedButton(
+                    onClick = { onDays(value) },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { selected = active },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (active) PosCounterRed else Color.White,
+                        contentColor = if (active) Color.White else PosCounterRed
+                    )
+                ) { Text(label) }
             }
         }
         Spacer(Modifier.height(9.dp))
@@ -3445,19 +3543,30 @@ private fun PosReportsView(
             val changeLabel = report.changePercent?.let {
                 (if (it > 0) "+" else "") + it.toString() + "%"
             } ?: "ไม่มีข้อมูลช่วงก่อน"
-            QgCard(Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    PosReportLine("ทานที่ร้าน", report.dineIn)
-                    PosReportLine("รับกลับ", report.takeaway)
-                    HorizontalDivider()
-                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
-                    Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
-                    PosReportLine("เฉลี่ยต่อบิล", report.averageTicket)
-                    PosReportLine("รับเงินสด", report.cashSales)
-                    PosReportLine("ส่วนลด", report.discounts)
-                    PosReportLine("คืนเงิน", report.refunds)
-                    Text("ยกเลิกบิล " + report.voids, color = QgMuted, fontSize = 11.sp)
-                    Text("เทียบช่วงก่อน: " + changeLabel, color = QgMuted, fontSize = 11.sp)
+            val metrics = listOf(
+                "ทานที่ร้าน" to ("฿" + money(report.dineIn)),
+                "รับกลับ" to ("฿" + money(report.takeaway)),
+                "ยอดขายรวม" to ("฿" + money(report.dineIn + report.takeaway)),
+                "จำนวนบิล" to report.orders.toString(),
+                "เฉลี่ยต่อบิล" to ("฿" + money(report.averageTicket)),
+                "รับเงินสด" to ("฿" + money(report.cashSales)),
+                "ส่วนลด" to ("฿" + money(report.discounts)),
+                "คืนเงิน" to ("฿" + money(report.refunds)),
+                "ยกเลิกบิล" to report.voids.toString(),
+                "เทียบช่วงก่อน" to changeLabel
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                metrics.chunked(2).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { (label, amount) ->
+                            QgCard(Modifier.weight(1f)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    Text(label, color = QgMuted, fontSize = 12.sp)
+                                    Text(amount, color = PosCounterRed, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -3796,14 +3905,6 @@ private fun PosChoiceButton(
         Button(onClick = onClick, modifier = modifier) { Text(label, fontSize = 11.sp) }
     } else {
         OutlinedButton(onClick = onClick, modifier = modifier) { Text(label, fontSize = 11.sp) }
-    }
-}
-
-@Composable
-private fun PosReportLine(label: String, value: Double, strong: Boolean = false) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(label, Modifier.weight(1f), fontWeight = if (strong) FontWeight.Black else FontWeight.Normal)
-        Text("฿" + money(value), fontWeight = if (strong) FontWeight.Black else FontWeight.Bold)
     }
 }
 
