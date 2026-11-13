@@ -1,0 +1,16 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const sql = fs.readFileSync(path.join(__dirname, '../scripts/sql/audit-pos-payment-unique-indexes.sql'), 'utf8');
+assert.match(sql, /FROM pg_class c\s+JOIN pg_namespace n/i);
+assert.match(sql, /JOIN pg_index i ON i\.indrelid\s*=\s*t\.table_oid/i);
+assert.match(sql, /i\.indisunique/i);
+assert.match(sql, /i\.indisvalid/i);
+assert.match(sql, /unique_request_reference_signal/i);
+assert.match(sql, /ILIKE '%payment%'/i);
+assert.match(sql, /ILIKE '%refund%'/i);
+assert.doesNotMatch(sql, /\b(?:INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|CREATE|GRANT|REVOKE)\s+(?:INTO\s+|TABLE\s+|INDEX\s+)?[a-z_]+/i);
+assert.doesNotMatch(sql, /SELECT\s+\*/i);
+console.log('POS payment uniqueness inventory read-only contract: passed');
