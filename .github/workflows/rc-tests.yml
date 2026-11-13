@@ -23,7 +23,9 @@ concurrency:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Playwright 1.58 WebKit does not support the ubuntu-26.04 image selected by ubuntu-latest.
+    # Pin the supported LTS image; keep all browser tests enabled.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -34,6 +36,8 @@ jobs:
           node-version: '22'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Verify RC WebKit runner and browser gates
+        run: node tests/rc-webkit-runner-contract.cjs
       - run: npm test
       - name: Install WebKit for complete Merchant mobile boot checks
         run: npx playwright-core install --with-deps webkit
