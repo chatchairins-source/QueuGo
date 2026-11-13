@@ -75,4 +75,14 @@ class RiderNavigationLocationSessionGuardTest {
         assertFalse(allowed(ready = false))
         assertFalse(allowed(orderId = null))
     }
+    @Test fun suspendedNavigationCannotResumeAfterLogoutOrAccountSwitch() {
+        assertTrue(riderNavigationResumeSessionEligible("rider-a", "session-a", "rider-a", "session-a", true))
+        assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", null, null, true))
+        assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", "rider-b", "session-a", true))
+        assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", "rider-a", "session-b", true))
+        assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", "rider-a", "session-a", false))
+        assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", " ", "session-a", true))
+        assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", "rider-a", " ", true))
+    }
+
 }
