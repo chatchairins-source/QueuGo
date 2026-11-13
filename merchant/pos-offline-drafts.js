@@ -18,24 +18,28 @@
     if(!dbTask)dbTask=new Promise((resolve,reject)=>{
       const request=window.indexedDB.open(DB_NAME,2);
       request.onupgradeneeded=()=>{const db=request.result;if(!db.objectStoreNames.contains(STORE))db.createObjectStore(STORE,{keyPath:'id'});if(!db.objectStoreNames.contains('catalogs'))db.createObjectStore('catalogs',{keyPath:'key'})};
-      request.onsuccess=()=>{const db=request.result;db.onversionchange=()=>db.close();resolve(db)};
+      request.onsuccess=()=>{const db=request.result;db.onversionchange=()=>{db.close();dbTask=null};resolve(db)};
       request.onerror=()=>{dbTask=null;reject(request.error||Error('เปิดที่เก็บร่าง POS ไม่สำเร็จ'))};
       request.onblocked=()=>{dbTask=null;reject(Error('ปิดแท็บ POS ที่ค้างอยู่แล้วลองใหม่'))};
     });
     return dbTask;
   }
   function scopeValid(s){return Boolean(s&&typeof s.shopId==='string'&&s.shopId&&typeof s.actorId==='string'&&s.actorId&&typeof s.deviceId==='string'&&s.deviceId)}
-  const scopeKey=s=>[s.shopId,s.actorId,s.deviceId].join(':');
+  const scopeKey=s=>JSON.stringify([s.shopId,s.actorId,s.deviceId]);
+  const legacyScopeKey=s=>[s.shopId,s.actorId,s.deviceId].join(':');
   function rememberShop(scope){if(!scopeValid(scope))throw Error('ขอบเขตร้าน POS ไม่ถูกต้อง');localStorage.setItem(LAST_SHOP_PREFIX+scope.actorId+':'+scope.deviceId,scope.shopId)}
   function lastShop(actorId,device){if(!actorId||!device)return null;try{return localStorage.getItem(LAST_SHOP_PREFIX+actorId+':'+device)||null}catch(_){return null}}
   function clean(d){
     if(!d||typeof d.id!=='string'||!d.id||!scopeValid(d)||!['DINE_IN','TAKEAWAY'].includes(d.type)||!Array.isArray(d.items)||!d.items.length||d.items.length>100)throw Error('ข้อมูลร่าง POS ไม่ถูกต้อง');
     const items=d.items.map(i=>{
       if(!i||typeof i.productId!=='string'||!i.productId||!Number.isInteger(i.quantity)||i.quantity<1||i.quantity>99||!Number.isFinite(i.priceSnapshot)||i.priceSnapshot<0||!Number.isFinite(i.basePriceSnapshot)||i.basePriceSnapshot<0||typeof i.nameSnapshot!=='string'||i.nameSnapshot.length>200||!i.options||typeof i.options!=='object'||Array.isArray(i.options)||Object.keys(i.options).length>30)throw Error('รายการสินค้าในร่างไม่ถูกต้อง');
-      const options={};for(const [key,value]of Object.entries(i.options)){if(!/^[a-zA-Z0-9_-]{1,100}$/.test(key)||!(typeof value==='string'||(Array.isArray(value)&&value.length<=30&&value.every(x=>typeof x==='string'&&x.length<=100))))throw Error('ตัวเลือกสินค้าในร่างไม่ถูกต้อง');options[key]=Array.isArray(value)?[...value]:value}
-      const requestIds=Array.isArray(i.requestIds)?i.requestIds.slice(0,i.quantity):[];if(requestIds.length&&requestIds.length!==i.quantity)throw Error('รหัสส่งร่าง POS ไม่ครบ');if(requestIds.some(x=>typeof x!=='string'||x.length>100)||new Set(requestIds).size!==requestIds.length)throw Error('รหัสส่งร่าง POS ไม่ถูกต้อง');
+      const options={};for(const [key,value]of Object.entries(i.options)){if(!/^[a-zA-Z0-9_-]{1,100}$/.test(key)||!((typeof value==='string'&&value.length<=100)||(Array.isArray(value)&&value.length<=30&&value.every(x=>typeof x==='string'&&x.length<=100))))throw Error('ตัวเลือกสินค้าในร่างไม่ถูกต้อง');options[key]=Array.isArray(value)?[...value]:value}
+      if(i.requestIds!=null&&!Array.isArray(i.requestIds))throw Error('รหัสส่งร่าง POS ไม่ถูกต้อง');const requestIds=Array.isArray(i.requestIds)?[...i.requestIds]:[];if(requestIds.length&&requestIds.length!==i.quantity)throw Error('รหัสส่งร่าง POS ไม่ครบ');if(requestIds.some(x=>typeof x!=='string'||!x.trim()||x.length>100)||new Set(requestIds).size!==requestIds.length)throw Error('รหัสส่งร่าง POS ไม่ถูกต้อง');
       return {productId:i.productId,quantity:i.quantity,priceSnapshot:i.priceSnapshot,basePriceSnapshot:i.basePriceSnapshot,nameSnapshot:i.nameSnapshot,options,optionLabel:String(i.optionLabel||'').slice(0,300),requestIds};
     });
+    const replayIds=items.flatMap(i=>i.requestIds);if(new Set(replayIds).size!==replayIds.length)throw Error('รหัสส่งร่าง POS ซ้ำระหว่างรายการสินค้า');
+    if(d.requestId!=null&&(typeof d.requestId!=='string'||!d.requestId.trim()||d.requestId.length>100))throw Error('รหัสสร้างบิล POS ไม่ถูกต้อง');
+    if(typeof d.requestId==='string'&&replayIds.includes(d.requestId))throw Error('รหัสสร้างบิล POS ซ้ำกับรหัสรายการสินค้า');
     return {id:d.id,shopId:d.shopId,actorId:d.actorId,deviceId:d.deviceId,type:d.type,tableId:d.type==='DINE_IN'?(typeof d.tableId==='string'?d.tableId:null):null,requestId:typeof d.requestId==='string'&&d.requestId?d.requestId:uuid(),status:'NOT_SUBMITTED',createdAt:typeof d.createdAt==='string'?d.createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),items};
   }
   async function save(draft){
@@ -53,15 +57,15 @@
   }
   async function saveCatalog(scope,products,tables){
     if(!scopeValid(scope)||!Array.isArray(products)||products.length>20000||!Array.isArray(tables)||tables.length>300)throw Error('แคตตาล็อก POS สำหรับออฟไลน์ไม่ถูกต้อง');
-    const cleanVariants=value=>{if(!Array.isArray(value))return[];return value.slice(0,30).flatMap(g=>{if(typeof g==='string')return[String(g).slice(0,100)];if(!g||g.schema!=='queuego.menu-options.v1'||!Array.isArray(g.options))return[];return[{schema:g.schema,key:String(g.key||'').slice(0,100),name:String(g.name||'').slice(0,120),type:g.type==='multi'?'multi':'single',required:g.required===true,min:Number.isInteger(g.min)?g.min:null,max:Number.isInteger(g.max)?g.max:null,options:g.options.slice(0,100).map(o=>({key:String(o.key||'').slice(0,100),name:String(o.name||'').slice(0,120),price_delta:Number(o.price_delta??o.price??0)})).filter(o=>o.key&&Number.isFinite(o.price_delta))}]})};
-    const safeProducts=products.map(p=>({id:String(p.id||''),name:String(p.name||'').slice(0,200),price:Number(p.price),pos_price:p.pos_price==null?null:Number(p.pos_price),available:p.available===true,pos_available:p.pos_available===true,variants:cleanVariants(p.variants),inventory_stock_tracking:p.inventory_stock_tracking===true,grocery_master_id:p.grocery_master_id||null,grocery_stock_tracking:p.grocery_stock_tracking===true,stock:Number(p.stock||0)})).filter(p=>p.id&&Number.isFinite(p.price));
-    const safeTables=tables.map(t=>({id:String(t.id||''),label:String(t.label||'').slice(0,100),active:t.active===true})).filter(t=>t.id);
+    const cleanVariants=value=>{if(!Array.isArray(value))return[];return value.slice(0,30).flatMap(g=>{if(typeof g==='string')return[String(g).slice(0,100)];if(!g||g.schema!=='queuego.menu-options.v1'||!Array.isArray(g.options))return[];return[{schema:g.schema,key:String(g.key||'').slice(0,100),name:String(g.name||'').slice(0,120),type:g.type==='multi'?'multi':'single',required:g.required===true,min:Number.isInteger(g.min)?g.min:null,max:Number.isInteger(g.max)?g.max:null,options:g.options.slice(0,100).filter(o=>o&&typeof o==='object'&&!Array.isArray(o)&&['number','string'].includes(typeof(o.price_delta??o.price??0))&&!(typeof(o.price_delta??o.price??0)==='string'&&!(o.price_delta??o.price??0).trim())).map(o=>({key:String(o.key||'').slice(0,100),name:String(o.name||'').slice(0,120),price_delta:Number(o.price_delta??o.price??0)})).filter(o=>o.key&&Number.isFinite(o.price_delta))}]})};
+    const safeProducts=products.filter(p=>p&&typeof p==='object'&&!Array.isArray(p)&&['number','string'].includes(typeof p.price)&&(p.pos_price==null||['number','string'].includes(typeof p.pos_price))&&(p.stock==null||['number','string'].includes(typeof p.stock)&&!(typeof p.stock==='string'&&!p.stock.trim()))).map(p=>({id:String(p.id||''),name:String(p.name||'').slice(0,200),category:String(p.category??'').slice(0,120),price:p.price==null||typeof p.price==='string'&&!p.price.trim()?NaN:Number(p.price),pos_price:p.pos_price==null?null:typeof p.pos_price==='string'&&!p.pos_price.trim()?NaN:Number(p.pos_price),available:p.available===true,pos_available:p.pos_available===true,variants:cleanVariants(p.variants),inventory_stock_tracking:p.inventory_stock_tracking===true,grocery_master_id:p.grocery_master_id||null,grocery_stock_tracking:p.grocery_stock_tracking===true,stock:Number(p.stock??0)})).filter(p=>p.id&&Number.isFinite(p.price)&&p.price>=0&&(p.pos_price===null||(Number.isFinite(p.pos_price)&&p.pos_price>=0))&&Number.isFinite(p.stock)&&p.stock>=0);
+    const safeTables=tables.filter(t=>t&&typeof t==='object'&&!Array.isArray(t)).map(t=>({id:String(t.id||''),label:String(t.label||'').slice(0,100),active:t.active===true})).filter(t=>t.id);
     const db=await open(),value={key:scopeKey(scope),shopId:scope.shopId,actorId:scope.actorId,deviceId:scope.deviceId,products:safeProducts,tables:safeTables,savedAt:new Date().toISOString()};
     return new Promise((resolve,reject)=>{const tx=db.transaction('catalogs','readwrite');tx.objectStore('catalogs').put(value);tx.oncomplete=()=>resolve(value.savedAt);tx.onerror=()=>reject(tx.error||Error('บันทึกแคตตาล็อก POS ไม่สำเร็จ'))});
   }
   async function getCatalog(scope){
     if(!scopeValid(scope))return null;const db=await open();
-    return new Promise((resolve,reject)=>{const tx=db.transaction('catalogs','readonly'),request=tx.objectStore('catalogs').get(scopeKey(scope));request.onsuccess=()=>{const x=request.result;resolve(x&&x.shopId===scope.shopId&&x.actorId===scope.actorId&&x.deviceId===scope.deviceId?x:null)};request.onerror=()=>reject(request.error||Error('อ่านแคตตาล็อก POS ไม่สำเร็จ'))});
+    return new Promise((resolve,reject)=>{const tx=db.transaction('catalogs','readonly'),store=tx.objectStore('catalogs');const valid=x=>x&&x.shopId===scope.shopId&&x.actorId===scope.actorId&&x.deviceId===scope.deviceId;const request=store.get(scopeKey(scope));request.onsuccess=()=>{if(valid(request.result)){resolve(request.result);return}const legacy=store.get(legacyScopeKey(scope));legacy.onsuccess=()=>resolve(valid(legacy.result)?legacy.result:null);legacy.onerror=()=>reject(legacy.error||Error('อ่านแคตตาล็อก POS ไม่สำเร็จ'))};request.onerror=()=>reject(request.error||Error('อ่านแคตตาล็อก POS ไม่สำเร็จ'))});
   }
   async function remove(id,scope){
     if(typeof id!=='string'||!scopeValid(scope))return false;
