@@ -203,10 +203,11 @@ internal object RiderNavigationDispatchReadiness {
         // Re-read after network suspension so Stop-after-work/manual mode always wins.
         val latestAuto = RiderAcceptanceModeStore(context).autoAcceptEnabled(auth.user.id)
         val latestStop = RiderStopAfterWorkStore(context).pending(auth.user.id)
-        api.syncDispatchPreference(resumedAuth, latestAuto, latestStop,
-            riderNavigationResumeSessionEligible(bound.userId, bound.sessionId,
-                SessionStore(context).load()?.user?.id, SessionStore(context).load()?.session?.sessionId,
-                binding == bound) && riderNavigationHasLocationPermission(context) &&
+        val finalAuth = SessionStore(context).load()
+        if (!riderNavigationResumeSessionEligible(bound.userId, bound.sessionId,
+                finalAuth?.user?.id, finalAuth?.session?.sessionId, binding == bound)) return@withLock
+        api.syncDispatchPreference(finalAuth!!, latestAuto, latestStop,
+            riderNavigationHasLocationPermission(context) &&
                 riderNavigationDispatchLeaseEligible(bound.ready, latestAuto, latestStop, true,
                 auth.session.expiresAtMs - System.currentTimeMillis(), fixAgeMs()))
     }
