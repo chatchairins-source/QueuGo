@@ -18,6 +18,17 @@ internal fun riderNavigationPermissionGranted(fineGranted: Boolean, coarseGrante
 internal fun riderNavigationForegroundReady(requestedReady: Boolean, locationPermissionGranted: Boolean): Boolean =
     requestedReady && locationPermissionGranted
 
+/** Reject stale or unauthenticated foreground callbacks before renewing dispatch preferences. */
+internal fun riderNavigationForegroundSessionEligible(
+    boundUserId: String,
+    boundSessionId: String,
+    currentUserId: String,
+    currentSessionId: String,
+    bindingStillCurrent: Boolean
+): Boolean = bindingStillCurrent && boundUserId.isNotBlank() && boundSessionId.isNotBlank() &&
+    currentUserId.isNotBlank() && currentSessionId.isNotBlank() &&
+    boundUserId == currentUserId && boundSessionId == currentSessionId
+
 internal fun riderNavigationHasLocationPermission(context: Context): Boolean =
     riderNavigationPermissionGranted(
         context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -102,7 +113,10 @@ internal object RiderNavigationDispatchReadiness {
 
     suspend fun syncForeground(context: Context, api: QueueGoApi, auth: QueueGoAuth) = mutex.withLock {
         val bound = binding ?: return@withLock
-        if (bound.userId != auth.user.id || bound.sessionId != auth.session.sessionId) return@withLock
+        if (!riderNavigationForegroundSessionEligible(
+                bound.userId, bound.sessionId, auth.user.id, auth.session.sessionId,
+                binding == bound
+            )) return@withLock
         // Read stores inside the shared lock: a background request cannot restore an older toggle.
         api.syncDispatchPreference(auth,
             RiderAcceptanceModeStore(context).autoAcceptEnabled(auth.user.id),
