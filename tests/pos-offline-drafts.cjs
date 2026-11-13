@@ -36,6 +36,15 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     {id:'null-pos-price',name:'ไม่มีราคาหน้าร้าน',price:20,pos_price:null,available:true,pos_available:true}
   ],[]);
   eq((await api.getCatalog(scope)).products.map(p=>p.id),['valid-zero','null-pos-price'],'offline catalog rejects missing, blank and invalid price snapshots, permits nullable POS price and retains valid zero-price products');
+  await api.saveCatalog(scope,[
+    {id:'stock-valid',name:'สินค้าคงเหลือ',price:20,pos_price:20,stock:3,inventory_stock_tracking:true},
+    {id:'stock-zero',name:'สินค้าหมด',price:20,pos_price:20,stock:0,inventory_stock_tracking:true},
+    {id:'stock-negative',name:'สต็อกติดลบ',price:20,pos_price:20,stock:-1,inventory_stock_tracking:true},
+    {id:'stock-nan',name:'สต็อกเสีย',price:20,pos_price:20,stock:'invalid',inventory_stock_tracking:true},
+    {id:'stock-infinite',name:'สต็อกไม่จำกัดผิดรูป',price:20,pos_price:20,stock:Infinity,inventory_stock_tracking:true},
+    {id:'stock-missing',name:'สินค้าไม่ติดตามสต็อก',price:20,pos_price:20}
+  ],[]);
+  eq((await api.getCatalog(scope)).products.map(p=>[p.id,p.stock]),[['stock-valid',3],['stock-zero',0],['stock-missing',0]],'offline catalog rejects negative/nonfinite stock and preserves zero or absent stock');
   await api.saveCatalog(scope,[{id:'p1',name:'ชาไทย',price:30,pos_price:35,available:true,pos_available:true}],[
     null,undefined,7,[],{id:'table-1',label:'โต๊ะ 1',active:true},{id:'',label:'ไม่มีรหัส',active:true},{id:'table-2',label:'โต๊ะ 2',active:false}
   ]);
