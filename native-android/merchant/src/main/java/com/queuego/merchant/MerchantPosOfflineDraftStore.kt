@@ -206,8 +206,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         }
         val products = productArray.let { array -> (0 until array.length()).map { i ->
             val p = array.getJSONObject(i)
-            val price = p.getDouble("price")
-            val deliveryPrice = if (p.isNull("delivery_price")) null else p.getDouble("delivery_price")
+            val price = strictCatalogPrice(p, "price")
+            val deliveryPrice = if (!p.has("delivery_price") || p.isNull("delivery_price")) null
+                else strictCatalogPrice(p, "delivery_price")
             // optInt silently converts malformed strings/fractions to zero or truncates stock.
             // Preserve zero for older snapshots without this field, but reject corrupt values.
             val stock = when (val raw = p.opt("stock")) {
@@ -286,6 +287,15 @@ class MerchantPosOfflineDraftStore(private val root: File) {
 
     private fun strictOptionalCatalogBoolean(json: JSONObject, key: String, default: Boolean): Boolean =
         if (json.has(key)) strictCatalogBoolean(json, key) else default
+
+    private fun strictCatalogPrice(json: JSONObject, key: String): Double {
+        // JSONObject.getDouble accepts numeric strings; persisted catalog prices must be JSON numbers.
+        val raw = json.opt(key)
+        check(raw is Number) { "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง: $key" }
+        return raw.toDouble().also {
+            check(it.isFinite() && it >= 0) { "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง: $key" }
+        }
+    }
 
     private fun strictDraftPrice(json: JSONObject, key: String): Double {
         // Reject strings, booleans and null rather than allowing JSONObject.getDouble coercion.
