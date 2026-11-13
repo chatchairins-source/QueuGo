@@ -6,10 +6,16 @@ const sql = fs.readFileSync(path.join(__dirname, '../supabase/migrations/2026111
 const lock = sql.indexOf('for update;');
 const missingSession = sql.indexOf("if not found then raise exception");
 const validity = sql.indexOf('if v.revoked_at is not null or now()>=v.expires_at');
+const coordinateGuard = sql.indexOf('if p_lat is null or p_lng is null');
+const coordinateBounds = sql.indexOf('p_lat not between -90 and 90');
+const longitudeBounds = sql.indexOf('p_lng not between -180 and 180');
 const replayLookup = sql.indexOf('from public.qg_table_requests');
 const replayReturn = sql.indexOf("'reason','same_request'");
 const recentCartReturn = sql.indexOf("'reason','recent_same_cart'");
 assert.ok(lock > -1 && missingSession > lock, 'session row must be locked and identified');
+assert.ok(coordinateGuard > -1 && coordinateBounds > coordinateGuard && longitudeBounds > coordinateBounds && coordinateGuard < lock,
+  'missing or out-of-range coordinates must be rejected before session lock and replay');
+assert.match(sql, /jsonb_array_length\(p_items\) not between 1 and 50/, 'cart size must be bounded before replay');
 assert.ok(validity > missingSession && validity < replayLookup, 'session validity must precede replay lookup');
 assert.ok(replayReturn > validity && recentCartReturn > validity, 'both duplicate responses must follow session validity');
 assert.equal((sql.match(/if v\.revoked_at is not null or now\(\)>=v\.expires_at/g) || []).length, 1, 'only one validity guard');
