@@ -287,6 +287,15 @@ class MerchantPosOfflineDraftStore(private val root: File) {
     private fun strictOptionalCatalogBoolean(json: JSONObject, key: String, default: Boolean): Boolean =
         if (json.has(key)) strictCatalogBoolean(json, key) else default
 
+    private fun strictDraftPrice(json: JSONObject, key: String): Double {
+        // Reject strings, booleans and null rather than allowing JSONObject.getDouble coercion.
+        val raw = json.opt(key)
+        check(raw is Number) { "ราคาสินค้าร่าง POS ไม่ถูกต้อง: $key" }
+        return raw.toDouble().also {
+            check(it.isFinite() && it >= 0) { "ราคาสินค้าร่าง POS ไม่ถูกต้อง: $key" }
+        }
+    }
+
     private fun strictCatalogTimestamp(json: JSONObject): Long {
         // JSONObject.getLong silently truncates fractional values and coerces numeric strings.
         return when (val raw = json.opt("saved_at_ms")) {
@@ -327,9 +336,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                     else -> error("จำนวนสินค้าร่าง POS ไม่ถูกต้อง")
                 }
                 PosOfflineDraftItem(item.getString("product_id"), item.getString("name"),
-                    item.getDouble("price"), quantity,
+                    strictDraftPrice(item, "price"), quantity,
                     (0 until requests.length()).map(requests::getString),
-                    basePriceSnapshot = item.optDouble("base_price", item.getDouble("price")),
+                    basePriceSnapshot = if (item.has("base_price")) strictDraftPrice(item, "base_price") else strictDraftPrice(item, "price"),
                     optionsJson = canonicalPosOptionJson((item.optJSONObject("options") ?: JSONObject()).toString()),
                     optionLabel = item.optString("option_label", ""))
             })
