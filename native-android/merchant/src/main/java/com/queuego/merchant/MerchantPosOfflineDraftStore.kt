@@ -122,6 +122,12 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             it.stock >= 0 }) {
             "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
         }
+        require(catalog.products.map { it.id }.distinct().size == catalog.products.size) {
+            "รหัสสินค้า POS ออฟไลน์ซ้ำกัน"
+        }
+        require(catalog.tables.map { it.id }.distinct().size == catalog.tables.size) {
+            "รหัสโต๊ะ POS ออฟไลน์ซ้ำกัน"
+        }
         require(catalog.tables.all { it.id.isNotBlank() && it.label.isNotBlank() && it.label.length <= 100 }) {
             "ข้อมูลโต๊ะ POS ออฟไลน์ไม่ถูกต้อง"
         }
@@ -169,6 +175,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             check(existingSavedAtMs != catalog.savedAtMs || existing.similar(json)) {
                 "แคตตาล็อก POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
             }
+            // Validate the complete persisted snapshot before replacing it. Bounds and metadata
+            // checks alone miss corrupted prices, stock, table data and product option groups.
+            loadCatalog(catalog.actorId, catalog.deviceId)
             // Do not silently replace a malformed persisted catalog before it can be inspected.
             check(existing.getJSONArray("products").length() <= 20_000 &&
                 existing.getJSONArray("tables").length() <= 300) {
@@ -233,6 +242,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             PosTable(t.getString("id"), t.getString("label"), t.getBoolean("active"),
                 if (t.isNull("qr_token")) null else t.getString("qr_token"))
         } }
+        check(products.map { it.id }.distinct().size == products.size &&
+            tables.map { it.id }.distinct().size == tables.size) {
+            "แคตตาล็อก POS ออฟไลน์มีรหัสสินค้าหรือโต๊ะซ้ำกัน"
+        }
         // Persisted catalog metadata may have been tampered with after the atomic write.
         // Do not expose oversized or blank shop names as trusted offline UI data.
         val shopName = json.optString("shop_name", "ร้านค้า")
