@@ -226,7 +226,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
             }
             PosProduct(p.getString("id"), p.getString("name"), price,
-                if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
+                if (p.isNull("image")) null else p.getString("image"), strictCatalogBoolean(p, "available"),
                 p.optBoolean("delivery_available", true), deliveryPrice,
                 stock = stock,
                 inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
@@ -239,7 +239,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             val t = array.getJSONObject(i)
             check(t.getString("id").isNotBlank() && t.getString("label").isNotBlank() &&
                 t.getString("label").length <= 100) { "ข้อมูลโต๊ะ POS ออฟไลน์ไม่ถูกต้อง" }
-            PosTable(t.getString("id"), t.getString("label"), t.getBoolean("active"),
+            PosTable(t.getString("id"), t.getString("label"), strictCatalogBoolean(t, "active"),
                 if (t.isNull("qr_token")) null else t.getString("qr_token"))
         } }
         check(products.map { it.id }.distinct().size == products.size &&
@@ -280,6 +280,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             .joinToString("") { "%02x".format(it) }
         return File(root, "$hash.catalog.json")
     }
+
+    private fun strictCatalogBoolean(json: JSONObject, key: String): Boolean =
+        (json.get(key) as? Boolean) ?: error("ข้อมูลสถานะ POS ออฟไลน์ไม่ถูกต้อง: $key")
 
     private fun strictCatalogTimestamp(json: JSONObject): Long {
         // JSONObject.getLong silently truncates fractional values and coerces numeric strings.
