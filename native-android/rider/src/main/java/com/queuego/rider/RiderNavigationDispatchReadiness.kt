@@ -29,6 +29,17 @@ internal fun riderNavigationForegroundSessionEligible(
     currentUserId.isNotBlank() && currentSessionId.isNotBlank() &&
     boundUserId == currentUserId && boundSessionId == currentSessionId
 
+/** A suspended navigation request must not resume using a replaced login session. */
+internal fun riderNavigationResumeSessionEligible(
+    boundUserId: String,
+    boundSessionId: String,
+    currentUserId: String?,
+    currentSessionId: String?,
+    bindingStillCurrent: Boolean
+): Boolean = bindingStillCurrent && !currentUserId.isNullOrBlank() && !currentSessionId.isNullOrBlank() &&
+    boundUserId.isNotBlank() && boundSessionId.isNotBlank() &&
+    boundUserId == currentUserId && boundSessionId == currentSessionId
+
 internal fun riderNavigationHasLocationPermission(context: Context): Boolean =
     riderNavigationPermissionGranted(
         context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -178,7 +189,12 @@ internal object RiderNavigationDispatchReadiness {
             return@withLock
         }
         val job = api.notificationJob(auth, bound.orderId!!, bound.profileId!!)
-        if (binding != bound) return@withLock
+        // notificationJob suspends: a logout or account switch may occur while awaiting it.
+        val resumedAuth = SessionStore(context).load()
+        if (!riderNavigationResumeSessionEligible(
+                bound.userId, bound.sessionId, resumedAuth?.user?.id,
+                resumedAuth?.session?.sessionId, binding == bound
+            )) return@withLock
         if (job == null || job.id != bound.orderId || job.status !in setOf("rider_assigned", "preparing", "ready", "assigned", "picked_up", "in_progress")) {
             api.syncDispatchPreference(auth, auto, stop, false)
             return@withLock
@@ -187,8 +203,11 @@ internal object RiderNavigationDispatchReadiness {
         // Re-read after network suspension so Stop-after-work/manual mode always wins.
         val latestAuto = RiderAcceptanceModeStore(context).autoAcceptEnabled(auth.user.id)
         val latestStop = RiderStopAfterWorkStore(context).pending(auth.user.id)
-        api.syncDispatchPreference(auth, latestAuto, latestStop,
-            binding == bound && riderNavigationHasLocationPermission(context) &&
+        val finalAuth = SessionStore(context).load()
+        if (!riderNavigationResumeSessionEligible(bound.userId, bound.sessionId,
+                finalAuth?.user?.id, finalAuth?.session?.sessionId, binding == bound)) return@withLock
+        api.syncDispatchPreference(finalAuth!!, latestAuto, latestStop,
+            riderNavigationHasLocationPermission(context) &&
                 riderNavigationDispatchLeaseEligible(bound.ready, latestAuto, latestStop, true,
                 auth.session.expiresAtMs - System.currentTimeMillis(), fixAgeMs()))
     }
