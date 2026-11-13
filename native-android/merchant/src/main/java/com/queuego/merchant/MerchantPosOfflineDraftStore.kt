@@ -114,7 +114,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
     @Synchronized fun saveCatalog(catalog: PosOfflineCatalog) {
         requireUuid(catalog.actorId); requireUuid(catalog.shopId); requireUuid(catalog.deviceId)
         require(catalog.savedAtMs >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
-        require(catalog.shopName.length <= 200 && catalog.products.size <= 20_000 && catalog.tables.size <= 300)
+        require(catalog.shopName.isNotBlank() && catalog.shopName.length <= 200 &&\n            catalog.products.size <= 20_000 && catalog.tables.size <= 300)
         require(catalog.products.all { it.price.isFinite() && it.price >= 0 &&
             (it.deliveryPrice == null || (it.deliveryPrice.isFinite() && it.deliveryPrice >= 0)) &&
             it.stock >= 0 }) {
