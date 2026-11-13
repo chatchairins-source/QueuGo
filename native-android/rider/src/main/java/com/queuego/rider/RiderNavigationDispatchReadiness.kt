@@ -36,7 +36,9 @@ internal fun riderNavigationLocationUpdateEligible(
     orderId: String?,
     locationPermissionGranted: Boolean,
     bindingStillCurrent: Boolean
-): Boolean = bindingStillCurrent && locationPermissionGranted && boundReady && orderId != null &&
+): Boolean = bindingStillCurrent && locationPermissionGranted && boundReady &&
+    !orderId.isNullOrBlank() && boundUserId.isNotBlank() && boundSessionId.isNotBlank() &&
+    currentUserId.isNotBlank() && currentSessionId.isNotBlank() &&
     boundUserId == currentUserId && boundSessionId == currentSessionId
 
 internal fun riderNavigationLocationPushIntervalMs(distanceMeters: Double?): Long =
