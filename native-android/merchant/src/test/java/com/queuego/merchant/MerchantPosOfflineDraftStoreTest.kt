@@ -769,4 +769,59 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+
+    @Test fun rejectsCoercedOfflineCatalogTimestampsWithoutReplacingSnapshot() {
+        val root = Files.createTempDirectory("pos-catalog-malformed-time").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val catalog = PosOfflineCatalog(actor, shop, device, "ร้าน", 100L,
+                emptyList(), emptyList())
+            store.saveCatalog(catalog)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val original = file.readText()
+            for (invalid in listOf("100", 100.5, true, JSONObject.NULL)) {
+                val corrupted = JSONObject(original).put("saved_at_ms", invalid).toString()
+                file.writeText(corrupted)
+                assertThrows(Exception::class.java) { store.loadCatalog(actor, device) }
+                assertThrows(Exception::class.java) {
+                    store.saveCatalog(catalog.copy(savedAtMs = 101L))
+                }
+                assertEquals(corrupted, file.readText())
+            }
+            file.writeText(original)
+            assertEquals(100L, store.loadCatalog(actor, device)!!.savedAtMs)
+            store.saveCatalog(catalog.copy(savedAtMs = 101L))
+            assertEquals(101L, store.loadCatalog(actor, device)!!.savedAtMs)
+        } finally { root.deleteRecursively() }
+    }
+
+    @Test fun rejectsCoercedOfflineDraftTimestampsWithoutReplacingCart() {
+        val root = Files.createTempDirectory("pos-draft-malformed-time").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val originalDraft = draft(actor, shop, device).copy(savedAtMs = 100L)
+            store.save(originalDraft)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val original = file.readText()
+            for (invalid in listOf("100", 100.5, true, JSONObject.NULL, -1)) {
+                val corrupted = JSONObject(original).put("saved_at_ms", invalid).toString()
+                file.writeText(corrupted)
+                assertThrows(Exception::class.java) { store.loadForActor(actor, device) }
+                assertThrows(Exception::class.java) {
+                    store.save(originalDraft.copy(savedAtMs = 101L))
+                }
+                assertEquals(corrupted, file.readText())
+            }
+            file.writeText(original)
+            assertEquals(originalDraft, store.loadForActor(actor, device))
+            store.save(originalDraft.copy(savedAtMs = 101L))
+            assertEquals(101L, store.loadForActor(actor, device)!!.savedAtMs)
+        } finally { root.deleteRecursively() }
+    }
 }

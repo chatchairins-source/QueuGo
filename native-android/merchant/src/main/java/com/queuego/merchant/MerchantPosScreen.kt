@@ -73,6 +73,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -3521,11 +3522,20 @@ private fun PosReportsView(
 ) {
     val paid = snapshot.bills.filter { it.paymentStatus == "PAID" }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-        QgSectionTitle("รายได้ทั้งหมด")
+        QgSectionTitle("ยอดขายและสินค้าขายดี")
         Spacer(Modifier.height(8.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             listOf(1 to "วันนี้", 7 to "7 วัน", 30 to "30 วัน").forEach { (value, label) ->
-                PosChoiceButton(label, days == value) { onDays(value) }
+                val active = days == value
+                OutlinedButton(
+                    onClick = { onDays(value) },
+                    modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { selected = active },
+                    contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = if (active) PosCounterRed else Color.White,
+                        contentColor = if (active) Color.White else PosCounterRed
+                    )
+                ) { Text(label) }
             }
         }
         Spacer(Modifier.height(9.dp))
@@ -3533,19 +3543,30 @@ private fun PosReportsView(
             val changeLabel = report.changePercent?.let {
                 (if (it > 0) "+" else "") + it.toString() + "%"
             } ?: "ไม่มีข้อมูลช่วงก่อน"
-            QgCard(Modifier.fillMaxWidth()) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    PosReportLine("ทานที่ร้าน", report.dineIn)
-                    PosReportLine("รับกลับ", report.takeaway)
-                    HorizontalDivider()
-                    PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)
-                    Text("จำนวนบิล " + report.orders, color = QgMuted, fontSize = 11.sp)
-                    PosReportLine("เฉลี่ยต่อบิล", report.averageTicket)
-                    PosReportLine("รับเงินสด", report.cashSales)
-                    PosReportLine("ส่วนลด", report.discounts)
-                    PosReportLine("คืนเงิน", report.refunds)
-                    Text("ยกเลิกบิล " + report.voids, color = QgMuted, fontSize = 11.sp)
-                    Text("เทียบช่วงก่อน: " + changeLabel, color = QgMuted, fontSize = 11.sp)
+            val metrics = listOf(
+                "ทานที่ร้าน" to ("฿" + money(report.dineIn)),
+                "รับกลับ" to ("฿" + money(report.takeaway)),
+                "ยอดขายรวม" to ("฿" + money(report.dineIn + report.takeaway)),
+                "จำนวนบิล" to report.orders.toString(),
+                "เฉลี่ยต่อบิล" to ("฿" + money(report.averageTicket)),
+                "รับเงินสด" to ("฿" + money(report.cashSales)),
+                "ส่วนลด" to ("฿" + money(report.discounts)),
+                "คืนเงิน" to ("฿" + money(report.refunds)),
+                "ยกเลิกบิล" to report.voids.toString(),
+                "เทียบช่วงก่อน" to changeLabel
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                metrics.chunked(2).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { (label, amount) ->
+                            QgCard(Modifier.weight(1f)) {
+                                Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                                    Text(label, color = QgMuted, fontSize = 12.sp)
+                                    Text(amount, color = PosCounterRed, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -3884,14 +3905,6 @@ private fun PosChoiceButton(
         Button(onClick = onClick, modifier = modifier) { Text(label, fontSize = 11.sp) }
     } else {
         OutlinedButton(onClick = onClick, modifier = modifier) { Text(label, fontSize = 11.sp) }
-    }
-}
-
-@Composable
-private fun PosReportLine(label: String, value: Double, strong: Boolean = false) {
-    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(label, Modifier.weight(1f), fontWeight = if (strong) FontWeight.Black else FontWeight.Normal)
-        Text("฿" + money(value), fontWeight = if (strong) FontWeight.Black else FontWeight.Bold)
     }
 }
 

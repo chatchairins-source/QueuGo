@@ -1860,10 +1860,10 @@ ok(posOnlyApi.includes('delivery = raw.optDouble("DELIVERY"')&&posOnlyApi.includ
   posOnlyApi.includes('averageTicket = raw.optDouble("average_ticket"')&&
   posOnlyApi.includes('cashSales = raw.optDouble("cash_sales"')&&
   posOnlyApi.includes('hourlySales = if (hourlyRows == null)')&&
-  posOnlyUi.includes('PosReportLine("ยอดขายรวม", report.dineIn + report.takeaway, true)')&&
-  posOnlyUi.includes('PosReportLine("รับเงินสด", report.cashSales)')&&
-  posOnlyUi.includes('PosReportLine("ส่วนลด", report.discounts)')&&
-  posOnlyUi.includes('PosReportLine("คืนเงิน", report.refunds)')&&
+  posOnlyUi.includes('"ยอดขายรวม" to ("฿" + money(report.dineIn + report.takeaway))')&&
+  posOnlyUi.includes('"รับเงินสด" to ("฿" + money(report.cashSales))')&&
+  posOnlyUi.includes('"ส่วนลด" to ("฿" + money(report.discounts))')&&
+  posOnlyUi.includes('"คืนเงิน" to ("฿" + money(report.refunds))')&&
   posOnlyUi.includes('report.hourlySales.forEach')&&
   posOnlyUi.includes('buildPosReportCsv(report, itemSalesReport)')&&
   posOnlyUi.includes('ActivityResultContracts.CreateDocument("text/csv")')&&
@@ -1871,6 +1871,8 @@ ok(posOnlyApi.includes('delivery = raw.optDouble("DELIVERY"')&&posOnlyApi.includ
   !posOnlyUi.includes('PosReportLine("Delivery", report.delivery)')&&
   !posOnlyUi.includes('PosReportLine("GP Delivery", report.gp)'),
   'Native POS report must match Web POS metrics/hourly/CSV and exclude Delivery/GP from POS totals');
+ok(posOnlyUi.includes('metrics.chunked(2)')&&posOnlyUi.includes('Modifier.weight(1f).heightIn(min = 48.dp).semantics { selected = active }'),
+  'Native POS report keeps two summary columns and equal-width accessible period controls');
 ok(posOnlyApi.includes('&sales_channel=eq.POS&created_at=gte.'),'Native POS history must be scoped to POS at the server');
 
 const sharedNativeApi=read('shared/src/main/java/com/queuego/shared/QueueGoNativeApi.kt');

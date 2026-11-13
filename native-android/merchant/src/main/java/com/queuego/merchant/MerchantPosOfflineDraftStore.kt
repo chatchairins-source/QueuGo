@@ -161,8 +161,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 "ชื่อร้านค้า POS ออฟไลน์ไม่ถูกต้อง"
             }
             // A delayed offline refresh must never replace a newer catalog snapshot.
-            check(existing.getLong("saved_at_ms") >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
-            val existingSavedAtMs = existing.getLong("saved_at_ms")
+            val existingSavedAtMs = strictCatalogTimestamp(existing)
             check(existingSavedAtMs <= catalog.savedAtMs) {
                 "แคตตาล็อก POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
             }
@@ -185,7 +184,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         if (!file.exists()) return null
         check(file.length() <= MAX_CATALOG_BYTES) { "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง" }
         val json = JSONObject(file.readText())
-        check(json.getLong("saved_at_ms") >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
+        val savedAtMs = strictCatalogTimestamp(json)
         val storedActor = json.getString("actor_id")
         val storedDevice = json.getString("device_id")
         check(storedActor == actorId && storedDevice == deviceId) { "แคตตาล็อก POS ไม่ตรงกับบัญชีหรืออุปกรณ์นี้" }
@@ -239,7 +238,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         val shopName = json.optString("shop_name", "ร้านค้า")
         check(shopName.isNotBlank() && shopName.length <= 200) { "ชื่อร้านค้า POS ออฟไลน์ไม่ถูกต้อง" }
         return PosOfflineCatalog(actorId, json.getString("shop_id"), deviceId,
-            shopName, json.getLong("saved_at_ms"), products, tables)
+            shopName, savedAtMs, products, tables)
     }
 
     @Synchronized fun remove(scope: PosOfflineDraftScope, id: String) {
@@ -269,6 +268,15 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         return File(root, "$hash.catalog.json")
     }
 
+    private fun strictCatalogTimestamp(json: JSONObject): Long {
+        // JSONObject.getLong silently truncates fractional values and coerces numeric strings.
+        return when (val raw = json.opt("saved_at_ms")) {
+            is Int -> raw.toLong().also { check(it >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" } }
+            is Long -> raw.also { check(it >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" } }
+            else -> error("เวลาแคตตาล็อก POS ไม่ถูกต้อง")
+        }
+    }
+
     private fun encode(d: PosOfflineDraft) = JSONObject()
         .put("id", d.id).put("request_id", d.requestId).put("actor_id", d.actorId)
         .put("shop_id", d.shopId).put("device_id", d.deviceId).put("type", d.type)
@@ -285,7 +293,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         check(items.length() in 1..100) { "จำนวนรายการร่าง POS ไม่ถูกต้อง" }
         return PosOfflineDraft(j.getString("id"), j.getString("request_id"), j.getString("actor_id"),
             j.getString("shop_id"), j.getString("device_id"), j.getString("type"),
-            if (j.isNull("table_id")) null else j.getString("table_id"), j.getLong("saved_at_ms"),
+            if (j.isNull("table_id")) null else j.getString("table_id"), strictCatalogTimestamp(j),
             (0 until items.length()).map { index ->
                 val item = items.getJSONObject(index)
                 val requests = item.getJSONArray("request_ids")
