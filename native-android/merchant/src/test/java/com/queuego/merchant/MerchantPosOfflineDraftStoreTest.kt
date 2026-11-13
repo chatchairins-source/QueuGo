@@ -849,4 +849,44 @@ class MerchantPosOfflineDraftStoreTest {
             assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
         } finally { root.deleteRecursively() }
     }
+    @Test fun rejectsDuplicateOfflineCatalogIdentifiersOnSaveAndLoad() {
+        val root = Files.createTempDirectory("pos-catalog-duplicate-ids").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val product = PosProduct(UUID.randomUUID().toString(), "ชา", 35.0, null, true)
+            val table = PosTable(UUID.randomUUID().toString(), "A1", true)
+            val catalog = PosOfflineCatalog(actor, shop, device, "ร้าน", 100L,
+                listOf(product), listOf(table))
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(catalog)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val original = file.readText()
+
+            assertThrows(IllegalArgumentException::class.java) {
+                store.saveCatalog(catalog.copy(savedAtMs = 101L, products = listOf(product, product)))
+            }
+            assertThrows(IllegalArgumentException::class.java) {
+                store.saveCatalog(catalog.copy(savedAtMs = 101L, tables = listOf(table, table)))
+            }
+            assertEquals(original, file.readText())
+
+            for (key in listOf("products", "tables")) {
+                val tampered = JSONObject(original)
+                val entries = tampered.getJSONArray(key)
+                entries.put(JSONObject(entries.getJSONObject(0).toString()))
+                val corruptBytes = tampered.toString()
+                file.writeText(corruptBytes)
+                assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
+                assertThrows(IllegalStateException::class.java) {
+                    store.saveCatalog(catalog.copy(savedAtMs = 101L))
+                }
+                assertEquals(corruptBytes, file.readText())
+            }
+            file.writeText(original)
+            assertEquals(catalog, store.loadCatalog(actor, device))
+        } finally { root.deleteRecursively() }
+    }
+
 }
