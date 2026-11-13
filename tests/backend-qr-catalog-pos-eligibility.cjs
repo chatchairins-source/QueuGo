@@ -7,7 +7,7 @@ assert.match(sql, /CREATE OR REPLACE FUNCTION public\.qg_table_catalog\(p_sessio
 assert.match(sql, /SECURITY DEFINER\s+SET search_path TO 'public', 'pg_temp'/);
 assert.match(sql, /device_hash=encode\(extensions\.digest\(p_device_key::text,'sha256'\),'hex'\)/);
 assert.match(sql, /revoked_at is null\s+and expires_at>now\(\)/);
-assert.match(sql, /from public\.pos_tables where id=v\.table_id and active/);
+assert.match(sql, /from public\.pos_tables where id=v\.table_id and shop_id=v\.shop_id and active/);
 assert.match(sql, /where p\.shop_id=v\.shop_id\s+and p\.available\s+and p\.pos_available/);
 assert.doesNotMatch(sql, /p\.delivery_available/, 'QR dine-in catalog must not depend on delivery eligibility');
 assert.match(sql, /coalesce\(p\.pos_price,p\.price\)/);
