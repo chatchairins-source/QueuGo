@@ -57,13 +57,15 @@ async function main() {
           qg_call_incoming: [],
           pos_my_shop: shop,
           pos_is_owner: true,
+          pos_owner_dashboard: { DINE_IN: 12345678.9, TAKEAWAY: 42 },
+          pos_owner_item_sales: { items: [], item_count: 0 },
           users: [{ id: owner, auth_user_id: owner, role: 'shop', status: 'active', name: 'QA' }],
           shop_profiles: [{ id: shop, user_id: owner, shop_name: 'ร้านทดสอบ', public_category: 'grocery' }],
           products,
           orders: [{ id: bill, order_number: 'QA-001', order_type: 'TAKEAWAY', status: 'pending', kitchen_status: 'NEW', payment_status: 'UNPAID', total_amount: 65 }],
           order_items: [{ id: 'line', order_id: bill, product_id: products[0].id, item_name: products[0].name, quantity: 1, unit_price: 65, total_price: 65 }]
         };
-        if (route.request().method() === 'POST' && endpoint.startsWith('pos_') && !['pos_my_shop', 'pos_is_owner'].includes(endpoint)) writes.push(endpoint);
+        if (route.request().method() === 'POST' && endpoint.startsWith('pos_') && !['pos_my_shop', 'pos_is_owner', 'pos_owner_dashboard', 'pos_owner_item_sales'].includes(endpoint)) writes.push(endpoint);
         const headers = {
           'access-control-allow-origin': '*',
           'access-control-allow-headers': route.request().headers()['access-control-request-headers'] || '*',
@@ -146,6 +148,27 @@ async function main() {
       await checkout.click();
       await page.locator('#qg-pos-method').waitFor();
       assert.deepEqual(writes, [], 'opening checkout must never register a payment');
+      if (layout === 'mobile') {
+        await page.locator('.qg-pos-pay-overlay').getByRole('button', { name: 'กลับ', exact: true }).click();
+        await page.getByRole('button', { name: 'ยอดขาย', exact: true }).click();
+        const periods = page.getByRole('group', { name: 'ช่วงยอดขาย' });
+        await periods.getByRole('button', { name: '30 วัน', exact: true }).click();
+        assert.equal(await periods.getByRole('button', { name: '30 วัน', exact: true }).getAttribute('aria-pressed'), 'true');
+        const totals = page.locator('.qg-pos-report-totals');
+        await totals.waitFor();
+        const reportGeometry = await page.waitForFunction(() => {
+          const el = document.querySelector('.qg-pos-report-totals');
+          if (!el?.getBoundingClientRect().width || !el.firstElementChild?.getBoundingClientRect().width) return false;
+          const rects = [...el.children].map(child => child.getBoundingClientRect());
+          const group = document.querySelector('.qg-pos-report-periods');
+          return {
+            columns: rects.filter(rect => rect.top === rects[0].top).length,
+            fits: rects.every(rect => rect.right <= innerWidth),
+            singleRow: new Set([...group.children].map(button => button.offsetTop)).size === 1
+          };
+        });
+        assert.deepEqual(await reportGeometry.jsonValue(), { columns: 2, fits: true, singleRow: true });
+      }
       await page.close();
       console.log('PASS', width, height, layout);
     }
