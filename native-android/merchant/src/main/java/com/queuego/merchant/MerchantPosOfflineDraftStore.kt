@@ -191,15 +191,26 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             val p = array.getJSONObject(i)
             val price = p.getDouble("price")
             val deliveryPrice = if (p.isNull("delivery_price")) null else p.getDouble("delivery_price")
+            // optInt silently converts malformed strings/fractions to zero or truncates stock.
+            // Preserve zero for older snapshots without this field, but reject corrupt values.
+            val stock = when (val raw = p.opt("stock")) {
+                null -> 0
+                is Int -> raw
+                is Long -> {
+                    check(raw in 0..Int.MAX_VALUE.toLong()) { "จำนวนสินค้า POS ออฟไลน์ไม่ถูกต้อง" }
+                    raw.toInt()
+                }
+                else -> error("จำนวนสินค้า POS ออฟไลน์ไม่ถูกต้อง")
+            }
             check(price.isFinite() && price >= 0 &&
                 (deliveryPrice == null || (deliveryPrice.isFinite() && deliveryPrice >= 0)) &&
-                p.optInt("stock", 0) >= 0) {
+                stock >= 0) {
                 "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
             }
             PosProduct(p.getString("id"), p.getString("name"), price,
                 if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
                 p.optBoolean("delivery_available", true), deliveryPrice,
-                stock = p.optInt("stock", 0),
+                stock = stock,
                 inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
                 groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
                 groceryStockTracking = p.optBoolean("grocery_stock_tracking", false),
