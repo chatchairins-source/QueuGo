@@ -607,4 +607,35 @@ class MerchantPosOfflineDraftStoreTest {
             assertEquals(corruptedBytes, file.readText())
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun rejectsMalformedOfflineCatalogStockInsteadOfSilentlyCoercingToZero() {
+        val root = Files.createTempDirectory("pos-catalog-malformed-stock").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val product = PosProduct(UUID.randomUUID().toString(), "ชา", 35.0, null, true)
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(PosOfflineCatalog(actor, shop, device, "ร้าน", 100L,
+                listOf(product), emptyList()))
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val original = file.readText()
+
+            // Invalid types and fractional quantities must not become zero/truncated stock.
+            for (invalid in listOf<Any>("not-a-number", "5", 1.5, 2147483648L)) {
+                val corrupted = JSONObject(original)
+                corrupted.getJSONArray("products").getJSONObject(0).put("stock", invalid)
+                val bytes = corrupted.toString()
+                file.writeText(bytes)
+                assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
+                assertEquals(bytes, file.readText())
+            }
+
+            // Older snapshots without stock retain the legacy zero-stock default.
+            val legacy = JSONObject(original)
+            legacy.getJSONArray("products").getJSONObject(0).remove("stock")
+            file.writeText(legacy.toString())
+            assertEquals(0, store.loadCatalog(actor, device)!!.products.single().stock)
+        } finally { root.deleteRecursively() }
+    }
 }
