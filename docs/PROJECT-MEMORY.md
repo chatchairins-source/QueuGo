@@ -1,3 +1,10 @@
+## 2026-11-13 Merchant POS responsive redesign
+
+- The owner supplied the red-and-white QueueGo POS reference. Merchant Web uses the current counter route, with a left navigation at desktop widths, a side-by-side catalog and bill in landscape, and an expandable bill with a bottom checkout action in portrait and on phones.
+- Preserve the shared Web POS checkout and IndexedDB draft flows. Worker 3 PR #969 owns offline draft storage. The Android successor is Worker 1 PR #967, whose native POS path remains Kotlin/Compose.
+- Web tokens for native parity: primary #C81025, pressed/dark #A70E20, tint #FBECEF, background #FAF6F7, border #E9DFE2, 12dp corners, 44px Web controls and at least 48dp Android targets. Product photos use existing catalog URLs.
+- Browser regression uses isolated Merchant route data. Android visual verification and live payment/settlement acceptance remain pending.
+
 ## 2026-10-31 Web Ride location pickers — match Ride landing layout
 
 - Owner explicitly requests Web first: pickup and destination picker pages must follow the existing first Ride page shown in the supplied screenshots. Work is isolated from main 7e036a0735cc49905e9b0a2434492470551a0c9d; no Native successor or backend changes are included.
