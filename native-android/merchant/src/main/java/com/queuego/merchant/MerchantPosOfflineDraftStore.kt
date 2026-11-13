@@ -293,7 +293,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         check(items.length() in 1..100) { "จำนวนรายการร่าง POS ไม่ถูกต้อง" }
         return PosOfflineDraft(j.getString("id"), j.getString("request_id"), j.getString("actor_id"),
             j.getString("shop_id"), j.getString("device_id"), j.getString("type"),
-            if (j.isNull("table_id")) null else j.getString("table_id"), j.getLong("saved_at_ms"),
+            if (j.isNull("table_id")) null else j.getString("table_id"), strictCatalogTimestamp(j),
             (0 until items.length()).map { index ->
                 val item = items.getJSONObject(index)
                 val requests = item.getJSONArray("request_ids")
