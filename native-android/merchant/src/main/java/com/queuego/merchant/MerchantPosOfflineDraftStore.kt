@@ -49,7 +49,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
     @Synchronized fun deviceId(): String {
         check(root.isDirectory || root.mkdirs()) { "เตรียมพื้นที่เก็บร่าง POS ไม่สำเร็จ" }
         val file = File(root, "device-id")
-        if (file.exists()) return file.readText().also(::requireUuid)
+        if (file.exists()) {
+            check(file.isFile && file.length() in 1..36) { "รหัสอุปกรณ์ POS ไม่ถูกต้อง" }
+            return file.readText(Charsets.UTF_8).also(::requireUuid)
+        }
         val id = UUID.randomUUID().toString()
         atomicWrite(file, id.toByteArray(Charsets.UTF_8))
         return id
@@ -84,9 +87,22 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         check(root.isDirectory || root.mkdirs()) { "บันทึกร่าง POS ไม่สำเร็จ" }
         val target = file(PosOfflineDraftScope(draft.actorId, draft.shopId, draft.deviceId))
         if (target.exists()) {
+            check(target.length() <= MAX_BYTES) { "ข้อมูลร่าง POS ไม่ถูกต้อง" }
             val existing = decode(JSONObject(target.readText()))
+            // Never replace a persisted draft with invalid replay identities or another shop's data.
+            validate(existing)
+            check(existing.actorId == draft.actorId && existing.shopId == draft.shopId &&
+                existing.deviceId == draft.deviceId) { "ร่าง POS ไม่ตรงกับบัญชี ร้านค้า หรืออุปกรณ์นี้" }
             check(existing.id == draft.id && existing.requestId == draft.requestId) {
                 "มีร่าง POS เดิมที่ยังไม่ส่ง กรุณาตรวจร่างนั้นก่อน"
+            }
+            // An out-of-order offline update must not roll a newer local draft back.
+            check(existing.savedAtMs <= draft.savedAtMs) {
+                "ร่าง POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
+            }
+            // The same timestamp cannot represent two different cart revisions.
+            check(existing.savedAtMs != draft.savedAtMs || encode(existing).similar(encode(draft))) {
+                "ร่าง POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
             }
         }
         val json = encode(draft).toString().toByteArray(Charsets.UTF_8)
@@ -97,7 +113,18 @@ class MerchantPosOfflineDraftStore(private val root: File) {
 
     @Synchronized fun saveCatalog(catalog: PosOfflineCatalog) {
         requireUuid(catalog.actorId); requireUuid(catalog.shopId); requireUuid(catalog.deviceId)
-        require(catalog.shopName.length <= 200 && catalog.products.size <= 20_000 && catalog.tables.size <= 300)
+        require(catalog.savedAtMs >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
+        require(catalog.shopName.isNotBlank() && catalog.shopName.length <= 200 &&
+            catalog.products.size <= 20_000 && catalog.tables.size <= 300)
+        require(catalog.products.all { it.id.isNotBlank() && it.name.isNotBlank() && it.name.length <= 200 &&
+            it.price.isFinite() && it.price >= 0 &&
+            (it.deliveryPrice == null || (it.deliveryPrice.isFinite() && it.deliveryPrice >= 0)) &&
+            it.stock >= 0 }) {
+            "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
+        }
+        require(catalog.tables.all { it.id.isNotBlank() && it.label.isNotBlank() && it.label.length <= 100 }) {
+            "ข้อมูลโต๊ะ POS ออฟไลน์ไม่ถูกต้อง"
+        }
         val json = JSONObject().put("actor_id", catalog.actorId).put("shop_id", catalog.shopId)
             .put("device_id", catalog.deviceId).put("shop_name", catalog.shopName.take(200))
             .put("saved_at_ms", catalog.savedAtMs)
@@ -120,7 +147,35 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         val bytes = json.toString().toByteArray(Charsets.UTF_8)
         check(bytes.size <= MAX_CATALOG_BYTES) { "แคตตาล็อก POS มีขนาดมากเกินไปสำหรับออฟไลน์" }
         check(root.isDirectory || root.mkdirs()) { "เตรียมพื้นที่เก็บ POS ออฟไลน์ไม่สำเร็จ" }
-        atomicWrite(catalogFile(catalog.actorId, catalog.deviceId), bytes)
+        val target = catalogFile(catalog.actorId, catalog.deviceId)
+        if (target.exists()) {
+            check(target.length() <= MAX_CATALOG_BYTES) { "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง" }
+            val existing = JSONObject(target.readText())
+            check(existing.getString("actor_id") == catalog.actorId &&
+                existing.getString("device_id") == catalog.deviceId &&
+                existing.getString("shop_id") == catalog.shopId) {
+                "แคตตาล็อก POS ไม่ตรงกับบัญชี ร้านค้า หรืออุปกรณ์นี้"
+            }
+            val storedShopName = existing.optString("shop_name", "")
+            check(storedShopName.isNotBlank() && storedShopName.length <= 200) {
+                "ชื่อร้านค้า POS ออฟไลน์ไม่ถูกต้อง"
+            }
+            // A delayed offline refresh must never replace a newer catalog snapshot.
+            val existingSavedAtMs = strictCatalogTimestamp(existing)
+            check(existingSavedAtMs <= catalog.savedAtMs) {
+                "แคตตาล็อก POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
+            }
+            // Equal timestamps may only be replayed with identical data.
+            check(existingSavedAtMs != catalog.savedAtMs || existing.similar(json)) {
+                "แคตตาล็อก POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
+            }
+            // Do not silently replace a malformed persisted catalog before it can be inspected.
+            check(existing.getJSONArray("products").length() <= 20_000 &&
+                existing.getJSONArray("tables").length() <= 300) {
+                "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง"
+            }
+        }
+        atomicWrite(target, bytes)
     }
 
     @Synchronized fun loadCatalog(actorId: String, deviceId: String): PosOfflineCatalog? {
@@ -129,28 +184,61 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         if (!file.exists()) return null
         check(file.length() <= MAX_CATALOG_BYTES) { "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง" }
         val json = JSONObject(file.readText())
+        val savedAtMs = strictCatalogTimestamp(json)
         val storedActor = json.getString("actor_id")
         val storedDevice = json.getString("device_id")
         check(storedActor == actorId && storedDevice == deviceId) { "แคตตาล็อก POS ไม่ตรงกับบัญชีหรืออุปกรณ์นี้" }
-        val products = json.getJSONArray("products").let { array -> (0 until array.length()).map { i ->
+        // Fail closed on corrupted local catalog metadata before allocating product/table lists.
+        requireUuid(json.getString("shop_id"))
+        val productArray = json.getJSONArray("products")
+        val tableArray = json.getJSONArray("tables")
+        check(productArray.length() <= 20_000 && tableArray.length() <= 300) {
+            "แคตตาล็อก POS ออฟไลน์ไม่ถูกต้อง"
+        }
+        val products = productArray.let { array -> (0 until array.length()).map { i ->
             val p = array.getJSONObject(i)
-            PosProduct(p.getString("id"), p.getString("name"), p.getDouble("price"),
+            val price = p.getDouble("price")
+            val deliveryPrice = if (p.isNull("delivery_price")) null else p.getDouble("delivery_price")
+            // optInt silently converts malformed strings/fractions to zero or truncates stock.
+            // Preserve zero for older snapshots without this field, but reject corrupt values.
+            val stock = when (val raw = p.opt("stock")) {
+                null -> 0
+                is Int -> raw
+                is Long -> {
+                    check(raw in 0..Int.MAX_VALUE.toLong()) { "จำนวนสินค้า POS ออฟไลน์ไม่ถูกต้อง" }
+                    raw.toInt()
+                }
+                else -> error("จำนวนสินค้า POS ออฟไลน์ไม่ถูกต้อง")
+            }
+            check(p.getString("id").isNotBlank() && p.getString("name").isNotBlank() &&
+                p.getString("name").length <= 200 && price.isFinite() && price >= 0 &&
+                (deliveryPrice == null || (deliveryPrice.isFinite() && deliveryPrice >= 0)) &&
+                stock >= 0) {
+                "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
+            }
+            PosProduct(p.getString("id"), p.getString("name"), price,
                 if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
-                p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"),
-                stock = p.optInt("stock", 0),
+                p.optBoolean("delivery_available", true), deliveryPrice,
+                stock = stock,
                 inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
                 groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
                 groceryStockTracking = p.optBoolean("grocery_stock_tracking", false),
                 optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()),
                 category = if (!p.has("category") || p.isNull("category")) null else p.optString("category"))
         } }
-        val tables = json.getJSONArray("tables").let { array -> (0 until array.length()).map { i ->
+        val tables = tableArray.let { array -> (0 until array.length()).map { i ->
             val t = array.getJSONObject(i)
+            check(t.getString("id").isNotBlank() && t.getString("label").isNotBlank() &&
+                t.getString("label").length <= 100) { "ข้อมูลโต๊ะ POS ออฟไลน์ไม่ถูกต้อง" }
             PosTable(t.getString("id"), t.getString("label"), t.getBoolean("active"),
                 if (t.isNull("qr_token")) null else t.getString("qr_token"))
         } }
+        // Persisted catalog metadata may have been tampered with after the atomic write.
+        // Do not expose oversized or blank shop names as trusted offline UI data.
+        val shopName = json.optString("shop_name", "ร้านค้า")
+        check(shopName.isNotBlank() && shopName.length <= 200) { "ชื่อร้านค้า POS ออฟไลน์ไม่ถูกต้อง" }
         return PosOfflineCatalog(actorId, json.getString("shop_id"), deviceId,
-            json.optString("shop_name", "ร้านค้า"), json.getLong("saved_at_ms"), products, tables)
+            shopName, savedAtMs, products, tables)
     }
 
     @Synchronized fun remove(scope: PosOfflineDraftScope, id: String) {
@@ -180,6 +268,15 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         return File(root, "$hash.catalog.json")
     }
 
+    private fun strictCatalogTimestamp(json: JSONObject): Long {
+        // JSONObject.getLong silently truncates fractional values and coerces numeric strings.
+        return when (val raw = json.opt("saved_at_ms")) {
+            is Int -> raw.toLong().also { check(it >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" } }
+            is Long -> raw.also { check(it >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" } }
+            else -> error("เวลาแคตตาล็อก POS ไม่ถูกต้อง")
+        }
+    }
+
     private fun encode(d: PosOfflineDraft) = JSONObject()
         .put("id", d.id).put("request_id", d.requestId).put("actor_id", d.actorId)
         .put("shop_id", d.shopId).put("device_id", d.deviceId).put("type", d.type)
@@ -193,14 +290,25 @@ class MerchantPosOfflineDraftStore(private val root: File) {
 
     private fun decode(j: JSONObject): PosOfflineDraft {
         val items = j.getJSONArray("items")
+        check(items.length() in 1..100) { "จำนวนรายการร่าง POS ไม่ถูกต้อง" }
         return PosOfflineDraft(j.getString("id"), j.getString("request_id"), j.getString("actor_id"),
             j.getString("shop_id"), j.getString("device_id"), j.getString("type"),
-            if (j.isNull("table_id")) null else j.getString("table_id"), j.getLong("saved_at_ms"),
+            if (j.isNull("table_id")) null else j.getString("table_id"), strictCatalogTimestamp(j),
             (0 until items.length()).map { index ->
                 val item = items.getJSONObject(index)
                 val requests = item.getJSONArray("request_ids")
+                check(requests.length() <= 99) { "จำนวนรหัสคำขอร่าง POS ไม่ถูกต้อง" }
+                val rawQuantity = item.get("quantity")
+                val quantity = when (rawQuantity) {
+                    is Int -> rawQuantity
+                    is Long -> {
+                        check(rawQuantity in 1..99) { "จำนวนสินค้าร่าง POS ไม่ถูกต้อง" }
+                        rawQuantity.toInt()
+                    }
+                    else -> error("จำนวนสินค้าร่าง POS ไม่ถูกต้อง")
+                }
                 PosOfflineDraftItem(item.getString("product_id"), item.getString("name"),
-                    item.getDouble("price"), item.getInt("quantity"),
+                    item.getDouble("price"), quantity,
                     (0 until requests.length()).map(requests::getString),
                     basePriceSnapshot = item.optDouble("base_price", item.getDouble("price")),
                     optionsJson = canonicalPosOptionJson((item.optJSONObject("options") ?: JSONObject()).toString()),
@@ -209,6 +317,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
     }
 
     private fun validate(d: PosOfflineDraft) {
+        require(d.savedAtMs >= 0) { "เวลาร่าง POS ไม่ถูกต้อง" }
         requireUuid(d.id); requireUuid(d.requestId); requireUuid(d.actorId)
         requireUuid(d.shopId); requireUuid(d.deviceId); d.tableId?.let(::requireUuid)
         require(d.type in setOf("DINE_IN", "TAKEAWAY"))
@@ -227,6 +336,9 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             item.requestIds.forEach(::requireUuid)
             require(item.requestIds.toSet().size == item.requestIds.size)
         }
+        // Each replay UUID must identify exactly one mutation, including the bill creation.
+        val replayIds = d.items.flatMap { it.requestIds }
+        require(replayIds.size == replayIds.toSet().size && d.requestId !in replayIds)
     }
 
     private fun atomicWrite(target: File, bytes: ByteArray) {
