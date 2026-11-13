@@ -638,4 +638,31 @@ class MerchantPosOfflineDraftStoreTest {
             assertEquals(0, store.loadCatalog(actor, device)!!.products.single().stock)
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun rejectsMalformedPersistedDraftQuantitiesWithoutChangingBytes() {
+        val root = Files.createTempDirectory("pos-draft-quantity-types").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val original = draft(actor, shop, device)
+            store.save(original)
+            val file = root.listFiles()!!.single { it.name.endsWith(".json") }
+            val valid = file.readText()
+
+            for (invalid in listOf<Any>("2", "invalid", 2.5, 2147483648L)) {
+                val tampered = JSONObject(valid)
+                tampered.getJSONArray("items").getJSONObject(0).put("quantity", invalid)
+                val bytes = tampered.toString()
+                file.writeText(bytes)
+                assertThrows(IllegalStateException::class.java) {
+                    store.loadForActor(actor, device)
+                }
+                assertEquals(bytes, file.readText())
+            }
+            file.writeText(valid)
+            assertEquals(original, store.loadForActor(actor, device))
+        } finally { root.deleteRecursively() }
+    }
 }
