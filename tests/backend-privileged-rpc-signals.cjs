@@ -17,5 +17,9 @@ assert.match(statements, /auth_signal/);
 assert.match(statements, /concurrency_signal/);
 assert.match(statements, /WHERE anon_execute OR authenticated_execute/);
 assert.doesNotMatch(statements, /^\s*(?:INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|CALL|DO)\b/im);
-assert.doesNotMatch(statements, /SELECT\s+\*|\bbody\s*(?:,|FROM)|pg_get_functiondef\(p\.oid\)\s+AS\s+(?!body)/i);
+// Inspect the final result projection, not internal CTE aliases used for signal detection.
+const finalProjection = statements.match(/\)\s*SELECT\s+([\s\S]*?)\s+FROM\s+signals\b/i)?.[1];
+assert.ok(finalProjection, 'expected a final SELECT from signals');
+assert.doesNotMatch(statements, /SELECT\s+\*/i);
+assert.doesNotMatch(finalProjection, /\bbody\b|pg_get_functiondef/i);
 console.log('privileged RPC review signals SQL: static checks passed');
