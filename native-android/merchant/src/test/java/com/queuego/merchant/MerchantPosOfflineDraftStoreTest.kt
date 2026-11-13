@@ -739,4 +739,34 @@ class MerchantPosOfflineDraftStoreTest {
         } finally { root.deleteRecursively() }
     }
 
+    @Test fun rejectsInvalidOfflineTableLabelsOnSaveAndLoad() {
+        val root = Files.createTempDirectory("pos-offline-table-label").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val catalog = PosOfflineCatalog(actor, shop, device, "ร้าน", 100L,
+                emptyList(), listOf(PosTable(UUID.randomUUID().toString(), "A1", true)))
+            store.saveCatalog(catalog)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val original = file.readText()
+            for (invalid in listOf("  ", "x".repeat(101))) {
+                assertThrows(IllegalArgumentException::class.java) {
+                    store.saveCatalog(catalog.copy(savedAtMs = 101L,
+                        tables = listOf(catalog.tables.first().copy(label = invalid))))
+                }
+                assertEquals(original, file.readText())
+                val tampered = JSONObject(original)
+                tampered.getJSONArray("tables").getJSONObject(0).put("label", invalid)
+                file.writeText(tampered.toString())
+                assertThrows(IllegalStateException::class.java) {
+                    store.loadCatalog(actor, device)
+                }
+                file.writeText(original)
+            }
+            assertEquals(catalog, store.loadCatalog(actor, device))
+        } finally { root.deleteRecursively() }
+    }
+
 }
