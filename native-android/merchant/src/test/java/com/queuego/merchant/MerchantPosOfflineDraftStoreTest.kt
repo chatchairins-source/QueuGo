@@ -14,6 +14,26 @@ class MerchantPosOfflineDraftStoreTest {
         listOf(PosOfflineDraftItem(UUID.randomUUID().toString(), "ชาไทย", 45.0, 2))
     )
 
+
+    @Test fun equalTimestampDraftReplayAcceptsIdenticalPayloadButRejectsDifferentCart() {
+        val root = Files.createTempDirectory("pos-draft-replay-json-compat").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val store = MerchantPosOfflineDraftStore(root)
+            val original = draft(actor, shop, device).copy(savedAtMs = 300L)
+            store.save(original)
+            store.save(original)
+            val scope = PosOfflineDraftScope(actor, shop, device)
+            assertEquals(original, store.load(scope))
+            assertThrows(IllegalStateException::class.java) {
+                store.save(original.copy(items = original.items.map { it.copy(quantity = it.quantity + 1) }))
+            }
+            assertEquals(original, store.load(scope))
+        } finally { root.deleteRecursively() }
+    }
+
     @Test fun persistsAcrossStoreInstancesAndScopesByActorShopAndDevice() {
         val root = Files.createTempDirectory("pos-offline-draft-test").toFile()
         try {
