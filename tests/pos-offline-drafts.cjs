@@ -41,10 +41,11 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     {id:'stock-zero',name:'สินค้าหมด',price:20,pos_price:20,stock:0,inventory_stock_tracking:true},
     {id:'stock-negative',name:'สต็อกติดลบ',price:20,pos_price:20,stock:-1,inventory_stock_tracking:true},
     {id:'stock-nan',name:'สต็อกเสีย',price:20,pos_price:20,stock:'invalid',inventory_stock_tracking:true},
+    {id:'stock-blank',name:'สต็อกว่าง',price:20,pos_price:20,stock:'   ',inventory_stock_tracking:true},
     {id:'stock-infinite',name:'สต็อกไม่จำกัดผิดรูป',price:20,pos_price:20,stock:Infinity,inventory_stock_tracking:true},
     {id:'stock-missing',name:'สินค้าไม่ติดตามสต็อก',price:20,pos_price:20}
   ],[]);
-  eq((await api.getCatalog(scope)).products.map(p=>[p.id,p.stock]),[['stock-valid',3],['stock-zero',0],['stock-missing',0]],'offline catalog rejects negative/nonfinite stock and preserves zero or absent stock');
+  eq((await api.getCatalog(scope)).products.map(p=>[p.id,p.stock]),[['stock-valid',3],['stock-zero',0],['stock-missing',0]],'offline catalog rejects negative, blank and nonfinite stock and preserves zero or absent stock');
   // Boolean API fields must not silently coerce into monetary or inventory quantities.
   await api.saveCatalog(scope,[
     {id:'bool-price',name:'bad',price:true,pos_price:20,stock:2},
