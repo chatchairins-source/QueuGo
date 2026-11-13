@@ -25,7 +25,8 @@
     return dbTask;
   }
   function scopeValid(s){return Boolean(s&&typeof s.shopId==='string'&&s.shopId&&typeof s.actorId==='string'&&s.actorId&&typeof s.deviceId==='string'&&s.deviceId)}
-  const scopeKey=s=>[s.shopId,s.actorId,s.deviceId].join(':');
+  const scopeKey=s=>JSON.stringify([s.shopId,s.actorId,s.deviceId]);
+  const legacyScopeKey=s=>[s.shopId,s.actorId,s.deviceId].join(':');
   function rememberShop(scope){if(!scopeValid(scope))throw Error('ขอบเขตร้าน POS ไม่ถูกต้อง');localStorage.setItem(LAST_SHOP_PREFIX+scope.actorId+':'+scope.deviceId,scope.shopId)}
   function lastShop(actorId,device){if(!actorId||!device)return null;try{return localStorage.getItem(LAST_SHOP_PREFIX+actorId+':'+device)||null}catch(_){return null}}
   function clean(d){
@@ -64,7 +65,7 @@
   }
   async function getCatalog(scope){
     if(!scopeValid(scope))return null;const db=await open();
-    return new Promise((resolve,reject)=>{const tx=db.transaction('catalogs','readonly'),request=tx.objectStore('catalogs').get(scopeKey(scope));request.onsuccess=()=>{const x=request.result;resolve(x&&x.shopId===scope.shopId&&x.actorId===scope.actorId&&x.deviceId===scope.deviceId?x:null)};request.onerror=()=>reject(request.error||Error('อ่านแคตตาล็อก POS ไม่สำเร็จ'))});
+    return new Promise((resolve,reject)=>{const tx=db.transaction('catalogs','readonly'),store=tx.objectStore('catalogs');const valid=x=>x&&x.shopId===scope.shopId&&x.actorId===scope.actorId&&x.deviceId===scope.deviceId;const request=store.get(scopeKey(scope));request.onsuccess=()=>{if(valid(request.result)){resolve(request.result);return}const legacy=store.get(legacyScopeKey(scope));legacy.onsuccess=()=>resolve(valid(legacy.result)?legacy.result:null);legacy.onerror=()=>reject(legacy.error||Error('อ่านแคตตาล็อก POS ไม่สำเร็จ'))};request.onerror=()=>reject(request.error||Error('อ่านแคตตาล็อก POS ไม่สำเร็จ'))});
   }
   async function remove(id,scope){
     if(typeof id!=='string'||!scopeValid(scope))return false;
