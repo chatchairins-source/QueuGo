@@ -14,6 +14,10 @@ import kotlin.math.sqrt
 internal fun riderNavigationPermissionGranted(fineGranted: Boolean, coarseGranted: Boolean): Boolean =
     fineGranted || coarseGranted
 
+/** A foreground refresh must never advertise dispatch readiness after GPS permission is revoked. */
+internal fun riderNavigationForegroundReady(requestedReady: Boolean, locationPermissionGranted: Boolean): Boolean =
+    requestedReady && locationPermissionGranted
+
 internal fun riderNavigationHasLocationPermission(context: Context): Boolean =
     riderNavigationPermissionGranted(
         context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -87,7 +91,8 @@ internal object RiderNavigationDispatchReadiness {
         // Read stores inside the shared lock: a background request cannot restore an older toggle.
         api.syncDispatchPreference(auth,
             RiderAcceptanceModeStore(context).autoAcceptEnabled(auth.user.id),
-            RiderStopAfterWorkStore(context).pending(auth.user.id), bound.ready)
+            RiderStopAfterWorkStore(context).pending(auth.user.id),
+            riderNavigationForegroundReady(bound.ready, riderNavigationHasLocationPermission(context)))
     }
 
     suspend fun syncLocation(
