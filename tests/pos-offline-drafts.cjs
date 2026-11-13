@@ -101,6 +101,16 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   const maxLengthOption=await api.save({...first,id:'draft-max-option',items:[{...first.items[0],options:{size:'x'.repeat(100)}}]});
   eq(maxLengthOption.items[0].options.size.length,100,'valid 100-character scalar option remains supported');
   let invalidRejected=false;try{await api.save({...first,id:'bad',items:[{productId:'p1',quantity:0,priceSnapshot:35,nameSnapshot:'ชาไทย',options:{}}]})}catch(_){invalidRejected=true}ok(invalidRejected,'invalid quantities are rejected');
+  // Replay IDs are an immutable snapshot: caller mutation after save() starts must not alter persisted identity.
+  const mutableReplay=['immutable-unit-1','immutable-unit-2'];
+  const mutableDraft={...first,id:'draft-replay-snapshot',items:[{...first.items[0],requestIds:mutableReplay}]};
+  const pendingSnapshot=api.save(mutableDraft);
+  mutableReplay[0]='tampered-unit';
+  mutableReplay.push('extra-unit');
+  const snapshotSaved=await pendingSnapshot;
+  eq(snapshotSaved.items[0].requestIds,['immutable-unit-1','immutable-unit-2'],'draft save snapshots replay IDs before awaiting IndexedDB');
+  const persistedSnapshot=(await api.list(scope)).find(x=>x.id==='draft-replay-snapshot');
+  eq(persistedSnapshot.items[0].requestIds,['immutable-unit-1','immutable-unit-2'],'persisted replay IDs cannot be changed by caller array mutation');
   // Submission replay IDs must be exactly one per unit, never silently truncated.
   const replayItem={...first.items[0],requestIds:['unit-1','unit-2']};
   const replaySaved=await api.save({...first,id:'draft-replay-keys',items:[replayItem]});
