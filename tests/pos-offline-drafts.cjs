@@ -84,6 +84,15 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
     {key:'valid-five',name:'เพิ่ม 5',price_delta:'5'}
   ]}]}],[]);
   eq((await api.getCatalog(scope)).products[0].variants[0].options.map(o=>[o.key,o.price_delta]),[['valid-zero',0],['valid-five',5]],'boolean option price deltas are rejected; zero and numeric strings remain valid');
+  // Array/object and blank option prices must not coerce to numeric deltas.
+  await api.saveCatalog(scope,[{id:'option-malformed-deltas',name:'ตัวเลือก',price:40,pos_price:40,variants:[{schema:'queuego.menu-options.v1',key:'extras',name:'เพิ่ม',options:[
+    {key:'array',name:'ผิด',price_delta:[5]},
+    {key:'object',name:'ผิด',price_delta:{valueOf:()=>5}},
+    {key:'blank',name:'ผิด',price_delta:'   '},
+    {key:'valid',name:'ถูก',price_delta:'5'},
+    {key:'zero',name:'ฟรี',price_delta:0}
+  ]}]}],[]);
+  eq((await api.getCatalog(scope)).products[0].variants[0].options.map(o=>[o.key,o.price_delta]),[['valid',5],['zero',0]],'malformed and blank option prices are rejected without losing valid option prices');
   // Offline option strings must obey the same 100-character limit as array values.
   let oversizedOptionRejected=false;
   try{await api.save({...first,id:'draft-oversized-option',items:[{...first.items[0],options:{size:'x'.repeat(101)}}]})}catch(_){oversizedOptionRejected=true}
