@@ -18,9 +18,9 @@ const activeTableGuard = sql.indexOf('from public.pos_tables where id=v.table_id
 const catalogReturn = sql.indexOf('return (');
 assert.ok(sessionGuard >= 0 && sessionGuard < revocationGuard && revocationGuard < activeTableGuard && activeTableGuard < catalogReturn,
   'Session expiry/revocation and shop-scoped active-table checks must precede catalog return');
-assert.match(sql, /if not found or not exists\\([\\s\\S]*?\\) then\\s+raise exception/,
+assert.match(sql, /if not found or not exists\([\s\S]*?\) then\s+raise exception/,
   'Invalid or cross-shop sessions must raise before product disclosure');
-assert.match(sql, /from public\\.products p[\\s\\S]*?where p\\.shop_id=v\\.shop_id/,
+assert.match(sql, /from public\.products p[\s\S]*?where p\.shop_id=v\.shop_id/,
   'Catalog must be restricted to the session shop');
 for (const available of [false,true]) {
   for (const posAvailable of [false,true]) {
