@@ -85,16 +85,19 @@ jobs:
           set -euo pipefail
           LOCAL_DB_URL='postgresql://postgres:postgres@127.0.0.1:54322/postgres'
 
-          sed -i 's/^SET transaction_timeout/-- &/' backup/roles.sql backup/schema.sql backup/data.sql || true
+          sha256sum --check backup/core.sha256
+          for dump in roles schema data; do
+            sed 's/^SET transaction_timeout/-- &/' "backup/${dump}.sql" > "restore-lab/${dump}.sql"
+          done
 
           psql \
             --dbname "$LOCAL_DB_URL" \
             --single-transaction \
             --variable ON_ERROR_STOP=1 \
-            --file backup/roles.sql \
-            --file backup/schema.sql \
+            --file restore-lab/roles.sql \
+            --file restore-lab/schema.sql \
             --command 'SET session_replication_role = replica' \
-            --file backup/data.sql
+            --file restore-lab/data.sql
 
           psql "$LOCAL_DB_URL" -X -v ON_ERROR_STOP=1 -f ops/restore-verify.sql
           psql "$LOCAL_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -f ops/backup-inventory.sql > backup/restored-inventory.json
@@ -141,6 +144,7 @@ jobs:
           },null,2));
           NODE
 
+          sha256sum --check backup/core.sha256
           tar -C backup -czf "${NAME}.tar.gz" .
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 250000 -md sha256 \
             -in "${NAME}.tar.gz" \

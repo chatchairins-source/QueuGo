@@ -16,6 +16,11 @@ ok(!/supabase@latest/.test(workflow),'backup workflow must pin Supabase CLI and 
 ok(/--role-only/.test(workflow)&&/--data-only/.test(workflow)&&/--use-copy/.test(workflow),'backup must export roles, schema and data');
 ok(/supabase@2\.120\.0 start/.test(workflow),'restore drill must start a clean local Supabase with the pinned CLI');
 ok(/--single-transaction/.test(workflow)&&/ON_ERROR_STOP/.test(workflow),'database restore must be atomic and stop on errors');
+ok(!workflow.includes('sed -i')&&['roles','schema','data'].every(name=>workflow.includes('--file restore-lab/'+name+'.sql')),
+  'compatibility rewrite must use temporary restore copies and preserve the archived dumps');
+ok(workflow.indexOf('sha256sum --check backup/core.sha256')<workflow.indexOf('--file restore-lab/roles.sql')&&
+  /sha256sum --check backup\/core\.sha256\s+tar -C backup/.test(workflow),
+  'verify core backup checksums before local restore and archive creation');
 ok(/restore-storage\.mjs/.test(workflow),'Storage objects must be restored during the drill');
 ok(/aes-256-cbc/.test(workflow)&&/pbkdf2/.test(workflow),'off-site artifact must be encrypted before upload');
 ok(/upload-artifact@v4/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
