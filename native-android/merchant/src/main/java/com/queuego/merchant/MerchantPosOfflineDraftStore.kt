@@ -116,7 +116,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         require(catalog.savedAtMs >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
         require(catalog.shopName.length <= 200 && catalog.products.size <= 20_000 && catalog.tables.size <= 300)
         require(catalog.products.all { it.price.isFinite() && it.price >= 0 &&
-            (it.deliveryPrice == null || (it.deliveryPrice.isFinite() && it.deliveryPrice >= 0)) }) {
+            (it.deliveryPrice == null || (it.deliveryPrice.isFinite() && it.deliveryPrice >= 0)) &&
+            it.stock >= 0 }) {
             "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
         }
         val json = JSONObject().put("actor_id", catalog.actorId).put("shop_id", catalog.shopId)
@@ -191,7 +192,8 @@ class MerchantPosOfflineDraftStore(private val root: File) {
             val price = p.getDouble("price")
             val deliveryPrice = if (p.isNull("delivery_price")) null else p.getDouble("delivery_price")
             check(price.isFinite() && price >= 0 &&
-                (deliveryPrice == null || (deliveryPrice.isFinite() && deliveryPrice >= 0))) {
+                (deliveryPrice == null || (deliveryPrice.isFinite() && deliveryPrice >= 0)) &&
+                p.optInt("stock", 0) >= 0) {
                 "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
             }
             PosProduct(p.getString("id"), p.getString("name"), price,
