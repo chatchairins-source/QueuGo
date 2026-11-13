@@ -274,8 +274,17 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 val item = items.getJSONObject(index)
                 val requests = item.getJSONArray("request_ids")
                 check(requests.length() <= 99) { "จำนวนรหัสคำขอร่าง POS ไม่ถูกต้อง" }
+                val rawQuantity = item.get("quantity")
+                val quantity = when (rawQuantity) {
+                    is Int -> rawQuantity
+                    is Long -> {
+                        check(rawQuantity in 1..99) { "จำนวนสินค้าร่าง POS ไม่ถูกต้อง" }
+                        rawQuantity.toInt()
+                    }
+                    else -> error("จำนวนสินค้าร่าง POS ไม่ถูกต้อง")
+                }
                 PosOfflineDraftItem(item.getString("product_id"), item.getString("name"),
-                    item.getDouble("price"), item.getInt("quantity"),
+                    item.getDouble("price"), quantity,
                     (0 until requests.length()).map(requests::getString),
                     basePriceSnapshot = item.optDouble("base_price", item.getDouble("price")),
                     optionsJson = canonicalPosOptionJson((item.optJSONObject("options") ?: JSONObject()).toString()),
