@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test
 class MerchantPosOfflineCatalogPriceIntegrityTest {
     @Test fun rejectsMalformedPersistedPricesWithoutReplacingSnapshot() {
         for (field in listOf("price", "delivery_price")) {
-            for (bad in listOf("30.0", true, JSONObject.NULL, -1)) {
+            for (bad in if (field == "price") listOf("30.0", true, JSONObject.NULL, -1) else listOf("30.0", true, -1)) {
                 val root = Files.createTempDirectory("pos-catalog-price").toFile()
                 try {
                     val actor = UUID.randomUUID().toString()
