@@ -233,7 +233,11 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 inventoryStockTracking = strictOptionalCatalogBoolean(p, "inventory_stock_tracking", false),
                 groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
                 groceryStockTracking = strictOptionalCatalogBoolean(p, "grocery_stock_tracking", false),
-                optionGroups = parsePosProductOptionGroups(p.optJSONArray("option_groups") ?: JSONArray()),
+                optionGroups = parsePosProductOptionGroups(when (val groups = p.opt("option_groups")) {
+                    null -> JSONArray() // Backward compatibility for catalogs saved before option groups existed.
+                    is JSONArray -> groups
+                    else -> error("กลุ่มตัวเลือกสินค้า POS ออฟไลน์ไม่ถูกต้อง")
+                }),
                 category = if (!p.has("category") || p.isNull("category")) null else p.optString("category"))
         } }
         val tables = tableArray.let { array -> (0 until array.length()).map { i ->
