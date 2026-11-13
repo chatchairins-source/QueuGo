@@ -27,4 +27,14 @@ assert.match(postValidity, /where session_id=p_session and request_id=p_request/
 assert.match(postValidity, /if v_old\.payload_hash<>v_hash then/, 'same request ID with a changed payload must be rejected');
 assert.match(postValidity, /where session_id=p_session\s+and payload_hash=v_hash/, 'recent-cart replay must remain scoped to the authorized session');
 
+
+const activeTable = sql.indexOf('from public.pos_tables');
+const allowedShop = sql.indexOf('from public.shop_profiles');
+const proximity = sql.indexOf('if public.qg_table_distance_m(');
+assert.ok(activeTable > validity && allowedShop > activeTable, 'active table and shop must be checked after session validity');
+assert.ok(proximity > allowedShop && proximity < replayLookup, 'proximity authorization must precede exact-request replay');
+assert.ok(replayLookup < recentCartReturn, 'exact-request replay and recent-cart replay must follow authorization');
+assert.match(sql.slice(activeTable, replayLookup), /where id=v\.table_id and shop_id=v\.shop_id and active/, 'table must remain active');
+assert.match(sql.slice(allowedShop, replayLookup), /status not in \('suspended','rejected'\)/, 'shop must remain eligible');
+
 console.log('checkout replay migration ordering: static regression passed');
