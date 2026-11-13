@@ -26,6 +26,19 @@ internal fun riderNavigationHasLocationPermission(context: Context): Boolean =
             PackageManager.PERMISSION_GRANTED
     )
 
+/** Fail closed if a location callback outlives its rider session or loses GPS access. */
+internal fun riderNavigationLocationUpdateEligible(
+    boundUserId: String,
+    boundSessionId: String,
+    currentUserId: String,
+    currentSessionId: String,
+    boundReady: Boolean,
+    orderId: String?,
+    locationPermissionGranted: Boolean,
+    bindingStillCurrent: Boolean
+): Boolean = bindingStillCurrent && locationPermissionGranted && boundReady && orderId != null &&
+    boundUserId == currentUserId && boundSessionId == currentSessionId
+
 internal fun riderNavigationLocationPushIntervalMs(distanceMeters: Double?): Long =
     if (distanceMeters != null && distanceMeters.isFinite() && distanceMeters <= 200.0) 1_000L else 3_000L
 
@@ -111,12 +124,11 @@ internal object RiderNavigationDispatchReadiness {
         }
         if (fixAgeMs == null || fixAgeMs !in 0L..10_000L) return@withLock 1_000L
         val auth = SessionStore(context).load() ?: return@withLock 3_000L
-        if (
-            bound.userId != auth.user.id ||
-            bound.sessionId != auth.session.sessionId ||
-            !bound.ready ||
-            bound.orderId == null
-        ) return@withLock 3_000L
+        if (!riderNavigationLocationUpdateEligible(
+                bound.userId, bound.sessionId, auth.user.id, auth.session.sessionId,
+                bound.ready, bound.orderId, riderNavigationHasLocationPermission(context),
+                binding == bound
+            )) return@withLock 3_000L
         api.updateLocation(auth, lat, lng)
         val target = locationTarget?.takeIf { it.userId == auth.user.id }
         riderNavigationLocationPushIntervalMs(
