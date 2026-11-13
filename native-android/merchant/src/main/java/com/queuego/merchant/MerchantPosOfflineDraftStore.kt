@@ -115,6 +115,10 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         requireUuid(catalog.actorId); requireUuid(catalog.shopId); requireUuid(catalog.deviceId)
         require(catalog.savedAtMs >= 0) { "เวลาแคตตาล็อก POS ไม่ถูกต้อง" }
         require(catalog.shopName.length <= 200 && catalog.products.size <= 20_000 && catalog.tables.size <= 300)
+        require(catalog.products.all { it.price.isFinite() && it.price >= 0 &&
+            (it.deliveryPrice == null || (it.deliveryPrice.isFinite() && it.deliveryPrice >= 0)) }) {
+            "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
+        }
         val json = JSONObject().put("actor_id", catalog.actorId).put("shop_id", catalog.shopId)
             .put("device_id", catalog.deviceId).put("shop_name", catalog.shopName.take(200))
             .put("saved_at_ms", catalog.savedAtMs)
@@ -184,9 +188,15 @@ class MerchantPosOfflineDraftStore(private val root: File) {
         }
         val products = productArray.let { array -> (0 until array.length()).map { i ->
             val p = array.getJSONObject(i)
-            PosProduct(p.getString("id"), p.getString("name"), p.getDouble("price"),
+            val price = p.getDouble("price")
+            val deliveryPrice = if (p.isNull("delivery_price")) null else p.getDouble("delivery_price")
+            check(price.isFinite() && price >= 0 &&
+                (deliveryPrice == null || (deliveryPrice.isFinite() && deliveryPrice >= 0))) {
+                "ราคาสินค้า POS ออฟไลน์ไม่ถูกต้อง"
+            }
+            PosProduct(p.getString("id"), p.getString("name"), price,
                 if (p.isNull("image")) null else p.getString("image"), p.getBoolean("available"),
-                p.optBoolean("delivery_available", true), if (p.isNull("delivery_price")) null else p.getDouble("delivery_price"),
+                p.optBoolean("delivery_available", true), deliveryPrice,
                 stock = p.optInt("stock", 0),
                 inventoryStockTracking = p.optBoolean("inventory_stock_tracking", false),
                 groceryMasterId = if (p.isNull("grocery_master_id")) null else p.optString("grocery_master_id"),
