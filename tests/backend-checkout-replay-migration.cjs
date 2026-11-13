@@ -17,4 +17,14 @@ assert.match(sql, /SECURITY DEFINER/);
 assert.match(sql, /SET search_path TO 'public', 'pg_temp'/);
 assert.match(sql, /v_old\.payload_hash<>v_hash/);
 assert.match(sql, /perform set_config\('queuego\.pos_rpc','on',true\)/);
+
+// Fail closed: no checkout result may be returned before session validity is checked.
+// This guards against future replay fast paths that skip revoked/expired-session checks.
+const preValidity = sql.slice(sql.indexOf('begin'), validity);
+assert.doesNotMatch(preValidity, /\breturn\b/i, 'checkout must not return before session authorization');
+const postValidity = sql.slice(validity);
+assert.match(postValidity, /where session_id=p_session and request_id=p_request/, 'replay lookup must remain scoped to the authorized session');
+assert.match(postValidity, /if v_old\.payload_hash<>v_hash then/, 'same request ID with a changed payload must be rejected');
+assert.match(postValidity, /where session_id=p_session\s+and payload_hash=v_hash/, 'recent-cart replay must remain scoped to the authorized session');
+
 console.log('checkout replay migration ordering: static regression passed');
