@@ -1,0 +1,46 @@
+-- REVIEW REQUIRED: forward-only change; do not apply to Production automatically.
+-- QR table catalog must advertise the same POS-eligible products that
+-- qg_table_checkout accepts. Preserve session and active-table authorization.
+CREATE OR REPLACE FUNCTION public.qg_table_catalog(p_session uuid, p_device_key uuid)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare v public.qg_table_sessions%rowtype;
+begin
+  select * into v
+  from public.qg_table_sessions
+  where id=p_session
+    and device_hash=encode(extensions.digest(p_device_key::text,'sha256'),'hex')
+    and revoked_at is null
+    and expires_at>now();
+
+  if not found or not exists(
+    select 1 from public.pos_tables where id=v.table_id and active
+  ) then
+    raise exception 'สิทธิ์การสั่งอาหารจากโต๊ะนี้หมดอายุแล้ว กรุณาสแกน QR Code ที่โต๊ะอีกครั้ง';
+  end if;
+
+  return (
+    select coalesce(
+      jsonb_agg(
+        jsonb_build_object(
+          'id',p.id,
+          'name',p.name,
+          'description',p.description,
+          'image',p.image,
+          'category',p.category,
+          'price',coalesce(p.pos_price,p.price)
+        )
+        order by p.name
+      ),
+      '[]'::jsonb
+    )
+    from public.products p
+    where p.shop_id=v.shop_id
+      and p.available
+      and p.pos_available
+  );
+end
+$function$;
