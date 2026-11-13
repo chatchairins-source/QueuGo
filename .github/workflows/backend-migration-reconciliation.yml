@@ -18,6 +18,8 @@ on:
       - 'scripts/sql/audit-table-checkout-replay-guard.sql'
       - 'tests/backend-table-checkout-replay-guard.cjs'
       - 'tests/backend-checkout-replay-migration.cjs'
+      - 'scripts/sql/audit-pos-payment-rpc-signals.sql'
+      - 'tests/backend-pos-payment-rpc-signals.cjs'
   workflow_dispatch:
 
 permissions:
@@ -43,6 +45,7 @@ jobs:
           node --check tests/backend-privileged-rpc-signals.cjs
           node --check tests/backend-table-checkout-replay-guard.cjs
           node --check tests/backend-checkout-replay-migration.cjs
+          node --check tests/backend-pos-payment-rpc-signals.cjs
       - name: Read-only migration history regression
         run: node tests/backend-migration-reconciliation.cjs
       - name: Read-only SECURITY DEFINER exposure regression
@@ -55,5 +58,7 @@ jobs:
         run: node tests/backend-table-checkout-replay-guard.cjs
       - name: Checkout replay migration authorization regression
         run: node tests/backend-checkout-replay-migration.cjs
+      - name: Read-only POS payment RPC audit regression
+        run: node tests/backend-pos-payment-rpc-signals.cjs
       - name: Read-only RLS no-policy grants regression
         run: node tests/backend-no-policy-grants.cjs
