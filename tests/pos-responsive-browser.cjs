@@ -80,9 +80,10 @@ async function main() {
       await cards.last().waitFor();
       await page.locator('#qg-printer-btn').waitFor({ state: 'attached' });
       assert.equal(await cards.count(), 8);
-      const geometry = await page.locator('.qg-pos-workspace').evaluate(() => {
+      const geometryHandle = await page.waitForFunction(() => {
         const rect = selector => document.querySelector(selector).getBoundingClientRect();
         const cards = [...document.querySelectorAll('.qg-pos-product-card')];
+        if (!cards.length || !document.querySelector('.qg-pos-cart')) return false;
         return {
           nav: rect('.qg-pos-tabs').x,
           catalog: rect('.qg-pos-catalog').x,
@@ -91,6 +92,7 @@ async function main() {
           overflow: document.documentElement.scrollWidth > innerWidth
         };
       });
+      const geometry = await geometryHandle.jsonValue();
       assert.equal(geometry.overflow, false, 'horizontal overflow at ' + width);
       if (layout === 'desktop') {
         assert(geometry.nav < geometry.catalog);
