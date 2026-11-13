@@ -549,4 +549,33 @@ class MerchantPosOfflineDraftStoreTest {
             assertEquals(requestBytes, file.readText())
         } finally { root.deleteRecursively() }
     }
+
+    @Test fun rejectsNegativeOfflineCatalogPricesOnSaveAndLoadWithoutReplacingSnapshot() {
+        val root = Files.createTempDirectory("pos-catalog-invalid-price").toFile()
+        try {
+            val actor = UUID.randomUUID().toString()
+            val shop = UUID.randomUUID().toString()
+            val device = UUID.randomUUID().toString()
+            val product = PosProduct(UUID.randomUUID().toString(), "ชา", 35.0, null, true)
+            val catalog = PosOfflineCatalog(actor, shop, device, "ร้าน", 100L,
+                listOf(product), emptyList())
+            val store = MerchantPosOfflineDraftStore(root)
+            store.saveCatalog(catalog)
+            val file = root.listFiles()!!.single { it.name.endsWith(".catalog.json") }
+            val originalBytes = file.readText()
+
+            assertThrows(IllegalArgumentException::class.java) {
+                store.saveCatalog(catalog.copy(savedAtMs = 101L,
+                    products = listOf(product.copy(price = -1.0))))
+            }
+            assertEquals(originalBytes, file.readText())
+
+            val corrupted = JSONObject(originalBytes)
+            corrupted.getJSONArray("products").getJSONObject(0).put("price", -5.0)
+            val corruptedBytes = corrupted.toString()
+            file.writeText(corruptedBytes)
+            assertThrows(IllegalStateException::class.java) { store.loadCatalog(actor, device) }
+            assertEquals(corruptedBytes, file.readText())
+        } finally { root.deleteRecursively() }
+    }
 }
