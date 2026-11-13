@@ -63,6 +63,14 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   await api.saveCatalog(scope,[{id:'options-valid',name:'ตัวเลือกสินค้า',price:40,pos_price:40,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'size',name:'ขนาด',type:'single',required:false,options:[null,undefined,7,[],{key:'large',name:'ใหญ่',price_delta:5}]}]}],[]);
   const safeOptions=(await api.getCatalog(scope)).products[0].variants[0].options;
   eq(safeOptions.map(o=>o.key),['large'],'malformed option rows are skipped without discarding valid menu options');
+  // Boolean option price deltas must not coerce to 1 or 0 baht in offline mode.
+  await api.saveCatalog(scope,[{id:'option-deltas',name:'ตัวเลือก',price:40,pos_price:40,variants:[{schema:'queuego.menu-options.v1',key:'extras',name:'เพิ่ม',options:[
+    {key:'bad-true',name:'ผิดรูปแบบ',price_delta:true},
+    {key:'bad-false',name:'ผิดรูปแบบ',price_delta:false},
+    {key:'valid-zero',name:'ฟรี',price_delta:0},
+    {key:'valid-five',name:'เพิ่ม 5',price_delta:'5'}
+  ]}]}],[]);
+  eq((await api.getCatalog(scope)).products[0].variants[0].options.map(o=>[o.key,o.price_delta]),[['valid-zero',0],['valid-five',5]],'boolean option price deltas are rejected; zero and numeric strings remain valid');
   // Offline option strings must obey the same 100-character limit as array values.
   let oversizedOptionRejected=false;
   try{await api.save({...first,id:'draft-oversized-option',items:[{...first.items[0],options:{size:'x'.repeat(101)}}]})}catch(_){oversizedOptionRejected=true}
