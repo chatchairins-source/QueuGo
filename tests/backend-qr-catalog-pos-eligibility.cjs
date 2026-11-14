@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const sql = fs.readFileSync(path.join(__dirname, '../supabase/migrations/20261114023000_qg_table_catalog_pos_eligibility.sql'), 'utf8');
 assert.match(sql, /CREATE OR REPLACE FUNCTION public\.qg_table_catalog\(p_session uuid, p_device_key uuid\)/);
-assert.match(sql, /SECURITY DEFINER\s+SET search_path TO 'public', 'pg_temp'/);
+assert.match(sql, /SECURITY DEFINER\s+SET search_path TO ''/);
 assert.doesNotMatch(sql, /SET search_path TO 'public'/, 'Definer must not resolve untrusted public objects');
 assert.match(sql, /device_hash=encode\(extensions\.digest\(p_device_key::text,'sha256'\),'hex'\)/);
 assert.match(sql, /revoked_at is null\s+and expires_at>now\(\)/);
