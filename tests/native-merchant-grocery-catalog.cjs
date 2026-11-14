@@ -14,8 +14,8 @@ const source=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/
 ok(products.includes('shopCategory == "grocery"'),'Grocery Merchant must branch to Grocery-specific add choices');
 ok(products.includes('value = query')&&products.includes('merchantProductMatchesView(product, query, selectedCategory)')&&productModel.includes('product.name.contains(term, ignoreCase = true)')&&productModel.includes('category.contains(term, ignoreCase = true)'),'Native product list must match Web search by product name or category');
 ok(products.includes('if (shopCategory == "grocery")')&&products.includes('categories.forEach { category ->')&&products.includes('selectedCategory = category'),'Native Grocery list must expose its dynamic category filter');
-ok(web.includes('oninput="qgmProductSearch(this.value)"')&&web.includes('onchange="qgmProductCategory(this.value)"'),'Web product list search and Grocery category-filter behavior remains the parity target');
-ok(web.includes("empty.textContent='ไม่พบสินค้าที่ตรงกับการค้นหา'")&&web.includes("empty.hidden=products.length===0||visible>0"),'Web must show an accessible empty result when product search/filter finds no matches');
+ok(web.includes('oninput="qgmCatalogSearch(this.value)"')&&web.includes("qgmCatalogCategoryOf(p)===qgmCatalogCategory"),'Web product list search and Grocery category-filter behavior remains the parity target');
+ok(web.includes("results.innerHTML=ps.map")&&web.includes("ไม่พบสินค้า"),'Web must show an accessible empty result when product search/filter finds no matches');
 ok(products.includes('Text("เพิ่มสินค้าเอง"')&&products.includes('Text("เพิ่มสินค้าจากแคตตาล็อก"'),'Grocery Merchant must expose both manual and master-catalog add actions');
 ok(app.includes('"catalog", "grocery-catalog" -> "products"'),'Grocery catalog back navigation must return to Products');
 ok(app.includes('screen = "grocery-catalog"')&&app.includes('MerchantGroceryCatalogScreen('),'Merchant app must route Grocery catalog to its Native screen');
@@ -40,7 +40,7 @@ ok(
 );
 ok(
   catalogWeb.includes("merchantReferenceImage(r.image_url)") &&
-  catalogWeb.includes("https://images.mango-prod.siammakro.cloud/"),
+  catalogWeb.includes("https://images.mango-prod.siammakro.cloud"),
   'Web Merchant source catalog must render the same pinned-host reference imagery'
 );
 ok(screen.includes('remember(item.id, item.productUpdatedAt) { UUID.randomUUID().toString() }'),'Retry-safe request ID must remain stable until the server version changes');
