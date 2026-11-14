@@ -95,6 +95,27 @@ class RiderNavigationLocationSessionGuardTest {
         assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", "rider-a", " ", true))
     }
 
+    @Test fun suspendedNavigationCannotUseExpiredSessionAfterApiReturns() {
+        val now = 1_800_000L
+        fun resumed(
+            expiry: Long? = now + 1L,
+            user: String? = "rider-a",
+            session: String? = "session-a",
+            current: Boolean = true
+        ) = riderNavigationResumedSessionActive(
+            "rider-a", "session-a", user, session, current, expiry, now
+        )
+        assertTrue(resumed())
+        assertFalse(resumed(expiry = now))
+        assertFalse(resumed(expiry = now - 1L))
+        assertFalse(resumed(expiry = Long.MIN_VALUE))
+        assertFalse(resumed(expiry = null))
+        assertFalse(resumed(user = null))
+        assertFalse(resumed(session = "session-b"))
+        assertFalse(resumed(current = false))
+        assertTrue(resumed(expiry = Long.MAX_VALUE))
+    }
+
     @Test fun navigationLeaseSaturatesRatherThanWrappingAcrossLongBoundary() {
         assertTrue(riderNavigationRemainingLeaseMs(Long.MAX_VALUE, -1L) == Long.MAX_VALUE)
         assertTrue(riderNavigationRemainingLeaseMs(Long.MAX_VALUE, Long.MIN_VALUE) == Long.MAX_VALUE)
