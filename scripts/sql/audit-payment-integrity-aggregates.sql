@@ -1,0 +1,21 @@
+-- Read-only, aggregate-only payment integrity triage. Never returns order IDs or customer data.
+-- Multiple payment attempts may be legitimate; these counts are investigation signals only.
+-- Success labels are heuristic and must be reconciled with the actual payment state machine.
+WITH per_order AS (
+  SELECT p.order_id,
+         count(*) AS attempts,
+         count(*) FILTER (
+           WHERE lower(p.status) IN ('paid','succeeded','success','completed','captured')
+         ) AS successful_attempts
+  FROM public.payments AS p
+  WHERE p.order_id IS NOT NULL
+  GROUP BY p.order_id
+)
+SELECT
+  (SELECT count(*) FROM public.payments) AS payment_rows,
+  (SELECT count(*) FROM per_order WHERE attempts > 1) AS orders_with_multiple_payment_rows,
+  (SELECT count(*) FROM per_order WHERE successful_attempts > 1) AS orders_with_multiple_successful_payments,
+  (SELECT count(*)
+     FROM public.payments AS p
+     LEFT JOIN public.orders AS o ON o.id = p.order_id
+    WHERE p.order_id IS NOT NULL AND o.id IS NULL) AS payment_orphans;
