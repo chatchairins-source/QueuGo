@@ -39,6 +39,9 @@ internal fun merchantPushSessionCurrent(
         current.user.role == "shop" &&
         current.user.status == "active" &&
         current.user.id == validated.user.id &&
+        validated.user.authUserId == validated.session.authUserId &&
+        current.user.authUserId == current.session.authUserId &&
+        current.user.authUserId == validated.user.authUserId &&
         current.session.authUserId == validated.session.authUserId &&
         current.session.sessionId == validated.session.sessionId &&
         validated.session.expiresAtMs > nowMs &&
