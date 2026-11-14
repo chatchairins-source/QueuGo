@@ -62,7 +62,8 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
         auth.session.sessionId.isNotBlank() &&
         auth.session.expiresAtMs > nowMs
 
-internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
+internal fun merchantUsableFcmToken(raw: String): String? = raw.trim().takeIf { it.length >= 16 }
+\ninternal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -100,8 +101,8 @@ internal suspend fun syncMerchantNativePush(context: Context, auth: NativeAuth):
     }
     ensureMerchantNotificationChannel(context)
     if (!merchantFirebaseConfigured(context)) return false
-    val token = merchantFirebaseToken().trim()
-    require(token.length >= 16) { "ไม่ได้รับ Push token จาก Firebase" }
+    val token = merchantUsableFcmToken(merchantFirebaseToken())
+        ?: error("ไม่ได้รับ Push token จาก Firebase")
     // Firebase token retrieval suspends: logout or account switching can happen meanwhile.
     val current = SecureRoleSessionStore(context, "shop").load()
     if (!merchantPushSessionCurrent(auth, current, System.currentTimeMillis())) return false
@@ -120,7 +121,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
 
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        if (token.length < 16) return
+        val usableToken = merchantUsableFcmToken(token) ?: return
         val sessionStore = SecureRoleSessionStore(applicationContext, "shop")
         val cached = sessionStore.load() ?: return
         serviceScope.launch {
@@ -130,7 +131,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
                     NativePushApi().subscribe(
                         auth,
                         NativePushDeviceStore(applicationContext, "shop").deviceId(),
-                        token
+                        usableToken
                     )
                 }
             }
