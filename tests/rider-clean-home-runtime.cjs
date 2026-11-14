@@ -2,8 +2,9 @@ const fs=require('fs'),assert=require('node:assert/strict'),{JSDOM}=require('jsd
 const source=fs.readFileSync(process.env.QG_RIDER_SOURCE||'rider/index.html','utf8');
 const script=[...source.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)].map(x=>x[1]).find(x=>x.includes('function renderHomeDock()'));
 const ast=acorn.parse(script,{ecmaVersion:'latest'});
-const names=['renderHomeDock','qgSetHomeDockHTML','qgApplyHomeDockCollapse','updateStatusUI','toggleOnline','qgSyncRiderAvailability'];
+const names=['qgAvailabilitySwitchHTML','renderHomeDock','qgSetHomeDockHTML','qgApplyHomeDockCollapse','updateStatusUI','toggleOnline','qgSyncRiderAvailability'];
 const code=names.map(name=>{const n=ast.body.find(n=>n.type==='FunctionDeclaration'&&n.id.name===name);assert(n,name);return script.slice(n.start,n.end)}).join('\n');
+const icons=ast.body.find(n=>n.type==='VariableDeclaration'&&n.declarations.some(d=>d.id.name==='QTICON'));
 let checks=0;function eq(a,b){assert.deepEqual(a,b);checks++}
 (async()=>{
 const dom=new JSDOM('<main id="home-dock"></main>',{url:'https://queuego.invalid/rider/',runScripts:'outside-only'}),w=dom.window;
@@ -12,7 +13,7 @@ Object.assign(w,{S:{user:{id:'r'},session:{sessionId:'s'},riderProfile:{id:'rp',
  toast(){},getAccessToken:async()=> 'test-only',refreshData:async()=>{},requestAnimationFrame:f=>f(),qgFollowRiderCamera(){},
  sbTable:async(path,opts)=>{writes++;bodies.push(opts.body);if(fail)throw Error('lost network');if(ack)await ack;return [{id:'rp',metadata:opts.body.metadata}]},
  jobCardHTML:()=>'<article id="active-job">Current work</article>',qgRouteBundleHTML:()=>'',bindJobCardEvents(){},qgBindRouteBundleUI(){},qgLaundryPoolHTML:()=>''});
-w.eval('let riderAvailabilityBusy=false,riderAvailabilityRevision=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;let qgActiveItemPreview={orderId:null};function qgLoadActiveItemPreview(){}function qgResetActiveItemPreview(){qgActiveItemPreview={orderId:null}};\n'+code);
+w.eval('let riderAvailabilityBusy=false,riderAvailabilityRevision=0,riderHomeDockCollapsed=false,riderRouteOverviewActive=false;let qgActiveItemPreview={orderId:null};function qgLoadActiveItemPreview(){}function qgResetActiveItemPreview(){qgActiveItemPreview={orderId:null}};\n'+script.slice(icons.start,icons.end)+'\n'+code);
 w.renderHomeDock();eq(w.document.querySelectorAll('[role=switch]').length,1);eq(w.document.querySelectorAll('#go-online,#go-offline,.qg-home-stats').length,0);
 eq(w.document.getElementById('status-switch').getAttribute('aria-checked'),'false');
 let release;ack=new Promise(r=>release=r);const pending=w.toggleOnline();await Promise.resolve();await w.toggleOnline();eq(writes,1);eq(w.S.online,false);eq(w.document.getElementById('status-switch').disabled,true);release();await pending;ack=null;
