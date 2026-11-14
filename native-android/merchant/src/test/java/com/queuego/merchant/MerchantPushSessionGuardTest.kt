@@ -42,6 +42,14 @@ class MerchantPushSessionGuardTest {
         assertFalse(merchantPushSessionCurrent(validatedBeforeTokenFetch, auth(userId = "shop-2"), 1_000L))
     }
 
+    @Test fun expiredValidatedAuthCannotSubscribeEvenIfPersistedSessionWasRefreshed() {
+        val staleValidatedAuth = auth(expiry = 1_000L)
+        val refreshedCurrentSession = auth(expiry = 5_000L)
+        assertFalse(merchantPushSessionCurrent(staleValidatedAuth, refreshedCurrentSession, 1_000L))
+        assertFalse(merchantPushSessionCurrent(staleValidatedAuth, refreshedCurrentSession, 1_001L))
+        assertTrue(merchantPushSessionCurrent(staleValidatedAuth, refreshedCurrentSession, 999L))
+    }
+
     @Test fun expiredAndDeactivatedSessionsCannotRegisterToken() {
         assertFalse(merchantPushSessionCurrent(auth(), auth(), 2_000L))
         assertFalse(merchantPushSessionCurrent(auth(), auth(expiry = 999L), 1_000L))
