@@ -185,15 +185,21 @@ window.qgMarketCatalogChoose=id=>{
       p_request_id:crypto.randomUUID()
     };
     if(!(body.p_price>0&&body.p_pack_size>0&&body.p_weight_kg>0&&body.p_cost>=0&&body.p_initial_stock>=0&&body.p_min_stock>=0))return error(Error('ตรวจราคา หน่วย น้ำหนัก ต้นทุน และสต๊อกอีกครั้ง'));
+    const submitShop=state.shop,submitEpoch=state.epoch;
+    if(!submitShop||!active(submitEpoch,submitShop))return;
     state.loading=true;const submit=ev.submitter;if(submit)submit.disabled=true;
     try{
-      localStorage.setItem(pendingKey(state.shop),JSON.stringify(body));
+      localStorage.setItem(pendingKey(submitShop),JSON.stringify(body));
       await rpc('qg_market_catalog_add',body);
-      localStorage.removeItem(pendingKey(state.shop));
+      localStorage.removeItem(pendingKey(submitShop));
+      if(!active(submitEpoch,submitShop))return;
       toast('เพิ่มสินค้าเข้าร้านแล้ว');
       state.loading=false;
       state.offset=0;await load();
-    }catch(err){error(err);if(submit)submit.disabled=false;state.loading=false}
+    }catch(err){
+      if(!active(submitEpoch,submitShop))return;
+      error(err);if(submit)submit.disabled=false;state.loading=false;
+    }
   };
 };
 })();
