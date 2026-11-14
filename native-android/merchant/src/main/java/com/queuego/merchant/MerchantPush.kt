@@ -38,6 +38,12 @@ internal fun merchantPushSessionCurrent(
         validated.user.status == "active" &&
         current.user.role == "shop" &&
         current.user.status == "active" &&
+        validated.user.id.isNotBlank() &&
+        current.user.id.isNotBlank() &&
+        validated.user.authUserId.isNotBlank() &&
+        current.user.authUserId.isNotBlank() &&
+        validated.session.sessionId.isNotBlank() &&
+        current.session.sessionId.isNotBlank() &&
         current.user.id == validated.user.id &&
         validated.user.authUserId == validated.session.authUserId &&
         current.user.authUserId == current.session.authUserId &&

@@ -68,6 +68,16 @@ class MerchantPushSessionGuardTest {
         assertFalse(merchantPushSessionCurrent(auth(status = "inactive"), auth(), 1_000L))
         assertFalse(merchantPushSessionCurrent(auth(), auth(role = "customer"), 1_000L))
     }
+    @Test fun blankIdentityCannotRegisterFcmTokenEvenWhenBothSnapshotsMatch() {
+        assertFalse(merchantPushSessionCurrent(auth(userId = ""), auth(userId = ""), 1_000L))
+        assertFalse(merchantPushSessionCurrent(auth(userAuthId = ""), auth(userAuthId = ""), 1_000L))
+        assertFalse(merchantPushSessionCurrent(auth(sessionAuthId = ""), auth(sessionAuthId = ""), 1_000L))
+        assertFalse(merchantPushSessionCurrent(auth(sessionId = ""), auth(sessionId = ""), 1_000L))
+        assertFalse(merchantPushSessionCurrent(auth(), auth(userId = ""), 1_000L))
+        assertFalse(merchantPushSessionCurrent(auth(), auth(sessionId = ""), 1_000L))
+        assertTrue(merchantPushSessionCurrent(auth(), auth(), 1_000L))
+    }
+
     @Test fun notificationRejectsUnboundOrBlankCachedSession() {
         assertTrue(merchantPushNotificationSessionActive(auth(), 1_999L))
         assertFalse(merchantPushNotificationSessionActive(auth(), 2_000L))
