@@ -3965,7 +3965,7 @@ window.qgmLoadRevenuePeriod=async function(days,end){
    ${qgmRevenueMetric('gp','GP ที่หักจากเครดิต',money(creditGp))}
    ${qgmRevenueMetric('cash','เงินสดที่ได้รับ',money(cash))}
   </section>
-  ${legacy>0?'<div class="qgm-revenue-legacy">GP ค้างชำระเดิมก่อนระบบเครดิต: '+money(legacy)+'</div>':''}`;
+  ${legacy>0?'<div class="qgm-revenue-legacy">GP เดิมก่อนระบบเครดิต (ค้างชำระ): '+money(legacy)+'</div>':''}`;
  }catch(e){box.innerHTML='<div class="qgm-revenue-loading">โหลดรายได้ไม่สำเร็จ: '+escapeHtml(e.message||e)+'</div>'}
 };
 window.qgmLoadRevenue=async function(date){
