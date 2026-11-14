@@ -70,6 +70,10 @@ internal fun riderNavigationRemainingLeaseMs(expiresAtMs: Long, nowMs: Long): Lo
         if (remaining < 0L) Long.MAX_VALUE else remaining
     }
 
+/** Never upload a GPS fix using an already expired authenticated rider session. */
+internal fun riderNavigationLocationSessionActive(expiresAtMs: Long, nowMs: Long): Boolean =
+    riderNavigationRemainingLeaseMs(expiresAtMs, nowMs) > 0L
+
 internal fun riderNavigationLocationPushIntervalMs(distanceMeters: Double?): Long =
     if (distanceMeters != null && distanceMeters.isFinite() && distanceMeters <= 200.0) 1_000L else 3_000L
 
@@ -163,6 +167,9 @@ internal object RiderNavigationDispatchReadiness {
                 bound.ready, bound.orderId, riderNavigationHasLocationPermission(context),
                 binding == bound
             )) return@withLock 3_000L
+        if (!riderNavigationLocationSessionActive(auth.session.expiresAtMs, System.currentTimeMillis())) {
+            return@withLock 3_000L
+        }
         api.updateLocation(auth, lat, lng)
         val target = locationTarget?.takeIf { it.userId == auth.user.id }
         riderNavigationLocationPushIntervalMs(
