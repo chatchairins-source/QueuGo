@@ -56,8 +56,8 @@ class MerchantPosOfflineDraftPriceIntegrityTest {
             val store = MerchantPosOfflineDraftStore(root)
             store.save(draft)
             val item = store.load(PosOfflineDraftScope(actor, shop, device))!!.items.single()
-            assertEquals(35.0, item.priceSnapshot)
-            assertEquals(30.0, item.basePriceSnapshot)
+            assertEquals(35.0, item.priceSnapshot, 0.0)
+            assertEquals(30.0, item.basePriceSnapshot, 0.0)
         } finally {
             root.deleteRecursively()
         }
