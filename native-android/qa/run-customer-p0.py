@@ -35,7 +35,15 @@ try:
     run(adb + ['wait-for-device'], timeout=180)
     deadline = time.monotonic() + 180
     while time.monotonic() < deadline:
-        if run(adb + ['shell', 'getprop', 'sys.boot_completed'], capture_output=True, text=True).stdout.strip() == '1':
+        if emulator.poll() is not None:
+            raise AssertionError('Android emulator exited during boot; inspect emulator.log')
+        try:
+            boot = run(adb + ['shell', 'getprop', 'sys.boot_completed'],
+                       capture_output=True, text=True, check=False, timeout=15)
+        except subprocess.TimeoutExpired:
+            time.sleep(1)
+            continue
+        if boot.returncode == 0 and boot.stdout.strip() == '1':
             break
         time.sleep(1)
     else:
