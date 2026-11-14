@@ -23,6 +23,14 @@ begin
     raise exception 'สิทธิ์การสั่งอาหารจากโต๊ะนี้หมดอายุแล้ว กรุณาสแกน QR Code ที่โต๊ะอีกครั้ง';
   end if;
 
+  -- Match checkout's shop eligibility guard before disclosing catalog items.
+  if not exists (
+    select 1 from public.shop_profiles
+    where id=v.shop_id and status not in ('suspended','rejected')
+  ) then
+    raise exception 'ร้านไม่พร้อมรับออเดอร์';
+  end if;
+
   return (
     select coalesce(
       jsonb_agg(
