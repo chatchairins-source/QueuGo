@@ -145,6 +145,8 @@ window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);const queued
 window.qgMarketCatalogSetCategory=category=>{clearTimeout(searchTimer);searchTimer=null;state.category=String(category||'');state.offset=0;load()};
 window.qgMarketCatalogPage=dir=>{if(state.loading)return;const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
 window.qgMarketCatalogChoose=id=>{
+  const currentShop=shop();
+  if(!currentShop||!permitted(currentShop)||profileId(currentShop)!==state.shop||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
   const r=state.rows.find(x=>x.id===id);if(!r||r.product_id)return;
   const card=[...document.querySelectorAll('[data-market-id]')].find(x=>x.getAttribute('data-market-id')===String(id));
   const inlinePrice=Number(card?.querySelector('[data-market-price]')?.value),inlineStock=Number(card?.querySelector('[data-market-stock]')?.value);
