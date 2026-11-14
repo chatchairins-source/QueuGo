@@ -43,6 +43,11 @@ internal fun merchantPushSessionCurrent(
         current.session.sessionId == validated.session.sessionId &&
         current.session.expiresAtMs > nowMs
 
+internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long): Boolean =
+    auth.user.role == "shop" &&
+        auth.user.status == "active" &&
+        auth.session.expiresAtMs > nowMs
+
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
@@ -118,7 +123,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
         val cached = SecureRoleSessionStore(applicationContext, "shop").load() ?: return
-        if (cached.user.role != "shop" || cached.user.status != "active") return
+        if (!merchantPushNotificationSessionActive(cached, System.currentTimeMillis())) return
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
