@@ -140,7 +140,7 @@ async function load(){
   finally{if(active(epoch,id))state.loading=false}
 }
 window.qgRenderMarketCatalog=load;
-window.qgMarketCatalogSearch=e=>{e?.preventDefault?.();state.query=String(document.getElementById('market-catalog-search')?.value||'').trim();state.category=String(document.getElementById('market-catalog-category')?.value||'');state.offset=0;load()};
+window.qgMarketCatalogSearch=e=>{e?.preventDefault?.();clearTimeout(searchTimer);searchTimer=null;state.query=String(document.getElementById('market-catalog-search')?.value||'').trim();state.category=String(document.getElementById('market-catalog-category')?.value||'');state.offset=0;load()};
 window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);const queuedShop=profileId(shop());searchTimer=setTimeout(()=>{if(location.hash.replace('#','').split('/')[0]!=='market-catalog'||!queuedShop||profileId(shop())!==queuedShop)return;state.query=String(value||'').trim();state.offset=0;load()},300)};
 window.qgMarketCatalogSetCategory=category=>{clearTimeout(searchTimer);searchTimer=null;state.category=String(category||'');state.offset=0;load()};
 window.qgMarketCatalogPage=dir=>{if(state.loading)return;const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
