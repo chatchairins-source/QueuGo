@@ -1,3 +1,10 @@
+## 2026-11-14 Native successor CI recovery
+
+- Preserve Rider successor #1063 and carry forward Merchant #1039's JSONObject replay compile fix with its regression test. This integration is based on the Native successor branch.
+- The pinned Geofabrik PBF currently returns HTTP 404. On download failure, Android QA can recover the three routing data files from the SHA-256-verified field build `6bf84894` (run `42552679562`). Validate the exact original Thailand snapshot and both graph/config checksums before running Linux probes and compiling current application code.
+- Authenticate review triggers on relevant Merchant and routing changes, and reconstructs the exact tested APK from the recorded list of one to three parts. Hosted Android acceptance, signed releases and Production validation remain separate gates.
+- CI at `121d019d` passed Native Pilot for all roles and the nationwide Rider offline runtime. Authenticated Review reached Merchant POS; its review expected a tables page even for the retail counter. Capture now identifies the actual counter mode and requires the tables page for food/cafe only, with content checks before each screenshot. Emulator verification of the updated review is pending.
+
 ## 2026-11-12 Run APK exporter regressions before Android setup
 
 - Native Pilot runs the exporter tests immediately after checkout, before Android SDK and offline map setup. The actual three-role export stays after the runtime checks.

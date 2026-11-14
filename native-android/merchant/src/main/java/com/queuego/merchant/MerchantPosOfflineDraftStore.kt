@@ -101,7 +101,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 "ร่าง POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
             }
             // The same timestamp cannot represent two different cart revisions.
-            check(existing.savedAtMs != draft.savedAtMs || encode(existing).similar(encode(draft))) {
+            check(existing.savedAtMs != draft.savedAtMs || encode(existing).toString() == encode(draft).toString()) {
                 "ร่าง POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
             }
         }
@@ -172,7 +172,7 @@ class MerchantPosOfflineDraftStore(private val root: File) {
                 "แคตตาล็อก POS ใหม่กว่าข้อมูลที่กำลังบันทึก"
             }
             // Equal timestamps may only be replayed with identical data.
-            check(existingSavedAtMs != catalog.savedAtMs || existing.similar(json)) {
+            check(existingSavedAtMs != catalog.savedAtMs || existing.toString() == json.toString()) {
                 "แคตตาล็อก POS มีข้อมูลขัดแย้งในเวลาเดียวกัน"
             }
             // Validate the complete persisted snapshot before replacing it. Bounds and metadata

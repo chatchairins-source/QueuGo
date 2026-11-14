@@ -3,9 +3,9 @@ package com.queuego.merchant
 import java.nio.file.Files
 import java.util.UUID
 import org.json.JSONObject
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Test
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
+import org.junit.Test
 
 class MerchantPosOfflineDraftPriceIntegrityTest {
     @Test fun malformedDraftPricesCannotBeLoadedOrReplaced() {
@@ -56,8 +56,8 @@ class MerchantPosOfflineDraftPriceIntegrityTest {
             val store = MerchantPosOfflineDraftStore(root)
             store.save(draft)
             val item = store.load(PosOfflineDraftScope(actor, shop, device))!!.items.single()
-            assertEquals(35.0, item.priceSnapshot)
-            assertEquals(30.0, item.basePriceSnapshot)
+            assertEquals(35.0, item.priceSnapshot, 0.0)
+            assertEquals(30.0, item.basePriceSnapshot, 0.0)
         } finally {
             root.deleteRecursively()
         }

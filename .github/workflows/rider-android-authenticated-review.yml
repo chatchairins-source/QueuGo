@@ -6,7 +6,12 @@ on:
     paths:
       - '.github/workflows/rider-android-authenticated-review.yml'
       - 'native-android/rider/**'
+      - 'native-android/merchant/**'
+      - 'ops/maps/**'
+      - '.github/workflows/rider-offline-routing.yml'
       - 'native-android/qa/capture-rider-authenticated-review.py'
+      - 'native-android/qa/capture-merchant-authenticated-review.py'
+      - 'native-android/qa/test_merchant_authenticated_review_tabs.py'
       - 'native-android/qa/fetch-rider-offline-candidate.py'
   push:
     branches:
