@@ -41,6 +41,7 @@ internal fun merchantPushSessionCurrent(
         current.user.id == validated.user.id &&
         current.session.authUserId == validated.session.authUserId &&
         current.session.sessionId == validated.session.sessionId &&
+        validated.session.expiresAtMs > nowMs &&
         current.session.expiresAtMs > nowMs
 
 internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long): Boolean =
