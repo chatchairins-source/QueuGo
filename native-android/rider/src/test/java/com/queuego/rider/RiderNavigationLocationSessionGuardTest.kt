@@ -94,6 +94,16 @@ class RiderNavigationLocationSessionGuardTest {
         assertTrue(riderNavigationRemainingLeaseMs(0L, 1L) == 0L)
     }
 
+    @Test fun locationUploadRequiresAnUnexpiredAuthenticatedSession() {
+        val now = 1_800_000L
+        assertTrue(riderNavigationLocationSessionActive(now + 1L, now))
+        assertTrue(riderNavigationLocationSessionActive(now + 30_000L, now))
+        assertFalse(riderNavigationLocationSessionActive(now, now))
+        assertFalse(riderNavigationLocationSessionActive(now - 1L, now))
+        assertFalse(riderNavigationLocationSessionActive(Long.MIN_VALUE, now))
+        assertTrue(riderNavigationLocationSessionActive(Long.MAX_VALUE, Long.MIN_VALUE))
+    }
+
     @Test fun renewedNavigationLeaseUsesCurrentSessionExpiry() {
         val now = 1_800_000L
         assertTrue(riderNavigationRemainingLeaseMs(now + 30_000L, now) == 30_000L)
