@@ -148,4 +148,22 @@ class RiderNavigationLocationSessionGuardTest {
         assertTrue(riderNavigationRemainingLeaseMs(currentSessionExpiry, now) == 0L)
     }
 
+
+    @Test fun finalDispatchSyncRejectsSessionExpiringDuringSecondSuspension() {
+        val firstResumeAt = 1_800_000L
+        val finalResumeAt = firstResumeAt + 10_000L
+        val expiresBetweenCallbacks = firstResumeAt + 5_000L
+        fun eligibleAt(now: Long, expiry: Long?, currentSession: String? = "session-a") =
+            riderNavigationResumedSessionActive(
+                "rider-a", "session-a", "rider-a", currentSession,
+                true, expiry, now
+            )
+
+        assertTrue(eligibleAt(firstResumeAt, expiresBetweenCallbacks))
+        assertFalse(eligibleAt(finalResumeAt, expiresBetweenCallbacks))
+        assertFalse(eligibleAt(finalResumeAt, finalResumeAt))
+        assertFalse(eligibleAt(finalResumeAt, null))
+        assertFalse(eligibleAt(finalResumeAt, finalResumeAt + 60_000L, "session-b"))
+        assertTrue(eligibleAt(finalResumeAt, finalResumeAt + 1L))
+    }
 }
