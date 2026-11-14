@@ -24,6 +24,35 @@ def node(text="", desc="", bounds=BOUNDS):
 
 
 class MerchantPrimaryTabVisualGateTest(unittest.TestCase):
+    def test_pos_review_requires_tables_only_for_food_service(self):
+        counter = node("＋ รับออเดอร์")
+        cashier = node("คิดเงิน")
+        tables = node("โต๊ะ")
+        for mode, marker, navigation, expected in (
+            ("retail", "ค้นหาสินค้า", [counter, cashier], ["counter", "cashier"]),
+            ("food_service", "ค้นหาเมนู", [counter, tables, cashier], ["counter", "tables", "cashier"]),
+        ):
+            with self.subTest(mode=mode):
+                pages = [navigation, navigation + [node(marker)]]
+                if mode == "food_service":
+                    pages += [navigation, navigation + [node("จัดการโต๊ะ")]]
+                pages += [navigation, navigation + [node("บิลรอคิดเงิน")]]
+                def wait_for_page(predicate, seconds):
+                    page = pages.pop(0)
+                    self.assertTrue(predicate(page))
+                    return page
+                screens = []
+                with patch.object(review, "nodes", return_value=navigation), \
+                     patch.object(review, "tap_label") as tap, \
+                     patch.object(review, "wait", side_effect=wait_for_page), \
+                     patch.object(review, "shot", return_value={}):
+                    result = review.capture_pos(screens, "phone-")
+                self.assertEqual(result["mode"], mode)
+                self.assertEqual(result["expected_screens"], ["phone-pos_" + name for name in expected])
+                self.assertEqual([screen["screen"] for screen in screens], result["expected_screens"])
+                self.assertEqual(tap.call_count, len(expected))
+                self.assertFalse(pages)
+
     def test_bottom_navigation_alone_never_passes(self):
         navigation = [node(x) for x in review.PRIMARY_TAB_MARKERS]
         for label in review.PRIMARY_TAB_MARKERS:

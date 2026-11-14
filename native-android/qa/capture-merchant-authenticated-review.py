@@ -145,12 +145,29 @@ def capture_pos(screens, prefix):
         tap_label(scroll_to_label("หน้าร้าน POS"),"หน้าร้าน POS")
     ns=wait(lambda xs:any(has_label(n,"＋ รับออเดอร์") for n in xs),90)
     assert ns, "Merchant POS failed to render"
-    time.sleep(5)
-    for name,label in (("counter","＋ รับออเดอร์"),("tables","โต๊ะ"),("cashier","คิดเงิน")):
-        tap_label(nodes(),label)
-        time.sleep(3)
-        screens.append({"screen":prefix+"pos_"+name,"account":"merchant-test","read_only":True,
-                        **shot(prefix+"pos-"+name)})
+    tap_label(ns, "＋ รับออเดอร์")
+    counter_markers = {"ค้นหาเมนู", "ค้นหาสินค้า"}
+    ns = wait(lambda xs: any(has_label(n, label) for n in xs for label in counter_markers), 45)
+    assert ns, "Merchant POS counter content did not render"
+    food_service = any(has_label(n, "ค้นหาเมนู") for n in ns)
+    tabs = [("cashier", "คิดเงิน", "บิลรอคิดเงิน")]
+    if food_service:
+        tabs.insert(0, ("tables", "โต๊ะ", "จัดการโต๊ะ"))
+
+    expected = [prefix + "pos_counter"]
+    screens.append({"screen": expected[0], "account": "merchant-test", "read_only": True,
+                    **shot(prefix + "pos-counter")})
+    for name, label, marker in tabs:
+        ns = wait(lambda xs: any(has_label(n, label) for n in xs), 45)
+        assert ns, "Merchant POS tab missing: " + label
+        tap_label(ns, label)
+        assert wait(lambda xs: any(has_label(n, marker) for n in xs), 45), (
+            "Merchant POS tab content did not render: " + label
+        )
+        expected.append(prefix + "pos_" + name)
+        screens.append({"screen": expected[-1], "account": "merchant-test", "read_only": True,
+                        **shot(prefix + "pos-" + name)})
+    return {"mode": "food_service" if food_service else "retail", "expected_screens": expected}
 
 def recover_merchant_session(screens):
     """Require actual process death and authenticated server-backed home recovery."""
@@ -211,7 +228,7 @@ def main():
                 else "promotions" if label == "โปรโมชั่น" else "profile")
         capture_primary_tab(screens, label, f"{i:02d}-" + name, label)
     recovery = recover_merchant_session(screens)
-    capture_pos(screens,"phone-")
+    pos_reviews = {"phone": capture_pos(screens, "phone-")}
     if os.environ.get("QG_MERCHANT_VISUAL_PARITY")=="1":
         run(["shell","wm","size","1600x2560"])
         run(["shell","wm","density","240"])
@@ -232,7 +249,7 @@ def main():
         screens.append({"screen":"tablet-home","account":"merchant-test","read_only":True,**shot("tablet-home")})
         for label,name in (("คำสั่งซื้อ","orders"),("สินค้า","products"),("โปรโมชั่น","promotions"),("บัญชี","profile")):
             capture_primary_tab(screens, label, "tablet-" + name, "tablet-" + name)
-        capture_pos(screens,"tablet-")
+        pos_reviews["tablet"] = capture_pos(screens, "tablet-")
     meta={
       "source_head":subprocess.run(["git", "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip(),
       "workflow_run":os.environ.get("GITHUB_RUN_ID",""),
@@ -245,7 +262,9 @@ def main():
       "production_order_or_dispatch_mutations":False,"visual_parity_certified":False,
       "cold_session_recovery": recovery,
       "scope":"Authenticated Merchant primary tabs, process-death session recovery and POS views; read-only review",
-      "expected_screens":["home","คำสั่งซื้อ","สินค้า","โปรโมชั่น","บัญชี","recovered-home","phone-pos_counter","phone-pos_tables","phone-pos_cashier"],
+      "pos_reviews": pos_reviews,
+      "expected_screens": [screen["screen"] for screen in screens if "pos_" not in screen["screen"]]
+                          + [name for review in pos_reviews.values() for name in review["expected_screens"]],
       "missing_screens":[],"review_complete":True
     }
     (OUT/"metadata.json").write_text(json.dumps(meta,ensure_ascii=False,indent=2)+"\n")
