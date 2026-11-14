@@ -3,7 +3,7 @@ name: QueueGo Installed Country Offline Runtime
 on:
   workflow_dispatch:
   pull_request:
-    branches: [work-native-pos-tax-foundation-20261029]
+    branches: [work-native-pos-tax-foundation-20261029, work-native-rider-nav-unified-offline-20261030]
     paths:
       - native-android/rider-navigation-map/src/androidTest/**
       - native-android/qa/run-rider-navigation-map-runtime.py
@@ -29,6 +29,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
