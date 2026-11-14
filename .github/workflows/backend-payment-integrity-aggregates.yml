@@ -1,0 +1,20 @@
+name: Backend payment aggregate audit contract
+on:
+  pull_request:
+    paths:
+      - 'scripts/sql/audit-payment-integrity-aggregates.sql'
+      - 'tests/backend-payment-integrity-aggregates.cjs'
+      - '.github/workflows/backend-payment-integrity-aggregates.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  static-audit-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --check tests/backend-payment-integrity-aggregates.cjs
+      - run: node tests/backend-payment-integrity-aggregates.cjs
