@@ -31,7 +31,7 @@ while True:
     assert time.monotonic() < deadline, "No successful exact-source offline candidate"
     time.sleep(15)
 items = json.loads(gh(f"repos/{repo}/actions/runs/{run['id']}/artifacts?per_page=100"))["artifacts"]
-for i in range(3):
+def download_part(i):
     name = f"rider-unreleased-country-part0{i}-{head}"
     choices = [a for a in items if a["name"] == name and not a["expired"]]
     assert len(choices) == 1, "Missing unique candidate part: " + name
@@ -41,10 +41,28 @@ for i in range(3):
         subprocess.run(["gh", "api", f"repos/{repo}/actions/artifacts/{a['id']}/zip"],
                        stdout=f, check=True, timeout=300)
     assert sha(archive) == a["digest"].removeprefix("sha256:"), "Artifact digest mismatch"
+    part_name = f"rider-debug.apk.part0{i}"
+    expected = {part_name}
+    if i == 0:
+        expected.update({"build-commit.txt", "parts.sha256", "whole-apk.sha256",
+                         "rider-debug-androidTest.apk", "instrumentation-apk.sha256"})
     with zipfile.ZipFile(archive) as z:
-        for n in z.namelist():
-            assert "/" not in n and "\\" not in n and n not in (".", ".."), "Unsafe artifact path"
+        names = z.namelist()
+        assert len(names) == len(expected) and set(names) == expected, "Unexpected artifact members"
         z.extractall(root)
+    archive.unlink()
+
+
+download_part(0)
+parts = []
+for index, line in enumerate((root / "parts.sha256").read_text().splitlines()):
+    digest, name = line.split()
+    assert index < 3 and name == f"rider-debug.apk.part0{index}", "Non-contiguous APK parts"
+    assert re.fullmatch(r"[0-9a-f]{64}", digest), "Invalid part checksum"
+    parts.append((digest, name))
+assert parts, "Missing APK parts"
+for index in range(1, len(parts)):
+    download_part(index)
 assert (root / "build-commit.txt").read_text().strip() == head
 # Preserve the instrumentation APK built by the exact offline-tested source.
 instrument = root / "rider-debug-androidTest.apk"
@@ -55,15 +73,13 @@ assert len(instrument_lines) == 1, "Invalid instrumentation manifest"
 instrument_digest, instrument_name = instrument_lines[0].split()
 assert instrument_name == instrument.name and re.fullmatch(r"[0-9a-f]{64}", instrument_digest), "Unsafe instrumentation checksum"
 assert sha(instrument) == instrument_digest, "Instrumentation APK checksum mismatch"
-for line in (root / "parts.sha256").read_text().splitlines():
-    digest, name = line.split()
-    assert re.fullmatch(r"rider-debug\.apk\.part0[012]", name)
+for digest, name in parts:
     assert sha(root / name) == digest, "Part digest mismatch"
 target = Path("native-android/rider/build/outputs/apk/debug/rider-debug.apk")
 target.parent.mkdir(parents=True, exist_ok=True)
 with target.open("wb") as out:
-    for i in range(3):
-        with (root / f"rider-debug.apk.part0{i}").open("rb") as stream:
+    for _, name in parts:
+        with (root / name).open("rb") as stream:
             while chunk := stream.read(1024 * 1024):
                 out.write(chunk)
 assert sha(target) == (root / "whole-apk.sha256").read_text().split()[0], "Whole APK mismatch"

@@ -7,6 +7,7 @@ on:
       - 'native-android/qa/fetch-rider-offline-candidate.py'
       - 'native-android/rider-navigation-map/**'
       - 'native-android/rider/**'
+      - 'native-android/merchant/**'
       - 'native-android/qa/run-rider-offline-routing.py'
       - 'native-android/qa/run-rider-fused-gps.py'
       - 'native-android/qa/maplibre-swiftshader/**'
@@ -57,7 +58,7 @@ jobs:
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
         with:
           path: ${{ runner.temp }}/routing-assets
-          key: thailand261104-valhalla391-admin-${{ hashFiles('ops/maps/build_engine_graph.py', 'ops/maps/offline_package.py', 'ops/maps/sources/thailand-261104.manifest.json') }}
+          key: thailand261104-valhalla391-admin-${{ hashFiles('ops/maps/build_engine_graph.py', 'ops/maps/offline_package.py', 'ops/maps/prepare_verified_thailand_routing.py', 'ops/maps/sources/thailand-261104.manifest.json') }}
       - name: Build or verify the real pinned Thailand motorcycle graph
         env:
           ROUTING_CACHE_HIT: ${{ steps.routing_cache.outputs.cache-hit }}
@@ -67,13 +68,21 @@ jobs:
           if [ "$ROUTING_CACHE_HIT" != 'true' ]; then
             mkdir -p "$RUNNER_TEMP/routing-source"
             source="$RUNNER_TEMP/routing-source/thailand.osm.pbf"
-            curl --fail --location --retry 2 https://download.geofabrik.de/asia/thailand-261104.osm.pbf -o "$source"
-            echo "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457  $source" | sha256sum -c -
-            cp ops/maps/sources/thailand-261104.manifest.json "$RUNNER_TEMP/routing-source/thailand.osm.manifest.json"
-            python3 ops/maps/build_engine_graph.py valhalla "$source" "$RUNNER_TEMP/routing-graph" --admin-pbf "$source"
-            python3 ops/maps/offline_package.py android-routing --graph "$RUNNER_TEMP/routing-graph" \
-              --source-manifest ops/maps/sources/thailand-261104.manifest.json --destination "$RUNNER_TEMP/routing-assets"
+            if curl --fail --location --retry 2 --max-time 180 https://download.geofabrik.de/asia/thailand-261104.osm.pbf -o "$source"; then
+              echo "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457  $source" | sha256sum -c -
+              cp ops/maps/sources/thailand-261104.manifest.json "$RUNNER_TEMP/routing-source/thailand.osm.manifest.json"
+              python3 ops/maps/build_engine_graph.py valhalla "$source" "$RUNNER_TEMP/routing-graph" --admin-pbf "$source"
+              python3 ops/maps/offline_package.py android-routing --graph "$RUNNER_TEMP/routing-graph" \
+                --source-manifest ops/maps/sources/thailand-261104.manifest.json --destination "$RUNNER_TEMP/routing-assets"
+            else
+              reference="$RUNNER_TEMP/routing-source/reference.apk"
+              curl --fail --location --retry 2 --max-time 600 \
+                https://github.com/chatchairins-source/QueuGo/releases/download/rider-country-field-6bf84894/QueueGo-Rider-FieldTest-6bf84894.apk \
+                -o "$reference"
+              python3 ops/maps/prepare_verified_thailand_routing.py "$RUNNER_TEMP/routing-assets" --reference-apk "$reference"
+            fi
           fi
+          python3 ops/maps/prepare_verified_thailand_routing.py "$RUNNER_TEMP/routing-assets"
           echo "QG_OFFLINE_ROUTING_ASSETS=$RUNNER_TEMP/routing-assets" >> "$GITHUB_ENV"
           python3 ops/maps/probe_android_routing.py --assets "$RUNNER_TEMP/routing-assets" --output artifacts/rider-offline-routing/country-linux-probes.json
           rm -rf "$RUNNER_TEMP/routing-graph" "$RUNNER_TEMP/routing-source"
@@ -265,13 +274,12 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p parts
-          for index in 00 01; do
-            gh run download "$GITHUB_RUN_ID" --name "rider-unreleased-country-part${index}-${EXPECTED_SHA}" --dir parts
+          gh run download "$GITHUB_RUN_ID" --name "rider-unreleased-country-part00-${EXPECTED_SHA}" --dir parts
+          for index in 01 02; do
+            if grep -Eq "^[0-9a-f]{64}  rider-debug\.apk\.part${index}$" parts/parts.sha256; then
+              gh run download "$GITHUB_RUN_ID" --name "rider-unreleased-country-part${index}-${EXPECTED_SHA}" --dir parts
+            fi
           done
-          # Optional third part is present only for APKs exceeding 800 MiB.
-          if gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts?per_page=100" --jq '.artifacts[].name' | grep -Fxq "rider-unreleased-country-part02-${EXPECTED_SHA}"; then
-            gh run download "$GITHUB_RUN_ID" --name "rider-unreleased-country-part02-${EXPECTED_SHA}" --dir parts
-          fi
           test "$(cat parts/build-commit.txt)" = "$EXPECTED_SHA"
           (cd parts && sha256sum -c parts.sha256)
           python3 - <<'PY'
