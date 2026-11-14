@@ -4,7 +4,7 @@ CREATE OR REPLACE FUNCTION public.qg_table_checkout(p_session uuid, p_device_key
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
+ SET search_path TO ''
 AS $function$
 declare
   v public.qg_table_sessions%rowtype;
