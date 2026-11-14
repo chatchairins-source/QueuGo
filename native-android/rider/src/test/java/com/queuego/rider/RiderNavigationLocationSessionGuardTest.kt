@@ -85,4 +85,17 @@ class RiderNavigationLocationSessionGuardTest {
         assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", "rider-a", " ", true))
     }
 
+    @Test fun renewedNavigationLeaseUsesCurrentSessionExpiry() {
+        val now = 1_800_000L
+        assertTrue(riderNavigationRemainingLeaseMs(now + 30_000L, now) == 30_000L)
+        assertTrue(riderNavigationRemainingLeaseMs(now + 1L, now) == 1L)
+        assertTrue(riderNavigationRemainingLeaseMs(now, now) == 0L)
+        assertTrue(riderNavigationRemainingLeaseMs(now - 1L, now) == 0L)
+        // The previous session may have time left while the renewed session has expired.
+        val previousSessionExpiry = now + 60_000L
+        val currentSessionExpiry = now - 10L
+        assertTrue(riderNavigationRemainingLeaseMs(previousSessionExpiry, now) > 0L)
+        assertTrue(riderNavigationRemainingLeaseMs(currentSessionExpiry, now) == 0L)
+    }
+
 }
