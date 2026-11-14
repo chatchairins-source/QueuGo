@@ -86,6 +86,15 @@ class MerchantPushSessionGuardTest {
         assertTrue(merchantPushSessionCurrent(validated, auth(accessToken = "old-access"), 1_000L))
     }
 
+    @Test fun initialPushSyncPreflightRejectsExpiredOrUnboundSession() {
+        assertTrue(merchantPushNotificationSessionActive(auth(), 1_999L))
+        assertFalse(merchantPushNotificationSessionActive(auth(), 2_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(accessToken = "   "), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(sessionId = ""), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(userAuthId = "different"), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(status = "inactive"), 1_000L))
+    }
+
     @Test fun notificationRejectsUnboundOrBlankCachedSession() {
         assertTrue(merchantPushNotificationSessionActive(auth(), 1_999L))
         assertFalse(merchantPushNotificationSessionActive(auth(), 2_000L))
