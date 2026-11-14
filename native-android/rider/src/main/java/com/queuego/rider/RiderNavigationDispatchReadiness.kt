@@ -232,8 +232,11 @@ internal object RiderNavigationDispatchReadiness {
         val latestAuto = RiderAcceptanceModeStore(context).autoAcceptEnabled(auth.user.id)
         val latestStop = RiderStopAfterWorkStore(context).pending(auth.user.id)
         val finalAuth = SessionStore(context).load()
-        if (!riderNavigationResumeSessionEligible(bound.userId, bound.sessionId,
-                finalAuth?.user?.id, finalAuth?.session?.sessionId, binding == bound)) return@withLock
+        if (!riderNavigationResumedSessionActive(
+                bound.userId, bound.sessionId, finalAuth?.user?.id,
+                finalAuth?.session?.sessionId, binding == bound,
+                finalAuth?.session?.expiresAtMs, System.currentTimeMillis()
+            )) return@withLock
         api.syncDispatchPreference(finalAuth!!, latestAuto, latestStop,
             riderNavigationHasLocationPermission(context) &&
                 riderNavigationDispatchLeaseEligible(bound.ready, latestAuto, latestStop, true,
