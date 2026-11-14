@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       evidence_bundle_sha256:
-        description: SHA-256 of the uploaded physical/Play evidence ZIP
+        description: SHA-256 of the uploaded device/Play evidence ZIP
         required: true
         type: string
       version_name:
@@ -75,8 +75,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "$GITHUB_REF" != "refs/heads/work-native-route-bundle-play-release-20261021" ]; then
-            echo "::error::Release certification may run only from work-native-route-bundle-play-release-20261021"
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "::error::Release certification may run only from main"
             exit 1
           fi
 
@@ -86,11 +86,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=work-native-route-bundle-play-release-20261021&status=success&per_page=100")"
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&status=success&per_page=100")"
           pilot_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
             [.workflow_runs[]
               | select(.head_sha == $sha)
-              | select(.head_branch == "work-native-route-bundle-play-release-20261021")
+              | select(.head_branch == "main")
               | select(.path == ".github/workflows/build-native-rider-pilot.yml")
               | select(.event == "push")
               | select(.conclusion == "success")]
@@ -104,17 +104,41 @@ jobs:
           echo "Certified exact-HEAD Native Pilot CI run: $pilot_run_id"
           echo "QG_CERTIFIED_NATIVE_PILOT_RUN_ID=$pilot_run_id" >> "$GITHUB_ENV"
 
+      - name: Attest exact-HEAD Rider offline routing CI when emulator evidence is used
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=${GITHUB_REF_NAME}&status=success&per_page=100")"
+          routing_run_id="$(jq -r --arg sha "$GITHUB_SHA" --arg branch "$GITHUB_REF_NAME" '
+            [.workflow_runs[]
+              | select(.head_sha == $sha and .head_branch == $branch)
+              | select(.path == ".github/workflows/rider-offline-routing.yml")
+              | select(.event == "workflow_dispatch" and .conclusion == "success")]
+            | sort_by(.run_number) | last | .id // empty
+          ' <<<"$runs")"
+          if [[ "$routing_run_id" =~ ^[0-9]+$ ]]; then
+            artifacts="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$routing_run_id/artifacts?per_page=100")"
+            if jq -e --arg sha "$GITHUB_SHA" '
+              any(.artifacts[]; .expired == false and .size_in_bytes > 0 and
+                .name == ("rider-offline-routing-" + $sha))
+            ' <<<"$artifacts" >/dev/null; then
+              echo "QG_CERTIFIED_RIDER_OFFLINE_RUN_ID=$routing_run_id" >> "$GITHUB_ENV"
+            fi
+          fi
+
       - name: Require successful exact-HEAD Backup Restore Drill
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=work-native-route-bundle-play-release-20261021&status=success&per_page=100")"
+          runs="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?branch=main&status=success&per_page=100")"
           backup_run_id="$(jq -r --arg sha "$GITHUB_SHA" '
             [.workflow_runs[]
               | select(.head_sha == $sha)
-              | select(.head_branch == "work-native-route-bundle-play-release-20261021")
+              | select(.head_branch == "main")
               | select(.path == ".github/workflows/backup-restore-drill.yml")
               | select(.event == "workflow_dispatch")
               | select(.conclusion == "success")]
@@ -136,6 +160,19 @@ jobs:
           fi
           echo "Certified exact-HEAD Backup Restore Drill run: $backup_run_id"
           echo "QG_CERTIFIED_BACKUP_RESTORE_RUN_ID=$backup_run_id" >> "$GITHUB_ENV"
+
+      - name: Require reconciled Production migration ledger
+        shell: bash
+        env:
+          QG_SUPABASE_DB_URL: ${{ secrets.QG_SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$QG_SUPABASE_DB_URL" || { echo "::error::Missing QG_SUPABASE_DB_URL"; exit 1; }
+          ledger="$RUNNER_TEMP/queuego-release-migrations.txt"
+          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'select version from supabase_migrations.schema_migrations order by version' > "$ledger"
+          python3 ops/verify-migration-ledger.py "$ledger"
+          rm -f "$ledger"
 
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
@@ -364,6 +401,8 @@ jobs:
               "certification_workflow": ".github/workflows/native-release-certification.yml",
               "native_pilot_run_id": int(os.environ["QG_CERTIFIED_NATIVE_PILOT_RUN_ID"]),
               "backup_restore_run_id": int(os.environ["QG_CERTIFIED_BACKUP_RESTORE_RUN_ID"]),
+              "rider_offline_run_id": int(os.environ["QG_CERTIFIED_RIDER_OFFLINE_RUN_ID"])
+                  if os.environ.get("QG_CERTIFIED_RIDER_OFFLINE_RUN_ID") else None,
               "evidence_object_path": os.environ["EVIDENCE_OBJECT_PATH"],
               "evidence_bundle_sha256": os.environ["EVIDENCE_BUNDLE_SHA256"].lower(),
               "version_name": os.environ["QG_NATIVE_VERSION_NAME"],

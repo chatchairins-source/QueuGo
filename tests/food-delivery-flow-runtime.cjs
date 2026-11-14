@@ -1,0 +1,104 @@
+'use strict';
+// One disposable PostgreSQL engine, real source SQL transitions; no Production writes.
+const fs=require('node:fs'), assert=require('node:assert/strict'),{PGlite}=require('@electric-sql/pglite');
+const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+const read=p=>fs.readFileSync(p,'utf8');
+function fn(path,name){const s=read(path);const start=s.search(new RegExp('create or replace function public\\.'+name+'\\(','i'));assert(start>=0,name);const tail=s.slice(start);const match=tail.match(/\$(function|qg)?\$\s*;/);assert(match,name+' ending');return tail.slice(0,match.index+match[0].length);}
+(async()=>{const db=new PGlite();let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+try{
+await db.exec(require('./fixtures/rider-dispatch-schema.cjs')());
+await db.exec(`alter table shop_profiles add column address text default 'Isolated shop',add column latitude float8 default 15,add column longitude float8 default 103,add column status text default 'active';
+create table shop_open_states(shop_id uuid,is_open boolean,resume_at timestamptz);
+create table products(id uuid primary key,shop_id uuid,name text,description text,price numeric,delivery_price numeric,available boolean,delivery_available boolean);
+create table order_items(order_id uuid,product_id uuid,item_type text,item_name text,description text,quantity integer,unit_price numeric,total_price numeric);
+alter table orders add column sales_channel text,add column created_by uuid,add column rider_search_started_at timestamptz,add column picked_up_at timestamptz,add column delivering_at timestamptz,add column completed_at timestamptz;
+alter table deliveries add primary key(order_id),add column pickup_address text,add column pickup_latitude float8,add column pickup_longitude float8,add column delivery_address text,add column delivery_latitude float8,add column delivery_longitude float8,add column distance_km numeric,add column note text,add column picked_up_at timestamptz;
+alter table payments add column payer_id uuid,add column note text;
+create table queuego_cash_order_locks(order_id uuid primary key);
+alter table rider_cash_advances add primary key(order_id);
+alter table merchant_cash_receipts add primary key(order_id),add column confirmed_by uuid;
+create schema storage;create table storage.objects(bucket_id text,name text);
+drop table qg_delivery_proofs;
+create table qg_delivery_proofs(order_id uuid primary key,rider_id uuid,gps_lat float8,gps_lng float8,photo_path text,extra_photo_path text,otp_verified boolean,verified_at timestamptz);
+create table qg_pickup_proofs(order_id uuid primary key,rider_id uuid,gps_lat float8,gps_lng float8,photo_path text,created_at timestamptz default now());
+create table laundry_orders(id uuid,status text,order_number text);
+create table market_orders(id uuid,status text,updated_at timestamptz);
+insert into products values('${id(90)}','${id(50)}','Food','Actual fixture item',100,null,true,true);`);
+await db.exec('drop function queuego_distance_km(float8,float8,float8,float8)');
+await db.exec(fn('QueueGo-Route-Bundle-v1.sql','queuego_distance_km'));
+await db.exec(read('QueueGo-Pilot-Service-Area.sql').split('CREATE OR REPLACE FUNCTION public.queuego_place_cash_order_core')[0]);
+await db.exec(read('supabase/migrations/20261007043952_unify_laundry_visible_order_codes.sql'));
+await db.exec(read('QueueGo-Market-Checkout-Migration.sql'));
+await db.exec(read('supabase/migrations/20261013023547_grocery_cash_checkout_lock_order.sql'));
+await db.exec(read('supabase/migrations/20261014234500_rider_continuous_dispatch_phase1.sql'));
+await db.exec(fn('QueueGo-Rider-Shop-Arrival-Notifications.sql','queuego_shop_delivery_transition'));
+await db.exec(read('supabase/migrations/20261005205000_merchant_order_action_repeat_safe.sql'));
+await db.exec(read('supabase/migrations/20261005181500_merchant_order_action_reliability.sql'));
+await db.exec(fn('supabase/migrations/20261005211000_rider_legacy_action_repeat_safe.sql','rider_order_action'));
+for(const name of ['qg_pickup_with_photo','qg_complete_with_photo'])await db.exec(fn('supabase/migrations/20261006150500_rider_photo_only_flow.sql',name));
+// The normal cash flow is posted by the existing delivery RPC. Read it back through the Rider's real ledger.
+for(const migration of [
+ '20261015000356_rider_dynamic_stop_plan_phase1.sql',
+ '20261015012500_merchant_readiness_dispatch_eta_funding.sql',
+ '20261015021500_rider_cancellation_funding_settlement.sql'
+])await db.exec(read('supabase/migrations/'+migration));
+const ledger=async()=>(await db.query("select qg_rider_cash_ledger(order_date,order_date) r from (select (now() at time zone 'Asia/Bangkok')::date as order_date) dates")).rows[0].r;
+const actor=n=>db.query("select set_config('test.uid',$1,false)",[id(n)]);
+const rejects=async(promise,pattern)=>{await assert.rejects(promise,pattern);checks++};
+const state=async()=>(await db.query('select status from orders where id=$1',[id(80)])).rows[0].status;
+await actor(160);
+const placed=(await db.query('select queuego_place_cash_order($1,$2,$3::jsonb,15.002,103,$4,100,30,$5) r',[id(80),id(50),JSON.stringify([{product_id:id(90),qty:1}]),'Isolated customer address','No spicy'])).rows[0].r;
+eq(placed.id,id(80));eq(await state(),'searching_rider');
+const replay=(await db.query('select queuego_place_cash_order($1,$2,$3::jsonb,15.002,103,$4,100,30,$5) r',[id(80),id(50),JSON.stringify([{product_id:id(90),qty:1}]),'Isolated customer address','No spicy'])).rows[0].r;
+eq(replay.replayed,true);
+for(const table of ['orders','payments','deliveries'])eq((await db.query('select count(*)::int n from '+table+(table==='orders'?' where id=$1':' where order_id=$1'),[id(80)])).rows[0].n,1);
+await rejects(db.query("select qg_merchant_action_once($1,'order',$2::jsonb)",[id(195),JSON.stringify({p_order_id:id(80),p_action:'ready'})]),/active shop/);
+await actor(151);
+await rejects(db.query("select qg_merchant_action_once($1,'order',$2::jsonb)",[id(196),JSON.stringify({p_order_id:id(80),p_action:'ready'})]),/status changed/);
+eq(await state(),'searching_rider');
+await actor(160);
+await db.query('select qg_dispatch_rider_offers()');
+const offer=(await db.query('select rider_id from qg_rider_order_offers where order_id=$1',[id(80)])).rows[0];assert(offer);checks++;
+const rider=offer.rider_id===id(11)?101:102;await actor(rider);
+eq((await db.query('select rider_claim_order($1) r',[id(80)])).rows[0].r,'rider_assigned');
+const otherRider=rider===101?102:101;
+await actor(otherRider);
+await rejects(db.query('select rider_claim_order($1)',[id(80)]),/no longer|live targeted|selected|offer/);
+await actor(151);
+for(const [i,action] of ['preparing','ready'].entries()){
+ const result=(await db.query("select qg_merchant_action_once($1,'order',$2::jsonb) r",[id(200+i),JSON.stringify({p_order_id:id(80),p_action:action})])).rows[0].r;eq(result.status,action);
+ const replay=(await db.query("select qg_merchant_action_once($1,'order',$2::jsonb) r",[id(200+i),JSON.stringify({p_order_id:id(80),p_action:action})])).rows[0].r;eq(replay.replayed,true);
+}
+await actor(rider);
+await assert.rejects(db.query('select qg_pickup_with_photo($1,null)',[id(80)]),/valid pickup photo/);checks++;
+const pickup=id(rider)+'/pickup.jpg',delivery=id(rider)+'/delivery.jpg';
+await db.query('insert into storage.objects values($1,$2),($1,$3)',['qg-evidence',pickup,delivery]);
+eq((await db.query('select qg_pickup_with_photo($1,$2,15,103) r',[id(80),pickup])).rows[0].r,'in_progress');
+await rejects(db.query('select qg_complete_with_photo($1,null)',[id(80)]),/valid delivery photo/);
+eq(await state(),'in_progress');
+eq((await db.query('select count(*)::int n from qg_delivery_proofs where order_id=$1',[id(80)])).rows[0].n,0);
+eq((await db.query('select qg_complete_with_photo($1,$2,15.002,103) r',[id(80),delivery])).rows[0].r,'completed');
+eq(await state(),'completed');
+for(const [table,status] of [['deliveries','delivered'],['payments','paid']])eq((await db.query('select status from '+table+' where order_id=$1',[id(80)])).rows[0].status,status);
+eq((await db.query('select amount from rider_cash_advances where order_id=$1',[id(80)])).rows[0].amount,'100.00');
+eq((await db.query('select amount from merchant_cash_receipts where order_id=$1',[id(80)])).rows[0].amount,'100.00');
+eq((await db.query('select amount from payments where order_id=$1',[id(80)])).rows[0].amount,'130.00');
+for(const table of ['qg_pickup_proofs','qg_delivery_proofs','rider_cash_advances','merchant_cash_receipts'])eq((await db.query('select count(*)::int n from '+table+' where order_id=$1',[id(80)])).rows[0].n,1);
+eq((await db.query('select qg_complete_with_photo($1,$2,15.002,103) r',[id(80),delivery])).rows[0].r,'completed');
+eq((await db.query('select count(*)::int n from qg_delivery_proofs where order_id=$1',[id(80)])).rows[0].n,1);
+const posted=(await ledger()).filter(row=>row.order_id===id(80));
+eq(posted.length,1);
+const entry=posted[0];
+eq(entry.status,'completed');
+eq(entry.payment_status,'paid');
+eq(entry.cash_paid_merchant,100);
+eq(entry.merchant_confirmed,100);
+eq(entry.cash_collected_customer,130);
+eq(entry.platform_cancellation_funding_cash,0);
+eq(Boolean(entry.customer_paid_at && entry.proof_verified_at),true);
+await actor(otherRider);
+eq((await ledger()).some(row=>row.order_id===id(80)),false);
+await actor(160);
+await rejects(ledger(),/active rider required/);
+console.log(JSON.stringify({checks,failures:0,scope:'Single isolated PGlite engine, actual checkout/dispatch/claim/merchant/proof/cash ledger RPC SQL; no Android UI/Production JWT/RLS/concurrency or road-routing certification'}));
+}finally{await db.close()}})().catch(e=>{console.error(e);process.exit(1)});

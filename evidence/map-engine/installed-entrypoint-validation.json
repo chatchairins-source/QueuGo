@@ -1,0 +1,9 @@
+{
+  "checks": 3,
+  "failures": 0,
+  "route_distance_m": 5799.0,
+  "dataset": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+  "package_store_unchanged": true,
+  "transient_config_outside_package": true,
+  "docker_image_tested": false
+}

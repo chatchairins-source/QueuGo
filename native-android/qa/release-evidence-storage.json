@@ -1,0 +1,20 @@
+{
+  "project_ref": "pkypiqhlrmzocysgeqew",
+  "supabase_url": "https://pkypiqhlrmzocysgeqew.supabase.co",
+  "bucket_id": "queuego-native-release-evidence",
+  "bucket_name": "queuego-native-release-evidence",
+  "public": false,
+  "allowed_mime_types": [
+    "application/zip",
+    "application/x-zip-compressed"
+  ],
+  "client_storage_policies_present": false,
+  "observed_in_production": true,
+  "observed_at": "2026-10-10T13:26:52Z",
+  "provisioning_mode": "SUPABASE_STORAGE_API_OR_DASHBOARD_ONLY",
+  "storage_schema_sql_mutation_forbidden": true,
+  "runtime_verification": [
+    ".github/workflows/native-release-certification.yml",
+    ".github/workflows/release-secret-readiness.yml"
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "renderer": "sharp 0.35.5",
+  "safeRadiusDp": 33,
+  "metrics": {
+    "customer": {
+      "maxRadiusDp": 30.98
+    },
+    "merchant": {
+      "maxRadiusDp": 32.05
+    },
+    "rider": {
+      "maxRadiusDp": 31.07
+    }
+  }
+}

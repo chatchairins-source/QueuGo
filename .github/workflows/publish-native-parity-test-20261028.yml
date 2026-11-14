@@ -1,0 +1,81 @@
+name: Publish QueueGo exact-HEAD Android device-test APKs
+on:
+  push:
+    branches: [work-native-web-parity-20261026]
+    paths: [.github/workflows/publish-native-parity-test-20261028.yml]
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: queuego-android-test-e35b0bff
+  cancel-in-progress: false
+jobs:
+  publish-device-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: chatchairins-source/QueuGo
+      SOURCE_SHA: e35b0bff819fd015e5624fb91c8e18d53919c402
+      PILOT_RUN: '40532373938'
+      ARTIFACT_ID: '12747471350'
+      ARTIFACT_SHA256: '05c9c35422b5f03d0a3d21937a039869059e330850b049bd76b7d4db0b6557e8'
+      RELEASE_TAG: android-device-test-20261028-e35b0bff
+    steps:
+      - name: Require successful exact-source pilot and immutable artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/$PILOT_RUN" > run.json
+          jq -e --arg source "$SOURCE_SHA" '.head_sha == $source and .status == "completed" and .conclusion == "success" and .path == ".github/workflows/build-native-rider-pilot.yml"' run.json
+          gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT_ID" > artifact.json
+          jq -e --arg source "$SOURCE_SHA" --arg digest "sha256:$ARTIFACT_SHA256" --argjson run "$PILOT_RUN" '.expired == false and .name == "queuego-native-pilot-apks" and .workflow_run.head_sha == $source and .workflow_run.id == $run and .digest == $digest' artifact.json
+      - name: Download and verify each tested APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/artifacts/$ARTIFACT_ID/zip" > native.zip
+          echo "$ARTIFACT_SHA256  native.zip" | sha256sum -c -
+          unzip -t native.zip
+          unzip -q native.zip -d extracted
+          mkdir -p bundle
+          signer="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$signer" && test -x "$signer"
+          for role in customer merchant rider; do
+            src="extracted/$role/build/outputs/apk/debug/$role-debug.apk"
+            test -s "$src"
+            dst="bundle/QueueGo-${role}-Device-Test-e35b0bff.apk"
+            cp "$src" "$dst"
+            "$signer" verify --verbose --print-certs "$dst" >> bundle/APK-SIGNATURES.txt
+          done
+          (cd bundle && sha256sum *.apk > SHA256SUMS.txt)
+          cat > bundle/INSTALL.txt <<'NOTES'
+          QueueGo Android device-test APKs (Customer / Merchant / Rider)
+          Exact source: e35b0bff819fd015e5624fb91c8e18d53919c402
+          Exact successful Native Pilot run: 40532373938
+          These APKs are debug-signed and intended ONLY for owner testing.
+          Not certified Play Store builds and not approved for Production launch.
+          Install each APK on Android separately; allow installation from
+          the application used to open the downloaded APK if prompted.
+          Real-device GPS, map camera, checkout, POS, image and login parity
+          must still be verified before production release.
+          NOTES
+      - name: Publish public direct links for Android owner testing
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo 'Release tag already exists; refusing to replace published files.' >&2
+            exit 1
+          fi
+          cat > notes.md <<'NOTES'
+          QueueGo Customer, Merchant and Rider exact-HEAD Android test APKs.
+          Signed APKs are directly downloadable, separately and together.
+          Verified from successful GitHub Actions Native Pilot run 40532373938
+          on exact source e35b0bff819fd015e5624fb91c8e18d53919c402.
+          This is a public PRE-RELEASE for owner testing, NOT a Production
+          release or Play Store certification. Authenticated physical-device
+          acceptance and pixel/behavioral parity with Web remain OPEN.
+          NOTES
+          gh release create "$RELEASE_TAG" bundle/*.apk bundle/APK-SIGNATURES.txt bundle/SHA256SUMS.txt bundle/INSTALL.txt --target "$SOURCE_SHA" --prerelease --title "QueueGo Android Customer + Merchant + Rider — device test 2026-10-28" --notes-file notes.md
+          gh release view "$RELEASE_TAG" --json url,assets

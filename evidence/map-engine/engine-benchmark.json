@@ -1,0 +1,321 @@
+{
+  "protocol_version": 1,
+  "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+  "real_osm_node_queries": [
+    {
+      "lat": 14.9918756,
+      "lon": 103.0994795,
+      "osm_node_id": 11593547727
+    },
+    {
+      "lat": 15.0088319,
+      "lon": 103.1300059,
+      "osm_node_id": 1661819325
+    },
+    {
+      "lat": 14.9688448,
+      "lon": 103.1193315,
+      "osm_node_id": 12712892020
+    }
+  ],
+  "engines": [
+    {
+      "engine": "valhalla",
+      "build": {
+        "engine": "valhalla",
+        "version": "3.9.1",
+        "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+        "builds": [
+          {
+            "command": [
+              "/tmp/queuego-engine-venv/lib/python3.12/site-packages/valhalla/bin/valhalla_build_admins",
+              "-c",
+              "/tmp/queuego-bench/valhalla-th/valhalla.json",
+              "/tmp/queuego-thailand.osm.pbf"
+            ],
+            "exit_code": 0,
+            "wall_seconds": 37.842,
+            "cpu_user_seconds": 56.327697,
+            "cpu_system_seconds": 1.761776,
+            "peak_rss_kib": 642648
+          },
+          {
+            "command": [
+              "/tmp/queuego-engine-venv/lib/python3.12/site-packages/valhalla/bin/valhalla_build_tiles",
+              "-c",
+              "/tmp/queuego-bench/valhalla-th/valhalla.json",
+              "-j",
+              "2",
+              "/tmp/queuego-buriram/buriram.osm.pbf"
+            ],
+            "exit_code": 0,
+            "wall_seconds": 11.717,
+            "cpu_user_seconds": 14.687872,
+            "cpu_system_seconds": 1.921253,
+            "peak_rss_kib": 198452
+          }
+        ],
+        "graph_and_config_bytes": 75875901,
+        "cpu_limit": 2,
+        "licence": "MIT"
+      },
+      "route_http_warm": {
+        "requests": 30,
+        "median_ms": 7.848,
+        "p95_ms": 13.128,
+        "min_ms": 6.401,
+        "max_ms": 15.088
+      },
+      "route_result": {
+        "distance_m": 5799.0,
+        "duration_s": 370.329
+      },
+      "server_memory": {
+        "live_rss": "not sampled; isolated PID namespace",
+        "peak_rss_kib": 84112,
+        "measurement": "wait4 child process resource usage at shutdown"
+      },
+      "process_command": [
+        "/tmp/queuego-engine-venv/bin/python",
+        "/workspace/scratch/83373c608833/QueueGo-map-engine/ops/maps/benchmark_valhalla_http.py",
+        "/tmp/queuego-bench/valhalla-th/server.json"
+      ],
+      "native_matrix": {
+        "status": "supported",
+        "response_keys": [
+          "sources_to_targets",
+          "sources",
+          "targets",
+          "units",
+          "algorithm"
+        ]
+      },
+      "alternatives": {
+        "status": "supported",
+        "response_keys": [
+          "trip",
+          "alternates"
+        ]
+      },
+      "motorcycle": {
+        "status": "supported",
+        "response_keys": [
+          "trip"
+        ]
+      },
+      "map_matching": {
+        "status": "supported",
+        "response_keys": [
+          "trip"
+        ]
+      }
+    },
+    {
+      "engine": "osrm",
+      "build": {
+        "engine": "osrm",
+        "version": "v6.0.0",
+        "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+        "builds": [
+          {
+            "command": [
+              "/tmp/queuego-osrm-root/lib/ld-musl-x86_64.so.1",
+              "--library-path",
+              "/tmp/queuego-osrm-root/lib:/tmp/queuego-osrm-root/usr/lib",
+              "/tmp/queuego-osrm-root/usr/local/bin/osrm-extract",
+              "-t",
+              "2",
+              "-p",
+              "/tmp/queuego-bench/osrm/profiles/car.lua",
+              "/tmp/queuego-bench/osrm/buriram.osm.pbf"
+            ],
+            "exit_code": 0,
+            "wall_seconds": 25.093,
+            "cpu_user_seconds": 38.155409,
+            "cpu_system_seconds": 9.447397,
+            "peak_rss_kib": 378280
+          },
+          {
+            "command": [
+              "/tmp/queuego-osrm-root/lib/ld-musl-x86_64.so.1",
+              "--library-path",
+              "/tmp/queuego-osrm-root/lib:/tmp/queuego-osrm-root/usr/lib",
+              "/tmp/queuego-osrm-root/usr/local/bin/osrm-partition",
+              "-t",
+              "2",
+              "/tmp/queuego-bench/osrm/buriram.osrm"
+            ],
+            "exit_code": 0,
+            "wall_seconds": 6.205,
+            "cpu_user_seconds": 7.777316,
+            "cpu_system_seconds": 2.564826,
+            "peak_rss_kib": 102748
+          },
+          {
+            "command": [
+              "/tmp/queuego-osrm-root/lib/ld-musl-x86_64.so.1",
+              "--library-path",
+              "/tmp/queuego-osrm-root/lib:/tmp/queuego-osrm-root/usr/lib",
+              "/tmp/queuego-osrm-root/usr/local/bin/osrm-customize",
+              "-t",
+              "2",
+              "/tmp/queuego-bench/osrm/buriram.osrm"
+            ],
+            "exit_code": 0,
+            "wall_seconds": 2.834,
+            "cpu_user_seconds": 4.423591,
+            "cpu_system_seconds": 0.303919,
+            "peak_rss_kib": 106780
+          }
+        ],
+        "graph_and_config_bytes": 156277979,
+        "cpu_limit": 2,
+        "licence": "BSD-2-Clause"
+      },
+      "route_http_warm": {
+        "requests": 30,
+        "median_ms": 2.411,
+        "p95_ms": 4.451,
+        "min_ms": 1.588,
+        "max_ms": 5.248
+      },
+      "route_result": {
+        "distance_m": 4935.9,
+        "duration_s": 410.4
+      },
+      "server_memory": {
+        "live_rss": "not sampled; isolated PID namespace",
+        "peak_rss_kib": 107108,
+        "measurement": "wait4 child process resource usage at shutdown"
+      },
+      "process_command": [
+        "/tmp/queuego-osrm-root/lib/ld-musl-x86_64.so.1",
+        "--library-path",
+        "/tmp/queuego-osrm-root/lib:/tmp/queuego-osrm-root/usr/lib",
+        "/tmp/queuego-osrm-root/usr/local/bin/osrm-routed",
+        "--algorithm",
+        "mld",
+        "--threads",
+        "2",
+        "--ip",
+        "127.0.0.1",
+        "/tmp/queuego-bench/osrm/buriram.osrm"
+      ],
+      "native_matrix": {
+        "status": "supported",
+        "response_keys": [
+          "code",
+          "distances",
+          "destinations",
+          "durations",
+          "sources"
+        ]
+      },
+      "alternatives": {
+        "status": "supported",
+        "response_keys": [
+          "code",
+          "routes",
+          "waypoints"
+        ]
+      },
+      "map_matching": {
+        "status": "supported",
+        "response_keys": [
+          "code",
+          "matchings",
+          "tracepoints"
+        ]
+      },
+      "motorcycle": {
+        "status": "requires_separate_reviewed_Lua_profile_and_graph",
+        "tested_profile": "car, Thailand left-hand driving; do not relabel as motorcycle"
+      }
+    },
+    {
+      "engine": "graphhopper",
+      "build": {
+        "engine": "graphhopper",
+        "version": "11.0",
+        "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+        "builds": [
+          {
+            "command": [
+              "/tmp/queuego-jdk25/bin/java",
+              "-XX:ActiveProcessorCount=2",
+              "-Xmx3g",
+              "-jar",
+              "/tmp/queuego-graphhopper-11.0.jar",
+              "import",
+              "/tmp/queuego-bench/graphhopper/graphhopper.yml"
+            ],
+            "exit_code": 0,
+            "wall_seconds": 10.373,
+            "cpu_user_seconds": 23.111872,
+            "cpu_system_seconds": 0.867288,
+            "peak_rss_kib": 880548
+          }
+        ],
+        "graph_and_config_bytes": 24165998,
+        "cpu_limit": 2,
+        "licence": "Apache-2.0"
+      },
+      "route_http_warm": {
+        "requests": 30,
+        "median_ms": 10.825,
+        "p95_ms": 15.232,
+        "min_ms": 7.691,
+        "max_ms": 22.341
+      },
+      "route_result": {
+        "distance_m": 4937.031,
+        "duration_s": 338.894
+      },
+      "server_memory": {
+        "live_rss": "not sampled; isolated PID namespace",
+        "peak_rss_kib": 235988,
+        "measurement": "wait4 child process resource usage at shutdown"
+      },
+      "process_command": [
+        "/tmp/queuego-jdk25/bin/java",
+        "-XX:ActiveProcessorCount=2",
+        "-Xmx3g",
+        "-jar",
+        "/tmp/queuego-graphhopper-11.0.jar",
+        "server",
+        "/tmp/queuego-bench/graphhopper/graphhopper.yml"
+      ],
+      "native_matrix": {
+        "status": "not_available_or_failed",
+        "error": "HTTP Error 404: Not Found"
+      },
+      "alternatives": {
+        "status": "supported",
+        "response_keys": [
+          "hints",
+          "info",
+          "paths"
+        ]
+      },
+      "motorcycle": {
+        "status": "supported",
+        "response_keys": [
+          "hints",
+          "info",
+          "paths"
+        ]
+      },
+      "map_matching": {
+        "status": "supported",
+        "response_keys": [
+          "hints",
+          "info",
+          "paths",
+          "map_matching"
+        ]
+      }
+    }
+  ],
+  "method": "Same host and extract; Valhalla official Actor behind Python HTTP (native ZeroMQ cannot enumerate interfaces in this restricted host); OSRM and GraphHopper native HTTP. Sequential HTTP route requests, 5 warmups, 30 timed queries; each engine uses 2 threads/active CPUs. No public routing endpoint. Latency is not a Thailand-wide or Android benchmark.",
+  "matching_trace_provenance": "Derived from each engine real-OSM route geometry, not claimed as recorded physical GPS."
+}
