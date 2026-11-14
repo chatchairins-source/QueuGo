@@ -64,6 +64,10 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
 
 internal fun merchantUsableFcmToken(raw: String): String? = raw.trim().takeIf { it.length >= 16 }
 
+// Skip Auth validation and token registration for a cached session that is already invalid.
+internal fun merchantPushRefreshPreflight(auth: NativeAuth, rawToken: String, nowMs: Long): Boolean =
+    merchantUsableFcmToken(rawToken) != null && merchantPushNotificationSessionActive(auth, nowMs)
+
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
@@ -125,6 +129,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         val usableToken = merchantUsableFcmToken(token) ?: return
         val sessionStore = SecureRoleSessionStore(applicationContext, "shop")
         val cached = sessionStore.load() ?: return
+        if (!merchantPushRefreshPreflight(cached, usableToken, System.currentTimeMillis())) return
         serviceScope.launch {
             runCatching {
                 val auth = NativeAuthApi().validate(cached, "shop") { sessionStore.save(it) }
