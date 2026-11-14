@@ -52,7 +52,26 @@ ok(importer.includes('qg_admin_grocery_source_finalize'),'source importer finali
 ok(merchant.includes("qg_grocery_source_search"),'Merchant add mode searches source catalog');
 ok(merchant.includes("qg_grocery_source_add_to_shop"),'Merchant adds only selected source product');
 ok(merchant.includes('ค้นหาชื่อสินค้า ยี่ห้อ หรือบาร์โค้ด'),'Merchant exposes 10k name/brand/barcode search');
-ok(merchant.includes('image:r.image_url'),'Merchant source search renders Makro preview image');
+// The Merchant preview is deliberately restricted to the verified HTTPS Makro CDN.
+// Test the real helper rather than expecting an unsafe pass-through of source URLs.
+const helperSource=merchant.match(/const merchantReferenceImage=url=>\{[\s\S]*?\n\};/);
+ok(!!helperSource,'Merchant preview URL validation helper exists');
+const merchantReferenceImage=require('node:vm').runInNewContext(helperSource[0]+'\nmerchantReferenceImage',{URL});
+const approvedPreview='https://images.mango-prod.siammakro.cloud/products/example.jpg';
+ok(merchantReferenceImage(approvedPreview)===approvedPreview,'Merchant accepts genuine HTTPS Makro CDN previews');
+for(const rejected of [
+  'http://images.mango-prod.siammakro.cloud/products/example.jpg',
+  'https://images.mango-prod.siammakro.cloud.evil.test/products/example.jpg',
+  'https://attacker:secret@images.mango-prod.siammakro.cloud/products/example.jpg',
+  'https://example.test/products/example.jpg',
+  'javascript:alert(1)',
+  'data:image/svg+xml,<svg/>',
+  'not a URL'
+]){
+  ok(merchantReferenceImage(rejected)===null,'Merchant rejects unsafe preview '+rejected);
+}
+ok(merchant.includes('image:merchantReferenceImage(r.image_url)'),'Merchant source search validates Makro preview before rendering');
+ok(!merchant.includes('image:r.image_url'),'Merchant does not bypass preview URL validation');
 
 ok(workflow.includes('sync-makro-dry-branded.cjs'),'CI builds Makro source snapshot');
 ok(workflow.includes('artifacts/makro-catalog/makro-grocery-branded.json'),'CI uploads generated snapshot as artifact');
