@@ -107,6 +107,9 @@ internal suspend fun syncMerchantNativePush(context: Context, auth: NativeAuth):
         runCatching { api.unsubscribe(auth, store.deviceId()) }
         return false
     }
+    // Do not request a Firebase token for an expired or unbound cached identity.
+    // The session is checked again after the suspending Firebase call below.
+    if (!merchantPushNotificationSessionActive(auth, System.currentTimeMillis())) return false
     ensureMerchantNotificationChannel(context)
     if (!merchantFirebaseConfigured(context)) return false
     val token = merchantUsableFcmToken(merchantFirebaseToken())
