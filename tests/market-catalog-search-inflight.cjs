@@ -9,7 +9,7 @@ const state = { loading: true, query: 'old', offset: 100 };
 const calls = [];
 const timers = [];
 const context = {
-  window: {}, state, searchTimer: null,
+  window: {}, state, searchTimer: null, location: { hash: '#market-catalog' },
   clearTimeout: id => { if (id) id.cancelled = true; },
   setTimeout: (fn, delay) => { const t = { fn, delay, cancelled: false }; timers.push(t); return t; },
   load: () => calls.push({ query: state.query, offset: state.offset, loading: state.loading })
@@ -39,4 +39,13 @@ assert.equal(state.category, 'ผักสด', 'category change must apply whil
 assert.equal(state.offset, 0, 'category change resets pagination');
 assert.equal(calls.length, 2, 'category change must request fresh data while previous load is pending');
 assert.equal(context.searchTimer, null, 'stale debounce reference must be cleared');
+
+// A queued search must not redraw the catalog after the user navigates away.
+const beforeNavigation = calls.length;
+context.window.qgMarketCatalogQueueSearch('should not load after leaving');
+const routeTimer = timers[timers.length - 1];
+context.location.hash = '#market-stock';
+routeTimer.fn();
+assert.equal(calls.length, beforeNavigation, 'queued search must not load after route exit');
+assert.equal(state.query, 'fresh product', 'queued search must not mutate catalog query after route exit');
 console.log('Market catalog in-flight search and category regression passed');
