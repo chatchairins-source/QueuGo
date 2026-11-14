@@ -85,6 +85,15 @@ class RiderNavigationLocationSessionGuardTest {
         assertFalse(riderNavigationResumeSessionEligible("rider-a", "session-a", "rider-a", " ", true))
     }
 
+    @Test fun navigationLeaseSaturatesRatherThanWrappingAcrossLongBoundary() {
+        assertTrue(riderNavigationRemainingLeaseMs(Long.MAX_VALUE, -1L) == Long.MAX_VALUE)
+        assertTrue(riderNavigationRemainingLeaseMs(Long.MAX_VALUE, Long.MIN_VALUE) == Long.MAX_VALUE)
+        assertTrue(riderNavigationRemainingLeaseMs(0L, Long.MIN_VALUE) == Long.MAX_VALUE)
+        assertTrue(riderNavigationRemainingLeaseMs(Long.MIN_VALUE, Long.MAX_VALUE) == 0L)
+        assertTrue(riderNavigationRemainingLeaseMs(Long.MAX_VALUE, Long.MAX_VALUE) == 0L)
+        assertTrue(riderNavigationRemainingLeaseMs(0L, 1L) == 0L)
+    }
+
     @Test fun renewedNavigationLeaseUsesCurrentSessionExpiry() {
         val now = 1_800_000L
         assertTrue(riderNavigationRemainingLeaseMs(now + 30_000L, now) == 30_000L)
