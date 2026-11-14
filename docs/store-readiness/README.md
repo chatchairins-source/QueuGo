@@ -6,6 +6,8 @@
 - [Privacy, Account Deletion, PDPA และงานส่งต่อ](privacy-and-handoff.md)
 - [Store Listing ไทยและอังกฤษ และรายการหลักฐานสำหรับ Play Console](store-listings.md)
 
+- [หลักฐานสำหรับกรอก Play Console และสคริปต์ตรวจรับ](play-console-evidence.md)
+
 ## ฐานหลักฐานและขอบเขต
 
 - Web, เอกสารเดิม และ SQL: `main` ณ `369e4b49b20a0781f6d52be1c54aef5bd473609d` (merge #1031)
