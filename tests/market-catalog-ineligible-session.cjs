@@ -8,7 +8,7 @@ const guard = source.match(/if\(!u\|\|!id\|\|!permitted\(u\)\)\{[^\n]+\}/);
 const active = source.match(/function active\(epoch,shopId\)\{[^\n]+\}/);
 assert.ok(guard, 'catalog must guard ineligible shop sessions');
 assert.ok(active, 'catalog must reject stale request epochs');
-const state = { epoch: 7, shop: 'old-shop', loading: true, gpRate: 12 };
+const state = { epoch: 7, shop: 'old-shop', loading: true, gpRate: 12, rows: [{ id: 'old-product' }], categories: [{ category: 'old' }], hasMore: true };
 const shells = [];
 const ctx = { state, u: null, id: null, permitted: () => false, shell: html => shells.push(html), location: { hash: '#market-catalog' } };
 vm.createContext(ctx);
@@ -17,6 +17,9 @@ assert.equal(state.epoch, 8, 'ineligible session must invalidate pending request
 assert.equal(state.shop, null, 'old shop identity must not remain active');
 assert.equal(state.loading, false, 'ineligible session must clear loading state');
 assert.equal(state.gpRate, null, 'old shop GP must not remain visible');
+assert.equal(state.rows.length, 0, 'old shop products must be cleared from client memory');
+assert.equal(state.categories.length, 0, 'old shop categories must be cleared');
+assert.equal(state.hasMore, false, 'old shop pagination must be reset');
 assert.equal(shells.length, 1, 'show ineligible shop message');
 assert.equal(vm.runInContext("active(7, 'old-shop')", ctx), false, 'old in-flight response must not repaint catalog');
 console.log('Market catalog ineligible-session stale-response regression passed');
