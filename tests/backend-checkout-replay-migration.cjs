@@ -20,7 +20,7 @@ assert.ok(validity > missingSession && validity < replayLookup, 'session validit
 assert.ok(replayReturn > validity && recentCartReturn > validity, 'both duplicate responses must follow session validity');
 assert.equal((sql.match(/if v\.revoked_at is not null or now\(\)>=v\.expires_at/g) || []).length, 1, 'only one validity guard');
 assert.match(sql, /SECURITY DEFINER/);
-assert.match(sql, /SET search_path TO 'public', 'pg_temp'/);
+assert.match(sql, /SECURITY DEFINER\s+SET search_path TO ''/);\nassert.doesNotMatch(sql, /SET search_path TO 'public'/, 'checkout definer must not resolve public schema objects implicitly');
 assert.match(sql, /v_old\.payload_hash<>v_hash/);
 assert.match(sql, /perform set_config\('queuego\.pos_rpc','on',true\)/);
 
