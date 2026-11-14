@@ -49,6 +49,16 @@ class RiderNavigationLocationSessionGuardTest {
         assertFalse(foregroundAllowed(boundSession = " ", currentSession = " "))
     }
 
+    @Test fun foregroundReadinessCannotRenewExpiredAuthentication() {
+        val now = 1_800_000L
+        assertTrue(foregroundAllowed() && riderNavigationLocationSessionActive(now + 1L, now))
+        assertFalse(foregroundAllowed() && riderNavigationLocationSessionActive(now, now))
+        assertFalse(foregroundAllowed() && riderNavigationLocationSessionActive(now - 1L, now))
+        assertFalse(foregroundAllowed() && riderNavigationLocationSessionActive(Long.MIN_VALUE, now))
+        assertFalse(foregroundAllowed(currentSession = "session-b") &&
+            riderNavigationLocationSessionActive(now + 30_000L, now))
+    }
+
     @Test fun validActiveNavigationCanUpload() {
         assertTrue(allowed())
     }
