@@ -8,8 +8,10 @@ assert.ok(match, 'catalog search handler must exist');
 const state = { loading: true, query: 'old', offset: 100 };
 const calls = [];
 const timers = [];
+let currentShop = 'merchant-a';
 const context = {
   window: {}, state, searchTimer: null, location: { hash: '#market-catalog' },
+  shop: () => ({ shopProfileId: currentShop }), profileId: u => u?.shopProfileId,
   clearTimeout: id => { if (id) id.cancelled = true; },
   setTimeout: (fn, delay) => { const t = { fn, delay, cancelled: false }; timers.push(t); return t; },
   load: () => calls.push({ query: state.query, offset: state.offset, loading: state.loading })
@@ -48,4 +50,16 @@ context.location.hash = '#market-stock';
 routeTimer.fn();
 assert.equal(calls.length, beforeNavigation, 'queued search must not load after route exit');
 assert.equal(state.query, 'fresh product', 'queued search must not mutate catalog query after route exit');
-console.log('Market catalog in-flight search and category regression passed');
+// Debounced text entered by one merchant must not run in a different merchant session.
+context.location.hash = '#market-catalog';
+context.window.qgMarketCatalogQueueSearch('merchant-a secret search');
+const oldMerchantTimer = timers[timers.length - 1];
+currentShop = 'merchant-b';
+oldMerchantTimer.fn();
+assert.equal(calls.length, beforeNavigation, 'old merchant queued search must not load in new merchant session');
+assert.equal(state.query, 'fresh product', 'old merchant queued search must not mutate new merchant query');
+context.window.qgMarketCatalogQueueSearch('merchant-b search');
+timers[timers.length - 1].fn();
+assert.equal(calls.length, beforeNavigation + 1, 'current merchant search must still load');
+assert.equal(state.query, 'merchant-b search');
+console.log('Market catalog in-flight search, category and merchant debounce regression passed');
