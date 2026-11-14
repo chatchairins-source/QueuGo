@@ -87,7 +87,7 @@ function card(r){
         <label><input data-market-delivery type="checkbox" ${r.available===false?'':'checked'} ${linked?'disabled':''}> เดลิเวอรี่ลูกค้า</label>
       </div>
       <div class="qgg-gp-note">${linked&&Number(r.delivery_price)>0?'ราคาเดลิเวอรี่ '+Number(r.delivery_price).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+' บาท':deliveryNote(storePrice)}</div>
-      <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose('${E(r.id)}')">${linked?'มีในร้านแล้ว':'เพิ่มสินค้าเข้าร้าน'}</button>
+      <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose(this.closest('[data-market-id]').getAttribute('data-market-id'))">${linked?'มีในร้านแล้ว':'เพิ่มสินค้าเข้าร้าน'}</button>
     </div>
   </article>`;
 }
