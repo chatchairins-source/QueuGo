@@ -63,7 +63,8 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
         auth.session.expiresAtMs > nowMs
 
 internal fun merchantUsableFcmToken(raw: String): String? = raw.trim().takeIf { it.length >= 16 }
-\ninternal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
+
+internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
