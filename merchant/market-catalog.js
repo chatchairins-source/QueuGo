@@ -131,8 +131,8 @@ async function load(){
       rpc('qg_market_catalog_page',{p_query:state.query,p_category:state.category,p_offset:state.offset}),
       qgMarketReadGpRate(id)
     ]);
-    state.gpRate=gp;
     if(!active(epoch,id))return;
+    state.gpRate=gp;
     state.categories=(Array.isArray(cats)?cats:[]).filter(c=>MARKET_MASTER_CATEGORIES.has(String(c?.category||'')));
     const rows=(Array.isArray(page)?page:[]).filter(r=>MARKET_MASTER_CATEGORIES.has(String(r?.category||'')));
     state.hasMore=rows.length>50;state.rows=rows.slice(0,50);paint();
