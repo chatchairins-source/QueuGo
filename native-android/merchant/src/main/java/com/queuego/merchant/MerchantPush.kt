@@ -50,6 +50,8 @@ internal fun merchantPushSessionCurrent(
         current.user.authUserId == validated.user.authUserId &&
         current.session.authUserId == validated.session.authUserId &&
         current.session.sessionId == validated.session.sessionId &&
+        validated.session.accessToken.isNotBlank() &&
+        current.session.accessToken == validated.session.accessToken &&
         validated.session.expiresAtMs > nowMs &&
         current.session.expiresAtMs > nowMs
 

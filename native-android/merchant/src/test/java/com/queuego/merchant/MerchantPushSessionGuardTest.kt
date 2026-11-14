@@ -15,9 +15,10 @@ class MerchantPushSessionGuardTest {
         status: String = "active",
         expiry: Long = 2_000L,
         userAuthId: String = "auth-$userId",
-        sessionAuthId: String = userAuthId
+        sessionAuthId: String = userAuthId,
+        accessToken: String = "access"
     ) = NativeAuth(
-        NativeSession(sessionAuthId, "access", "refresh", expiry, sessionId),
+        NativeSession(sessionAuthId, accessToken, "refresh", expiry, sessionId),
         NativeUser(userId, userAuthId, "Merchant", role, status)
     )
 
@@ -76,6 +77,13 @@ class MerchantPushSessionGuardTest {
         assertFalse(merchantPushSessionCurrent(auth(), auth(userId = ""), 1_000L))
         assertFalse(merchantPushSessionCurrent(auth(), auth(sessionId = ""), 1_000L))
         assertTrue(merchantPushSessionCurrent(auth(), auth(), 1_000L))
+    }
+
+    @Test fun accessTokenRotationDuringFirebaseFetchMustNotRegisterStaleToken() {
+        val validated = auth(accessToken = "old-access")
+        assertFalse(merchantPushSessionCurrent(validated, auth(accessToken = "new-access"), 1_000L))
+        assertFalse(merchantPushSessionCurrent(auth(accessToken = ""), auth(accessToken = ""), 1_000L))
+        assertTrue(merchantPushSessionCurrent(validated, auth(accessToken = "old-access"), 1_000L))
     }
 
     @Test fun notificationRejectsUnboundOrBlankCachedSession() {
