@@ -12,7 +12,7 @@ const state = { epoch: 7, shop: 'old-shop', loading: true, gpRate: 12 };
 const shells = [];
 const ctx = { state, u: null, id: null, permitted: () => false, shell: html => shells.push(html), location: { hash: '#market-catalog' } };
 vm.createContext(ctx);
-vm.runInContext(active[0] + '\n' + guard[0], ctx);
+vm.runInContext(active[0] + '\n(function simulateInvalidSession(){' + guard[0] + '})()', ctx);
 assert.equal(state.epoch, 8, 'ineligible session must invalidate pending request epoch');
 assert.equal(state.shop, null, 'old shop identity must not remain active');
 assert.equal(state.loading, false, 'ineligible session must clear loading state');
