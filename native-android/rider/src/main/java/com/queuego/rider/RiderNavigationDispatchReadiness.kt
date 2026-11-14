@@ -139,6 +139,10 @@ internal object RiderNavigationDispatchReadiness {
                 bound.userId, bound.sessionId, auth.user.id, auth.session.sessionId,
                 binding == bound
             )) return@withLock
+        // Foreground callbacks must not renew readiness after authentication expires.
+        if (!riderNavigationLocationSessionActive(auth.session.expiresAtMs, System.currentTimeMillis())) {
+            return@withLock
+        }
         // Read stores inside the shared lock: a background request cannot restore an older toggle.
         api.syncDispatchPreference(auth,
             RiderAcceptanceModeStore(context).autoAcceptEnabled(auth.user.id),
