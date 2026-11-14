@@ -29,6 +29,19 @@ class MerchantPushSessionGuardTest {
         assertFalse(merchantPushSessionCurrent(auth(), auth(sessionId = "session-2"), 1_000L))
     }
 
+    @Test fun tokenRetrievalFinishingAfterSessionExpiryMustNotSubscribe() {
+        val validatedBeforeTokenFetch = auth(expiry = 2_000L)
+        assertTrue(merchantPushSessionCurrent(validatedBeforeTokenFetch, auth(), 1_999L))
+        assertFalse(merchantPushSessionCurrent(validatedBeforeTokenFetch, auth(), 2_000L))
+    }
+
+    @Test fun tokenRetrievalFinishingAfterLogoutOrSessionRotationMustNotSubscribe() {
+        val validatedBeforeTokenFetch = auth()
+        assertFalse(merchantPushSessionCurrent(validatedBeforeTokenFetch, null, 1_000L))
+        assertFalse(merchantPushSessionCurrent(validatedBeforeTokenFetch, auth(sessionId = "new-session"), 1_000L))
+        assertFalse(merchantPushSessionCurrent(validatedBeforeTokenFetch, auth(userId = "shop-2"), 1_000L))
+    }
+
     @Test fun expiredAndDeactivatedSessionsCannotRegisterToken() {
         assertFalse(merchantPushSessionCurrent(auth(), auth(), 2_000L))
         assertFalse(merchantPushSessionCurrent(auth(), auth(expiry = 999L), 1_000L))
