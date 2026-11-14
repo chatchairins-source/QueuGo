@@ -68,4 +68,16 @@ class MerchantPushSessionGuardTest {
         assertFalse(merchantPushSessionCurrent(auth(status = "inactive"), auth(), 1_000L))
         assertFalse(merchantPushSessionCurrent(auth(), auth(role = "customer"), 1_000L))
     }
+    @Test fun notificationRejectsUnboundOrBlankCachedSession() {
+        assertTrue(merchantPushNotificationSessionActive(auth(), 1_999L))
+        assertFalse(merchantPushNotificationSessionActive(auth(), 2_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(userId = ""), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(userAuthId = ""), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(sessionAuthId = ""), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(sessionId = ""), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(userAuthId = "other"), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(role = "customer"), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(status = "inactive"), 1_000L))
+    }
+
 }

@@ -50,6 +50,10 @@ internal fun merchantPushSessionCurrent(
 internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long): Boolean =
     auth.user.role == "shop" &&
         auth.user.status == "active" &&
+        auth.user.id.isNotBlank() &&
+        auth.user.authUserId.isNotBlank() &&
+        auth.session.authUserId == auth.user.authUserId &&
+        auth.session.sessionId.isNotBlank() &&
         auth.session.expiresAtMs > nowMs
 
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
