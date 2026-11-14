@@ -122,7 +122,7 @@ async function recoverPending(shopId,epoch){
 }
 async function load(){
   const u=shop(),id=profileId(u);
-  if(!u||!id||!permitted(u)){shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
+  if(!u||!id||!permitted(u)){++state.epoch;state.shop=null;state.loading=false;state.gpRate=null;shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
   const epoch=++state.epoch;state.shop=id;state.loading=true;shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
   await recoverPending(id,epoch);
   try{
