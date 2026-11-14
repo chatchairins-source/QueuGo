@@ -93,6 +93,8 @@ class MerchantPushSessionGuardTest {
         assertFalse(merchantPushNotificationSessionActive(auth(userAuthId = ""), 1_000L))
         assertFalse(merchantPushNotificationSessionActive(auth(sessionAuthId = ""), 1_000L))
         assertFalse(merchantPushNotificationSessionActive(auth(sessionId = ""), 1_000L))
+        assertFalse(merchantPushNotificationSessionActive(auth(accessToken = ""), 1_000L))
+        assertTrue(merchantPushNotificationSessionActive(auth(accessToken = "valid-access"), 1_000L))
         assertFalse(merchantPushNotificationSessionActive(auth(userAuthId = "other"), 1_000L))
         assertFalse(merchantPushNotificationSessionActive(auth(role = "customer"), 1_000L))
         assertFalse(merchantPushNotificationSessionActive(auth(status = "inactive"), 1_000L))

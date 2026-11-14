@@ -62,6 +62,7 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
         auth.user.authUserId.isNotBlank() &&
         auth.session.authUserId == auth.user.authUserId &&
         auth.session.sessionId.isNotBlank() &&
+        auth.session.accessToken.isNotBlank() &&
         auth.session.expiresAtMs > nowMs
 
 internal fun merchantUsableFcmToken(raw: String): String? = raw.trim().takeIf { it.length >= 16 }
