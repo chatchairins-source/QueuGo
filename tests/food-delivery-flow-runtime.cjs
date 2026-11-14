@@ -36,6 +36,13 @@ await db.exec(read('supabase/migrations/20261005205000_merchant_order_action_rep
 await db.exec(read('supabase/migrations/20261005181500_merchant_order_action_reliability.sql'));
 await db.exec(fn('supabase/migrations/20261005211000_rider_legacy_action_repeat_safe.sql','rider_order_action'));
 for(const name of ['qg_pickup_with_photo','qg_complete_with_photo'])await db.exec(fn('supabase/migrations/20261006150500_rider_photo_only_flow.sql',name));
+// The normal cash flow is posted by the existing delivery RPC. Read it back through the Rider's real ledger.
+for(const migration of [
+ '20261015000356_rider_dynamic_stop_plan_phase1.sql',
+ '20261015012500_merchant_readiness_dispatch_eta_funding.sql',
+ '20261015021500_rider_cancellation_funding_settlement.sql'
+])await db.exec(read('supabase/migrations/'+migration));
+const ledger=async()=>(await db.query("select qg_rider_cash_ledger(order_date,order_date) r from (select (now() at time zone 'Asia/Bangkok')::date as order_date) dates")).rows[0].r;
 const actor=n=>db.query("select set_config('test.uid',$1,false)",[id(n)]);
 const rejects=async(promise,pattern)=>{await assert.rejects(promise,pattern);checks++};
 const state=async()=>(await db.query('select status from orders where id=$1',[id(80)])).rows[0].status;
@@ -79,5 +86,19 @@ eq((await db.query('select amount from payments where order_id=$1',[id(80)])).ro
 for(const table of ['qg_pickup_proofs','qg_delivery_proofs','rider_cash_advances','merchant_cash_receipts'])eq((await db.query('select count(*)::int n from '+table+' where order_id=$1',[id(80)])).rows[0].n,1);
 eq((await db.query('select qg_complete_with_photo($1,$2,15.002,103) r',[id(80),delivery])).rows[0].r,'completed');
 eq((await db.query('select count(*)::int n from qg_delivery_proofs where order_id=$1',[id(80)])).rows[0].n,1);
-console.log(JSON.stringify({checks,failures:0,scope:'Single isolated PGlite engine, actual checkout/dispatch/claim/merchant/proof RPC SQL; no Android UI/Production JWT/RLS/concurrency or road-routing certification'}));
+const posted=(await ledger()).filter(row=>row.order_id===id(80));
+eq(posted.length,1);
+const entry=posted[0];
+eq(entry.status,'completed');
+eq(entry.payment_status,'paid');
+eq(entry.cash_paid_merchant,100);
+eq(entry.merchant_confirmed,100);
+eq(entry.cash_collected_customer,130);
+eq(entry.platform_cancellation_funding_cash,0);
+eq(Boolean(entry.customer_paid_at && entry.proof_verified_at),true);
+await actor(otherRider);
+eq((await ledger()).some(row=>row.order_id===id(80)),false);
+await actor(160);
+await rejects(ledger(),/active rider required/);
+console.log(JSON.stringify({checks,failures:0,scope:'Single isolated PGlite engine, actual checkout/dispatch/claim/merchant/proof/cash ledger RPC SQL; no Android UI/Production JWT/RLS/concurrency or road-routing certification'}));
 }finally{await db.close()}})().catch(e=>{console.error(e);process.exit(1)});
