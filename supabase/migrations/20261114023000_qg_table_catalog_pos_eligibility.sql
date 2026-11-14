@@ -1,11 +1,12 @@
 -- REVIEW REQUIRED: forward-only change; do not apply to Production automatically.
+-- SECURITY DEFINER uses an empty search_path; all application/extension objects are schema-qualified.
 -- QR table catalog must advertise the same POS-eligible products that
 -- qg_table_checkout accepts. Preserve session and active-table authorization, binding the table to the session shop.
 CREATE OR REPLACE FUNCTION public.qg_table_catalog(p_session uuid, p_device_key uuid)
  RETURNS jsonb
  LANGUAGE plpgsql
  SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
+ SET search_path TO ''
 AS $function$
 declare v public.qg_table_sessions%rowtype;
 begin
