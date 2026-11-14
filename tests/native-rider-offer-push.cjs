@@ -41,6 +41,17 @@ const path=require('path');
   assert(/message:riderMessage\|\|\(customerAndroid\?\{[\s\S]*?\}:\{\s*token:deviceToken,\s*notification:\{/.test(edge),'Existing other-role notification payload must remain behind the Customer Android data-only branch');
   assert(edge.includes("user.role==='rider'?buildRiderEventMessage"),'Other-role payload remains on the existing transport path');
   assert(edge.includes("if(user.role==='rider'&&!riderMessage)return 204"),'Incomplete Rider recipient/session metadata must never fall back to notification payload');
+  // Integration must not silently replace Native session-bound device ownership with Web's older upsert.
+  assert(edge.includes('nativeRegistrationCandidate(user.id,input.deviceId,platform,deviceRow.data,duplicate.data)'),
+    'Native token registration must validate device/token ownership together');
+  assert(edge.includes('finalizeNativeRegistration(plan,previousBindingActive)'),
+    'Foreign device binding must reject an active previous session');
+  assert(edge.includes(".eq('user_id',plan.expectedOwner)"),
+    'Reclaim must enforce the prior owner in the conditional update');
+  assert(edge.includes(".eq('session_id',plan.expectedSessionId)"),
+    'Reclaim must enforce the prior device session in the conditional update');
+  assert(edge.includes("if(plan.expectedToken)transfer=transfer.eq('token',plan.expectedToken)"),
+    'Reclaim must protect against token changes during handover');
   const riderPush=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderPush.kt','utf8');
   assert(riderPush.includes('SessionStore(applicationContext).load() ?: return'),'Data-only Rider events require a cached signed-in session');
   assert(riderPush.includes('recipientId != cached.user.id'),'Rider event recipient must match the cached account');
