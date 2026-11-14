@@ -141,7 +141,7 @@ async function load(){
 }
 window.qgRenderMarketCatalog=load;
 window.qgMarketCatalogSearch=e=>{e?.preventDefault?.();state.query=String(document.getElementById('market-catalog-search')?.value||'').trim();state.category=String(document.getElementById('market-catalog-category')?.value||'');state.offset=0;load()};
-window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{if(state.loading)return;state.query=String(value||'').trim();state.offset=0;load()},300)};
+window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{state.query=String(value||'').trim();state.offset=0;load()},300)};
 window.qgMarketCatalogSetCategory=category=>{if(state.loading)return;state.category=String(category||'');state.offset=0;load()};
 window.qgMarketCatalogPage=dir=>{if(state.loading)return;const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
 window.qgMarketCatalogChoose=id=>{
