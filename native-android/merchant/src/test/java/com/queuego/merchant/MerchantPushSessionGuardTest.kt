@@ -13,10 +13,12 @@ class MerchantPushSessionGuardTest {
         sessionId: String = "session-1",
         role: String = "shop",
         status: String = "active",
-        expiry: Long = 2_000L
+        expiry: Long = 2_000L,
+        userAuthId: String = "auth-$userId",
+        sessionAuthId: String = userAuthId
     ) = NativeAuth(
-        NativeSession("auth-$userId", "access", "refresh", expiry, sessionId),
-        NativeUser(userId, "auth-$userId", "Merchant", role, status)
+        NativeSession(sessionAuthId, "access", "refresh", expiry, sessionId),
+        NativeUser(userId, userAuthId, "Merchant", role, status)
     )
 
     @Test fun sameActiveSessionAllowsTokenRefresh() {
@@ -48,6 +50,15 @@ class MerchantPushSessionGuardTest {
         assertFalse(merchantPushSessionCurrent(staleValidatedAuth, refreshedCurrentSession, 1_000L))
         assertFalse(merchantPushSessionCurrent(staleValidatedAuth, refreshedCurrentSession, 1_001L))
         assertTrue(merchantPushSessionCurrent(staleValidatedAuth, refreshedCurrentSession, 999L))
+    }
+
+    @Test fun mismatchedAuthPrincipalCannotRegisterPushForSameShopAndSession() {
+        val validated = auth()
+        assertFalse(merchantPushSessionCurrent(validated, auth(userAuthId = "other-principal"), 1_000L))
+        assertFalse(merchantPushSessionCurrent(validated, auth(sessionAuthId = "other-principal"), 1_000L))
+        assertFalse(merchantPushSessionCurrent(auth(userAuthId = "other-principal"), auth(), 1_000L))
+        assertFalse(merchantPushSessionCurrent(auth(sessionAuthId = "other-principal"), auth(), 1_000L))
+        assertTrue(merchantPushSessionCurrent(validated, auth(), 1_000L))
     }
 
     @Test fun expiredAndDeactivatedSessionsCannotRegisterToken() {
