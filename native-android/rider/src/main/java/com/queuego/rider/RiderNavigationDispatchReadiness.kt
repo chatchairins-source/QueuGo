@@ -74,6 +74,15 @@ internal fun riderNavigationRemainingLeaseMs(expiresAtMs: Long, nowMs: Long): Lo
 internal fun riderNavigationLocationSessionActive(expiresAtMs: Long, nowMs: Long): Boolean =
     riderNavigationRemainingLeaseMs(expiresAtMs, nowMs) > 0L
 
+/** A network-resumed navigation callback needs both its original binding and a live session. */
+internal fun riderNavigationResumedSessionActive(
+    boundUserId: String, boundSessionId: String,
+    currentUserId: String?, currentSessionId: String?,
+    bindingStillCurrent: Boolean, expiresAtMs: Long?, nowMs: Long
+): Boolean = riderNavigationResumeSessionEligible(
+    boundUserId, boundSessionId, currentUserId, currentSessionId, bindingStillCurrent
+) && expiresAtMs != null && riderNavigationLocationSessionActive(expiresAtMs, nowMs)
+
 internal fun riderNavigationLocationPushIntervalMs(distanceMeters: Double?): Long =
     if (distanceMeters != null && distanceMeters.isFinite() && distanceMeters <= 200.0) 1_000L else 3_000L
 
@@ -209,9 +218,10 @@ internal object RiderNavigationDispatchReadiness {
         val job = api.notificationJob(auth, bound.orderId!!, bound.profileId!!)
         // notificationJob suspends: a logout or account switch may occur while awaiting it.
         val resumedAuth = SessionStore(context).load()
-        if (!riderNavigationResumeSessionEligible(
+        if (!riderNavigationResumedSessionActive(
                 bound.userId, bound.sessionId, resumedAuth?.user?.id,
-                resumedAuth?.session?.sessionId, binding == bound
+                resumedAuth?.session?.sessionId, binding == bound,
+                resumedAuth?.session?.expiresAtMs, System.currentTimeMillis()
             )) return@withLock
         if (job == null || job.id != bound.orderId || job.status !in setOf("rider_assigned", "preparing", "ready", "assigned", "picked_up", "in_progress")) {
             api.syncDispatchPreference(resumedAuth!!, auto, stop, false)
