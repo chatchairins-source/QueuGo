@@ -1,0 +1,300 @@
+name: QueueGo Rider Android Authenticated Review
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/rider-android-authenticated-review.yml'
+      - 'native-android/rider/**'
+      - 'native-android/merchant/**'
+      - 'ops/maps/**'
+      - '.github/workflows/rider-offline-routing.yml'
+      - 'native-android/qa/capture-rider-authenticated-review.py'
+      - 'native-android/qa/capture-merchant-authenticated-review.py'
+      - 'native-android/qa/test_merchant_authenticated_review_tabs.py'
+      - 'native-android/qa/fetch-rider-offline-candidate.py'
+  push:
+    branches:
+      - fix-rider-invalid-step-metrics-20261106
+      - work-native-rider-auth-review-20261024
+      - work-native-web-parity-20261026
+      - work-native-pos-tax-foundation-20261029
+      - work-native-rider-nav-unified-offline-20261030
+      - work-rider-diagnostics-visual-gate-20261102
+
+# All runs reuse the same existing review account. Production enforces one
+# active session, so parallel workers must never displace each other's login.
+concurrency:
+  group: queuego-authenticated-review-accounts
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  credential-check:
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+      merchant_only: ${{ steps.check.outputs.merchant_only }}
+    steps:
+      - name: Check review secrets without printing their values
+        id: check
+        env:
+          QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
+          QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
+          QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
+          QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
+          QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
+          QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
+          REVIEW_COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+          REVIEW_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          REVIEW_REPOSITORY: ${{ github.repository }}
+        run: |
+          python3 - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+          roles = {}
+          for role in ("RIDER", "MERCHANT", "CUSTOMER"):
+              names = [f"QG_{role}_REVIEW_PHONE", f"QG_{role}_REVIEW_PASSWORD"]
+              missing = [name for name in names if not os.environ.get(name)]
+              roles[role.lower()] = {"ready": not missing, "missing_secret_names": missing}
+              print(role + "_review_credentials=" + ("present" if not missing else "missing"))
+              if missing:
+                  print(role + "_missing_secret_names=" + ",".join(missing))
+          commit_message = os.environ.get("REVIEW_COMMIT_MESSAGE", "")
+          if not commit_message and os.environ.get("REVIEW_PR_HEAD_SHA"):
+              repo = os.environ.get("REVIEW_REPOSITORY", "")
+              sha = os.environ["REVIEW_PR_HEAD_SHA"]
+              request = urllib.request.Request(
+                  f"https://api.github.com/repos/{repo}/commits/{sha}",
+                  headers={"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28"})
+              with urllib.request.urlopen(request, timeout=20) as response:
+                  commit_message = json.loads(response.read()).get("commit", {}).get("message", "")
+          merchant_only = "[merchant-visual-review]" in commit_message
+          ready = roles["merchant" if merchant_only else "rider"]["ready"]
+          with open(os.environ["GITHUB_OUTPUT"], "a") as output:
+              output.write("ready=" + str(ready).lower() + "\n")
+              output.write("merchant_only=" + str(merchant_only).lower() + "\n")
+          capture_requested = (os.environ.get("GITHUB_EVENT_NAME") in ("workflow_dispatch", "pull_request")
+              or os.environ.get("GITHUB_REF_NAME") in ("work-native-rider-auth-review-20261024", "work-rider-diagnostics-visual-gate-20261102") or merchant_only)
+          report = {"status": "ready" if ready else "skipped",
+              "scope": "credential presence only; not authenticated visual acceptance",
+              "roles": roles, "capture_requested": capture_requested,
+              "screenshots": "pending" if ready and capture_requested else "not_run"}
+          target = Path("artifacts/rider-authenticated-review/status.json")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(json.dumps(report, indent=2) + "\n")
+          PY
+      - name: Save review readiness
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-authenticated-review-status
+          path: artifacts/rider-authenticated-review/status.json
+          retention-days: 7
+
+  capture:
+    needs: credential-check
+    if: needs.credential-check.outputs.ready == 'true' && ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository) || github.event_name == 'workflow_dispatch' || github.ref_name == 'work-native-rider-auth-review-20261024' || github.ref_name == 'work-rider-diagnostics-visual-gate-20261102' || (github.ref_name == 'work-native-web-parity-20261026' && contains(github.event.head_commit.message, '[authenticated-review]')) || ((github.ref_name == 'work-native-pos-tax-foundation-20261029' || github.ref_name == 'work-native-rider-nav-unified-offline-20261030' || github.ref_name == 'fix-rider-invalid-step-metrics-20261106') && contains(github.event.head_commit.message, '[merchant-visual-review]')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK and test image
+        run: |
+          set -euo pipefail
+          # sdkmanager can close stdin after license acceptance; keep its exit status authoritative.
+          set +o pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "build-tools;36.0.0" "emulator" "platform-tools" \
+            "system-images;android-30;google_apis;x86_64" >/dev/null
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Prepare native Firebase configs
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" ]; then
+            echo "::warning::Firebase config secret is absent; native Rider APK will build without physical background-push certification"
+            exit 0
+          fi
+          umask 077
+          tmp="$(mktemp)"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$tmp"
+          QG_FIREBASE_CONFIG="$tmp" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+          p=Path(os.environ['QG_FIREBASE_CONFIG'])
+          data=json.loads(p.read_text())
+          packages={
+              c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+              for c in (data.get('client') or [])
+          }
+          targets={
+              'com.queuego.customer': Path('native-android/customer/google-services.json'),
+              'com.queuego.merchant': Path('native-android/merchant/google-services.json'),
+              'com.queuego.rider': Path('native-android/rider/google-services.json'),
+          }
+          if 'com.queuego.rider' not in packages:
+              raise SystemExit('::error::Firebase config has no com.queuego.rider Android client')
+          for package,target in targets.items():
+              if package in packages:
+                  shutil.copyfile(p,target)
+                  os.chmod(target,0o600)
+                  print(f'Native Firebase config: {package} valid')
+              else:
+                  print(f'::warning::Firebase config has no {package} Android client; that app will build without physical background-push certification')
+          PY
+          rm -f "$tmp"
+      - name: Verify Rider diagnostics visual gate regression
+        run: python3 native-android/qa/test_rider_diagnostics_visual_gate.py
+      - name: Build Merchant debug APK
+        run: gradle -p native-android :merchant:assembleDebug :merchant:assembleDebugAndroidTest --no-build-cache --stacktrace
+      - name: Fetch the exact offline-tested Rider candidate
+        if: ${{ needs.credential-check.outputs.merchant_only != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 native-android/qa/fetch-rider-offline-candidate.py
+      - name: Enable runner-only Android acceleration
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then sudo chown "$(id -u):$(id -g)" /dev/kvm; fi
+      - name: Boot Android Emulator
+        id: boot_emulator
+        env:
+          ANDROID_AVD_HOME: ${{ runner.temp }}/queuego-rider-review-avd
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_AVD_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            -n queuego_rider_review -k "system-images;android-30;google_apis;x86_64" \
+            --device pixel_4 -p "$ANDROID_AVD_HOME/queuego_rider_review" <<< "no"
+          "$ANDROID_HOME/platform-tools/adb" start-server
+          adb="$ANDROID_HOME/platform-tools/adb"
+          nohup "$ANDROID_HOME/emulator/emulator" -avd queuego_rider_review -port 5554 \
+            -accel on -no-window -no-snapshot -no-audio -no-boot-anim -gpu swiftshader \
+            -memory 2048 -cores 2 > "$RUNNER_TEMP/queuego-rider-review-emulator.log" 2>&1 &
+          timeout 90s "$adb" -s emulator-5554 wait-for-device
+          review_framework_ready() {
+            [ "$("$adb" -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = "1" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check activity | tr -d '\r')" = "Service activity: found" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check window | tr -d '\r')" = "Service window: found" ] &&
+            [ "$("$adb" -s emulator-5554 shell service check package | tr -d '\r')" = "Service package: found" ]
+          }
+          stable_samples=0
+          for attempt in $(seq 1 90); do
+            if review_framework_ready; then
+              stable_samples=$((stable_samples + 1))
+              if [ "$stable_samples" -ge 3 ]; then exit 0; fi
+            else
+              stable_samples=0
+            fi
+            sleep 5
+          done
+          cat "$RUNNER_TEMP/queuego-rider-review-emulator.log"
+          exit 1
+      - name: Capture authenticated Rider views on Android Emulator
+        if: ${{ needs.credential-check.outputs.merchant_only != 'true' }}
+        env:
+          QG_DEBUG_MAP_ARCHIVE: '0'
+          QG_REQUIRE_PLAY_SERVICES: '1'
+          QG_RIDER_REVIEW_PHONE: ${{ secrets.QG_RIDER_REVIEW_PHONE }}
+          QG_RIDER_REVIEW_PASSWORD: ${{ secrets.QG_RIDER_REVIEW_PASSWORD }}
+        run: python3 native-android/qa/capture-rider-authenticated-review.py
+      - name: Verify actual background FCM on the same authenticated Rider candidate
+        if: ${{ needs.credential-check.outputs.merchant_only != 'true' }}
+        run: |
+          set -euo pipefail
+          adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" -s emulator-5554 install -r native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk
+          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.rider.RiderPushRuntimeTest com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner > artifacts/rider-authenticated-review/background-fcm.txt
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("artifacts/rider-authenticated-review/background-fcm.txt").read_text()
+          assert "OK (1 test)" in text and "FAILURES" not in text, "Actual background FCM test failed; inspect retained instrumentation"
+          print("QUEUEGO_REAL_BACKGROUND_FCM_PASS")
+          PY
+      - name: Capture authenticated Merchant views on Android Emulator
+        id: merchant_review
+        if: always() && steps.boot_emulator.outcome == 'success'
+        env:
+          QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
+          QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
+          QG_MERCHANT_VISUAL_PARITY: ${{ needs.credential-check.outputs.merchant_only == 'true' && '1' || '0' }}
+        run: python3 native-android/qa/capture-merchant-authenticated-review.py
+      - name: Verify actual background FCM for authenticated Merchant
+        if: always() && steps.merchant_review.outcome == 'success'
+        run: |
+          set -euo pipefail
+          adb="$ANDROID_HOME/platform-tools/adb"
+          "$adb" -s emulator-5554 install -r native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk
+          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.merchant.MerchantPushRuntimeTest com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner > artifacts/merchant-authenticated-review/background-fcm.txt
+          python3 - <<'PYFCM'
+          from pathlib import Path
+          text = Path("artifacts/merchant-authenticated-review/background-fcm.txt").read_text()
+          assert "OK (1 test)" in text and "FAILURES" not in text, "Actual Merchant background FCM failed; inspect instrumentation"
+          print("QUEUEGO_MERCHANT_REAL_BACKGROUND_FCM_PASS")
+          PYFCM
+      - name: Set up Web visual review dependencies
+        if: always() && needs.credential-check.outputs.merchant_only == 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+      - name: Install Thai glyphs for the Production Web oracle
+        if: always() && needs.credential-check.outputs.merchant_only == 'true'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-core
+          fc-match 'Noto Sans Thai'
+      - name: Capture actual Production Merchant Web views
+        if: always() && needs.credential-check.outputs.merchant_only == 'true'
+        env:
+          QG_MERCHANT_REVIEW_PHONE: ${{ secrets.QG_MERCHANT_REVIEW_PHONE }}
+          QG_MERCHANT_REVIEW_PASSWORD: ${{ secrets.QG_MERCHANT_REVIEW_PASSWORD }}
+        run: |
+          npm ci --no-audit --no-fund
+          node tests/merchant-visual-review-policy.cjs
+          node native-android/qa/capture-merchant-web-review.cjs
+      - name: Save Production Web screenshots
+        if: always() && needs.credential-check.outputs.merchant_only == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-merchant-production-web-screens
+          path: artifacts/merchant-web-review/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Save authenticated Merchant screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-merchant-authenticated-screens
+          path: |
+            artifacts/merchant-authenticated-review/*.png
+            artifacts/merchant-authenticated-review/metadata.json
+            artifacts/merchant-authenticated-review/hierarchy-status.json
+            artifacts/merchant-authenticated-review/background-fcm.txt
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Save authenticated Rider screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-authenticated-screens
+          path: |
+            artifacts/rider-authenticated-review/*.png
+            artifacts/rider-authenticated-review/metadata.json
+            artifacts/rider-authenticated-review/candidate.json
+            artifacts/rider-authenticated-review/play-services.json
+            artifacts/rider-authenticated-review/background-fcm.txt
+          if-no-files-found: warn
+          retention-days: 7

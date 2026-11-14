@@ -1,0 +1,663 @@
+{
+  "dataset": {
+    "api_version": 1,
+    "engine": "QueueGo/Valhalla",
+    "engine_version": "3.9.1",
+    "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+    "source_timestamp": "2026-10-15T20:21:00Z",
+    "bounds": [
+      102.369,
+      14.109,
+      103.592,
+      15.819
+    ],
+    "attribution": "© OpenStreetMap contributors",
+    "licence": "ODbL-1.0",
+    "live_traffic": false,
+    "historical_speed_feed": false,
+    "unresolved_turn_relations": [
+      2148441,
+      17320674,
+      20613951,
+      20613952
+    ],
+    "source_member_conflicts": [
+      6982243
+    ],
+    "source_direction_conflicts": [
+      1538817
+    ],
+    "runtime_no_u_turn_relations": [
+      6982135,
+      6982242,
+      6982244,
+      6982245,
+      6982246,
+      6982248,
+      6982249,
+      16142295,
+      16142297,
+      16142299,
+      16142300,
+      16142301
+    ],
+    "quarantined_way_count": 12,
+    "restriction_policy": "incomplete, disconnected-member, or one-way-direction-conflicting source turn relations fail closed on all member ways; same-way no_u_turn reversals are independently rejected at the QueueGo route boundary"
+  },
+  "cases": [
+    {
+      "case": "city_street",
+      "status": "passed",
+      "osm_way_id": 95517321,
+      "segment": "osm:way:95517321:d58fe5d81bec46d804c7",
+      "points": [
+        {
+          "lon": 103.0913545,
+          "lat": 14.9916096
+        },
+        {
+          "lon": 103.0903872,
+          "lat": 14.9913709
+        }
+      ],
+      "source_tags": {
+        "highway": "residential",
+        "lit": "yes",
+        "name": "ซอยลำดวน 1",
+        "name:en": "Soi Lam Duan 1",
+        "name:th": "ซอยลำดวน 1",
+        "sidewalk": "both",
+        "source": "GPS",
+        "surface": "asphalt",
+        "website": "http://www.captainslash.com/si-saket-to-buriram-mostly-on-a-backroad/"
+      },
+      "route_distance_m": 107.0,
+      "traversed_way_ids": [
+        95517321
+      ],
+      "traversed_edge_ids": [
+        330482436706
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "nang_rong_street",
+      "status": "passed",
+      "osm_way_id": 46540241,
+      "segment": "osm:way:46540241:baf04255382d984b32eb",
+      "points": [
+        {
+          "lon": 102.7855926,
+          "lat": 14.6294796
+        },
+        {
+          "lon": 102.7857321,
+          "lat": 14.6310669
+        }
+      ],
+      "source_tags": {
+        "highway": "residential",
+        "source": "GPS"
+      },
+      "route_distance_m": 177.0,
+      "traversed_way_ids": [
+        46540241
+      ],
+      "traversed_edge_ids": [
+        158113307994
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "satuek_street",
+      "status": "passed",
+      "osm_way_id": 172610707,
+      "segment": "osm:way:172610707:9e210d9c6d08c78bc996",
+      "points": [
+        {
+          "lon": 103.2996077,
+          "lat": 15.2888485
+        },
+        {
+          "lon": 103.300521,
+          "lat": 15.2892079
+        }
+      ],
+      "source_tags": {
+        "highway": "residential",
+        "source": "Bing"
+      },
+      "route_distance_m": 130.0,
+      "traversed_way_ids": [
+        172610707
+      ],
+      "traversed_edge_ids": [
+        56980284522
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "tunnel",
+      "status": "passed",
+      "osm_way_id": 1131089892,
+      "segment": "osm:way:1131089892:2b6473f1552e187a1ccc",
+      "points": [
+        {
+          "lon": 102.4702933,
+          "lat": 15.6360748
+        },
+        {
+          "lon": 102.4691569,
+          "lat": 15.6365749
+        }
+      ],
+      "source_tags": {
+        "highway": "tertiary",
+        "lanes": "1",
+        "layer": "-1",
+        "maxspeed": "40",
+        "oneway": "yes",
+        "ref": "นม.1001",
+        "source": "Maxar Premium",
+        "surface": "paved",
+        "tunnel": "yes"
+      },
+      "route_distance_m": 134.0,
+      "traversed_way_ids": [
+        1131089892
+      ],
+      "traversed_edge_ids": [
+        69390870033
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "rural_residential",
+      "status": "passed",
+      "osm_way_id": 22277488,
+      "segment": "osm:way:22277488:ff3f6d973c4d3964e245",
+      "points": [
+        {
+          "lon": 102.4941114,
+          "lat": 15.2195279
+        },
+        {
+          "lon": 102.49317,
+          "lat": 15.2193699
+        }
+      ],
+      "source_tags": {
+        "highway": "residential"
+      },
+      "route_distance_m": 104.0,
+      "traversed_way_ids": [
+        22277488
+      ],
+      "traversed_edge_ids": [
+        111640442698
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "rural_road",
+      "status": "passed",
+      "osm_way_id": 28162199,
+      "segment": "osm:way:28162199:f6caf9408b48d5aaeebf",
+      "points": [
+        {
+          "lon": 103.3546025,
+          "lat": 14.7544555
+        },
+        {
+          "lon": 103.347664,
+          "lat": 14.7560692
+        }
+      ],
+      "source_tags": {
+        "highway": "unclassified",
+        "source": "Maxar-Premium"
+      },
+      "route_distance_m": 788.0,
+      "traversed_way_ids": [
+        28162199
+      ],
+      "traversed_edge_ids": [
+        16815606378
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "divided_highway",
+      "status": "passed",
+      "osm_way_id": 35745939,
+      "segment": "osm:way:35745939:91f24af44ca7acbd54ff",
+      "points": [
+        {
+          "lon": 102.5725304,
+          "lat": 15.4242898
+        },
+        {
+          "lon": 102.5687878,
+          "lat": 15.4199706
+        }
+      ],
+      "source_tags": {
+        "highway": "trunk",
+        "lanes": "2",
+        "name": "ถนนเจนจบทิศ",
+        "name:en": "Chen Chop Thit Road",
+        "name:th": "ถนนเจนจบทิศ",
+        "oneway": "yes",
+        "ref": "207",
+        "source": "GPS;sign",
+        "surface": "paved"
+      },
+      "route_distance_m": 654.0,
+      "traversed_way_ids": [
+        35745939
+      ],
+      "traversed_edge_ids": [
+        272025799504
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "service_road",
+      "status": "passed",
+      "osm_way_id": 38214374,
+      "segment": "osm:way:38214374:7eee788b5d15213a0e40",
+      "points": [
+        {
+          "lon": 103.479206,
+          "lat": 14.8920412
+        },
+        {
+          "lon": 103.4802673,
+          "lat": 14.891745
+        }
+      ],
+      "source_tags": {
+        "highway": "service"
+      },
+      "route_distance_m": 119.0,
+      "traversed_way_ids": [
+        38214374
+      ],
+      "traversed_edge_ids": [
+        404771949162
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "bridge",
+      "status": "passed",
+      "osm_way_id": 95517329,
+      "segment": "osm:way:95517329:db52666d3c851fa19dd4",
+      "points": [
+        {
+          "lon": 103.4706613,
+          "lat": 15.2839629
+        },
+        {
+          "lon": 103.469393,
+          "lat": 15.2838134
+        }
+      ],
+      "source_tags": {
+        "bridge": "yes",
+        "highway": "unclassified",
+        "layer": "1",
+        "source": "GPS",
+        "website": "http://www.captainslash.com/si-saket-to-buriram-mostly-on-a-backroad/"
+      },
+      "route_distance_m": 137.0,
+      "traversed_way_ids": [
+        95517329
+      ],
+      "traversed_edge_ids": [
+        352024405098
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "ramp",
+      "status": "passed",
+      "osm_way_id": 41712910,
+      "segment": "osm:way:41712910:bae21a490f8f6fcf469e",
+      "points": [
+        {
+          "lon": 103.5059637,
+          "lat": 14.8884803
+        },
+        {
+          "lon": 103.506136,
+          "lat": 14.8886991
+        }
+      ],
+      "source_tags": {
+        "highway": "secondary_link",
+        "oneway": "yes",
+        "ref": "3038",
+        "surface": "paved"
+      },
+      "route_distance_m": 395.0,
+      "traversed_way_ids": [
+        41712910
+      ],
+      "traversed_edge_ids": [
+        368495074009
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "traffic_signals",
+      "status": "passed",
+      "osm_way_id": 27955874,
+      "segment": "osm:way:27955874:a0b22bc9570a4f335ecc",
+      "points": [
+        {
+          "lon": 102.4946921,
+          "lat": 15.2188608
+        },
+        {
+          "lon": 102.4934876,
+          "lat": 15.2183913
+        }
+      ],
+      "source_tags": {
+        "alt_name:en": "Ananthajinda",
+        "highway": "tertiary",
+        "lanes": "2",
+        "name": "ถนนอนันทจินดา",
+        "name:en": "Ananthachinda Road",
+        "name:th": "ถนนอนันทจินดา",
+        "surface": "asphalt",
+        "unsigned_ref": "นม.ถ46-001"
+      },
+      "route_distance_m": 140.0,
+      "traversed_way_ids": [
+        27955874
+      ],
+      "traversed_edge_ids": [
+        26139207185
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "railway_crossing",
+      "status": "passed",
+      "osm_way_id": 23747373,
+      "segment": "osm:way:23747373:c19c96be26e7488d0d7c",
+      "points": [
+        {
+          "lon": 103.1130585,
+          "lat": 14.999838
+        },
+        {
+          "lon": 103.1129915,
+          "lat": 15.0007915
+        }
+      ],
+      "source_tags": {
+        "highway": "secondary",
+        "lanes": "2",
+        "name": "ถนนหลักเมือง",
+        "name:en": "Lak Mueang Road",
+        "old_ref": "2074",
+        "source": "GPS;sign",
+        "surface": "asphalt",
+        "unsigned_ref": "บร.ถ3-0006"
+      },
+      "route_distance_m": 106.0,
+      "traversed_way_ids": [
+        23747373
+      ],
+      "traversed_edge_ids": [
+        154384243417
+      ],
+      "expected": "route traverses source way on an allowed graph edge",
+      "source": "OpenStreetMap",
+      "last_verified": null
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947312,
+      "points": [
+        {
+          "lon": 103.0822319,
+          "lat": 14.9257192
+        },
+        {
+          "lon": 103.0838192,
+          "lat": 14.9249492
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947312,
+      "points": [
+        {
+          "lon": 103.0838192,
+          "lat": 14.9249492
+        },
+        {
+          "lon": 103.0861174,
+          "lat": 14.9238276
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947316,
+      "points": [
+        {
+          "lon": 103.0830116,
+          "lat": 14.9273013
+        },
+        {
+          "lon": 103.0845925,
+          "lat": 14.9265055
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947334,
+      "points": [
+        {
+          "lon": 103.0811426,
+          "lat": 14.9234969
+        },
+        {
+          "lon": 103.0826277,
+          "lat": 14.9228154
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "inaccessible_road",
+      "osm_way_id": 152947334,
+      "points": [
+        {
+          "lon": 103.0844196,
+          "lat": 14.9219932
+        },
+        {
+          "lon": 103.0843387,
+          "lat": 14.9208657
+        }
+      ],
+      "status": "passed_excluded",
+      "tags": {
+        "access": "no",
+        "highway": "service",
+        "service": "driveway",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "private_road",
+      "osm_way_id": 170419254,
+      "points": [
+        {
+          "lon": 103.0985134,
+          "lat": 15.0004726
+        },
+        {
+          "lon": 103.0992859,
+          "lat": 15.0011203
+        }
+      ],
+      "status": "passed_unavailable",
+      "expected": "not traversed without explicit profile access",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "source": "Bing",
+        "website": "http://www.captainslash.com/buriram-chong-chom-and-along-the-border-road/"
+      }
+    },
+    {
+      "case": "private_road",
+      "osm_way_id": 172258384,
+      "points": [
+        {
+          "lon": 103.09512,
+          "lat": 14.9887918
+        },
+        {
+          "lon": 103.0946761,
+          "lat": 14.9905718
+        }
+      ],
+      "status": "passed_unavailable",
+      "expected": "not traversed without explicit profile access",
+      "tags": {
+        "access": "private",
+        "highway": "residential",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "private_road",
+      "osm_way_id": 172260166,
+      "points": [
+        {
+          "lon": 103.1061616,
+          "lat": 14.9928474
+        },
+        {
+          "lon": 103.1059535,
+          "lat": 14.9936734
+        }
+      ],
+      "status": "passed_unavailable",
+      "expected": "not traversed without explicit profile access",
+      "tags": {
+        "access": "private",
+        "highway": "residential",
+        "source": "Bing"
+      }
+    },
+    {
+      "case": "private_road",
+      "osm_way_id": 203029412,
+      "points": [
+        {
+          "lon": 103.0711795,
+          "lat": 14.6021863
+        },
+        {
+          "lon": 103.0691681,
+          "lat": 14.5991193
+        }
+      ],
+      "status": "passed_excluded",
+      "expected": "not traversed without explicit profile access",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "service": "driveway"
+      }
+    },
+    {
+      "case": "private_road",
+      "osm_way_id": 322818141,
+      "points": [
+        {
+          "lon": 103.0939859,
+          "lat": 14.9670587
+        },
+        {
+          "lon": 103.0939804,
+          "lat": 14.968843
+        }
+      ],
+      "status": "passed_unavailable",
+      "expected": "not traversed without explicit profile access",
+      "tags": {
+        "access": "private",
+        "highway": "service",
+        "service": "parking_aisle"
+      }
+    }
+  ],
+  "physical_road_test": false,
+  "limitations": [
+    "service road is not certified as frontage without source tags/field verification",
+    "rural residential category does not certify a named village-lane field test",
+    "U-turn and parallel-road GPS recordings still required",
+    "no background/signal-loss physical certification"
+  ]
+}

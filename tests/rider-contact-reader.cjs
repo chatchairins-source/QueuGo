@@ -1,0 +1,52 @@
+const fs=require('fs'),assert=require('assert'),{PGlite}=require('@electric-sql/pglite');
+(async()=>{
+ const db=new PGlite(),id=n=>`00000000-0000-4000-8000-${String(n).padStart(12,'0')}`;
+ let checks=0;
+ const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+ await db.exec(`create role anon;create role authenticated;create schema auth;
+ create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;
+ create function auth.uid() returns uuid language sql stable as $$select (auth.jwt()->>'sub')::uuid$$;
+ create table auth.sessions(id uuid,user_id uuid,not_after timestamptz);
+ create table public.users(id uuid primary key,auth_user_id uuid,role text,status text,name text,phone text);
+ create table public.rider_profiles(id uuid primary key,user_id uuid,status text);
+ create table public.orders(id uuid primary key,rider_id uuid,customer_id uuid,status text);
+ create table public.deliveries(order_id uuid,delivered_at timestamptz);
+ alter table public.users enable row level security;
+ create policy own on public.users for select to authenticated using(auth_user_id=auth.uid());
+ grant usage on schema public,auth to anon,authenticated;grant select on public.users to authenticated;
+ insert into public.users values('${id(1)}','${id(11)}','rider','active','Rider',null),('${id(2)}','${id(12)}','rider','active','Other',null),('${id(3)}','${id(13)}','customer','active','Customer','customer-number');
+ insert into public.rider_profiles values('${id(21)}','${id(1)}','active'),('${id(22)}','${id(2)}','active');
+ insert into auth.sessions(id,user_id) values('${id(31)}','${id(11)}'),('${id(32)}','${id(12)}'),('${id(33)}','${id(13)}');
+ insert into public.orders values('${id(41)}','${id(21)}','${id(3)}','ready'),('${id(42)}','${id(22)}','${id(3)}','ready');`);
+ const file=fs.readdirSync('supabase/migrations').find(x=>x.endsWith('_rider_order_contact.sql'));
+ await db.exec(fs.readFileSync('supabase/migrations/'+file,'utf8'));
+ const login=async(n,s)=>{await db.exec(`reset role;set role authenticated;select set_config('request.jwt.claims','${JSON.stringify({sub:id(n),session_id:id(s),role:'authenticated'})}',false)`)};
+ const read=()=>db.query(`select public.qg_rider_order_contact('${id(41)}') as data`);
+ const deny=async task=>{await assert.rejects(task,e=>e.code==='42501');checks++};
+ await db.exec('set role anon');await deny(read);
+ await login(11,31);
+ eq((await read()).rows[0].data,{name:'Customer',phone:'customer-number'});
+ eq((await db.query(`select id from public.users where id='${id(3)}'`)).rows.length,0);
+ await deny(()=>db.query(`select public.qg_rider_order_contact('${id(42)}')`));
+ await login(12,32);await deny(read);
+ await deny(()=>db.query(`select qg_private.rider_order_contact('${id(41)}')`));
+ await login(13,33);await deny(read);
+ await login(11,32);await deny(read); // A different user's live session is not sufficient.
+ await login(11,99);await deny(read);
+ await login(11,31);
+ for(const state of ['cancelled','searching_rider','no_rider_available']){
+  await db.exec(`reset role;update public.orders set status='${state}' where id='${id(41)}'`);await login(11,31);await deny(read);
+ }
+ await db.exec(`reset role;update public.orders set status='completed' where id='${id(41)}'`);await login(11,31);await deny(read);
+ await db.exec(`reset role;insert into public.deliveries values('${id(41)}',now()-interval '29 minutes')`);await login(11,31);eq((await read()).rows[0].data.name,'Customer');
+ await db.exec(`reset role;update public.deliveries set delivered_at=now()-interval '30 minutes'`);await login(11,31);await deny(read);
+ await db.exec(`reset role;update public.deliveries set delivered_at=now()+interval '1 minute'`);await login(11,31);await deny(read);
+ await db.exec(`reset role;update public.orders set status='ready' where id='${id(41)}';update public.rider_profiles set status='suspended' where id='${id(21)}'`);await login(11,31);await deny(read);
+ await db.exec(`reset role;update public.rider_profiles set status='active';update public.users set status='deleted' where id='${id(1)}'`);await login(11,31);await deny(read);
+ await db.exec(`reset role;update public.users set status='active';update auth.sessions set not_after=now()-interval '1 minute' where id='${id(31)}'`);await login(11,31);await deny(read);
+ await db.exec(`reset role;update public.users set status='active';delete from auth.sessions where id='${id(31)}'`);await login(11,31);await deny(read);
+ await db.exec('reset role');
+ eq((await db.query(`select prosecdef from pg_proc where oid='public.qg_rider_order_contact(uuid)'::regprocedure`)).rows[0].prosecdef,false);
+ eq((await db.query(`select has_function_privilege('anon','public.qg_rider_order_contact(uuid)','EXECUTE') as allowed`)).rows[0].allowed,false);
+ await db.close();console.log(JSON.stringify({checks,failures:0,scope:'isolated SQL ownership, session revocation, role/status, expiry and unchanged users RLS; no Production contact read'}));
+})().catch(e=>{console.error(e);process.exitCode=1});

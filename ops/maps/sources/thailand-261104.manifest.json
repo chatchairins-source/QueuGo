@@ -1,0 +1,15 @@
+{
+  "source": "OpenStreetMap via Geofabrik Thailand extract",
+  "download_url": "https://download.geofabrik.de/asia/thailand-261104.osm.pbf",
+  "extract_sha256": "eed0526676882ba1b94c0f9b0dd49ed25b7495150af4040822157203f2ba3457",
+  "attribution": "\u00a9 OpenStreetMap contributors",
+  "licence": "ODbL-1.0",
+  "source_replication_timestamp": "2026-11-04T21:21:03Z",
+  "region": "Thailand",
+  "bounds": [
+    97.135615,
+    5.597877,
+    105.63921,
+    20.468752
+  ]
+}

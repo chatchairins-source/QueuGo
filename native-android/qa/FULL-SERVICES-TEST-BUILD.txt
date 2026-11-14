@@ -1,0 +1,12 @@
+QueueGo Native Android full-services test build
+Date: 2026-10-16
+Source successor: 4d65d54b9aacdad74d139c80498d592edb7c9102
+Purpose: build Customer / Merchant / Rider debug APKs from the latest unified successor.
+Required gates on this branch prefix:
+- native-pilot
+- continuous-dispatch-races
+- passenger-ride-races
+- credit-races
+- navigation-map-runtime
+
+This file changes no runtime behavior.

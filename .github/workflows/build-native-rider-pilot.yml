@@ -1,0 +1,775 @@
+name: QueueGo Native Android Pilot
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      bundle_country:
+        type: boolean
+        default: false
+    secrets:
+      QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:
+        required: false
+  pull_request:
+    branches:
+      - 'work-native-**'
+      - 'work-production-review-20261109'
+      - 'fix-rider-**'
+      - 'test-rider-**'
+  push:
+    branches:
+      - main
+      - queuego-native-android-v1
+      - work-release-gate-emulator-20261109
+      - work-release-main-source-20261109
+      - work-merchant-numeric-guards-20261109
+      - 'work-native-**'
+      - 'fix/native-**'
+      - 'fix-native-**'
+      - 'work-rider-**'
+      - 'fix-rider-**'
+      - work-native-release-integration-20261010
+      - work-native-release-preflight-20261010
+      - work-native-voice-background-20261010
+      - work-native-voice-call-v1-20261010
+      - work-native-voice-controller-v1-20261010
+      - work-native-voice-turn-client-v1-20261010
+      - work-native-voice-integration-v1-20261010
+      - work-native-voice-release-candidate-v1-20261010
+      - work-native-voice-push-release-candidate-v1-20261010
+      - work-native-customer-logout-integration-20261010
+      - work-native-customer-location-integration-v2-20261010
+      - work-native-printer-ticket-parity-20261010
+      - work-native-order-number-parity-20261010
+      - work-native-printer-durable-history-20261010
+      - work-native-merchant-printer-20261010
+      - work-native-merchant-login-parity-20261010
+      - work-native-verified-integration-20261010
+      - work-native-rpc-null-contract-20261010
+      - work-native-pos-edit-idempotency-20261010
+    paths:
+      - CHECKLIST.md
+      - docs/PROJECT-MEMORY.md
+      # Full regression consumes shared Web sources; validate their exact HEAD too.
+      - 'admin/**'
+      - 'merchant/**'
+      - 'rider/**'
+      - '*.js'
+      - '*.css'
+      - 'index.html'
+      - 'native-android/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tests/native-android-source.cjs'
+      - 'tests/native-pos-edit-idempotency.cjs'
+      - 'tests/native-voice-call-contract.cjs'
+      - 'tests/native-voice-turn-edge.cjs'
+      - 'tests/native-voice-ui-contract.cjs'
+      - 'tests/native-voice-background.cjs'
+      - 'tests/native-backend-migration-sync.cjs'
+      - 'supabase/functions/queuego-push/**'
+      - 'supabase/functions/queuego-credit*/**'
+      - 'supabase/migrations/*credit*.sql'
+      - 'supabase/migrations/*rider*.sql'
+      - 'supabase/migrations/*legacy_gp*.sql'
+      - 'supabase/migrations/*passenger_ride*.sql'
+      - 'supabase/migrations/*express*.sql'
+      - 'tests/express*.cjs'
+      - 'tests/fixtures/express*.cjs'
+      - 'supabase/functions/queuego-express-quote/**'
+      # Route Bundle Phase 2 full regression consumes these exact SQL/Edge sources.
+      - 'supabase/functions/queuego-route-bundle-matrix/**'
+      - 'supabase/migrations/*route_bundle*.sql'
+      - 'queuego-credit.js'
+      - 'queuego-credit.css'
+      - 'ops/native-push-session-binding-proposal-*.sql'
+      - 'tests/native-push-session-binding.cjs'
+      - 'tests/native-release-gate.cjs'
+      - 'tests/native-release-workflow.cjs'
+      - '.github/workflows/build-native-release.yml'
+      - '.github/workflows/native-release-certification.yml'
+      - '.github/workflows/backup-restore-drill.yml'
+      - 'tests/native-release-certification.cjs'
+      - 'ops/verify-migration-ledger.py'
+      - 'tests/verify-migration-ledger.py'
+      - 'tests/play-store-readiness.cjs'
+      - 'tests/security-auth-definer-review.cjs'
+      - 'docs/security-auth-definer-review.json'
+      - 'docs/security-anon-definer-allowlist.json'
+      - 'docs/play-closed-beta-readiness.md'
+      - 'docs/play-store-listing-draft.md'
+      - 'docs/play-app-access-content-rating.md'
+      - 'docs/pilot-recovery-manifest.json'
+      - 'docs/privacy.html'
+      - 'docs/account-deletion.html'
+      - '.github/workflows/release-secret-readiness.yml'
+      - 'tests/background-push.cjs'
+      - 'tests/native-customer-merchant-push.cjs'
+      - 'ops/native-voice-call-schema-proposal-*.sql'
+      - 'supabase/migrations/*native_push_session_binding*.sql'
+      - 'supabase/migrations/*native_voice_call_backend*.sql'
+      - 'supabase/functions/queuego-turn/**'
+      - 'supabase/migrations/*pos_edit_bill_idempotency.sql'
+      - 'ops/pos-edit-idempotency-schema-baseline-*.sql'
+      - '.github/workflows/build-native-rider-pilot.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: queuego-native-${{ github.ref }}-${{ github.workflow }}
+  cancel-in-progress: false
+
+# Pilot APKs use the already deployed QueueGo Map endpoint used by the Customer
+# Web map. Production release builds still require an explicit validated URL.
+env:
+  QG_MAP_SERVICE_BASE_URL: ${{ vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com' }}
+
+jobs:
+  # Independent role jobs start together; a failure in one role must not cancel
+  # the other two. This is early feedback, not a replacement for the original
+  # full-regression / nationwide-map / installed-device release gates below.
+  parallel-role-smoke:
+    name: ${{ matrix.role }} Kotlin/JVM + Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        role: [customer, merchant, rider]
+    steps:
+      - name: Checkout exact source HEAD
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Compile, run real JVM unit tests and assemble role APK
+        run: gradle -p native-android ":${{ matrix.role }}:testDebugUnitTest" ":${{ matrix.role }}:assembleDebug" --no-daemon --stacktrace
+      - name: Verify generated role APK integrity and 16 KB packaging
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="native-android/${{ matrix.role }}/build/outputs/apk/debug/${{ matrix.role }}-debug.apk"
+          test -s "$apk"
+          unzip -t "$apk" >/dev/null
+          python3 native-android/qa/verify-16kb-page-size.py "$apk"
+          sha256sum "$apk" > "$RUNNER_TEMP/${{ matrix.role }}-sha256.txt"
+      - name: Retain role-specific results even on failure
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-parallel-${{ matrix.role }}-jvm-apk-evidence
+          path: |
+            native-android/${{ matrix.role }}/build/test-results/testDebugUnitTest/
+            native-android/${{ matrix.role }}/build/reports/tests/testDebugUnitTest/
+            ${{ runner.temp }}/${{ matrix.role }}-sha256.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+  native-pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Verify APK exporter before Android setup
+        run: python3 -m unittest discover -s native-android/qa -p 'test_export_role_apks.py' -v
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Prepare native Firebase configs
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${QG_FIREBASE_GOOGLE_SERVICES_JSON_B64:-}" ]; then
+            echo "::warning::Firebase config secret is absent; native Rider APK will build without physical background-push certification"
+            exit 0
+          fi
+          umask 077
+          tmp="$(mktemp)"
+          printf '%s' "$QG_FIREBASE_GOOGLE_SERVICES_JSON_B64" | base64 --decode > "$tmp"
+          QG_FIREBASE_CONFIG="$tmp" python3 - <<'PY'
+          import json, os, shutil
+          from pathlib import Path
+          p=Path(os.environ['QG_FIREBASE_CONFIG'])
+          data=json.loads(p.read_text())
+          packages={
+              c.get('client_info',{}).get('android_client_info',{}).get('package_name')
+              for c in (data.get('client') or [])
+          }
+          targets={
+              'com.queuego.customer': Path('native-android/customer/google-services.json'),
+              'com.queuego.merchant': Path('native-android/merchant/google-services.json'),
+              'com.queuego.rider': Path('native-android/rider/google-services.json'),
+          }
+          if 'com.queuego.rider' not in packages:
+              raise SystemExit('::error::Firebase config has no com.queuego.rider Android client')
+          for package,target in targets.items():
+              if package in packages:
+                  shutil.copyfile(p,target)
+                  os.chmod(target,0o600)
+                  print(f'Native Firebase config: {package} valid')
+              else:
+                  print(f'::warning::Firebase config has no {package} Android client; that app will build without physical background-push certification')
+          PY
+          rm -f "$tmp"
+      - name: Install regression dependencies
+        run: npm ci
+      - name: Full QueueGo regression
+        run: npm test
+      - name: Native POS edit idempotency SQL contracts
+        run: node tests/native-pos-edit-idempotency.cjs
+      - name: Native Customer Merchant push contracts
+        run: node tests/native-customer-merchant-push.cjs
+      - name: Native push session binding contracts
+        run: node tests/native-push-session-binding.cjs
+      - name: Native release packaging guard
+        run: node tests/native-release-gate.cjs
+      - name: Native voice call SQL contracts
+        run: node tests/native-voice-call-contract.cjs
+      - name: Native voice TURN edge contracts
+        run: node tests/native-voice-turn-edge.cjs
+      - name: Native voice UI contracts
+        run: node tests/native-voice-ui-contract.cjs
+      - name: Native voice background lifecycle contracts
+        run: node tests/native-voice-background.cjs
+      - name: Native backend migration mirror
+        run: node tests/native-backend-migration-sync.cjs
+      - name: Native Production RPC contract preflight (read-only generator)
+        run: |
+          python3 native-android/qa/test-native-rpc-production-preflight.py
+          python3 native-android/qa/native-rpc-production-preflight.py --sql > "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
+          grep -q 'pg_catalog.pg_proc' "$RUNNER_TEMP/queuego-native-rpc-readonly.sql"
+          echo "Production RPC live check remains a separate Release Gate; no database credentials used here."
+      - name: Migration ledger release gate regression
+        run: python3 tests/verify-migration-ledger.py
+      - name: Emulator APK transport recovery regression (no device required)
+        run: python3 -m unittest discover -s native-android/qa -p 'test_adb_install_recovery.py' -v
+      - name: Authenticated Rider screenshot hierarchy freshness regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_authenticated_review_hierarchy.py' -v
+      - name: Authenticated Rider tab content visual gate regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_rider_authenticated_review_tabs.py' -v
+      - name: Authenticated Merchant screenshot hierarchy freshness regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_merchant_authenticated_review_hierarchy.py' -v
+      - name: Authenticated Merchant tab content visual gate regression
+        run: python3 -m unittest discover -s native-android/qa -p 'test_merchant_authenticated_review_tabs.py' -v
+      - name: Source integrity
+        run: node tests/native-android-source.cjs
+      - name: Verify launcher asset family
+        run: node tests/native-launcher-assets.cjs
+      - name: Verify Production category banner assets
+        run: node tests/native-category-assets.cjs
+      - name: Build and bundle pinned nationwide offline map
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') }}
+        env:
+          QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
+          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261109.osm.pbf
+          QG_PLANETILER_DOWNLOAD: '0'
+          QG_PLANETILER_OCEAN_PATH: ${{ runner.temp }}/queuego-country-map/water-polygons-split-3857.zip
+        run: |
+          set -euo pipefail
+          mkdir -p "$QG_MAP_DATA_DIR"
+          source_pbf="$QG_MAP_DATA_DIR/thailand-261109.osm.pbf"
+          source_md5="$QG_MAP_DATA_DIR/thailand-261109.osm.pbf.md5"
+          curl --fail --location --retry 2 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
+          curl --fail --location --retry 2 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
+          python3 - "$source_md5" > "$QG_MAP_DATA_DIR/source-check.md5" <<'PY'
+          import re, sys
+          text=open(sys.argv[1], encoding="ascii").read().strip()
+          match=re.fullmatch(r"([0-9a-fA-F]{32})\s+\*?thailand-261109\.osm\.pbf", text)
+          if not match:
+              raise SystemExit("Geofabrik MD5 sidecar does not identify thailand-261109.osm.pbf")
+          print(f"{match.group(1).lower()}  thailand-261109.osm.pbf")
+          PY
+          test "$(stat -c %s "$source_pbf")" -eq 330076369
+          (cd "$QG_MAP_DATA_DIR" && md5sum --check source-check.md5)
+          ln -s "$(basename "$source_pbf")" "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
+          ocean_file="$QG_PLANETILER_OCEAN_PATH"
+          ocean_url=https://www.osmdata.org/download/water-polygons-split-3857.zip
+          if ! curl --fail --location --retry 2 --retry-all-errors --connect-timeout 20 --max-time 600 "$ocean_url" -o "$ocean_file"; then
+            echo "::warning::Primary osmdata host unavailable; retrying the dated FAU mirror snapshot"
+            ocean_url=https://ftp.fau.de/mirrors/openstreetmapdata.com-archive/2026-10-28/water-polygons-split-3857.zip
+            curl --fail --location --retry 3 --retry-all-errors --connect-timeout 30 --max-time 1200 "$ocean_url" -o "$ocean_file"
+          fi
+          test -s "$ocean_file"
+          echo "Planetiler ocean polygons source: $ocean_url; bytes: $(stat -c %s "$ocean_file"); SHA-256: $(sha256sum "$ocean_file" | cut -d ' ' -f 1)" >> "$GITHUB_STEP_SUMMARY"
+          source_sha256="$(sha256sum "$source_pbf" | cut -d ' ' -f 1)"
+          echo "Pinned Geofabrik Thailand snapshot 2026-11-09: 330076369 bytes; SHA-256 $source_sha256" >> "$GITHUB_STEP_SUMMARY"
+          bash native-android/qa/build-thailand-shortbread-pmtiles.sh
+          archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
+          python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/queuego-offline-assets" \
+            --expected-sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
+            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-11-09
+          echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets" >> "$GITHUB_ENV"
+      - name: Tracking coordinate and terminal-state unit tests
+        run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest --no-build-cache --stacktrace
+      - name: Build three native APKs
+        run: gradle -p native-android :customer:assembleDebug :merchant:assembleDebug :rider:assembleDebug :rider:assembleDebugAndroidTest --no-build-cache --stacktrace
+      - name: Verify Android 16 KB page-size packaging
+        run: |
+          python3 native-android/qa/verify-16kb-page-size.py \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+      - name: Reject WebView
+        run: |
+          if grep -R -E 'android\.webkit\.WebView|<WebView\b|loadUrl\(' native-android; then
+            echo "WebView is forbidden in QueueGo native apps"
+            exit 1
+          fi
+      - name: Verify installed Thailand APK assets
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        run: |
+          python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$(git rev-parse HEAD)" \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-native-pilot-apks
+          path: |
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          if-no-files-found: error
+      - name: Regression test bounded Android SDK download recovery
+        run: python3 -m unittest discover -s native-android/qa -p 'test_android_sdk_recovery.py'
+      - name: Enable runner-only access to Android acceleration
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            sudo chown "$(id -u):$(id -g)" /dev/kvm
+          fi
+      - name: Capture native launch, map and voice service lifecycle on Android
+        env:
+          # Exercise the pinned real map archive in debug CI.
+          QG_DEBUG_MAP_ARCHIVE: '1'
+        timeout-minutes: 12
+        run: python3 native-android/qa/capture-rider-launch.py
+      - name: Save real Android launch evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-native-launch-evidence
+          path: artifacts/native-rider-launch/
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Test installed country archive and camera without internet
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        timeout-minutes: 20
+        env:
+          QG_NAV_RUNTIME_OFFLINE: '1'
+        run: python3 native-android/qa/run-rider-navigation-map-runtime.py
+      - name: Save nationwide offline evidence
+        if: ${{ always() && env.QG_OFFLINE_MAP_ASSETS != '' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-thailand-offline-evidence
+          path: |
+            artifacts/rider-navigation-map-runtime/
+            native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+      - name: Export freshly built role APKs after runtime gates
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/role-export
+          python3 native-android/qa/verify-bundled-thailand-apks.py --source-sha "$(git rev-parse HEAD)" \
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk \
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/role-export/APK-MANIFEST.json
+          for role in customer merchant rider; do
+            mkdir -p "artifacts/role-export/$role"
+            "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs \
+              "native-android/$role/build/outputs/apk/debug/$role-debug.apk" > "artifacts/role-export/$role/APK-SIGNATURE.txt"
+          done
+          python3 native-android/qa/export-role-apks.py artifacts/role-export/APK-MANIFEST.json artifacts/role-export
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-customer-apk
+          path: artifacts/role-export/customer/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-merchant-apk
+          path: artifacts/role-export/merchant/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-rider-apk
+          path: artifacts/role-export/rider/
+          compression-level: 0
+          if-no-files-found: error
+      # Mission 2026-10-10: incomplete builds and evidence remain internal.
+      # Public APK/AAB delivery requires the full three-role Release Gate.
+
+  rpc-catalog-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_rpc_catalog_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_rpc_catalog_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Test actual RPC catalog semantics on isolated PostgreSQL
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_rpc_catalog_gate
+        run: node tests/native-rpc-catalog-postgres.cjs
+
+  continuous-dispatch-races:
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_dispatch_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_dispatch_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Independent PostgreSQL dispatch and promotion races
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_dispatch_gate
+        run: node tests/rider-continuous-dispatch-races.cjs
+
+  route-bundle-stack-races:
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_bundle_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_bundle_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Independent PostgreSQL 3–5 Order Route Bundle races
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_bundle_gate
+        run: node tests/route-bundle-stack-races.cjs
+
+  passenger-ride-races:
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_passenger_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_passenger_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Independent PostgreSQL Passenger Ride races
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_passenger_gate
+        run: node tests/passenger-ride-races.cjs
+
+  credit-races:
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_credit_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_credit_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Independent PostgreSQL credit races
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_credit_gate
+        run: node tests/credit-races.cjs
+
+
+  express-races:
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.head_ref, 'work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_express_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_express_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Independent PostgreSQL Express races
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_express_gate
+        run: node tests/express-races.cjs
+
+  map-display-only:
+    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.head_ref == 'fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Install actual Android build platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - name: Compile actual Rider and instrumentation
+        run: gradle -p native-android :rider:assembleDebug :rider:assembleDebugAndroidTest :customer:assembleDebug :merchant:assembleDebug :merchant:assembleDebugAndroidTest --stacktrace
+      - name: Prepare map screenshot inspection
+        run: |
+          python3 -m pip install Pillow
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            sudo chown "$(id -u):$(id -g)" /dev/kvm
+          fi
+      - name: Run actual QueueGo MapLibre display and lifecycle
+        env:
+          # Real pinned local tiles exercise lifecycle without approving public hosting.
+          QG_DEBUG_MAP_ARCHIVE: '1'
+          QG_MAP_DISPLAY_ONLY: '1'
+          QG_CUSTOMER_LOCATION_ONLY: '1'
+          QG_CUSTOMER_LOCATION_STRESS: '0'
+          QG_CUSTOMER_DRAFT_RESTORE: '1'
+        run: python3 native-android/qa/capture-rider-launch.py
+      - name: Keep map images and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-map-display-evidence
+          path: artifacts/native-rider-launch/
+          if-no-files-found: warn
+          retention-days: 14
+
+  navigation-map-runtime:
+    if: ${{ inputs.bundle_country || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.head_ref, 'work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-map-runtime-xml-') || startsWith(github.head_ref, 'work-native-rider-map-runtime-xml-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Install Android platform for isolated navigation map
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - name: Enable Android acceleration
+        run: |
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            sudo chown "$(id -u):$(id -g)" /dev/kvm
+          fi
+      - name: Prove refresh and resume reuse the same QueueGo MapLibre map
+        run: python3 native-android/qa/run-rider-navigation-map-runtime.py
+      - name: Keep isolated navigation-map runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-rider-navigation-map-runtime
+          path: |
+            artifacts/rider-navigation-map-runtime/
+            native-android/rider-navigation-map/build/reports/androidTests/connected/
+            native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+          retention-days: 14
+
+  maplibre-osm-runtime:
+    if: ${{ inputs.bundle_country || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Install Android platform for isolated MapLibre OSM map
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - name: Enable Android acceleration
+        run: |
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then
+            sudo chown "$(id -u):$(id -g)" /dev/kvm
+          fi
+      - name: Prove MapLibre refresh and resume reuse the same map
+        run: python3 native-android/qa/run-rider-maplibre-osm-runtime.py
+      - name: Keep isolated MapLibre runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: queuego-rider-maplibre-osm-runtime
+          path: |
+            artifacts/rider-maplibre-osm-runtime/
+            native-android/rider-maplibre-osm/build/reports/androidTests/connected/
+            native-android/rider-maplibre-osm/build/outputs/androidTest-results/connected/
+          if-no-files-found: warn
+          retention-days: 14
+
+
+  publish-rider-road-test:
+    if: ${{ (github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106') && github.event_name == 'push' }}
+    needs: [native-pilot, map-display-only, navigation-map-runtime, maplibre-osm-runtime, continuous-dispatch-races, passenger-ride-races, credit-races]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Publish the exact tested Rider artifact for physical road testing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download "$GITHUB_RUN_ID" --name queuego-native-pilot-apks --dir pilot-apks
+          mapfile -t rider_apks < <(find pilot-apks -type f -name rider-debug.apk)
+          test "${#rider_apks[@]}" -eq 1
+          asset="QueueGo-Rider-RoadTest-${GITHUB_SHA:0:8}.apk"
+          tag="rider-road-test-${GITHUB_SHA:0:8}"
+          cp "${rider_apks[0]}" "$asset"
+          # This pilot job does not bundle the Valhalla graph or the verified
+          # country rendering archive on this branch. Never publish its small
+          # build as a nationwide offline Rider field-test candidate.
+          # The offline-routing workflow owns the fully installed/tested APK.
+          test "$(stat -c %s "$asset")" -ge 400000000 || {
+            echo "::error::Pilot Rider APK lacks the expected nationwide offline payload; refusing road-test publication. Publish only the exact offline-routing tested candidate."
+            exit 1
+          }
+          unzip -t "$asset" >/dev/null
+          sha256sum "$asset" > SHA256SUMS.txt
+          printf 'Source HEAD: %s\nPilot run: %s\nAll seven automated gates passed. Physical road test remains pending. Test APK only.\n' "$GITHUB_SHA" "$GITHUB_RUN_ID" > SOURCE.txt
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" "$asset" SHA256SUMS.txt SOURCE.txt --clobber
+          else
+            gh release create "$tag" "$asset" SHA256SUMS.txt SOURCE.txt --target "$GITHUB_SHA" --prerelease --title "QueueGo Rider road test ${GITHUB_SHA:0:8}" --notes-file SOURCE.txt
+          fi
+          echo "https://github.com/$GITHUB_REPOSITORY/releases/download/$tag/$asset" >> "$GITHUB_STEP_SUMMARY"

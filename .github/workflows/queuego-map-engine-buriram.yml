@@ -1,0 +1,216 @@
+name: QueueGo Map Engine Buriram
+on:
+  push:
+    branches: ['work-map-roadgraph-buriram-*', 'work-native-release-unified-*', 'work-native-route-bundle-*']
+    paths: ['CHECKLIST.md', 'docs/PROJECT-MEMORY.md', 'queuego-map-engine/**', 'data/maps/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-places-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/map-staging-*', 'supabase/functions/queuego-route-bundle-matrix/**', 'supabase/migrations/*route_bundle*.sql', 'tests/route-bundle-*', '.github/workflows/queuego-map-engine-buriram.yml']
+  pull_request:
+    paths: ['queuego-map-engine/**', 'data/maps/**', 'map-view/**', 'ops/maps/**', 'tests/map-engine-*', 'tests/map-places-*', 'tests/map-package-*', 'tests/map-real-*', 'tests/map-installed-*', 'tests/rider-*', 'supabase/migrations/*rider*.sql', '.github/workflows/queuego-map-engine-buriram.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: queuego-map-engine-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  buriram-runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Dependencies and regression
+        run: |
+          pip install -r ops/maps/requirements.txt
+          npm ci
+          npm test
+          python tests/map-field-evidence-validator.py
+          python tests/map-release-gate-report.py
+          python tests/map-engine-trace-safety.py
+          python tests/map-http-resource-bounds.py
+          node node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Pinned real OSM and existing vector package
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p map-data
+          SOURCE_READY=0
+          if curl --fail --location --retry 3 https://download.geofabrik.de/asia/thailand-261015.osm.pbf --output map-data/thailand.osm.pbf; then
+            if echo '02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf  map-data/thailand.osm.pbf' | sha256sum --check; then
+              SOURCE_READY=1
+            else
+              rm -f map-data/thailand.osm.pbf
+            fi
+          fi
+
+          if [[ "${SOURCE_READY}" == "1" ]]; then
+            RELEASE_JSON="$(mktemp)"
+            VECTOR_READY=0
+            RELEASE_STATUS=1
+            if curl --fail --silent --show-error --location --retry 3 \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/rider-buriram-offline-20261016" \
+              --output "${RELEASE_JSON}"; then
+              RELEASE_STATUS=0
+            fi
+            ASSET_STATUS=1
+            ASSET_URL=""
+            if [[ "${RELEASE_STATUS}" == "0" ]]; then
+              ASSET_URL="$(python -c "import json,sys; release=json.load(open(sys.argv[1],encoding='utf-8')); asset=next((a for a in release.get('assets',[]) if a.get('name')=='buriram-shortbread.pmtiles'),None); print(asset.get('url','') if asset else '')" "${RELEASE_JSON}")"
+              if [[ -n "${ASSET_URL}" ]]; then
+                if curl --fail --location --retry 3 \
+                  -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                  -H "Accept: application/octet-stream" \
+                  -H "X-GitHub-Api-Version: 2022-11-28" \
+                  "${ASSET_URL}" \
+                  --output map-data/vector.pmtiles; then
+                  ASSET_STATUS=0
+                fi
+              fi
+            fi
+            if [[ "${RELEASE_STATUS}" == "0" && "${ASSET_STATUS}" == "0" && -s map-data/vector.pmtiles ]]; then
+              VECTOR_READY=1
+            fi
+            rm -f "${RELEASE_JSON}"
+
+            if [[ "${VECTOR_READY}" != "1" ]]; then
+              echo "Pinned release transport unavailable; rebuilding the exact published vector recipe."
+              rm -f map-data/vector.pmtiles map-data/buriram-shortbread.pmtiles
+              cp map-data/thailand.osm.pbf map-data/thailand-latest.osm.pbf
+              QG_MAP_DATA_DIR="${PWD}/map-data" \
+              QG_THAILAND_PBF_URL="https://download.geofabrik.de/asia/thailand-261015.osm.pbf" \
+              QG_PLANETILER_MEMORY="5g" \
+                native-android/qa/build-buriram-shortbread-pmtiles.sh
+              mv map-data/buriram-shortbread.pmtiles map-data/vector.pmtiles
+            fi
+            echo "QG_MAP_BOOTSTRAP_PACKAGE=0" >> "${GITHUB_ENV}"
+          else
+            echo "Pinned Geofabrik source is no longer available; restoring the exact verified package from successful Map Engine run 41269446553."
+            BOOTSTRAP_ZIP="$(mktemp --suffix=.zip)"
+            BOOTSTRAP_DIR="$(mktemp -d)"
+            curl --fail --location --retry 3 \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/13067984492/zip" \
+              --output "${BOOTSTRAP_ZIP}"
+            echo "2e9ead0cdeccac8c510e667989f6c3f61456d088c477dea6eb134966a78a9d88  ${BOOTSTRAP_ZIP}" | sha256sum --check
+            unzip -q "${BOOTSTRAP_ZIP}" -d "${BOOTSTRAP_DIR}"
+            echo "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d  ${BOOTSTRAP_DIR}/map-data/buriram.osm.pbf" | sha256sum --check
+            echo "7aed87146e5cceeab9a63fe733ada87daf6065be634a7b24a7fc6f925110ff9d  ${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz" | sha256sum --check
+            python -c "import json,sys; m=json.load(open(sys.argv[1],encoding='utf-8')); assert m['source_sha256']=='02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf'; assert m['extract_sha256']=='426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d'; assert m['source_replication_timestamp']=='2026-10-15T20:21:00Z'" "${BOOTSTRAP_DIR}/map-data/buriram.osm.manifest.json"
+            cp "${BOOTSTRAP_DIR}/map-data/buriram.osm.pbf" map-data/buriram.osm.pbf
+            cp "${BOOTSTRAP_DIR}/map-data/buriram.osm.manifest.json" map-data/buriram.osm.manifest.json
+            cp "${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz" map-data/buriram-map-v1.tar.gz
+            cp "${BOOTSTRAP_DIR}/map-data/buriram-map-v1.tar.gz.sha256" map-data/buriram-map-v1.tar.gz.sha256
+            cp "${BOOTSTRAP_DIR}/map-data/places-generated.json" map-data/places-generated.json
+            rm -rf map-data/bootstrap-store
+            python ops/maps/offline_package.py install --archive map-data/buriram-map-v1.tar.gz --sha256 7aed87146e5cceeab9a63fe733ada87daf6065be634a7b24a7fc6f925110ff9d --store map-data/bootstrap-store
+            python ops/maps/offline_package.py activate --store map-data/bootstrap-store --version buriram-map-v1
+            python ops/maps/offline_package.py resolve --store map-data/bootstrap-store > map-data/bootstrap-resolved.json
+            python -c "import json,shutil; from pathlib import Path; r=json.load(open('map-data/bootstrap-resolved.json',encoding='utf-8')); db=Path(r['database']); cfg=Path(r['config']); vector=Path(r['vector']); root=db.parent; shutil.copy2(db,'map-data/roads.sqlite'); Path('map-data/valhalla').mkdir(parents=True,exist_ok=True); shutil.copytree(root/'tiles','map-data/valhalla/tiles'); config=json.load(open(cfg,encoding='utf-8')); config['mjolnir']['tile_dir']=str(Path('map-data/valhalla/tiles').resolve()); Path('map-data/valhalla/valhalla.json').write_text(json.dumps(config,indent=2)+'\\n'); manifest=json.load(open(root/'manifest.json',encoding='utf-8')); Path('map-data/valhalla/build-report.json').write_text(json.dumps({'dataset_sha256':manifest['dataset']['extract_sha256'],'bootstrap_package_sha256':'7aed87146e5cceeab9a63fe733ada87daf6065be634a7b24a7fc6f925110ff9d'},indent=2)+'\\n'); shutil.copy2(vector,'map-data/vector.pmtiles')"
+            echo "QG_MAP_BOOTSTRAP_PACKAGE=1" >> "${GITHUB_ENV}"
+            rm -f "${BOOTSTRAP_ZIP}"
+            rm -rf "${BOOTSTRAP_DIR}"
+          fi
+
+          echo '30699573ed2068d3c7e4393ad477dbe8febf68f453f27ae88437f5c652a3ddfc  map-data/vector.pmtiles' | sha256sum --check
+      - name: Build normalized database and actual routing tiles
+        run: |
+          if [[ "${QG_MAP_BOOTSTRAP_PACKAGE:-0}" == "1" ]]; then
+            test -s map-data/roads.sqlite
+            test -s map-data/valhalla/valhalla.json
+            test -d map-data/valhalla/tiles
+            test -s map-data/buriram.osm.pbf
+            python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.json
+          else
+            python ops/maps/extract_region.py map-data/thailand.osm.pbf map-data/buriram.osm.pbf
+            python ops/maps/normalize_osm.py map-data/buriram.osm.pbf map-data/roads.sqlite
+            python ops/maps/export_places.py map-data/roads.sqlite map-data/places-generated.json
+            python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.json
+            python ops/maps/build_engine_graph.py valhalla map-data/buriram.osm.pbf map-data/valhalla --admin-pbf map-data/thailand.osm.pbf
+          fi
+      - name: Real graph runtime and restriction evidence
+        run: |
+          mkdir -p map-data/evidence
+          python tests/map-engine-runtime.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/runtime.json
+          python tests/map-real-roads.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/real-roads.json
+          python ops/maps/audit_turn_restrictions.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --output map-data/evidence/turns.json
+          python ops/maps/diagnose_turn_restrictions.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --audit map-data/evidence/turns.json --output map-data/evidence/turn-diagnostics.json
+          python ops/maps/audit_turn_restrictions_directional.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --legacy-audit map-data/evidence/turns.json --output map-data/evidence/turns-directional.json
+          python -c "import json; r=json.load(open('map-data/evidence/turns.json')); assert not r['summary'].get('failed',0),r['summary']; print('Uncovered/source-invalid restrictions remain an OPEN release gate:',r['summary'])"
+      - name: Actual browser with external requests blocked
+        run: |
+          export QUEUEGO_CHROME="$(node -p "require('playwright-core').chromium.executablePath()")"
+          python ops/maps/run_browser_validation.py --database map-data/roads.sqlite --config map-data/valhalla/valhalla.json --vector map-data/vector.pmtiles --assets-root map-assets
+      - name: Offline package and rollback
+        run: |
+          python ops/maps/offline_package.py build --database map-data/roads.sqlite --graph map-data/valhalla --vector map-data/vector.pmtiles --destination map-data/buriram-map-v1 --version buriram-map-v1 > map-data/evidence/package.json
+          PACKAGE_SHA=$(python -c "import json; print(json.load(open('map-data/evidence/package.json'))['sha256'])")
+          python tests/map-package-runtime.py --archive map-data/buriram-map-v1.tar.gz --sha256 "$PACKAGE_SHA" --store map-data/installed --output map-data/evidence/offline.json
+          python tests/map-installed-runtime.py --store map-data/installed --assets-root map-assets --output map-data/evidence/installed-entrypoint.json
+      - name: Candidate container runs offline with mounted real data
+        run: python ops/maps/check_container.py --store map-data/installed --output map-data/evidence/container.json --tag queuego-map:${{ github.sha }}
+      - name: Loopback-only staging runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          cleanup() { python ops/maps/stage_container.py stop --name queuego-map-staging-ci >/dev/null 2>&1 || true; }
+          trap cleanup EXIT
+          python tests/map-staging-contract.py
+          python ops/maps/stage_container.py start \
+            --store map-data/installed \
+            --tag queuego-map:${{ github.sha }} \
+            --name queuego-map-staging-ci \
+            --port 18765 \
+            --output map-data/evidence/staging.json
+          python - <<'PY'
+          import json,urllib.request
+          base='http://127.0.0.1:18765'
+          health=json.load(urllib.request.urlopen(base+'/map-api/health',timeout=5))
+          assert health['engine']=='QueueGo/Valhalla'
+          html=urllib.request.urlopen(base+'/map-view/',timeout=5).read().decode('utf-8')
+          assert 'QueueGo Map' in html
+          body={'points':[{'lat':14.9918756,'lon':103.0994795},{'lat':15.0088319,'lon':103.1300059}]}
+          req=urllib.request.Request(base+'/map-api/route',data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
+          route=json.load(urllib.request.urlopen(req,timeout=10))['routes'][0]
+          assert route['distance']>1000
+          vector=urllib.request.Request(base+'/map-api/vector.pmtiles',headers={'Range':'bytes=0-15'})
+          response=urllib.request.urlopen(vector,timeout=5)
+          assert response.status==206 and len(response.read())==16
+          print(json.dumps({'engine':health['engine'],'route_distance_m':route['distance'],'vector_range':16,'public_bind':False}))
+          PY
+      - name: Build fail-closed release gate report
+        run: |
+          python ops/maps/build_release_gate_report.py \
+            --evidence-dir map-data/evidence \
+            --browser evidence/map-engine/browser-validation.json \
+            --output map-data/evidence/release-gate.json \
+            --require-code-gate
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: always()
+        with:
+          name: queuego-map-buriram-${{ github.sha }}
+          path: |
+            map-data/evidence/
+            evidence/map-engine/browser-validation.json
+            map-data/buriram-map-v1.tar.gz
+            map-data/buriram-map-v1.tar.gz.sha256
+            map-data/buriram.osm.pbf
+            map-data/buriram.osm.manifest.json
+            map-data/places-generated.json
+            docs/map-data-sources.md
+            docs/map-engine-selection.md
+            docs/map-offline-package.md
+          retention-days: 14

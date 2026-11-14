@@ -1,0 +1,2345 @@
+package com.queuego.customer
+
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.content.pm.PackageManager
+import android.location.LocationManager
+import android.os.Build
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.key
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import com.queuego.shared.NativeOrderRealtime
+import com.queuego.shared.customerRealtimeSubscriptions
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.queuego.shared.NativeAuth
+import com.queuego.shared.NativePushApi
+import com.queuego.shared.NativePushDeviceStore
+import com.queuego.shared.nativeLogoutScope
+import com.queuego.shared.QueueGoVoiceCallOverlay
+import com.queuego.shared.NativeVoiceCallController
+import com.queuego.shared.QgAccountDeletionSection
+import com.queuego.shared.QgBg
+import com.queuego.shared.QgBottomNav
+import com.queuego.shared.QgCard
+import com.queuego.shared.QgLine
+import com.queuego.shared.QgIconButton
+import com.queuego.shared.QgIcon
+import com.queuego.shared.QgMuted
+import com.queuego.shared.QgNavItem
+import com.queuego.shared.QueueGoTheme
+import com.queuego.shared.QgRed
+import com.queuego.shared.QgRemoteImage
+import com.queuego.shared.QgSectionTitle
+import com.queuego.shared.QgStatusPill
+import com.queuego.shared.QueueGoAuthHost
+import com.queuego.shared.QueueGoBrand
+import com.queuego.shared.SecureRoleSessionStore
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.util.UUID
+
+// Web main is the visual/navigation blueprint for Customer Home.
+// Keep Express capability in the app, but do not surface an extra Home tile that
+// does not exist on Web.
+private val homeCategories = listOf(
+    "food" to "อาหาร",
+    "cafe" to "เครื่องดื่ม",
+    "grocery" to "ร้านขายของชำ",
+    "laundry" to "ฝากซัก",
+    "market" to "ตลาดสด",
+    "ride" to "บริการเรียกรถ",
+    "shopping" to "ช้อปปิ้ง"
+)
+
+private val homeNearbyShopCategories = setOf("food", "cafe")
+internal const val CUSTOMER_PRIVACY_POLICY_URL = "https://chatchairins-source.github.io/QueuGo/docs/privacy.html"
+
+@Composable
+fun QueueGoCustomerApp(pushTarget: NativePushLaunchTarget? = null) {
+    val context = LocalContext.current
+    val store = remember { SecureRoleSessionStore(context, "customer") }
+    var authRequested by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    var destinationAfterLogin by rememberSaveable { mutableStateOf("home") }
+    var guestStartDestination by rememberSaveable { mutableStateOf("home") }
+
+    LaunchedEffect(store) {
+        if (authRequested == null) {
+            authRequested = withContext(Dispatchers.IO) { store.load() != null }
+        }
+    }
+
+    if (authRequested == null) {
+        QueueGoTheme {
+            Box(Modifier.fillMaxSize()) { /* Restore local session silently. */ }
+        }
+    } else if (authRequested == false) {
+        QueueGoTheme {
+        GuestCustomerShell(
+            initialScreen = guestStartDestination,
+            onLogin = { destination ->
+                destinationAfterLogin = destination
+                authRequested = true
+            }
+        )
+        }
+    } else {
+        QueueGoAuthHost(
+            expectedRole = "customer",
+            appLabel = "Customer",
+            entryScreen = {
+                CustomerAuthenticationScreen(
+                    entry = it,
+                    onBackToGuest = {
+                        guestStartDestination = "home"
+                        destinationAfterLogin = "home"
+                        authRequested = false
+                    },
+                    onGuestNavigate = { destination ->
+                        guestStartDestination = destination
+                        destinationAfterLogin = "home"
+                        authRequested = false
+                    }
+                )
+            }
+        ) { auth, logout ->
+            key(auth.user.id, auth.user.authUserId) {
+                CustomerShell(
+                    auth = auth,
+                    logout = {
+                        logout()
+                        guestStartDestination = "home"
+                        destinationAfterLogin = "home"
+                        authRequested = false
+                    },
+                    initialScreen = destinationAfterLogin,
+                    pushTarget = pushTarget
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomerShell(
+    auth: NativeAuth,
+    logout: () -> Unit,
+    initialScreen: String = "home",
+    pushTarget: NativePushLaunchTarget? = null
+) {
+    val api = remember { CustomerApi() }
+    val marketApi = remember { CustomerMarketApi() }
+    val laundryApi = remember { CustomerLaundryApi() }
+    val extrasApi = remember { CustomerExtrasApi() }
+    val scope = rememberCoroutineScope()
+    val realtime = remember { NativeOrderRealtime() }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val liveMutex = remember { Mutex() }
+    val context = LocalContext.current
+    val voiceController = remember(auth.user.id) { NativeVoiceCallController(context) }
+    val voiceState by voiceController.state.collectAsState()
+    DisposableEffect(voiceController) { onDispose { voiceController.close() } }
+    val pushStore = remember { NativePushDeviceStore(context, "customer") }
+    val pushApi = remember { NativePushApi() }
+    val pushLogoutScope = remember(context) { nativeLogoutScope(context, scope) }
+    var pushEnabled by remember(auth.user.id) {
+        mutableStateOf(customerPushEnabled(context, auth.user.id))
+    }
+    var arrivalSoundEnabled by remember(auth.user.id) {
+        mutableStateOf(customerArrivalSoundEnabled(context, auth.user.id))
+    }
+    var pushBusy by remember(auth.user.id) { mutableStateOf(false) }
+    var notificationMessage by remember(auth.user.id) { mutableStateOf<String?>(null) }
+    val pushPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            scope.launch {
+                pushBusy = true
+                runCatching { syncCustomerNativePush(context, auth) }
+                    .onSuccess { synced ->
+                        if (synced) {
+                            setCustomerPushEnabled(context, auth.user.id, true)
+                            pushEnabled = true
+                            notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                        } else notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม กรุณาลองอีกครั้ง"
+                    }
+                    .onFailure { notificationMessage = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ" }
+                pushBusy = false
+            }
+        } else {
+            notificationMessage = "ยังไม่ได้อนุญาตการแจ้งเตือนจาก Android"
+        }
+    }
+    fun toggleCustomerPush() {
+        if (pushBusy) return
+        if (pushEnabled) {
+            pushBusy = true
+            scope.launch {
+                disableCustomerNativePush(context, auth)
+                setCustomerPushEnabled(context, auth.user.id, false)
+                pushEnabled = false
+                pushBusy = false
+                notificationMessage = "ปิดการแจ้งเตือนเบื้องหลังแล้ว"
+            }
+            return
+        }
+        if (!customerFirebaseConfigured(context)) {
+            notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม"
+            return
+        }
+        if (
+            Build.VERSION.SDK_INT >= 33 &&
+            context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            pushPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            return
+        }
+        scope.launch {
+            pushBusy = true
+            runCatching { syncCustomerNativePush(context, auth) }
+                .onSuccess { synced ->
+                    if (synced) {
+                        setCustomerPushEnabled(context, auth.user.id, true)
+                        pushEnabled = true
+                        notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังแล้ว"
+                    } else notificationMessage = "บริการแจ้งเตือนยังไม่พร้อม กรุณาลองอีกครั้ง"
+                }
+                .onFailure { notificationMessage = it.message ?: "เปิดการแจ้งเตือนไม่สำเร็จ" }
+            pushBusy = false
+        }
+    }
+    fun testCustomerPush() {
+        if (pushBusy) return
+        if (!pushEnabled) {
+            notificationMessage = "เปิดการแจ้งเตือนเบื้องหลังก่อนทดสอบ"
+            return
+        }
+        pushBusy = true
+        notificationMessage = "ระบบจะส่งแจ้งเตือนใน 7 วินาที กด Home เพื่อทดสอบได้เลย"
+        scope.launch {
+            runCatching { pushApi.test(auth) }
+                .onFailure { notificationMessage = it.message ?: "ทดสอบแจ้งเตือนไม่สำเร็จ" }
+            pushBusy = false
+        }
+    }
+    fun logoutWithPushCleanup() {
+        setCustomerPushEnabled(context, auth.user.id, false)
+        pushLogoutScope.launch {
+            runCatching { pushApi.unsubscribe(auth, pushStore.deviceId()) }
+        }
+        logout()
+    }
+    LaunchedEffect(auth.user.id, auth.session.accessToken, auth.session.sessionId) {
+        if (!customerPushEnabled(context, auth.user.id)) {
+            // Remove registrations created by versions that subscribed at login.
+            disableCustomerNativePush(context, auth)
+        }
+    }
+    val cartStore = remember(auth.user.id) { CustomerCartStore(context, auth.user.id) }
+    val locationStore = remember { CustomerLocationStore(context) }
+    val contentCache = remember(context.applicationContext) {
+        CustomerContentCache(context.applicationContext)
+    }
+    val guestCartStore = remember { CustomerCartStore(context, "guest") }
+
+    val routeSaver = Saver<String, String>(
+        save = { customerRestorableRoute(it) }, restore = { customerRestorableRoute(it) }
+    )
+    var screen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf(initialScreen) }
+    var shopReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var cartReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var ordersReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var locationReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var promotionReturnScreen by rememberSaveable(auth.user.id, stateSaver = routeSaver) { mutableStateOf("home") }
+    var category by rememberSaveable(auth.user.id) { mutableStateOf("all") }
+    var shoppingMode by rememberSaveable(auth.user.id) { mutableStateOf("all") }
+    var shops by remember { mutableStateOf<List<CustomerShop>>(emptyList()) }
+    var orders by remember { mutableStateOf<List<CustomerOrder>>(emptyList()) }
+    var marketTrips by remember { mutableStateOf<List<MarketTripSummary>>(emptyList()) }
+    var laundryOrders by remember { mutableStateOf<List<LaundryOrderSummary>>(emptyList()) }
+    var banners by remember { mutableStateOf<List<HomeBanner>>(emptyList()) }
+    var serviceBanners by remember { mutableStateOf<Map<String, ServiceBanner>>(emptyMap()) }
+    var notifications by remember { mutableStateOf<List<CustomerNotification>>(emptyList()) }
+    var pendingNotification by remember(auth.user.id) { mutableStateOf<NativePushLaunchTarget?>(null) }
+    var selectedShop by remember { mutableStateOf<CustomerShop?>(null) }
+    var selectedOrder by remember { mutableStateOf<CustomerOrder?>(null) }
+    var trackingContext by remember { mutableStateOf<CustomerOrderContext?>(null) }
+    var orderEta by remember { mutableStateOf<CustomerOrderEta?>(null) }
+    var selectedMarketTrip by remember { mutableStateOf<MarketTripSummary?>(null) }
+    var selectedLaundryOrder by remember { mutableStateOf<LaundryOrderSummary?>(null) }
+    var supportInitialOrderId by remember { mutableStateOf<String?>(null) }
+    val shopCatalog = remember(auth.user.id) { CustomerShopCatalog(scope) }
+    val rawCatalogState by shopCatalog.state.collectAsState()
+    val catalogState = rawCatalogState.forShop(selectedShop?.id)
+    DisposableEffect(shopCatalog) { onDispose { shopCatalog.close() } }
+    LaunchedEffect(screen) { if (screen != "shop") shopCatalog.close() }
+    var orderItems by remember { mutableStateOf<List<CustomerOrderItem>>(emptyList()) }
+    var cart by remember(auth.user.id) { mutableStateOf<List<CartLine>>(emptyList()) }
+    var localStateLoaded by remember(auth.user.id) { mutableStateOf(false) }
+    var location by remember(auth.user.id) { mutableStateOf<CustomerLocation?>(null) }
+    var address by remember(auth.user.id) { mutableStateOf("") }
+    var note by remember { mutableStateOf("") }
+    var busy by remember { mutableStateOf(false) }
+    var loading by remember { mutableStateOf(true) }
+    var homeLoadError by remember(auth.user.id) { mutableStateOf<String?>(null) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var pendingVoiceCall by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var pendingVoiceAnswer by remember { mutableStateOf(false) }
+    val voicePermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            if (pendingVoiceAnswer) {
+                voiceController.answerIncoming(auth)
+            } else {
+                pendingVoiceCall?.let { (orderId, target) ->
+                    voiceController.startOutgoing(auth, orderId, target)
+                }
+            }
+        } else {
+            message = "กรุณาอนุญาตไมโครโฟนเพื่อโทรผ่าน QueueGo"
+        }
+        pendingVoiceCall = null
+        pendingVoiceAnswer = false
+    }
+
+    fun startVoiceCall(orderId: String, target: String) {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.startOutgoing(auth, orderId, target)
+        } else {
+            pendingVoiceCall = orderId to target
+            pendingVoiceAnswer = false
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+
+    fun answerVoiceCall() {
+        if (context.checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            voiceController.answerIncoming(auth)
+        } else {
+            pendingVoiceCall = null
+            pendingVoiceAnswer = true
+            voicePermission.launch(Manifest.permission.RECORD_AUDIO)
+        }
+    }
+    val checkoutJournal = remember(cartStore) { cartStore.journal() }
+    val checkoutRecovery = remember(checkoutJournal) { CustomerCheckoutRecovery<PendingCustomerCheckout, CustomerOrder>(checkoutJournal) }
+    var pendingCheckoutRecord by remember(auth.user.id) { mutableStateOf<PendingCustomerCheckout?>(null) }
+    var checkoutPending by remember(auth.user.id) { mutableStateOf(false) }
+
+    LaunchedEffect(auth.user.id, cartStore, guestCartStore, checkoutJournal) {
+        val restored = withContext(Dispatchers.IO) {
+            val saved = cartStore.load()
+            val guest = guestCartStore.load()
+            val merged = when {
+                guest.isEmpty() -> saved to false
+                saved.isEmpty() -> {
+                    cartStore.save(guest)
+                    guestCartStore.save(emptyList())
+                    guest to false
+                }
+                saved.firstOrNull()?.product?.shopId == guest.firstOrNull()?.product?.shopId -> {
+                    val rows = (saved + guest)
+                        .groupBy { it.product.id }
+                        .values
+                        .map { grouped ->
+                            val freshest = grouped.last().product
+                            CartLine(freshest, grouped.sumOf { it.quantity }.coerceAtMost(99))
+                        }
+                    cartStore.save(rows)
+                    guestCartStore.save(emptyList())
+                    rows to false
+                }
+                else -> saved to true
+            }
+            val savedLocation = locationStore.load()
+            val pending = runCatching { checkoutJournal.read() }.getOrNull()
+            Triple(merged, savedLocation, pending)
+        }
+        cart = restored.first.first
+        location = restored.second
+        address = restored.second?.address.orEmpty()
+        pendingCheckoutRecord = restored.third
+        checkoutPending = restored.third != null
+        if (restored.first.second && message == null) {
+            message = "ตะกร้าก่อนเข้าสู่ระบบเป็นคนละร้านกับตะกร้าบัญชีเดิม จึงเก็บไว้แยกกัน"
+        }
+        localStateLoaded = true
+    }
+
+    var lastCheckoutReceipt by remember { mutableStateOf<String?>(null) }
+
+    fun showPlacedOrder(order: CustomerOrder) {
+        lastCheckoutReceipt = order.id
+        // A confirmed server order owns the submitted cart. Clear the visible
+        // cart immediately even if durable journal cleanup failed. The pending
+        // journal remains available for exact-request reconciliation next launch.
+        cart = emptyList()
+        // Server success must win even if local durable cart cleanup fails.
+        // Persist off Main so encrypted/local storage cannot block the UI thread.
+        scope.launch(Dispatchers.IO) {
+            runCatching { cartStore.save(emptyList()) }
+        }
+        note = ""
+        selectedOrder = order
+        orderItems = emptyList()
+        message = null
+        pendingCheckoutRecord = null
+        checkoutPending = false
+        screen = "order"
+    }
+    LaunchedEffect(auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    checkoutRecovery.reconcile { api.findPlacedOrder(auth, it.body.getString("p_order_id")) }?.let {
+                        if (lastCheckoutReceipt != it.id) showPlacedOrder(it)
+                    }
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) { /* Preserve pending for reconnect or explicit retry. */ }
+                pendingCheckoutRecord = withContext(Dispatchers.IO) {
+                    runCatching { checkoutJournal.read() }.getOrNull()
+                }
+                checkoutPending = pendingCheckoutRecord != null
+                delay(8_000)
+            }
+        }
+    }
+
+    val contextRefreshGate = remember(selectedOrder?.id) { TrackingContextRefreshGate() }
+
+    fun refresh(showLoading: Boolean = shops.isEmpty() && banners.isEmpty()) {
+        scope.launch {
+            if (showLoading) loading = true
+            liveMutex.withLock {
+                runCatching {
+                    val reuseStaticHome = !showLoading &&
+                        shops.isNotEmpty() &&
+                        withContext(Dispatchers.IO) { contentCache.homeFresh() }
+                    coroutineScope {
+                        val shopsDeferred = if (reuseStaticHome) null else async { api.loadShops(auth) }
+                        val ordersDeferred = async { api.loadOrders(auth) }
+                        val marketTripsDeferred = async {
+                            runCatching { marketApi.trips(auth) }.getOrDefault(emptyList())
+                        }
+                        val laundryOrdersDeferred = async {
+                            runCatching { laundryApi.orders(auth) }.getOrDefault(emptyList())
+                        }
+                        val savedLocationDeferred = async { api.loadSavedLocation(auth) }
+                        val bannersDeferred = if (reuseStaticHome) null else async { api.loadHomeBanners(auth) }
+                        val serviceBannersDeferred = if (reuseStaticHome) null else async { api.loadServiceBanners(auth) }
+                        val notificationsDeferred = async {
+                            runCatching { extrasApi.notifications(auth) }.getOrDefault(emptyList())
+                        }
+
+                        val freshOrders = ordersDeferred.await()
+                        val freshMarketTrips = marketTripsDeferred.await()
+                        val freshLaundryOrders = laundryOrdersDeferred.await()
+                        val saved = savedLocationDeferred.await()
+                        val freshNotifications = notificationsDeferred.await()
+
+                        orders = freshOrders
+                        marketTrips = freshMarketTrips
+                        laundryOrders = freshLaundryOrders
+                        val selected = preferredCustomerDeliveryLocation(location, saved)
+                        if (selected != null && selected != location) {
+                            location = selected
+                            address = selected.address
+                        }
+                        notifications = freshNotifications
+
+                        if (!reuseStaticHome) {
+                            val freshShops = requireNotNull(shopsDeferred).await()
+                            val freshBanners = requireNotNull(bannersDeferred).await()
+                            val freshServiceBanners = requireNotNull(serviceBannersDeferred).await()
+                            shops = freshShops
+                            banners = freshBanners
+                            serviceBanners = freshServiceBanners
+                            withContext(Dispatchers.IO) {
+                                contentCache.writeHome(freshShops, freshBanners, freshServiceBanners)
+                            }
+                        }
+                    }
+                    homeLoadError = null
+                    message = null
+                }.onFailure {
+                    if (it is CancellationException) throw it
+                    if (shops.isEmpty() && banners.isEmpty()) {
+                        homeLoadError = it.message ?: "เชื่อมต่อไม่ได้"
+                    }
+                }
+            }
+            loading = false
+        }
+    }
+
+    BackHandler(enabled = screen != "home") {
+        if (screen == "shopping" && shoppingMode != "all") {
+            shoppingMode = "all"
+        } else {
+            val destination = customerSystemBackTarget(
+                screen = screen,
+                shopReturnScreen = shopReturnScreen,
+                cartReturnScreen = cartReturnScreen,
+                ordersReturnScreen = ordersReturnScreen,
+                locationReturnScreen = locationReturnScreen,
+                promotionReturnScreen = promotionReturnScreen,
+                supportHasOrder = supportInitialOrderId != null,
+                hasSelectedOrder = selectedOrder != null,
+            )
+            if (destination != null) {
+                screen = destination
+                if (destination == "home") {
+                    selectedOrder = null
+                    trackingContext = null
+                    selectedMarketTrip = null
+                    selectedLaundryOrder = null
+                    selectedShop = null
+                }
+            }
+        }
+    }
+
+    var gpsReading by remember { mutableStateOf(false) }
+    fun readFreshGps() {
+        if (gpsReading) return
+        gpsReading = true
+        scope.launch {
+            try {
+                // A cached fix may belong to a previous trip. Never silently
+                // apply it to a new Laundry, Market or checkout destination.
+                val p = customerRegistrationLocation(context)
+                location = CustomerLocation(p.latitude, p.longitude, address)
+                message = "อ่านตำแหน่ง GPS ปัจจุบันแล้ว"
+            } catch (failure: CancellationException) {
+                throw failure
+            } catch (_: Exception) {
+                message = "อ่านตำแหน่งปัจจุบันไม่สำเร็จ เลือกจุดบนแผนที่แทนได้"
+            } finally {
+                gpsReading = false
+            }
+        }
+    }
+    val permission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { grants ->
+        if (grants.values.any { it }) readFreshGps()
+        else message = "กรุณาอนุญาตตำแหน่งเพื่อจัดส่ง"
+    }
+    fun requestGps() {
+        if (gpsReading) return
+        if (hasLocation(context)) readFreshGps()
+        else permission.launch(arrayOf(
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ))
+    }
+
+    fun openShopFromHome(shop: CustomerShop, returnTo: String = screen) {
+        shopReturnScreen = returnTo
+        selectedShop = shop
+        screen = "shop"
+        if (shop.category == "grocery") {
+            shopCatalog.openGroceryCached(
+                shopId = shop.id,
+                loadCached = { withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) } },
+                loadCachedCategories = { withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) } },
+                loadCategories = {
+                    val cachedCategories = withContext(Dispatchers.IO) { contentCache.readGroceryCategories(shop.id) }
+                    val cacheFresh = withContext(Dispatchers.IO) { contentCache.groceryCategoriesFresh(shop.id) }
+                    if (cachedCategories.isNotEmpty() && cacheFresh) cachedCategories
+                    else api.loadGroceryCategories(auth, shop.id)
+                },
+                fetchPage = { category, offset -> api.loadGroceryPage(auth, shop.id, category, offset) },
+                persistCategories = { rows -> withContext(Dispatchers.IO) { contentCache.writeGroceryCategories(shop.id, rows) } },
+                persist = { rows -> withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) } }
+            )
+        } else {
+            shopCatalog.openCached(
+                shopId = shop.id,
+                loadCached = {
+                    withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                },
+                fetch = {
+                    val cachedProducts = withContext(Dispatchers.IO) { contentCache.readProducts(shop.id) }
+                    val cacheFresh = withContext(Dispatchers.IO) { contentCache.productsFresh(shop.id) }
+                    if (cachedProducts.isNotEmpty() && cacheFresh) cachedProducts
+                    else api.loadProducts(auth, shop.id)
+                },
+                persist = { rows ->
+                    withContext(Dispatchers.IO) { contentCache.writeProducts(shop.id, rows) }
+                }
+            )
+        }
+    }
+
+    fun openHomeBannerLink(raw: String) {
+        val value = raw.trim()
+        if (value.isBlank()) return
+        if (value.startsWith("#")) {
+            val route = value.removePrefix("#").trim().trimStart('/')
+            when {
+                route.isBlank() || route == "home" -> screen = "home"
+                route == "search" -> screen = "search"
+                route == "cart" -> {
+                    cartReturnScreen = screen
+                    screen = "cart"
+                }
+                route == "orders" -> {
+                    ordersReturnScreen = screen
+                    screen = "orders"
+                }
+                route == "map" -> {
+                    locationReturnScreen = screen
+                    screen = "location"
+                }
+                route == "market" || route == "market-cart" -> screen = route
+                route == "promotion" -> {
+                    promotionReturnScreen = screen
+                    screen = "promotion"
+                }
+                route == "laundry" -> screen = "laundry"
+                route == "shopping" -> {
+                    shoppingMode = "all"
+                    screen = "shopping"
+                }
+                route.startsWith("shopping/") -> {
+                    shoppingMode = route.substringAfter("shopping/").substringBefore('/').ifBlank { "all" }
+                    screen = "shopping"
+                }
+                route in setOf("food", "cafe", "grocery") -> {
+                    category = route
+                    screen = "category"
+                }
+                route.startsWith("shop/") -> {
+                    val id = route.substringAfter("shop/").substringBefore('/')
+                    shops.find { it.id == id }?.let { openShopFromHome(it, "home") }
+                }
+            }
+            return
+        }
+        if (value.startsWith("https://", true) || value.startsWith("http://", true)) {
+            runCatching {
+                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(value)))
+            }.onFailure { message = "เปิดลิงก์ไม่สำเร็จ" }
+        }
+    }
+
+    suspend fun refreshNotifications() = liveMutex.withLock {
+        runCatching { extrasApi.notifications(auth) }
+            .onFailure { if (it is CancellationException) throw it }
+            .onSuccess { notifications = it }
+    }
+
+    suspend fun refreshOrders() = liveMutex.withLock {
+        runCatching { api.loadOrders(auth) }
+            .onFailure { if (it is CancellationException) throw it }
+            .onSuccess { fresh ->
+                orders = fresh
+                selectedOrder = selectedOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
+            }
+        runCatching { marketApi.trips(auth) }
+            .onFailure { if (it is CancellationException) throw it }
+            .onSuccess { fresh ->
+                marketTrips = fresh
+                selectedMarketTrip = selectedMarketTrip?.let { old -> fresh.find { it.id == old.id } ?: old }
+            }
+        runCatching { laundryApi.orders(auth) }
+            .onFailure { if (it is CancellationException) throw it }
+            .onSuccess { fresh ->
+                laundryOrders = fresh
+                selectedLaundryOrder = selectedLaundryOrder?.let { old -> fresh.find { it.id == old.id } ?: old }
+            }
+        val detailId = selectedOrder?.id?.takeIf { screen == "order" }
+        if (detailId != null) {
+            runCatching { api.loadOrderById(auth, detailId) }
+                .onFailure { if (it is CancellationException) throw it }
+                .onSuccess { fresh ->
+                    if (fresh != null && screen == "order" && selectedOrder?.id == detailId) selectedOrder = fresh
+                }
+            runCatching { api.loadOrderEta(auth, detailId) }
+                .onFailure { if (it is CancellationException) throw it }
+                .onSuccess { fresh ->
+                    if (screen == "order" && selectedOrder?.id == detailId) orderEta = fresh
+                }
+        }
+        val detail = selectedOrder?.takeIf { screen == "order" }
+        if (detail != null && contextRefreshGate.shouldFetch(detail)) {
+            runCatching { api.loadOrderItems(auth, detail.id) }
+                .onFailure { if (it is CancellationException) { contextRefreshGate.cancelled(detail); throw it } }
+                .onSuccess { if (screen == "order" && selectedOrder?.id == detail.id) orderItems = it }
+            if (screen == "order" && selectedOrder?.id == detail.id) {
+                runCatching { api.loadOrderContext(auth, detail.id) }
+                    .onFailure { if (it is CancellationException) { contextRefreshGate.cancelled(detail); throw it } }
+                    .onSuccess { if (screen == "order" && selectedOrder?.id == detail.id) trackingContext = it }
+            }
+        }
+    }
+
+    LaunchedEffect(selectedOrder?.id) { orderEta = null }
+    LaunchedEffect(auth.user.id, contentCache) {
+        val cached = withContext(Dispatchers.IO) { contentCache.readHome() }
+        if (cached != null) {
+            shops = cached.shops
+            banners = cached.banners
+            serviceBanners = cached.serviceBanners
+            loading = false
+        }
+        refresh(showLoading = cached == null)
+    }
+    LaunchedEffect(pushTarget?.eventId, auth.user.id) {
+        val target = pushTarget ?: return@LaunchedEffect
+        screen = "notifications"
+        pendingNotification = target.takeIf { it.referenceId.isNotBlank() }
+    }
+    // Leaving Notifications cancels recovery so a slow reply cannot pull the user
+    // back from another page. Backgrounding retains the reference for resume.
+    LaunchedEffect(screen) {
+        if (screen != "notifications") pendingNotification = null
+    }
+    LaunchedEffect(pendingNotification, auth.user.id, auth.session.accessToken, lifecycle) {
+        val target = pendingNotification ?: return@LaunchedEffect
+        message = null
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (pendingNotification == target) {
+                try {
+                    val destination = lookupCustomerNotification<CustomerNotificationDestination>(listOf(
+                        { api.loadOrderById(auth, target.referenceId)?.let { CustomerNotificationDestination.Order(it) } },
+                        { marketApi.trip(auth, target.referenceId)?.let { CustomerNotificationDestination.Market(it) } },
+                        { laundryApi.order(auth, target.referenceId)?.summary?.let { CustomerNotificationDestination.Laundry(it) } }
+                    ))
+                    if (pendingNotification != target || screen != "notifications") return@repeatOnLifecycle
+                    pendingNotification = null
+                    message = null
+                    when (destination) {
+                        is CustomerNotificationDestination.Order -> {
+                            selectedOrder = destination.order
+                            trackingContext = null
+                            orderItems = emptyList()
+                            screen = "order"
+                        }
+                        is CustomerNotificationDestination.Market -> {
+                            selectedMarketTrip = destination.trip
+                            screen = "market-trip"
+                        }
+                        is CustomerNotificationDestination.Laundry -> {
+                            selectedLaundryOrder = destination.order
+                            screen = "laundry-order"
+                        }
+                        null -> message = "ไม่พบออเดอร์สำหรับบัญชีนี้"
+                    }
+                    return@repeatOnLifecycle
+                } catch (e: CancellationException) { throw e }
+                catch (_: Exception) {
+                    message = "โหลดออเดอร์ไม่สำเร็จ กำลังลองใหม่ หรือแตะการแจ้งเตือนอีกครั้ง"
+                }
+                delay(8_000)
+            }
+        }
+    }
+    LaunchedEffect(auth.session.accessToken, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                refreshNotifications()
+                // Push + Realtime are primary. Poll only as a low-frequency recovery path.
+                delay(30_000)
+            }
+        }
+    }
+    LaunchedEffect(auth.session.accessToken, auth.session.sessionId, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                try {
+                    voiceController.refreshIncoming(auth)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                    // Push/poll recovery remains non-fatal while the app is foregrounded.
+                }
+                delay(3_000)
+            }
+        }
+    }
+    // Key the closure to detail visits, so a reopened closed order gets one final snapshot.
+    LaunchedEffect(auth.session.accessToken, selectedOrder?.id, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            realtime.changes(auth.session.accessToken, customerRealtimeSubscriptions(auth.user.id)).collect {
+                refreshNotifications()
+                refreshOrders()
+            }
+        }
+    }
+    LaunchedEffect(cart, localStateLoaded) {
+        if (localStateLoaded) {
+            try { withContext(Dispatchers.IO) { cartStore.save(cart) } }
+            catch (e: CancellationException) { throw e }
+            catch (_: Exception) { /* Keep visible state and the durable checkout journal for recovery. */ }
+        }
+    }
+    LaunchedEffect(auth.session.accessToken, screen, selectedOrder?.id, lifecycle) {
+        if (screen == "orders" || screen == "order") {
+            lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (true) {
+                    refreshOrders()
+                    if (screen == "order" && selectedOrder?.trackingClosed() == true) break
+                    // Realtime owns normal updates; this is only a foreground recovery poll.
+                    delay(8_000)
+                }
+            }
+        }
+    }
+
+    Box(Modifier.fillMaxSize()) {
+        Scaffold(
+        containerColor = QgBg,
+        bottomBar = {
+        CustomerBottomNavigation(screen, cart.sumOf { it.quantity }) {
+            if (it == "cart" && screen != "cart") cartReturnScreen = screen
+            if (it == "orders" && screen != "orders") ordersReturnScreen = screen
+            screen = it
+        }
+        }
+    ) { insets ->
+        Column(
+            Modifier.fillMaxSize()
+                .padding(insets)
+                .background(QgBg)
+        ) {
+            CustomerTopBar(
+                home = screen == "home",
+                cartCount = cart.sumOf { it.quantity },
+                unreadCount = notifications.count { !it.read },
+                onHome = { screen = "home" },
+                onCart = {
+                    if (screen != "cart") cartReturnScreen = screen
+                    screen = "cart"
+                },
+                onNotifications = { screen = "notifications" },
+                onProfile = { screen = "profile" }
+            )
+            if (message != null) {
+                Text(
+                    message!!,
+                    color = if (message!!.contains("สำเร็จ") || message!!.contains("แล้ว")) QgRed else MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            if (homeLoadError != null && screen in setOf("home", "search", "category", "shopping")) {
+                QgCard(Modifier.fillMaxWidth().padding(14.dp)) {
+                    Column {
+                        Text("โหลดข้อมูลไม่สำเร็จ", fontWeight = FontWeight.Bold)
+                        Text(homeLoadError!!, color = QgMuted, modifier = Modifier.padding(vertical = 8.dp))
+                        androidx.compose.material3.Button(onClick = { refresh(showLoading = true) }, enabled = !loading) {
+                            Text("ลองอีกครั้ง")
+                        }
+                    }
+                }
+            } else when (screen) {
+                "search" -> CustomerSearchScreen(
+                    shops = shops,
+                    location = location,
+                    onBack = { screen = "home" },
+                    onOpenShop = { shop ->
+                        if (shop.category.lowercase() == "laundry") screen = "laundry"
+                        else openShopFromHome(shop, "search")
+                    }
+                )
+                "notifications" -> CustomerNotificationsScreen(
+                    notifications = notifications,
+                    busy = busy,
+                    onBack = { screen = "home" },
+                    onMarkAll = {
+                        if (!busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching { extrasApi.markAllRead(auth) }
+                                    .onSuccess {
+                                        notifications = notifications.map { it.copy(read = true) }
+                                        // Keep successful acknowledgement local; do not show a sticky global banner.
+                                        message = null
+                                    }
+                                    .onFailure { message = it.message ?: "บันทึกแจ้งเตือนไม่สำเร็จ" }
+                                busy = false
+                            }
+                        }
+                    },
+                    onOpen = { notification ->
+                        screen = "notifications"
+                        pendingNotification = notification.referenceId?.takeIf { it.isNotBlank() }?.let {
+                            NativePushLaunchTarget(it, notification.type.orEmpty(), System.nanoTime())
+                        }
+                        scope.launch {
+                            try {
+                                extrasApi.markRead(auth, notification.id)
+                                notifications = notifications.map {
+                                    if (it.id == notification.id) it.copy(read = true) else it
+                                }
+                            } catch (e: CancellationException) { throw e }
+                            catch (_: Exception) { /* Detail navigation does not depend on read acknowledgement. */ }
+                        }
+                    }
+                )
+                "home" -> CustomerHome(
+                    loading = loading,
+                    banners = banners,
+                    location = location,
+                    deliveryAddress = address,
+                    shops = shops,
+                    onLocation = {
+                        locationReturnScreen = screen
+                        screen = "location"
+                    },
+                    onSearch = { screen = "search" },
+                    onCategory = {
+                        when (it) {
+                            "ride" -> screen = "ride"
+                            "express" -> screen = "express"
+                            "market" -> screen = "market"
+                            "laundry" -> screen = "laundry"
+                            "shopping" -> {
+                                shoppingMode = "all"
+                                screen = "shopping"
+                            }
+                            else -> {
+                                category = it
+                                screen = "category"
+                            }
+                        }
+                    },
+                    onShop = { shop ->
+                        if (shop.category.lowercase() == "laundry") screen = "laundry"
+                        else openShopFromHome(shop, "home")
+                    },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "ride" -> CustomerRideScreen(auth = auth, initialPickup = location, cartStore = cartStore, onContact = { id -> scope.launch {
+                        try {
+                            selectedOrder = api.loadOrderById(auth,id) ?: error("อ่านเที่ยวไม่ได้ กรุณาลองใหม่")
+                            screen = "chat"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { message = e.message }
+                    } }, onBack = { screen = "home" })
+                "express" -> CustomerExpressScreen(
+                    auth = auth,
+                    initialPickup = location,
+                    cartStore = cartStore,
+                    onContact = { id -> scope.launch {
+                        try {
+                            selectedOrder = api.loadOrderById(auth,id) ?: error("อ่านงาน Express ไม่ได้ กรุณาลองใหม่")
+                            screen = "chat"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { message = e.message }
+                    } },
+                    onBack = { screen = "home" }
+                )
+                "location" -> CustomerLocationPickerScreen(
+                    location = location,
+                    address = address,
+                    busy = busy,
+                    searchPlaces = { query -> api.searchPlaces(query) },
+                    resolveAddress = { latitude, longitude ->
+                        api.reverseGeocode(latitude, longitude)
+                    },
+                    onSave = { picked ->
+                        if (!busy) {
+                            busy = true
+                            scope.launch {
+                                try {
+                                    api.saveLocation(auth, picked)
+                                    location = picked
+                                    address = picked.address
+                                    // Account acknowledgement remains successful if the local cache fails.
+                                    val cacheFailure = try { locationStore.save(picked); null }
+                                        catch (failure: CancellationException) { throw failure }
+                                        catch (failure: Exception) { failure }
+                                    message = if (cacheFailure == null) "บันทึกที่อยู่แล้ว"
+                                        else "บันทึกที่อยู่ในบัญชีแล้ว แต่บันทึกในเครื่องไม่สำเร็จ"
+                                    screen = "home"
+                                } catch (failure: CancellationException) { throw failure }
+                                catch (failure: Exception) { message = failure.message ?: "บันทึกที่อยู่ไม่สำเร็จ" }
+                                finally { busy = false }
+                            }
+                        }
+                    },
+                    onBack = { screen = locationReturnScreen }
+                )
+                "category" -> ServiceCategoryScreen(
+                    loading = loading,
+                    category = category,
+                    serviceBanner = serviceBanners[category],
+                    shops = shops,
+                    location = location,
+                    onBack = {
+                        category = "all"
+                        screen = "home"
+                    },
+                    onShop = { shop -> openShopFromHome(shop, "category") },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "shopping" -> CustomerShoppingScreen(
+                    loading = loading,
+                    mode = shoppingMode,
+                    serviceBanners = serviceBanners,
+                    shops = shops,
+                    location = location,
+                    onBack = {
+                        if (shoppingMode == "all") screen = "home"
+                        else shoppingMode = "all"
+                    },
+                    onMode = { shoppingMode = it },
+                    onShop = { shop -> openShopFromHome(shop, "shopping") },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "laundry" -> LaundryNativeScreen(
+                    auth = auth,
+                    location = location,
+                    address = address,
+                    onAddress = {
+                        address = it
+                        location = location?.copy(address = it)
+                    },
+                    onGps = ::requestGps,
+                    onBack = { screen = "home" },
+                    onDone = {
+                        message = "ส่งคำขอฝากซักแล้ว"
+                        screen = "orders"
+                    }
+                )
+                "market", "market-cart" -> MarketNativeScreen(
+                    cartPage = screen == "market-cart",
+                    onOpenCart = { screen = "market-cart" },
+                    onBrowse = { screen = "market" },
+                    auth = auth,
+                    location = location,
+                    address = address,
+                    onAddress = {
+                        address = it
+                        location = location?.copy(address = it)
+                    },
+                    onGps = ::requestGps,
+                    serviceBanner = serviceBanners["market"],
+                    onBack = { screen = "home" },
+                    onDone = { tripId ->
+                        screen = "orders"
+                        scope.launch {
+                            runCatching { CustomerMarketApi().trips(auth) }.onSuccess { fresh ->
+                                marketTrips = fresh
+                                fresh.find { it.id == tripId }?.let { trip ->
+                                    selectedMarketTrip = trip
+                                    if (screen == "orders") screen = "market-trip"
+                                }
+                            }
+                        }
+                    },
+                    onBannerLink = ::openHomeBannerLink
+                )
+                "promotion" -> CustomerPromotionScreen(
+                    onBack = { screen = promotionReturnScreen },
+                    onOpenShop = { shopId ->
+                        shops.find { it.id == shopId }?.let { openShopFromHome(it, "promotion") }
+                    }
+                )
+                "shop" -> ShopScreen(
+                    auth = auth,
+                    shop = selectedShop,
+                    products = catalogState.products,
+                    productsLoading = catalogState.loading,
+                    productsError = catalogState.error,
+                    groceryPaging = catalogState.grocery,
+                    onGroceryCategory = shopCatalog::selectGroceryCategory,
+                    onGroceryMore = shopCatalog::loadGroceryMore,
+                    onRetryProducts = { selectedShop?.let { openShopFromHome(it, shopReturnScreen) } },
+                    cart = cart,
+                    onBack = { screen = shopReturnScreen },
+                    onAdd = { product ->
+                        val currentShopId = cart.firstOrNull()?.product?.shopId
+                        if (checkoutPending) {
+                            message = "กรุณาตรวจผลคำสั่งซื้อเดิมก่อนแก้ตะกร้า"
+                        } else if (currentShopId != null && currentShopId != product.shopId) {
+                            message = "หนึ่งตะกร้าสั่งได้จากร้านเดียว กรุณาสั่งร้านเดิมให้เสร็จก่อน"
+                        } else {
+                            val existing = cart.find { it.product.id == product.id }
+                            if (existing != null && existing.quantity >= 99) {
+                                message = "เพิ่มได้สูงสุด 99 ชิ้นต่อรายการ"
+                            } else {
+                                cart = if (existing == null) cart + CartLine(product, 1)
+                                else cart.map { if (it.product.id == product.id) it.copy(quantity = it.quantity + 1) else it }
+                                message = "เพิ่มลงตะกร้าแล้ว"
+                            }
+                        }
+                    },
+                    onCart = {
+                        cartReturnScreen = "shop"
+                        screen = "cart"
+                    }
+                )
+                "cart" -> CustomerCartScreen(
+                    cart = cart,
+                    busy = busy,
+                    checkoutPending = checkoutPending,
+                    onBack = { screen = cartReturnScreen },
+                    onMinus = { id ->
+                        if (!checkoutPending) cart = cart.mapNotNull {
+                            if (it.product.id != id) it
+                            else if (it.quantity <= 1) null else it.copy(quantity = it.quantity - 1)
+                        }
+                    },
+                    onPlus = { id ->
+                        if (!checkoutPending) cart = cart.map {
+                            if (it.product.id == id) it.copy(quantity = (it.quantity + 1).coerceAtMost(99)) else it
+                        }
+                    },
+                    onRemove = { id ->
+                        if (!checkoutPending) cart = cart.filterNot { it.product.id == id }
+                    },
+                    onCheckout = {
+                        if (checkoutPending) {
+                            screen = "checkout"
+                        } else if (!busy && cart.isNotEmpty()) {
+                            busy = true
+                            message = null
+                            scope.launch {
+                                val current = cart.toList()
+                                val shopId = current.firstOrNull()?.product?.shopId
+                                runCatching {
+                                    require(!shopId.isNullOrBlank()) { "ตะกร้าว่าง" }
+                                    val fresh = api.loadProducts(auth, shopId)
+                                    val byId = fresh.associateBy { it.id }
+                                    val unavailable = current.filter { line ->
+                                        byId[line.product.id]?.available != true
+                                    }
+                                    require(unavailable.isEmpty()) {
+                                        "รายการที่ยังสั่งไม่ได้: " + unavailable.joinToString(", ") { it.product.name }
+                                    }
+                                    var changed = false
+                                    val reconciled = current.map { line ->
+                                        val latest = byId.getValue(line.product.id)
+                                        if (latest.deliveryPrice != line.product.deliveryPrice ||
+                                            latest.name != line.product.name ||
+                                            latest.image != line.product.image
+                                        ) changed = true
+                                        line.copy(product = latest)
+                                    }
+                                    cart = reconciled
+                                    if (changed) {
+                                        message = "ราคาสินค้ามีการเปลี่ยนแปลง กรุณาตรวจสอบยอดล่าสุดก่อนยืนยัน"
+                                    }
+                                    screen = "checkout"
+                                }.onFailure {
+                                    message = it.message ?: "ตรวจสอบตะกร้าไม่สำเร็จ"
+                                }
+                                busy = false
+                            }
+                        }
+                    }
+                )
+                "checkout" -> CustomerCheckoutScreen(
+                    pendingCheckout = pendingCheckoutRecord,
+                    cart = cart,
+                    shop = shops.find { it.id == cart.firstOrNull()?.product?.shopId },
+                    location = location,
+                    address = address,
+                    note = note,
+                    busy = busy,
+                    resolveAddress = { latitude, longitude -> api.reverseGeocode(latitude, longitude) },
+                    onBack = { screen = "cart" },
+                    onGps = ::requestGps,
+                    onLocationChange = { next ->
+                        location = next
+                    },
+                    onAddress = {
+                        address = it
+                        location = location?.copy(address = it)
+                    },
+                    onNote = { note = it.take(500) },
+                    onPlace = {
+                        if (!busy) {
+                            busy = true
+                            val submittedCart = cart.toList()
+                            val submittedLocation = location?.copy(address = address.trim())
+                            val submittedShop = shops.find { it.id == submittedCart.firstOrNull()?.product?.shopId }
+                            val submittedNote = note
+                            scope.launch {
+                                try {
+                                    withContext(Dispatchers.IO) { cartStore.save(submittedCart) }
+                                    if (!checkoutPending) {
+                                        val active = api.loadActiveOrder(auth)
+                                        if (active != null) {
+                                            selectedOrder = active
+                                            orderItems = runCatching { api.loadOrderItems(auth, active.id) }.getOrDefault(emptyList())
+                                            message = "มีออเดอร์ที่กำลังดำเนินการอยู่ · " + active.number
+                                            screen = "order"
+                                            return@launch
+                                        }
+                                    }
+                                    val order = checkoutRecovery.submit(
+                                        create = {
+                                            withContext(Dispatchers.IO) {
+                                                require(submittedShop != null && submittedLocation != null && submittedLocation.address.isNotBlank()) {
+                                                    "กรุณาเลือกตำแหน่งและกรอกที่อยู่จัดส่ง"
+                                                }
+                                                cartStore.pending(
+                                                    api.checkoutBody(
+                                                        auth,
+                                                        UUID.randomUUID().toString(),
+                                                        submittedShop,
+                                                        submittedCart,
+                                                        submittedLocation,
+                                                        submittedNote
+                                                    ),
+                                                    submittedCart
+                                                )
+                                            }
+                                        },
+                                        send = { pending ->
+                                            val body = pending.body
+                                            api.saveLocation(
+                                                auth,
+                                                CustomerLocation(
+                                                    body.getDouble("p_delivery_lat"),
+                                                    body.getDouble("p_delivery_lng"),
+                                                    body.getString("p_delivery_address")
+                                                )
+                                            )
+                                            api.placeOrder(auth, body)
+                                        },
+                                        recover = { api.findPlacedOrder(auth, it.body.getString("p_order_id")) },
+                                        definitiveRejection = { e ->
+                                            e is com.queuego.shared.QueueGoHttpException &&
+                                                e.statusCode in 400..499 &&
+                                                e.statusCode !in listOf(401, 403, 408, 429)
+                                        }
+                                    )
+                                    showPlacedOrder(order)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    pendingCheckoutRecord = withContext(Dispatchers.IO) {
+                                        runCatching { checkoutJournal.read() }.getOrNull()
+                                    }
+                                    checkoutPending = pendingCheckoutRecord != null
+                                    message = when {
+                                        checkoutPending ->
+                                            "ยังยืนยันผลไม่ได้ กรุณาตรวจผลคำขอเดิมอีกครั้ง ระบบจะใช้รายการเดิมเพื่อป้องกันออเดอร์ซ้ำ"
+                                        e.message?.contains("OUTSIDE_SERVICE_AREA") == true ->
+                                            "ตำแหน่งอยู่นอกพื้นที่ให้บริการ QueueGo"
+                                        e.message?.contains("DELIVERY_DISTANCE_EXCEEDED") == true ->
+                                            "ระยะทางไกลเกินขอบเขตให้บริการ"
+                                        else -> e.message ?: "สั่งซื้อไม่สำเร็จ"
+                                    }
+                                } finally {
+                                    busy = false
+                                }
+                            }
+                        }
+                    }
+                )
+                "orders" -> OrdersScreen(
+                    loading = loading,
+                    orders = orders,
+                    marketTrips = marketTrips,
+                    laundryOrders = laundryOrders,
+                    onOpen = {
+                        selectedOrder = it
+                        orderItems = emptyList()
+                        screen = "order"
+                    },
+                    onMarketOpen = {
+                        selectedMarketTrip = it
+                        screen = "market-trip"
+                    },
+                    onLaundryOpen = {
+                        selectedLaundryOrder = it
+                        screen = "laundry-order"
+                    }
+                )
+                "market-trip" -> selectedMarketTrip?.let {
+                    MarketTripDetailScreen(auth = auth, trip = it, onBack = { screen = "orders" },
+                        onBrowse = { screen = "market" }, trackingBusy = busy,
+                        onTrackChild = { id ->
+                            if (!busy) {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        val child = api.loadOrderById(auth, id) ?: error("ไม่พบออเดอร์ของบัญชีนี้")
+                                        selectedOrder = child
+                                        orderItems = emptyList()
+                                        trackingContext = null
+                                        screen = "order"
+                                    } catch (cancelled: CancellationException) { throw cancelled }
+                                    catch (e: Exception) { message = e.message ?: "โหลดการติดตามไม่สำเร็จ" }
+                                    finally { busy = false }
+                                }
+                            }
+                        })
+                }
+                "laundry-order" -> selectedLaundryOrder?.let {
+                    LaundryOrderDetailScreen(auth = auth, order = it, onBack = { screen = "orders" })
+                }
+                "order" -> if (selectedOrder?.fulfillmentVertical == "ride") {
+                    CustomerRideScreen(auth = auth, initialPickup = location, cartStore = cartStore,
+                        initialOrderId = selectedOrder?.id, onContact = { id -> scope.launch {
+                        try {
+                            selectedOrder = api.loadOrderById(auth,id) ?: error("อ่านเที่ยวไม่ได้ กรุณาลองใหม่")
+                            screen = "chat"
+                        } catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { message = e.message }
+                    } }, onBack = { screen = "orders" })
+                } else CustomerOrderTrackingScreen(
+                    auth = auth,
+                    order = selectedOrder,
+                    items = orderItems,
+                    context = trackingContext,
+                    eta = orderEta,
+                    shopCategory = selectedOrder?.shopId?.let { id -> shops.find { it.id == id }?.category },
+                    busy = busy,
+                    onCallShop = {
+                        selectedOrder?.id?.let { startVoiceCall(it, "shop") }
+                    },
+                    onCallRider = {
+                        selectedOrder?.id?.let { startVoiceCall(it, "rider") }
+                    },
+                    onChat = { screen = "chat" },
+                    onSupport = {
+                        supportInitialOrderId = selectedOrder?.id
+                        screen = "support"
+                    },
+                    onCancel = {
+                        val current = selectedOrder
+                        if (current != null && !busy) {
+                            busy = true
+                            scope.launch {
+                                runCatching { api.cancelOrder(auth, current.id) }
+                                    .onSuccess {
+                                        message = "ยกเลิกออเดอร์แล้ว"
+                                        orders = runCatching { api.loadOrders(auth) }.getOrDefault(orders)
+                                        selectedOrder = orders.find { it.id == current.id }
+                                            ?: current.copy(status = "cancelled")
+                                    }
+                                    .onFailure { message = it.message ?: "ยกเลิกออเดอร์ไม่สำเร็จ" }
+                                busy = false
+                            }
+                        }
+                    },
+                    onBack = {
+                        trackingContext = null
+                        screen = "orders"
+                    }
+                )
+                "chat" -> selectedOrder?.let { activeOrder ->
+                    CustomerChatScreen(
+                        auth = auth,
+                        order = activeOrder,
+                        onBack = { screen = "order" }
+                    )
+                }
+                "support" -> CustomerSupportScreen(
+                    auth = auth,
+                    orders = orders,
+                    initialOrderId = supportInitialOrderId,
+                    onBack = {
+                        if (supportInitialOrderId != null && selectedOrder != null) screen = "order"
+                        else screen = "profile"
+                        supportInitialOrderId = null
+                    }
+                )
+                "favorites" -> CustomerFavoritesScreen(
+                    auth = auth,
+                    onBack = { screen = "profile" },
+                    onOpenShop = { shop -> openShopFromHome(shop, "favorites") }
+                )
+                "profile" -> ProfileScreen(
+                    auth = auth,
+                    onAddress = {
+                        locationReturnScreen = "profile"
+                        screen = "location"
+                    },
+                    onOrders = {
+                        ordersReturnScreen = "profile"
+                        screen = "orders"
+                    },
+                    onNotifications = { screen = "notifications" },
+                    onFavorites = { screen = "favorites" },
+                    onPromotions = {
+                        promotionReturnScreen = "profile"
+                        screen = "promotion"
+                    },
+                    onSupport = {
+                        supportInitialOrderId = null
+                        screen = "support"
+                    },
+                    pushEnabled = pushEnabled,
+                    pushBusy = pushBusy,
+                    arrivalSoundEnabled = arrivalSoundEnabled,
+                    notificationMessage = notificationMessage,
+                    onTogglePush = ::toggleCustomerPush,
+                    onTestPush = ::testCustomerPush,
+                    onToggleArrivalSound = {
+                        val next = !arrivalSoundEnabled
+                        setCustomerArrivalSoundEnabled(context, auth.user.id, next)
+                        arrivalSoundEnabled = next
+                    },
+                    onPrivacy = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(CUSTOMER_PRIVACY_POLICY_URL)))
+                        }.onFailure { notificationMessage = "เปิดนโยบายความเป็นส่วนตัวไม่สำเร็จ" }
+                    },
+                    logout = ::logoutWithPushCleanup
+                )
+            }
+        }
+        }
+        QueueGoVoiceCallOverlay(
+            state = voiceState,
+            currentUserId = auth.user.id,
+            onAnswer = ::answerVoiceCall,
+            onDecline = { voiceController.declineIncoming(auth) },
+            onHangUp = { voiceController.hangUp() },
+            onDismissEnded = { voiceController.dismissTerminal() },
+            onToggleMute = { voiceController.setMuted(it) },
+            onToggleSpeaker = { voiceController.setSpeakerEnabled(it) }
+        )
+    }
+}
+
+@Composable
+private fun CustomerTopBar(
+    home: Boolean,
+    cartCount: Int,
+    unreadCount: Int,
+    onHome: () -> Unit,
+    onCart: () -> Unit,
+    onNotifications: () -> Unit,
+    onProfile: () -> Unit
+) {
+    val horizontalPadding = if (home) 16.dp else 12.dp
+    val verticalPadding = if (home) 10.dp else 6.dp
+    val actionSize = if (home) 40.dp else 42.dp
+    val actionRadius = if (home) 13.dp else 12.dp
+
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(androidx.compose.ui.graphics.Color(0xF0FFFFFF))
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = horizontalPadding, vertical = verticalPadding),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(Modifier.clickable(onClick = onHome), verticalAlignment = Alignment.CenterVertically) {
+                com.queuego.shared.QueueGoBrandMark("customer", Modifier.size(28.dp))
+                Spacer(Modifier.size(6.dp))
+                Text(
+                    "Queue",
+                    color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    letterSpacing = (-0.4).sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+                Text(
+                    "Go",
+                    color = QgRed,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    letterSpacing = (-0.4).sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+            Spacer(Modifier.weight(1f))
+            CustomerTopAction(
+                resource = R.drawable.qg_nav_bag,
+                description = "ตะกร้า",
+                size = actionSize,
+                radius = actionRadius,
+                badge = cartCount,
+                onClick = onCart
+            )
+            Spacer(Modifier.width(8.dp))
+            CustomerTopAction(
+                resource = R.drawable.qg_top_bell,
+                description = "แจ้งเตือน",
+                size = actionSize,
+                radius = actionRadius,
+                badge = unreadCount,
+                onClick = onNotifications
+            )
+            Spacer(Modifier.width(8.dp))
+            CustomerTopAction(
+                resource = R.drawable.qg_top_user,
+                description = "โปรไฟล์",
+                size = actionSize,
+                radius = actionRadius,
+                onClick = onProfile
+            )
+        }
+        HorizontalDivider(thickness = 1.dp, color = androidx.compose.ui.graphics.Color(0x0D000000))
+    }
+}
+
+@Composable
+private fun CustomerTopAction(
+    resource: Int,
+    description: String,
+    size: androidx.compose.ui.unit.Dp,
+    radius: androidx.compose.ui.unit.Dp,
+    badge: Int = 0,
+    onClick: () -> Unit
+) {
+    Box(Modifier.size(size)) {
+        Box(
+            Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(radius))
+                .background(androidx.compose.ui.graphics.Color(0xFFF3F4F6))
+                .clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                painter = painterResource(resource),
+                contentDescription = description,
+                modifier = Modifier.size(20.dp),
+                tint = androidx.compose.ui.graphics.Color(0xFF24272D)
+            )
+        }
+        if (badge > 0) {
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 4.dp, y = (-4).dp)
+                    .widthIn(min = 17.dp)
+                    .height(17.dp)
+                    .clip(CircleShape)
+                    .background(QgRed)
+                    .padding(horizontal = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    if (badge > 99) "99+" else badge.toString(),
+                    color = androidx.compose.ui.graphics.Color.White,
+                    fontSize = 10.sp,
+                    lineHeight = 12.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+internal fun CustomerHome(
+    loading: Boolean,
+    banners: List<HomeBanner>,
+    location: CustomerLocation?,
+    deliveryAddress: String,
+    shops: List<CustomerShop>,
+    onLocation: () -> Unit,
+    onSearch: () -> Unit,
+    onCategory: (String) -> Unit,
+    onShop: (CustomerShop) -> Unit,
+    onBannerLink: (String) -> Unit
+) {
+    var bannerIndex by remember(banners.map { it.image }) { mutableStateOf(0) }
+    val rotationMs = banners.firstOrNull()?.rotationMs ?: 5_000L
+    LaunchedEffect(banners.size, rotationMs) {
+        if (banners.size > 1) {
+            while (true) {
+                delay(rotationMs)
+                bannerIndex = (bannerIndex + 1) % banners.size
+            }
+        }
+    }
+
+    val nearbyShops = remember(shops, location) {
+        val eligible = shops.filter { shop ->
+            shop.category.lowercase() in homeNearbyShopCategories
+        }
+        if (location == null) eligible
+        else eligible.sortedBy { customerDistanceKm(location, it) }
+    }
+
+    val homeHorizontalPadding = if (LocalConfiguration.current.screenWidthDp <= 420) 12.dp else 14.dp
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = homeHorizontalPadding)
+    ) {
+        item(key = "home-location") {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onLocation)
+                    .padding(start = 2.dp, end = 2.dp, top = 13.dp, bottom = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(androidx.compose.ui.graphics.Color(0xFFFFF0F1)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.qg_home_pin),
+                        contentDescription = null,
+                        modifier = Modifier.size(19.dp),
+                        tint = QgRed
+                    )
+                }
+                Spacer(Modifier.width(10.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("ส่งไปที่", color = QgMuted, fontSize = 11.sp, lineHeight = 14.sp)
+                    Text(
+                        deliveryAddress.ifBlank { location?.address.orEmpty() }.ifBlank { "เลือกที่อยู่จัดส่ง" },
+                        color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        lineHeight = 17.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+        item(key = "home-search") {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .shadow(
+                        elevation = 4.dp,
+                        shape = RoundedCornerShape(15.dp),
+                        clip = false,
+                        ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
+                        spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
+                    )
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(androidx.compose.ui.graphics.Color.White)
+                    .border(1.dp, QgLine, RoundedCornerShape(15.dp))
+                    .clickable(onClick = onSearch)
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(R.drawable.qg_nav_search),
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = androidx.compose.ui.graphics.Color(0xFF3F434A)
+                )
+                Spacer(Modifier.width(10.dp))
+                Text("ค้นหาร้านค้าจากทุกหมวด", color = androidx.compose.ui.graphics.Color(0xFF9A9EA5), fontSize = 14.sp)
+            }
+            Spacer(Modifier.height(13.dp))
+        }
+        item(key = "home-banner") {
+            CustomerHomeBanner(
+                banners = banners,
+                selected = bannerIndex,
+                onSelect = { bannerIndex = it },
+                onOpen = { banner -> banner.link?.let(onBannerLink) }
+            )
+            Spacer(Modifier.height(20.dp))
+        }
+        item(key = "home-categories") {
+            Row(
+                Modifier
+                    .horizontalScroll(rememberScrollState())
+                    .padding(start = 2.dp, end = 2.dp, top = 2.dp, bottom = 5.dp),
+                horizontalArrangement = Arrangement.spacedBy(9.dp)
+            ) {
+                homeCategories.forEach { (key, label) ->
+                    CustomerCategoryButton(key = key, label = label, onClick = { onCategory(key) })
+                }
+            }
+            Spacer(Modifier.height(20.dp))
+        }
+        item(key = "home-nearby-heading") {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "ร้านใกล้คุณ",
+                    color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    "ดูทั้งหมด",
+                    color = QgRed,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    modifier = Modifier.clickable(onClick = onSearch)
+                )
+            }
+            Spacer(Modifier.height(11.dp))
+            if (!loading && nearbyShops.isEmpty()) {
+                Column(Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
+                    Text(
+                        if (location == null) "เลือกที่อยู่จัดส่งเพื่อค้นหาร้านใกล้คุณ"
+                        else "ไม่พบร้านค้าในพื้นที่นี้ ลองเปลี่ยนที่อยู่หรือค้นหาร้านค้า",
+                        color = QgMuted, style = MaterialTheme.typography.bodyMedium
+                    )
+                    TextButton(onClick = onLocation) { Text("เลือกที่อยู่จัดส่ง") }
+                }
+            }
+        }
+        items(nearbyShops, key = { "home-shop:" + it.id }) { shop ->
+            CustomerBlueprintShopCard(shop = shop, onClick = { onShop(shop) })
+        }
+        item(key = "home-bottom-space") {
+            Spacer(Modifier.height(28.dp))
+        }
+    }
+}
+@Composable
+private fun CustomerCategoryButton(
+    key: String,
+    label: String,
+    onClick: () -> Unit
+) {
+    val icon = when (key) {
+        "food" -> "utensils"
+        "cafe" -> "drink"
+        "grocery" -> "bottle"
+        "laundry" -> "grid"
+        "market" -> "basket"
+        "shopping" -> "shopping"
+        "ride" -> "ride"
+        "express" -> "express"
+        else -> key
+    }
+    Column(
+        Modifier
+            .width(58.dp)
+            .clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier
+                .size(48.dp)
+                .shadow(
+                    elevation = 4.dp,
+                    shape = CircleShape,
+                    clip = false,
+                    ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
+                    spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
+                )
+                .clip(CircleShape)
+                .background(androidx.compose.ui.graphics.Color.White)
+                .border(1.dp, QgLine, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            QgIcon(icon, Modifier.size(22.dp), QgRed)
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            label,
+            color = androidx.compose.ui.graphics.Color(0xFF3A3D42),
+            fontWeight = FontWeight.Bold,
+            fontSize = 9.5.sp,
+            lineHeight = 11.sp,
+            maxLines = 1,
+            softWrap = false,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun CustomerBlueprintShopCard(
+    shop: CustomerShop,
+    onClick: () -> Unit
+) {
+    val compact = LocalConfiguration.current.screenWidthDp <= 420
+    val radius = RoundedCornerShape(16.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(bottom = 7.dp)
+            .shadow(
+                elevation = 4.dp,
+                shape = radius,
+                clip = false,
+                ambientColor = androidx.compose.ui.graphics.Color(0x0914181E),
+                spotColor = androidx.compose.ui.graphics.Color(0x0914181E)
+            )
+            .clip(radius)
+            .background(androidx.compose.ui.graphics.Color.White)
+            .border(1.dp, QgLine, radius)
+            .clickable(onClick = onClick)
+            .padding(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        QgRemoteImage(
+            source = shop.logo ?: shop.cover,
+            modifier = if (compact) Modifier.size(72.dp) else Modifier.size(78.dp),
+            fallback = shop.name,
+            cornerRadius = 13.dp
+        )
+        Spacer(Modifier.width(9.dp))
+        Column(Modifier.weight(1f)) {
+            Text(
+                shop.name,
+                color = androidx.compose.ui.graphics.Color(0xFF17191D),
+                fontWeight = FontWeight.ExtraBold,
+                fontSize = 15.sp,
+                lineHeight = 19.sp,
+                maxLines = 1
+            )
+            Spacer(Modifier.height(4.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text(
+                    categoryLabel(shop.category),
+                    color = QgMuted,
+                    fontSize = 10.5.sp,
+                    lineHeight = 13.sp,
+                    maxLines = 1
+                )
+                if (!shop.openTime.isNullOrBlank()) {
+                    Text(
+                        shop.openTime + "–" + (shop.closeTime ?: ""),
+                        color = QgMuted,
+                        fontSize = 10.5.sp,
+                        lineHeight = 13.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+            Spacer(Modifier.height(5.dp))
+            Box(
+                Modifier
+                    .clip(CircleShape)
+                    .background(
+                        if (shop.open) androidx.compose.ui.graphics.Color(0xFFEAF9F3)
+                        else androidx.compose.ui.graphics.Color(0xFFF1F1F2)
+                    )
+                    .padding(horizontal = 6.dp, vertical = 3.dp)
+            ) {
+                Text(
+                    if (shop.open) "เปิดอยู่" else "ปิดอยู่",
+                    color = if (shop.open) androidx.compose.ui.graphics.Color(0xFF0A9660)
+                    else androidx.compose.ui.graphics.Color(0xFF777777),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 9.5.sp,
+                    lineHeight = 11.sp
+                )
+            }
+        }
+    }
+}
+
+internal fun customerDistanceKm(location: CustomerLocation, shop: CustomerShop): Double {
+    val lat2 = shop.latitude ?: return Double.POSITIVE_INFINITY
+    val lon2 = shop.longitude ?: return Double.POSITIVE_INFINITY
+    if (lat2 !in 5.0..21.0 || lon2 !in 97.0..106.0) return Double.POSITIVE_INFINITY
+    val lat1Rad = Math.toRadians(location.latitude)
+    val lat2Rad = Math.toRadians(lat2)
+    val dLat = Math.toRadians(lat2 - location.latitude)
+    val dLon = Math.toRadians(lon2 - location.longitude)
+    val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+        kotlin.math.cos(lat1Rad) * kotlin.math.cos(lat2Rad) *
+        kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+    return 6_371.0 * 2.0 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1.0 - a))
+}
+
+@Composable
+private fun OrdersScreen(
+    loading: Boolean,
+    orders: List<CustomerOrder>,
+    marketTrips: List<MarketTripSummary>,
+    laundryOrders: List<LaundryOrderSummary>,
+    onOpen: (CustomerOrder) -> Unit,
+    onMarketOpen: (MarketTripSummary) -> Unit,
+    onLaundryOpen: (LaundryOrderSummary) -> Unit
+) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+        QgSectionTitle("ออเดอร์ของฉัน", "อาหาร ตลาดสด ฝากซัก และบริการทั้งหมด")
+        Spacer(Modifier.height(10.dp))
+        if (orders.isEmpty() && marketTrips.isEmpty() && laundryOrders.isEmpty() && !loading) {
+            QgCard(Modifier.fillMaxWidth()) { Text("ยังไม่มีออเดอร์", color = QgMuted) }
+        }
+
+        if (marketTrips.isNotEmpty()) {
+            Text("ตลาดสด", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(vertical = 8.dp))
+            marketTrips.forEach { trip ->
+                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onMarketOpen(trip) }) {
+                    Column {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text("Market Trip · " + trip.shopCount + " ร้าน", fontWeight = FontWeight.Black)
+                            Spacer(Modifier.weight(1f))
+                            QgStatusPill(marketTripStatus(trip.status), trip.status.uppercase() != "CANCELLED")
+                        }
+                        Spacer(Modifier.height(5.dp))
+                        Text(trip.deliveryAddress ?: "", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("รวม ฿" + "%.0f".format(trip.total), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (laundryOrders.isNotEmpty()) {
+            Text("ฝากซัก", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(vertical = 8.dp))
+            laundryOrders.forEach { order ->
+                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onLaundryOpen(order) }) {
+                    Column {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(order.number, fontWeight = FontWeight.Black)
+                            Spacer(Modifier.weight(1f))
+                            QgStatusPill(laundryStatus(order.status), order.status != "cancelled")
+                        }
+                        Spacer(Modifier.height(5.dp))
+                        Text(order.serviceName, color = QgMuted)
+                        val total = order.finalTotal ?: order.estimatedTotal
+                        Text(total?.let { "รวม ฿" + "%.0f".format(it) } ?: "รอสรุปราคา", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (orders.isNotEmpty()) {
+            Text("Delivery", fontWeight = FontWeight.ExtraBold, modifier = Modifier.padding(vertical = 8.dp))
+            orders.filter { it.shopId != null }.forEach { order ->
+                QgCard(Modifier.fillMaxWidth().padding(bottom = 8.dp).clickable { onOpen(order) }) {
+                    Column {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(order.number, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
+                            Spacer(Modifier.weight(1f))
+                            QgStatusPill(statusLabel(order.status), order.status !in setOf("cancelled", "no_rider_available"))
+                        }
+                        Spacer(Modifier.height(6.dp))
+                        Text(order.deliveryAddress ?: "", color = QgMuted, style = MaterialTheme.typography.bodySmall)
+                        Text("รวม ฿" + "%.0f".format(order.total), fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(30.dp))
+    }
+}
+
+@Composable
+private fun ProfileScreen(
+    auth: NativeAuth,
+    onAddress: () -> Unit,
+    onOrders: () -> Unit,
+    onNotifications: () -> Unit,
+    onFavorites: () -> Unit,
+    onPromotions: () -> Unit,
+    onSupport: () -> Unit,
+    pushEnabled: Boolean,
+    pushBusy: Boolean,
+    arrivalSoundEnabled: Boolean,
+    notificationMessage: String?,
+    onTogglePush: () -> Unit,
+    onTestPush: () -> Unit,
+    onToggleArrivalSound: () -> Unit,
+    onPrivacy: () -> Unit,
+    logout: () -> Unit
+) {
+    var showDeletion by remember { mutableStateOf(false) }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 14.dp, vertical = 4.dp)
+    ) {
+        CustomerProfileHero(
+            auth.user.name,
+            customerProfileContact(auth.user.customerPhone, auth.user.customerEmail),
+            auth.user.customerPhoto
+        )
+
+        CustomerProfileSection("บัญชีและการใช้งาน") {
+            ProfileDestination("ที่อยู่จัดส่ง", onAddress)
+            CustomerProfileDivider()
+            ProfileDestination("ออเดอร์ของฉัน", onOrders)
+            CustomerProfileDivider()
+            ProfileDestination("การแจ้งเตือน", onNotifications)
+            CustomerProfileDivider()
+            ProfileDestination("รายการโปรด", onFavorites)
+            CustomerProfileDivider()
+            ProfileDestination("โปรโมชั่นจากร้าน", onPromotions)
+            CustomerProfileDivider()
+            ProfileDestination("ติดต่อฝ่ายช่วยเหลือ", onSupport)
+        }
+
+        Spacer(Modifier.height(10.dp))
+        CustomerProfileSection("การแจ้งเตือน") {
+            ProfileSwitch(
+                title = "เสียงแจ้งเตือนเมื่อ Rider ถึง",
+                subtitle = "เสียงเตือนเมื่อ Rider มาถึงจุดส่ง",
+                checked = arrivalSoundEnabled,
+                enabled = !pushBusy,
+                onCheckedChange = { onToggleArrivalSound() }
+            )
+            CustomerProfileDivider()
+            ProfileSwitch(
+                title = "การแจ้งเตือนเบื้องหลัง",
+                subtitle = "รับสถานะออเดอร์แม้ไม่ได้เปิดแอป",
+                checked = pushEnabled,
+                enabled = !pushBusy,
+                onCheckedChange = { onTogglePush() }
+            )
+            CustomerProfileDivider()
+            ProfileDestination(
+                "ทดสอบการแจ้งเตือน",
+                onTestPush,
+                enabled = !pushBusy,
+                detail = "ตรวจว่าแจ้งเตือนเข้าเมื่อแอปอยู่เบื้องหลัง"
+            )
+        }
+        if (!notificationMessage.isNullOrBlank()) {
+            Text(
+                notificationMessage,
+                color = QgMuted,
+                fontSize = 9.5.sp,
+                lineHeight = 13.sp,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
+            )
+        }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(top = 7.dp)
+                .background(androidx.compose.ui.graphics.Color(0xFFF7F7F8), RoundedCornerShape(12.dp))
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                "การชำระเงิน",
+                color = androidx.compose.ui.graphics.Color(0xFF5D6269),
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                "ชำระเงินสดเมื่อรับสินค้า",
+                color = androidx.compose.ui.graphics.Color(0xFF737980),
+                fontSize = 9.5.sp
+            )
+        }
+
+        Spacer(Modifier.height(10.dp))
+        CustomerProfileSection("ความเป็นส่วนตัวและบัญชี") {
+            ProfileDestination("นโยบายความเป็นส่วนตัว", onPrivacy)
+            CustomerProfileDivider()
+            ProfileDestination(
+                "ลบบัญชีถาวร",
+                { showDeletion = true },
+                detail = "ลบ Auth และข้อมูลส่วนบุคคล",
+                danger = true
+            )
+            CustomerProfileDivider()
+            ProfileDestination("ออกจากระบบ", logout)
+        }
+
+        if (showDeletion) {
+            Spacer(Modifier.height(10.dp))
+            QgAccountDeletionSection(
+                accessToken = auth.session.accessToken,
+                onDeleted = logout,
+                pendingChatUserId = auth.user.id
+            )
+            OutlinedButton(
+                onClick = { showDeletion = false },
+                modifier = Modifier.fillMaxWidth().padding(top = 6.dp)
+            ) {
+                Text("ปิด")
+            }
+        }
+
+        Spacer(Modifier.height(30.dp))
+    }
+}
+
+@Composable
+private fun CustomerProfileHero(name: String, contact: String?, photo: String?) {
+    val initial = name.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "Q"
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 2.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        val safePhoto = photo?.trim()?.takeIf {
+            it.startsWith("https://", ignoreCase = true) ||
+                (it.length <= 32_768 && it.matches(Regex("(?i)^data:image/(jpeg|png|webp);base64,[a-z0-9+/=]+$")))
+        }
+        Box(
+            Modifier
+                .size(60.dp)
+                .clip(RoundedCornerShape(20.dp))
+                .background(androidx.compose.ui.graphics.Color(0xFFE9EAEC)),
+            contentAlignment = Alignment.Center
+        ) {
+            if (safePhoto != null) {
+                QgRemoteImage(safePhoto, Modifier.fillMaxSize(), fallback = initial, cornerRadius = 20.dp)
+            } else {
+                Text(
+                    initial,
+                    color = androidx.compose.ui.graphics.Color(0xFF989DA5),
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.ExtraBold
+                )
+            }
+        }
+        Column(Modifier.weight(1f)) {
+            Text(
+                name.ifBlank { "ลูกค้า" },
+                color = androidx.compose.ui.graphics.Color(0xFF17171B),
+                fontSize = 20.sp,
+                lineHeight = 23.sp,
+                fontWeight = FontWeight.Black,
+                maxLines = 1
+            )
+            if (!contact.isNullOrBlank()) {
+                Text(
+                    contact,
+                    color = QgMuted,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+            Text(
+                "บัญชีลูกค้า",
+                color = androidx.compose.ui.graphics.Color(0xFF0A9660),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.ExtraBold,
+                modifier = Modifier
+                    .padding(top = 5.dp)
+                    .background(androidx.compose.ui.graphics.Color(0xFFE9FAF2), RoundedCornerShape(99.dp))
+                    .padding(horizontal = 7.dp, vertical = 3.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CustomerProfileSection(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(Modifier.fillMaxWidth()) {
+        Text(
+            title,
+            color = androidx.compose.ui.graphics.Color(0xFF777D85),
+            fontSize = 10.sp,
+            fontWeight = FontWeight.ExtraBold,
+            modifier = Modifier.padding(start = 2.dp, bottom = 6.dp)
+        )
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .background(androidx.compose.ui.graphics.Color.White, RoundedCornerShape(16.dp))
+                .border(1.dp, QgLine, RoundedCornerShape(16.dp))
+        ) {
+            content()
+        }
+    }
+}
+
+@Composable
+private fun CustomerProfileDivider() {
+    HorizontalDivider(color = QgLine)
+}
+
+@Composable
+private fun ProfileSwitch(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    enabled: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled) { onCheckedChange(!checked) }
+            .padding(horizontal = 12.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = androidx.compose.ui.graphics.Color(0xFF211E20),
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                subtitle,
+                color = androidx.compose.ui.graphics.Color(0xFF8A8F96),
+                fontSize = 9.5.sp,
+                lineHeight = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            enabled = enabled
+        )
+    }
+}
+
+@Composable
+private fun ProfileDestination(
+    label: String,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+    detail: String? = null,
+    danger: Boolean = false
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                label,
+                color = if (danger) androidx.compose.ui.graphics.Color(0xFFD92F3E)
+                    else androidx.compose.ui.graphics.Color(0xFF211E20),
+                fontSize = 13.sp,
+                lineHeight = 16.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            if (!detail.isNullOrBlank()) {
+                Text(
+                    detail,
+                    color = androidx.compose.ui.graphics.Color(0xFF8A8F96),
+                    fontSize = 9.5.sp,
+                    lineHeight = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+        Text(
+            "›",
+            color = androidx.compose.ui.graphics.Color(0xFFAFB3B9),
+            fontSize = 22.sp,
+            lineHeight = 22.sp
+        )
+    }
+}
+
+private fun statusLabel(status: String): String = when (status.lowercase()) {
+    "pending" -> "รอร้านรับ"
+    "accepted" -> "ร้านรับแล้ว"
+    "searching_rider" -> "กำลังหาไรเดอร์"
+    "rider_assigned", "assigned" -> "ไรเดอร์รับงานแล้ว"
+    "preparing" -> "กำลังเตรียม"
+    "ready" -> "พร้อมรับสินค้า"
+    "picked_up" -> "รับสินค้าแล้ว"
+    "in_progress", "rider_to_customer" -> "กำลังจัดส่ง"
+    "arrived" -> "Rider ถึงลูกค้าแล้ว"
+    "completed" -> "ส่งสำเร็จ"
+    "cancelled" -> "ยกเลิก"
+    "no_rider_available" -> "ไม่พบ Rider"
+    else -> status
+}
+
+private fun categoryLabel(category: String): String = when (category.lowercase()) {
+    "food" -> "อาหาร"
+    "cafe", "drink", "beverage" -> "เครื่องดื่ม"
+    "grocery" -> "ร้านขายของชำ"
+    "market", "fresh", "fresh_market" -> "ตลาดสด"
+    "laundry" -> "ฝากซัก"
+    "shopping" -> "ช้อปปิ้ง"
+    else -> "ร้านค้า"
+}
+
+internal fun hasLocation(context: Context): Boolean =
+    context.checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
+        context.checkSelfPermission(Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+internal fun lastKnownLocation(context: Context): Pair<Double, Double>? {
+    if (!hasLocation(context)) return null
+    val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    return runCatching {
+        manager.getProviders(true)
+            .mapNotNull { provider -> runCatching { manager.getLastKnownLocation(provider) }.getOrNull() }
+            .maxByOrNull { it.time }
+            ?.let { it.latitude to it.longitude }
+    }.getOrNull()
+}

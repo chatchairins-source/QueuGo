@@ -1,0 +1,8 @@
+[functions.queuego-credit]
+verify_jwt = true
+
+[functions.queuego-credit-webhook]
+verify_jwt = false
+
+[functions.queuego-express-quote]
+verify_jwt = true
