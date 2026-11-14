@@ -4235,6 +4235,10 @@ window.shopCancelOrder=function shopCancelOrder(orderId,button){
 (function(){
 
 
+function qgmThailandDateKey(date=new Date()){
+ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(x=>[x.type,x.value]));
+ return `${parts.year}-${parts.month}-${parts.day}`;
+}
 window.qgmRenderHours=async function(){
  const u=currentUser();if(!u||u.type!=='shop')return navigate('login');
  const days=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'];
@@ -4248,7 +4252,7 @@ window.qgmRenderHours=async function(){
   const token=await qtGetAccessToken(),pid=qtCurrentShopProfileId(u);if(!token||!pid)throw Error('ไม่พบข้อมูลร้าน');
   const [rows,special]=await Promise.all([
    qtSupabaseTable('shop_business_hours?select=weekday,opens_at,closes_at,is_closed&shop_id=eq.'+encodeURIComponent(pid),{accessToken:token}),
-   qtSupabaseTable('shop_special_hours?select=day,is_closed,opens_at,closes_at&shop_id=eq.'+encodeURIComponent(pid)+'&day=gte.'+new Date().toISOString().slice(0,10)+'&order=day.asc&limit=1',{accessToken:token})
+   qtSupabaseTable('shop_special_hours?select=day,is_closed,opens_at,closes_at&shop_id=eq.'+encodeURIComponent(pid)+'&day=gte.'+qgmThailandDateKey()+'&order=day.asc&limit=1',{accessToken:token})
   ]);
   for(const x of rows||[]){const row=document.querySelector('.qgm-hours-row[data-day="'+x.weekday+'"]');if(row){row.querySelector('.open').value=String(x.opens_at).slice(0,5);row.querySelector('.close').value=String(x.closes_at).slice(0,5);row.querySelector('.closed').checked=x.is_closed}}
   const sp=special?.[0];if(sp){document.getElementById('qgm-special-day').value=sp.day;document.getElementById('qgm-special-closed').checked=sp.is_closed;document.getElementById('qgm-special-open').value=String(sp.opens_at||'06:00').slice(0,5);document.getElementById('qgm-special-close').value=String(sp.closes_at||'22:00').slice(0,5)}
