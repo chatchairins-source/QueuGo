@@ -156,6 +156,7 @@ jobs:
             -out verify-backup.tar.gz \
             -pass env:QG_BACKUP_PASSPHRASE
           tar -tzf verify-backup.tar.gz >/dev/null
+          cmp "${NAME}.tar.gz" verify-backup.tar.gz
 
           sha256sum "${NAME}.tar.gz.enc" > "${NAME}.tar.gz.enc.sha256"
           echo "QG_BACKUP_ARTIFACT=${NAME}" >> "$GITHUB_ENV"
