@@ -62,4 +62,20 @@ context.window.qgMarketCatalogQueueSearch('merchant-b search');
 timers[timers.length - 1].fn();
 assert.equal(calls.length, beforeNavigation + 1, 'current merchant search must still load');
 assert.equal(state.query, 'merchant-b search');
+
+// An explicit search must supersede a queued input debounce.
+const explicitMatch = source.match(/window\.qgMarketCatalogSearch=e=>\{[^\n]+\};/);
+assert.ok(explicitMatch, 'explicit search handler must exist');
+context.document = { getElementById: id => ({ value: id === 'market-catalog-search' ? 'submitted query' : 'ปลา' }) };
+vm.runInNewContext(explicitMatch[0], context);
+context.window.qgMarketCatalogQueueSearch('stale queued query');
+const queuedBeforeSubmit = timers[timers.length - 1];
+const beforeSubmit = calls.length;
+context.window.qgMarketCatalogSearch({ preventDefault() {} });
+assert.equal(queuedBeforeSubmit.cancelled, true, 'explicit submit cancels queued debounce');
+assert.equal(context.searchTimer, null, 'explicit submit clears timer reference');
+assert.equal(state.query, 'submitted query', 'explicit submit uses current search field');
+assert.equal(state.category, 'ปลา', 'explicit submit preserves selected category');
+assert.equal(calls.length, beforeSubmit + 1, 'explicit submit loads once');
+
 console.log('Market catalog in-flight search, category and merchant debounce regression passed');
