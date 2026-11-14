@@ -88,6 +88,9 @@ internal suspend fun syncMerchantNativePush(context: Context, auth: NativeAuth):
     if (!merchantFirebaseConfigured(context)) return false
     val token = merchantFirebaseToken().trim()
     require(token.length >= 16) { "ไม่ได้รับ Push token จาก Firebase" }
+    // Firebase token retrieval suspends: logout or account switching can happen meanwhile.
+    val current = SecureRoleSessionStore(context, "shop").load()
+    if (!merchantPushSessionCurrent(auth, current, System.currentTimeMillis())) return false
     api.subscribe(auth, store.deviceId(), token)
     return true
 }
