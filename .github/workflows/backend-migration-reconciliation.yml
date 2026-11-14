@@ -1,0 +1,69 @@
+name: Backend migration reconciliation
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/reconcile-supabase-migrations.cjs'
+      - 'tests/backend-migration-reconciliation.cjs'
+      - 'scripts/audit-supabase-definer-exposure.cjs'
+      - 'tests/backend-definer-exposure.cjs'
+      - 'scripts/audit-supabase-no-policy-grants.cjs'
+      - 'tests/backend-no-policy-grants.cjs'
+      - '.github/workflows/backend-migration-reconciliation.yml'
+      - 'supabase/migrations/**'
+      - 'scripts/sql/audit-definer-search-path-schema-trust.sql'
+      - 'tests/backend-definer-schema-trust.cjs'
+      - 'scripts/sql/audit-privileged-rpc-review-signals.sql'
+      - 'tests/backend-privileged-rpc-signals.cjs'
+      - 'scripts/sql/audit-table-checkout-replay-guard.sql'
+      - 'tests/backend-table-checkout-replay-guard.cjs'
+      - 'tests/backend-checkout-replay-migration.cjs'
+      - 'scripts/sql/audit-pos-payment-rpc-signals.sql'
+      - 'tests/backend-pos-payment-rpc-signals.cjs'
+      - 'scripts/sql/audit-pos-payment-unique-indexes.sql'
+      - 'tests/backend-pos-payment-unique-indexes.cjs'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-reconciliation-regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check scripts/reconcile-supabase-migrations.cjs
+          node --check tests/backend-migration-reconciliation.cjs
+          node --check scripts/audit-supabase-definer-exposure.cjs
+          node --check tests/backend-definer-exposure.cjs
+          node --check scripts/audit-supabase-no-policy-grants.cjs
+          node --check tests/backend-no-policy-grants.cjs
+          node --check tests/backend-definer-schema-trust.cjs
+          node --check tests/backend-privileged-rpc-signals.cjs
+          node --check tests/backend-table-checkout-replay-guard.cjs
+          node --check tests/backend-checkout-replay-migration.cjs
+          node --check tests/backend-pos-payment-rpc-signals.cjs
+          node --check tests/backend-pos-payment-unique-indexes.cjs
+      - name: Read-only migration history regression
+        run: node tests/backend-migration-reconciliation.cjs
+      - name: Read-only SECURITY DEFINER exposure regression
+        run: node tests/backend-definer-exposure.cjs
+      - name: Read-only definer schema trust query regression
+        run: node tests/backend-definer-schema-trust.cjs
+      - name: Read-only privileged RPC review signals regression
+        run: node tests/backend-privileged-rpc-signals.cjs
+      - name: Read-only checkout replay guard audit regression
+        run: node tests/backend-table-checkout-replay-guard.cjs
+      - name: Checkout replay migration authorization regression
+        run: node tests/backend-checkout-replay-migration.cjs
+      - name: Read-only POS payment RPC audit regression
+        run: node tests/backend-pos-payment-rpc-signals.cjs
+      - name: Read-only POS payment uniqueness inventory regression
+        run: node tests/backend-pos-payment-unique-indexes.cjs
+      - name: Read-only RLS no-policy grants regression
+        run: node tests/backend-no-policy-grants.cjs
