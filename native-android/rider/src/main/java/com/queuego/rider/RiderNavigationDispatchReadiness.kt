@@ -65,7 +65,10 @@ internal fun riderNavigationLocationUpdateEligible(
 
 /** Calculate the dispatch lease against the authenticated session currently on disk. */
 internal fun riderNavigationRemainingLeaseMs(expiresAtMs: Long, nowMs: Long): Long =
-    if (expiresAtMs <= nowMs) 0L else expiresAtMs - nowMs
+    if (expiresAtMs <= nowMs) 0L else {
+        val remaining = expiresAtMs - nowMs
+        if (remaining < 0L) Long.MAX_VALUE else remaining
+    }
 
 internal fun riderNavigationLocationPushIntervalMs(distanceMeters: Double?): Long =
     if (distanceMeters != null && distanceMeters.isFinite() && distanceMeters <= 200.0) 1_000L else 3_000L
@@ -188,7 +191,7 @@ internal object RiderNavigationDispatchReadiness {
         }
         if (!riderNavigationDispatchLeaseEligible(bound.ready, auto, stop,
                 bound.orderId != null && bound.profileId != null,
-                auth.session.expiresAtMs - System.currentTimeMillis(), fixAgeMs())) {
+                riderNavigationRemainingLeaseMs(auth.session.expiresAtMs, System.currentTimeMillis()), fixAgeMs())) {
             api.syncDispatchPreference(auth, auto, stop, false)
             return@withLock
         }
