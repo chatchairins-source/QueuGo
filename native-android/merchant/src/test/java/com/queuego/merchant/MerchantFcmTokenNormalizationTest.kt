@@ -24,6 +24,13 @@ class MerchantFcmTokenNormalizationTest {
         assertNull(merchantUsableFcmToken("abcdefghijklmnop\rqrst"))
     }
 
+    @Test fun rejectsEmbeddedNonWhitespaceControlCharacters() {
+        assertNull(merchantUsableFcmToken("abcdefgh\u0000ijklmnop"))
+        assertNull(merchantUsableFcmToken("abcdefgh\u0007ijklmnop"))
+        assertNull(merchantUsableFcmToken("abcdefgh\u007Fijklmnop"))
+        assertEquals("abcdefghijklmnop", merchantUsableFcmToken("abcdefghijklmnop"))
+    }
+
     @Test fun boundaryAtSixteenCharactersIsAccepted() {
         assertNull(merchantUsableFcmToken("123456789012345"))
         assertEquals("1234567890123456", merchantUsableFcmToken("1234567890123456"))
