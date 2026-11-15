@@ -13,6 +13,8 @@ WITH per_order AS (
 )
 SELECT
   (SELECT count(*) FROM public.payments) AS payment_rows,
+  (SELECT count(*) FROM public.payments WHERE order_id IS NULL) AS payments_without_order_id,
+  (SELECT count(*) FROM public.payments WHERE status IS NULL OR btrim(status) = '') AS payments_without_status,
   (SELECT count(*) FROM per_order WHERE attempts > 1) AS orders_with_multiple_payment_rows,
   (SELECT count(*) FROM per_order WHERE successful_attempts > 1) AS orders_with_multiple_successful_payments,
   (SELECT count(*)
