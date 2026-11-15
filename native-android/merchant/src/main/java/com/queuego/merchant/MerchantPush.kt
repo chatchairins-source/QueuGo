@@ -69,7 +69,7 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
 // FCM registration tokens are opaque, non-whitespace values; never send malformed payloads.
 internal fun merchantUsableFcmToken(raw: String): String? =
     raw.trim().takeIf { token ->
-        token.length >= 16 && token.none {
+        token.length >= 16 && merchantPushWellFormedUtf16(token) && token.none {
             it.isWhitespace() || it.isISOControl() || Character.getType(it) == Character.FORMAT.toInt()
         }
     }
