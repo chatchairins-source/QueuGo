@@ -89,8 +89,8 @@ internal fun merchantPushTargetsShop(data: Map<String, String>, currentShopId: S
 internal fun merchantPushReferenceId(data: Map<String, String>): String? {
     val references = listOfNotNull(data["referenceId"], data["reference_id"])
     // Order references are opaque identifiers, not free-form display text. Reject malformed
-    // values rather than forwarding invisible characters or whitespace to the order screen.
-    if (references.any { it.isBlank() || it.any { char -> char.isWhitespace() || char.isISOControl() } }) return null
+    // values rather than forwarding invisible controls, Unicode format characters or whitespace to the order screen.
+    if (references.any { it.isBlank() || it.any { char -> char.isWhitespace() || char.isISOControl() || Character.getType(char) == Character.FORMAT.toInt() } }) return null
     if (references.distinct().size > 1) return null
     return references.firstOrNull().orEmpty()
 }
