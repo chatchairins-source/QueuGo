@@ -169,6 +169,22 @@ class MerchantPushIntentIsolationTest {
         assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order\u202E7")))
     }
 
+    @Test fun malformedFcmMessageIdIsRejectedBeforeHashing() {
+        assertEquals(false, merchantPushMetadataWellFormed("fcm" + 0xD800.toChar(), "new"))
+        assertEquals(false, merchantPushMetadataWellFormed(0xDC00.toChar() + "fcm", "new"))
+    }
+
+    @Test fun malformedPushTypeIsRejectedBeforeNavigation() {
+        assertEquals(false, merchantPushMetadataWellFormed("fcm-1", "order" + 0xDC00.toChar()))
+        assertEquals(false, merchantPushMetadataWellFormed(null, 0xD800.toChar() + "order"))
+    }
+
+    @Test fun validSupplementaryMetadataRemainsSupported() {
+        val emoji = 0xD83D.toChar().toString() + 0xDE80.toChar()
+        assertEquals(true, merchantPushMetadataWellFormed("fcm-" + emoji, "type-" + emoji))
+        assertEquals(true, merchantPushMetadataWellFormed(null, "new"))
+    }
+
     @Test fun malformedUtf16FcmTokenIsRejectedBeforeRegistration() {
         val validToken = "abcdefghijklmnop"
         assertEquals(validToken, merchantUsableFcmToken(validToken))
