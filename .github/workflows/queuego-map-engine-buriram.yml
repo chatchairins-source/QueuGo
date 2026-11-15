@@ -133,12 +133,12 @@ jobs:
             test -s map-data/valhalla/valhalla.json
             test -d map-data/valhalla/tiles
             test -s map-data/buriram.osm.pbf
-            python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.json
+            python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.expected-digest.json
           else
             python ops/maps/extract_region.py map-data/thailand.osm.pbf map-data/buriram.osm.pbf
             python ops/maps/normalize_osm.py map-data/buriram.osm.pbf map-data/roads.sqlite
             python ops/maps/export_places.py map-data/roads.sqlite map-data/places-generated.json
-            python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.json
+            python tests/map-places-export.py map-data/places-generated.json data/maps/buriram-places.expected-digest.json
             python ops/maps/build_engine_graph.py valhalla map-data/buriram.osm.pbf map-data/valhalla --admin-pbf map-data/thailand.osm.pbf
           fi
       - name: Real graph runtime and restriction evidence
