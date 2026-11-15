@@ -157,7 +157,14 @@ async function load(){
       input?.focus({preventScroll:true});
       if(selection)try{input?.setSelectionRange(...selection)}catch(_){}
     }
-  }catch(e){if(active(epoch,id)){shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p>');error(e)}}
+  }catch(e){if(active(epoch,id)){
+    // Keep the search control mounted on network failure so the merchant can retry typing.
+    if(focusedSearch){
+      const status=document.getElementById('market-catalog-status');
+      if(status)status.textContent='โหลดแคตตาล็อกไม่สำเร็จ ลองค้นหาอีกครั้ง';
+    }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p>');
+    error(e);
+  }}
   finally{if(active(epoch,id))state.loading=false}
 }
 window.qgRenderMarketCatalog=load;
