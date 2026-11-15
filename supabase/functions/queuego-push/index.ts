@@ -1,4 +1,6 @@
 import webpush from 'npm:web-push@3.6.7';
+import { isRiderOfferNotification, buildRiderOfferMessage, buildRiderEventMessage } from './rider-offer-message.mjs';
+import { nativeRegistrationCandidate, finalizeNativeRegistration } from './native-registration-policy.mjs';
 import { createClient } from 'npm:@supabase/supabase-js@2.49.10';
 
 const url=Deno.env.get('SUPABASE_URL')!;
@@ -110,14 +112,40 @@ async function firebaseAccess(){
   };
   return firebaseCache;
 }
-async function sendNativePush(deviceToken:string,user:any,n:any){
+async function sendNativePush(deviceToken:string,user:any,n:any,sessionId:string,platform:string){
+  let riderOfferMessage:any=null;
+  if(isRiderOfferNotification(user,n)){
+    const [profile,offer]=await Promise.all([
+      admin.from('rider_profiles').select('id,status').eq('user_id',n.user_id).maybeSingle(),
+      admin.from('qg_rider_order_offers').select('rider_id,offered_at,expires_at').eq('order_id',n.reference_id).maybeSingle()
+    ]);
+    if(profile.error||offer.error)return 503;
+    if(!profile.data||profile.data.status!=='active'||!offer.data||offer.data.rider_id!==profile.data.id)return 204;
+    const created=Date.parse(n.created_at),offered=Date.parse(offer.data.offered_at);
+    // An old queued alert cannot announce a later lease for the same order.
+    if(!Number.isFinite(created)||!Number.isFinite(offered)||created<offered)return 204;
+    riderOfferMessage=buildRiderOfferMessage(deviceToken,{
+      ...n,title:visibleOrderText(n.title),message:visibleOrderText(n.message)
+    },offer.data.expires_at,sessionId);
+    if(!riderOfferMessage)return 204;
+  }
   const firebase=await firebaseAccess();
+  const customerAndroid=user.role==='customer'&&platform==='android';
   const data={
     notificationId:String(n.id||''),
     role:String(user.role||''),
     type:String(n.type||'notification'),
-    referenceId:String(n.reference_id||'')
+    referenceId:String(n.reference_id||''),
+    ...(customerAndroid?{
+      title:visibleOrderText(n.title||'QueueGo').slice(0,80),
+      message:visibleOrderText(n.message||'มีรายการอัปเดต').slice(0,220)
+    }:{}),
+    ...(user.role==='rider'?{userId:String(n.user_id||''),sessionId}: {})
   };
+  const riderMessage=riderOfferMessage||(user.role==='rider'?buildRiderEventMessage(deviceToken,{
+    ...n,title:visibleOrderText(n.title||'QueueGo Rider'),message:visibleOrderText(n.message||'มีรายการอัปเดต')
+  },sessionId):null);
+  if(user.role==='rider'&&!riderMessage)return 204;
   const response=await fetch(
     'https://fcm.googleapis.com/v1/projects/'+encodeURIComponent(firebase.projectId)+'/messages:send',
     {
@@ -127,7 +155,11 @@ async function sendNativePush(deviceToken:string,user:any,n:any){
         'Content-Type':'application/json'
       },
       body:JSON.stringify({
-        message:{
+        message:riderMessage||(customerAndroid?{
+          token:deviceToken,
+          data,
+          android:{priority:'high'}
+        }:{
           token:deviceToken,
           notification:{
             title:visibleOrderText(n.title||'QueueGo').slice(0,80),
@@ -138,7 +170,7 @@ async function sendNativePush(deviceToken:string,user:any,n:any){
             priority:(user.role==='rider'||n.type==='voice_call')?'high':'normal',
             notification:{channel_id:'queuego_orders_v2',sound:'default'}
           }
-        }
+        })
       }),
       signal:AbortSignal.timeout(10000)
     }
@@ -163,7 +195,7 @@ async function config(){
 }
 async function notificationAndUser(userId:string,notificationId:string){
   const [{data:n,error:nError},{data:user,error:uError}]=await Promise.all([
-    admin.from('notifications').select('id,user_id,title,message,type,reference_id').eq('id',notificationId).single(),
+    admin.from('notifications').select('id,user_id,title,message,type,reference_id,created_at').eq('id',notificationId).single(),
     admin.from('users').select('role,status,auth_user_id').eq('id',userId).single()
   ]);
   if(nError||uError||!n||!user||n.user_id!==userId||user.status!=='active'||!allowedRoles.has(user.role)){
@@ -213,7 +245,7 @@ Deno.serve(async(req)=>{
                   .maybeSingle();
                 status=active.error||!active.data
                   ?410
-                  :await sendNativePush(t.token,context.user,context.n);
+                  :await sendNativePush(t.token,context.user,context.n,t.session_id,t.platform);
               }
             }
           }else{
@@ -321,8 +353,10 @@ Deno.serve(async(req)=>{
     if(!/^[0-9a-f-]{36}$/i.test(input.deviceId||''))return respond({error:'invalid device'},400);
 
     if(input.action==='unsubscribe-native'){
+      // Release this app-install binding before the app session is revoked. Keep the
+      // stable device id so the same physical install can safely bind another account.
       const result=await admin.from('qg_native_push_tokens')
-        .update({enabled:false,updated_at:new Date().toISOString()})
+        .update({enabled:false,session_id:null,updated_at:new Date().toISOString()})
         .eq('id',input.deviceId).eq('user_id',user.id);
       if(result.error)throw result.error;
       return respond({ok:true});
@@ -345,9 +379,6 @@ Deno.serve(async(req)=>{
         if(activeSession.error)throw activeSession.error;
         if(!activeSession.data)return respond({error:'active session required'},403);
       }else{
-        // Backward compatibility for already-installed Native clients that predate
-        // sessionId. Derive only when the authenticated user has exactly one live
-        // app session; never guess when session ownership is ambiguous.
         const legacySessions=await admin.from('user_active_sessions')
           .select('session_id')
           .eq('user_id',auth.data.user.id)
@@ -359,18 +390,45 @@ Deno.serve(async(req)=>{
         sessionId=String(legacySessions.data![0].session_id||'');
         if(!uuid(sessionId))return respond({error:'active session required'},403);
       }
-      // Native FCM registration must bootstrap qg_push_config as well.
-      // qg_wake_push() reads its worker_token from this row before it can invoke the worker.
+
       await config();
-      const deviceRow=await admin.from('qg_native_push_tokens').select('user_id').eq('id',input.deviceId).maybeSingle();
-      if(deviceRow.error)throw deviceRow.error;
-      if(deviceRow.data&&deviceRow.data.user_id!==user.id)return respond({error:'device unavailable'},403);
-      const duplicate=await admin.from('qg_native_push_tokens').select('id,user_id').eq('token',nativeToken).maybeSingle();
-      if(duplicate.error)throw duplicate.error;
-      if(duplicate.data&&duplicate.data.user_id!==user.id)return respond({error:'token unavailable'},403);
-      const id=duplicate.data?.id||input.deviceId;
-      const result=await admin.from('qg_native_push_tokens').upsert({
-        id,
+      const [deviceRow,duplicate]=await Promise.all([
+        admin.from('qg_native_push_tokens')
+          .select('id,user_id,platform,token,enabled,session_id')
+          .eq('id',input.deviceId).maybeSingle(),
+        admin.from('qg_native_push_tokens')
+          .select('id,user_id,platform,token,enabled,session_id')
+          .eq('token',nativeToken).maybeSingle()
+      ]);
+      if(deviceRow.error||duplicate.error)throw deviceRow.error||duplicate.error;
+
+      let plan=nativeRegistrationCandidate(user.id,input.deviceId,platform,deviceRow.data,duplicate.data);
+      if(plan.error)return respond({error:plan.error},plan.status||403);
+
+      if(plan.mode==='foreign'){
+        let previousBindingActive=false;
+        if(plan.expectedSessionId&&uuid(plan.expectedSessionId)){
+          const previousUser=await admin.from('users')
+            .select('auth_user_id')
+            .eq('id',plan.previousUserId)
+            .maybeSingle();
+          if(previousUser.error)throw previousUser.error;
+          if(previousUser.data?.auth_user_id){
+            const binding=await admin.from('user_active_sessions')
+              .select('session_id')
+              .eq('user_id',previousUser.data.auth_user_id)
+              .eq('session_id',plan.expectedSessionId)
+              .is('revoked_at',null)
+              .maybeSingle();
+            if(binding.error)throw binding.error;
+            previousBindingActive=!!binding.data;
+          }
+        }
+        plan=finalizeNativeRegistration(plan,previousBindingActive);
+        if(plan.error)return respond({error:plan.error},plan.status||403);
+      }
+
+      const nextRow={
         user_id:user.id,
         role:user.role,
         platform,
@@ -378,9 +436,28 @@ Deno.serve(async(req)=>{
         session_id:sessionId,
         enabled:true,
         updated_at:new Date().toISOString()
+      };
+      if(plan.mode==='reclaim'){
+        let transfer=admin.from('qg_native_push_tokens')
+          .update(nextRow)
+          .eq('id',plan.id)
+          .eq('user_id',plan.expectedOwner);
+        transfer=plan.expectedSessionId
+          ?transfer.eq('session_id',plan.expectedSessionId)
+          :transfer.is('session_id',null);
+        if(plan.expectedToken)transfer=transfer.eq('token',plan.expectedToken);
+        const moved=await transfer.select('id').maybeSingle();
+        if(moved.error)throw moved.error;
+        if(!moved.data)return respond({error:'registration changed; retry'},409);
+        return respond({ok:true,deviceId:plan.id,role:user.role,reclaimed:true});
+      }
+
+      const result=await admin.from('qg_native_push_tokens').upsert({
+        id:plan.id,
+        ...nextRow
       },{onConflict:'id'});
       if(result.error)throw result.error;
-      return respond({ok:true,deviceId:id,role:user.role});
+      return respond({ok:true,deviceId:plan.id,role:user.role});
     }
 
     if(input.action==='unsubscribe'){
