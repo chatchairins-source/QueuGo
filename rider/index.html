@@ -2839,7 +2839,6 @@ function qgStartMessageWatch(){
 
 </script>
 <script src="reliability.js?v=20261023-laundryfix1"></script>
-<script>boot();</script>
 <script id="qg-rider-order-actions">
 /* Cash order transitions use server transactions so the merchant receipt and COD payment stay consistent. */
 window.statusFromRow=function(row){
@@ -2947,9 +2946,8 @@ window.advanceOrder=async function(o){
 
 
 </script>
-<script src="rider-express.js?v=20261018-web2"></script>
+<script src="rider-express.js?v=20261115-cash-confirm1"></script>
 <script src="rider-ride.js?v=20261023-ridefix1"></script>
-<script>window.qgDeferredBoot?.();</script>
 <script id="qg-rider-inbox">
 (function(){
  const key=()=>S.user?.id?'qg-rider-history:'+S.user.id:null;
@@ -3144,4 +3142,5 @@ window.qgRenderEarnings=function(){
 
 })();
 </script>
+<script>window.qgDeferredBoot?.();</script>
 </body></html>

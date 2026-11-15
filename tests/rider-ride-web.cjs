@@ -2,7 +2,7 @@ const fs=require('node:fs'),assert=require('node:assert/strict');
 const html=fs.readFileSync('rider/index.html','utf8'),ride=fs.readFileSync('rider/rider-ride.js','utf8');
 let checks=0;const ok=(v,m)=>{assert(v,m);checks++;};
 ok(html.includes("fulfillment_vertical.eq.ride")&&html.includes("fulfillment_vertical.eq.express"),'Rider snapshot/history must include Passenger Ride without dropping Express');
-ok(html.includes('rider-express.js?v=20261018-web2')&&html.includes('rider-ride.js?v=20261018-web1')&&html.indexOf('rider-ride.js')<html.indexOf('window.qgDeferredBoot?.()'),'Ride parity must load after Express parity and before Rider boot');
+ok(html.includes('rider-express.js?v=20261115-cash-confirm1')&&html.includes('rider-ride.js?v=20261018-web1')&&html.indexOf('rider-ride.js')<html.indexOf('window.qgDeferredBoot?.()'),'Ride parity must load after Express parity and before Rider boot');
 ok(ride.includes("fulfillment_vertical==='ride'")&&ride.includes('rider_delivery_payout'),'Passenger Ride income must use server-owned Rider payout');
 ok(ride.includes("qgRiderActionOnce('ride'")&&ride.includes("'arrive_pickup'")&&ride.includes("'start'")&&ride.includes("'arrive_dropoff'")&&ride.includes("'complete'"),'Rider Web Ride must use the authoritative action-once lifecycle');
 ok(ride.includes("result.status==='searching_rider'")&&ride.includes('ส่งเที่ยวกลับไปหาคนขับใหม่แล้ว'),'Pre-pickup eligibility/credit requeue must be surfaced and reconciled');
