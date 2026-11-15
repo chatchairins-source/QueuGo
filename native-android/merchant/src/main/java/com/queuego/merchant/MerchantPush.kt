@@ -85,6 +85,14 @@ internal fun merchantPushTargetsShop(data: Map<String, String>, currentShopId: S
     return audiences.all { it.isNotBlank() && it == currentShopId }
 }
 
+// Conflicting payload aliases must never route a notification tap to an arbitrary order.
+internal fun merchantPushReferenceId(data: Map<String, String>): String? {
+    val references = listOfNotNull(data["referenceId"], data["reference_id"])
+    if (references.any { it.isBlank() }) return null
+    if (references.distinct().size > 1) return null
+    return references.firstOrNull().orEmpty()
+}
+
 internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): Int =
     ("shop:" + shopId + "|message:" + messageKey).hashCode()
 
@@ -187,7 +195,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         ensureMerchantNotificationChannel(this)
         val title = message.notification?.title ?: message.data["title"] ?: "QueueGo"
         val body = message.notification?.body ?: message.data["message"] ?: "มีรายการอัปเดตใน QueueGo"
-        val referenceId = message.data["referenceId"] ?: message.data["reference_id"] ?: ""
+        val referenceId = merchantPushReferenceId(message.data) ?: return
         val type = message.data["type"].orEmpty()
         val notificationId = merchantPushIntentRequestCode(
             cached.user.id,
