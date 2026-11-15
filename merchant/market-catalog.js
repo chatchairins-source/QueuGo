@@ -170,7 +170,15 @@ async function load(){
     // Keep the search control mounted on network failure so the merchant can retry typing.
     if(focusedSearch||focusedCategory){
       const status=document.getElementById('market-catalog-status');
-      if(status)status.textContent='โหลดแคตตาล็อกไม่สำเร็จ ลองค้นหาอีกครั้ง';
+      if(status){
+        status.textContent='โหลดแคตตาล็อกไม่สำเร็จ ';
+        const retry=document.createElement('button');
+        retry.type='button';
+        retry.className='qgm-outline';
+        retry.textContent='ลองโหลดแคตตาล็อกอีกครั้ง';
+        retry.addEventListener('click',()=>qgRenderMarketCatalog());
+        status.appendChild(retry);
+      }
     }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p><button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">ลองโหลดแคตตาล็อกอีกครั้ง</button>');
     error(e);
   }}
