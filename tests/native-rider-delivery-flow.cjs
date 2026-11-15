@@ -50,7 +50,7 @@ assert(passenger.includes('RiderSwipeCompleteAction(')&&
   passenger.includes('onComplete = { onAction(key) }')&&
   passengerTest.includes('passengerCompletionRequiresAValidCashAmountBeforeTheConfirmationSwipe'),
   'Passenger Ride must require cash confirmation swipe and cover invalid cash boundaries');
-assert(webRide.includes("mode:'customer',amount:cash")&&webRide.includes('จบเที่ยว · เก็บเงินสด ฿'),
+assert(webRide.includes("const cash=Number(o?.total_amount)")&&webRide.includes("!Number.isFinite(cash)||cash<0")&&webRide.includes('จบเที่ยว · เก็บเงินสด ฿'),
   'Passenger Ride completion must match the Web-confirmed cash amount and action wording');
 
 require('./native-rider-google-maps-return.cjs');
