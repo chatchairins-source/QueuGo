@@ -176,6 +176,10 @@ window.qgMarketCatalogPage=dir=>{if(state.loading)return;const input=document.ge
 window.qgMarketCatalogChoose=id=>{
   const currentShop=shop();
   if(!currentShop||!permitted(currentShop)||profileId(currentShop)!==state.shop||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
+  // A newly typed search is not committed until debounce fires. Do not let a
+  // stale visible card open the add form for a product outside that query.
+  const typedQuery=document.getElementById('market-catalog-search')?.value;
+  if(typedQuery!=null&&String(typedQuery).trim()!==state.query)return;
   const r=state.rows.find(x=>x.id===id);if(!r||r.product_id)return;
   const card=[...document.querySelectorAll('[data-market-id]')].find(x=>x.getAttribute('data-market-id')===String(id));
   const inlinePrice=Number(card?.querySelector('[data-market-price]')?.value),inlineStock=Number(card?.querySelector('[data-market-stock]')?.value);
