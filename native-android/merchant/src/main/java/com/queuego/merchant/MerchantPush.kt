@@ -68,11 +68,17 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
 
 // Character.isWhitespace on UTF-16 code units misses supplementary Unicode format
 // characters (for example U+E0001 LANGUAGE TAG). Validate whole code points.
-internal fun merchantPushHasInvisibleCodePoint(value: String): Boolean =
-    value.codePoints().anyMatch { cp ->
-        Character.isWhitespace(cp) || Character.isISOControl(cp) ||
+internal fun merchantPushHasInvisibleCodePoint(value: String): Boolean {
+    var index = 0
+    while (index < value.length) {
+        val cp = Character.codePointAt(value, index)
+        if (Character.isWhitespace(cp) || Character.isISOControl(cp) ||
             Character.getType(cp) == Character.FORMAT.toInt()
+        ) return true
+        index += Character.charCount(cp)
     }
+    return false
+}
 
 // FCM registration tokens are opaque, non-whitespace values; never send malformed payloads.
 internal fun merchantUsableFcmToken(raw: String): String? =
