@@ -92,13 +92,18 @@ assert(webMap.includes("'symbol-spacing':80")&&
   mapMotion.includes('fromScreenLocation(')&&
   mapMotion.includes('android.graphics.PointF(x.toFloat(), y.toFloat())')&&
   !mapMotion.includes('distance += 65.0'));
-assert(webRider.includes("background:'+(done?'#94a3b8':'#16a34a')")&&
-  webRider.includes("background:#16a34a")&&webRider.includes("background:#e6002d")&&
+const webStopMarker=webRider.match(/function qgStopMarkerHtml\(number,kind,done=false\)\{[\s\S]*?\n\}/)?.[0]||'';
+const stopPalette=webStopMarker.match(/const pickup=kind==='shop',color=done\?'(#[0-9a-f]{6})':pickup\?'(#[0-9a-f]{6})':'(#[0-9a-f]{6})';/);
+const stopRgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)).join(', ');
+assert(stopPalette&&webStopMarker.includes("background:'+color+'")&&
+  mapMotion.includes(`PropertyFactory.circleColor(android.graphics.Color.rgb(${stopRgb(stopPalette[1])}))`)&&
+  mapMotion.includes(`PropertyFactory.circleColor(android.graphics.Color.rgb(${stopRgb(stopPalette[2])}))`)&&
+  mapMotion.includes(`PropertyFactory.circleColor(android.graphics.Color.rgb(${stopRgb(stopPalette[3])}))`)&&
   mapMotion.includes('PropertyFactory.circleRadius(10f)')&&
   mapMotion.includes('PropertyFactory.circleRadius(8f)')&&
-  mapMotion.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(148, 163, 184))')&&
   mapMotion.includes('val stops = state.stops.asSequence()')&&
-  mapMotion.includes('.filter { it.point.valid && it.id.isNotBlank() && it.sequence > 0 }'));
+  mapMotion.includes('.filter { it.point.valid && it.id.isNotBlank() && it.sequence > 0 }'),
+  'Web and Native Rider must share completed/shop/customer stop colors and valid route stop layers');
 assert(webRider.includes('const RIDER_ROUTE_OFF_ROUTE_METERS=30')&&
   webRider.includes('const RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000')&&
   webRider.includes('const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000')&&
