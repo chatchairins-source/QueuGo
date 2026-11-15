@@ -208,7 +208,10 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
             .build()
         runCatching {
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(
-                (message.messageId ?: referenceId.ifBlank { System.currentTimeMillis().toString() }).hashCode(),
+                merchantPushIntentRequestCode(
+                    cached.user.id,
+                    message.messageId ?: referenceId.ifBlank { System.currentTimeMillis().toString() }
+                ),
                 notification
             )
         }
