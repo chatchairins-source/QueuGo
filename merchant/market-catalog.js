@@ -171,7 +171,7 @@ async function load(){
     if(focusedSearch||focusedCategory){
       const status=document.getElementById('market-catalog-status');
       if(status)status.textContent='โหลดแคตตาล็อกไม่สำเร็จ ลองค้นหาอีกครั้ง';
-    }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p>');
+    }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p><button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">ลองโหลดแคตตาล็อกอีกครั้ง</button>');
     error(e);
   }}
   finally{if(active(epoch,id))state.loading=false}
