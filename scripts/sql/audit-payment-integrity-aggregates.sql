@@ -5,7 +5,7 @@ WITH per_order AS (
   SELECT p.order_id,
          count(*) AS attempts,
          count(*) FILTER (
-           WHERE lower(p.status) IN ('paid','succeeded','success','completed','captured')
+           WHERE lower(btrim(p.status)) IN ('paid','succeeded','success','completed','captured')
          ) AS successful_attempts
   FROM public.payments AS p
   WHERE p.order_id IS NOT NULL
