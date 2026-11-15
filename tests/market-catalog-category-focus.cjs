@@ -12,7 +12,7 @@ assert.match(load,/const focusedCategory=document\.activeElement\?\.id==='market
 const focusStart=load.indexOf('    if(focusedSearch){\n      const input=document.getElementById',load.indexOf('    paint();'));
 const focusEnd=load.indexOf('\n  }catch(e)',focusStart);
 assert.ok(focusStart>=0&&focusEnd>focusStart,'focus restoration follows repaint');
-const snippet=load.slice(focusStart,focusEnd);
+const snippet=load.slice(focusStart,focusEnd).replace(/\n  \}$/, '');
 function run(focusedSearch,focusedCategory){
   const calls=[];
   const elements={
