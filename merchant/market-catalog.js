@@ -127,6 +127,7 @@ async function load(){
   const u=shop(),id=profileId(u);
   if(!u||!id||!permitted(u)){++state.epoch;state.shop=null;state.loading=false;state.gpRate=null;state.rows=[];state.categories=[];state.hasMore=false;shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
   const focusedSearch=document.activeElement?.id==='market-catalog-search';
+  const focusedCategory=document.activeElement?.id==='market-catalog-category';
   const epoch=++state.epoch;state.shop=id;state.loading=true;
   // Preserve the search field while filtering; replacing it on every keystroke drops keyboard focus.
   if(!focusedSearch)shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
@@ -157,6 +158,10 @@ async function load(){
       const input=document.getElementById('market-catalog-search');
       input?.focus({preventScroll:true});
       if(selection)try{input?.setSelectionRange(...selection)}catch(_){}
+    }else if(focusedCategory){
+      // Repainting after a keyboard category change replaces the select node.
+      // Restore focus so keyboard users can continue navigating the catalog.
+      document.getElementById('market-catalog-category')?.focus({preventScroll:true});
     }
   }catch(e){if(active(epoch,id)){
     // Keep the search control mounted on network failure so the merchant can retry typing.
