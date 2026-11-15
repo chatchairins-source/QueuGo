@@ -144,11 +144,18 @@ async function load(){
     state.gpRate=gp;
     state.categories=(Array.isArray(cats)?cats:[]).filter(c=>MARKET_MASTER_CATEGORIES.has(String(c?.category||'')));
     const rows=(Array.isArray(page)?page:[]).filter(r=>MARKET_MASTER_CATEGORIES.has(String(r?.category||'')));
-    state.hasMore=rows.length>50;state.rows=rows.slice(0,50);paint();
+    state.hasMore=rows.length>50;state.rows=rows.slice(0,50);
+    // The user may still be typing while this request is in flight. Never replace
+    // their newer input with an older query or move their insertion point.
+    const currentInput=focusedSearch?document.getElementById('market-catalog-search'):null;
+    if(currentInput&&currentInput.value.trim()!==state.query)return;
+    const selection=currentInput&&Number.isInteger(currentInput.selectionStart)&&Number.isInteger(currentInput.selectionEnd)
+      ? [currentInput.selectionStart,currentInput.selectionEnd,currentInput.selectionDirection||'none'] : null;
+    paint();
     if(focusedSearch){
       const input=document.getElementById('market-catalog-search');
       input?.focus({preventScroll:true});
-      try{input?.setSelectionRange(input.value.length,input.value.length)}catch(_){}
+      if(selection)try{input?.setSelectionRange(...selection)}catch(_){}
     }
   }catch(e){if(active(epoch,id)){shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p>');error(e)}}
   finally{if(active(epoch,id))state.loading=false}
