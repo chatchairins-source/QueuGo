@@ -75,6 +75,16 @@ internal fun merchantUsableFcmToken(raw: String): String? =
 internal fun merchantPushRefreshPreflight(auth: NativeAuth, rawToken: String, nowMs: Long): Boolean =
     merchantUsableFcmToken(rawToken) != null && merchantPushNotificationSessionActive(auth, nowMs)
 
+// A token can remain registered briefly after a shop switch. Drop messages explicitly
+// addressed to another shop instead of showing its order details to the new account.
+// Legacy messages without an audience field retain their existing behavior.
+internal fun merchantPushTargetsShop(data: Map<String, String>, currentShopId: String): Boolean {
+    if (currentShopId.isBlank()) return false
+    val audiences = listOf("shopId", "shop_id", "merchantId", "merchant_id")
+        .mapNotNull { key -> data[key] }
+    return audiences.all { it.isNotBlank() && it == currentShopId }
+}
+
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
@@ -158,6 +168,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         super.onMessageReceived(message)
         val cached = SecureRoleSessionStore(applicationContext, "shop").load() ?: return
         if (!merchantPushNotificationSessionActive(cached, System.currentTimeMillis())) return
+        if (!merchantPushTargetsShop(message.data, cached.user.id)) return
         if (
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
