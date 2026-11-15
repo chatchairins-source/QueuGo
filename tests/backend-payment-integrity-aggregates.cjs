@@ -12,5 +12,9 @@ for (const signal of ['payment_rows','orders_with_multiple_payment_rows','orders
 }
 assert.doesNotMatch(sql, /\b(insert\s+into|update\s+\w+\s+set|delete\s+from|alter\s+table|drop\s+table|truncate\s+table|grant\s+|revoke\s+)\b/i);
 assert.doesNotMatch(sql, /SELECT\s+\*/i);
-assert.doesNotMatch(sql, /\b(group by|select)\s+p\.order_id\b/i);
+// Per-order grouping inside the CTE is required; only the outward projection must be aggregate-only.
+const outerSelect = sql.slice(sql.lastIndexOf('\nSELECT\n') + 1);
+assert.match(outerSelect, /^SELECT\s*\n/i);
+assert.doesNotMatch(outerSelect, /\b(?:SELECT|GROUP BY)\s+p\.order_id\b/i);
+assert.doesNotMatch(outerSelect, /\bAS\s+(?:order_id|customer_id|user_id)\b/i);
 console.log('Payment integrity aggregate audit contract: passed (static checks only)');
