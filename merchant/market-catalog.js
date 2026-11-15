@@ -141,14 +141,15 @@ async function load(){
       qgMarketReadGpRate(id)
     ]);
     if(!active(epoch,id))return;
+    // A newer typed query must not publish old rows into shared state: stale
+    // cards can still be selected while the debounce timer is pending.
+    const currentInput=focusedSearch?document.getElementById('market-catalog-search'):null;
+    if(currentInput&&currentInput.value.trim()!==state.query)return;
     state.gpRate=gp;
     state.categories=(Array.isArray(cats)?cats:[]).filter(c=>MARKET_MASTER_CATEGORIES.has(String(c?.category||'')));
     const rows=(Array.isArray(page)?page:[]).filter(r=>MARKET_MASTER_CATEGORIES.has(String(r?.category||'')));
     state.hasMore=rows.length>50;state.rows=rows.slice(0,50);
-    // The user may still be typing while this request is in flight. Never replace
-    // their newer input with an older query or move their insertion point.
-    const currentInput=focusedSearch?document.getElementById('market-catalog-search'):null;
-    if(currentInput&&currentInput.value.trim()!==state.query)return;
+    // Preserve keyboard selection while repainting the settled query.
     const selection=currentInput&&Number.isInteger(currentInput.selectionStart)&&Number.isInteger(currentInput.selectionEnd)
       ? [currentInput.selectionStart,currentInput.selectionEnd,currentInput.selectionDirection||'none'] : null;
     paint();
