@@ -12,7 +12,7 @@ function invoke(loading){
   let authReads=0;
   const context={
     window:{},
-    state:{loading,shop:'shop-a',query:'apple'},
+    state:{loading,resultsReady:true,shop:'shop-a',query:'apple'},
     shop:()=>{authReads++;return {type:'shop',shopProfileId:'shop-a'};},
     permitted:()=>true,profileId:u=>u.shopProfileId,
     location:{hash:'#market-catalog'},
