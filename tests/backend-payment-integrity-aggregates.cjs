@@ -11,11 +11,13 @@ assert.match(sql, /lower\(btrim\(p\.status\)\)\s+IN\s*\('paid','succeeded','succ
 assert.match(sql, /FROM public\.payments/i);
 assert.match(sql, /LEFT JOIN public\.orders/i);
 assert.match(sql, /p\.order_id IS NOT NULL AND o\.id IS NULL/i);
-for (const signal of ['payment_rows','payments_without_order_id','payments_without_status','payments_with_nonpositive_amount','payments_without_method','orders_with_multiple_payment_rows','duplicate_nonblank_transaction_references','orders_with_multiple_successful_payments','payment_orphans']) {
+for (const signal of ['payment_rows','payments_with_nonblank_transaction_reference','payments_without_transaction_reference','payments_without_order_id','payments_without_status','payments_with_nonpositive_amount','payments_without_method','orders_with_multiple_payment_rows','duplicate_nonblank_transaction_references','orders_with_multiple_successful_payments','payment_orphans']) {
   assert.match(sql, new RegExp('AS\\s+' + signal + '\\b', 'i'));
 }
 assert.doesNotMatch(sql, /\b(insert\s+into|update\s+\w+\s+set|delete\s+from|alter\s+table|drop\s+table|truncate\s+table|grant\s+|revoke\s+)\b/i);
 assert.doesNotMatch(sql, /SELECT\s+\*/i);
+assert.match(sql, /FROM public\.payments WHERE transaction_reference IS NOT NULL AND btrim\(transaction_reference\) <> ''/i);
+assert.match(sql, /FROM public\.payments WHERE transaction_reference IS NULL OR btrim\(transaction_reference\) = ''/i);
 assert.match(sql, /FROM public\.payments WHERE order_id IS NULL/i);
 assert.match(sql, /FROM public\.payments WHERE status IS NULL OR btrim\(status\) = ''/i);
 assert.match(sql, /FROM public\.payments WHERE amount IS NULL OR amount <= 0/i);
