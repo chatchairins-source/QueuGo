@@ -92,6 +92,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
 
  let now=100000,requests=[],gate=null,serial=0;
  const timers=new Map(),routeAdds=[],routeRemoves=[],fits=[],destroyed=[],badge={style:{}},label={textContent:''};
+ const speedLimitSign={hidden:true,textContent:'',attributes:{},setAttribute(name,value){this.attributes[name]=value}};
  const map={id:'queuego-map'};
  const cameraModes=[],cameraFollows=[];
  const Q={
@@ -116,7 +117,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const routeService={call:async(action,body,options)=>{requests.push({action,body,options});if(gate)return gate.promise;return routeResponse}};
  const ctx=vm.createContext({
   S,window:{QueueGoMapWeb:Q,QueueGoMapService:routeService},Date:class extends Date{static now(){return now}},Promise,AbortController,Number,String,JSON,encodeURIComponent,
-  document:{hidden:false,getElementById:id=>id==='route-badge'?badge:label},
+  document:{hidden:false,getElementById:id=>id==='route-badge'?badge:id==='qg-speed-limit'?speedLimitSign:label},
   navigator:{onLine:true},
   riderSessionMatches:s=>s===S.session,statusFromRow:o=>o.status,haversineKm:(a,b,c,d)=>Math.hypot(a-c,b-d)*111,
   setTimeout:f=>{timers.set(++serial,f);return serial},clearTimeout:id=>timers.delete(id)
@@ -157,6 +158,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
 
  gate=deferred();
  const first=run('drawActiveRoute()');
+ eq(speedLimitSign.hidden,true);eq(speedLimitSign.attributes['aria-label'],'');
  for(let i=0;i<20;i++)run('drawActiveRoute()');
  eq(requests.length,1);
  eq(requests[0].action,'route');
