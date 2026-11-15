@@ -40,6 +40,7 @@ ok(html.includes('await restoreNavigation()'),'route restoration performed after
 ok(html.includes('try{await restoreNavigation()}finally{window.QueueGoMapView.restored=true}'),'restoration settles even on failure');
 ok(html.includes('const NAVIGATION_STORAGE_KEY="queuego_map_navigation_v1"'),'route intent persisted');
 ok(html.includes('if(typeof packageInfo!=="undefined"&&packageInfo)'),'standalone search runtime remains callable');
+ok(html.includes('if(!packageInfo)window.QueueGoMapWeb?.attachPlaces?.(map);'),'Supabase POI overlay disabled when local package is installed');
 
 (async()=>{
   const points=[{lat:14.9918756,lon:103.0994795},{lat:15.0088319,lon:103.1300059}];
