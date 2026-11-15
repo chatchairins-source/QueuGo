@@ -112,7 +112,7 @@ internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): 
 // must not reuse an old tap target when two unrelated notifications arrive.
 internal fun merchantPushMessageKey(messageId: String?, referenceId: String, type: String, fallbackId: String): String =
     messageId?.takeIf { it.isNotBlank() }?.let { "fcm:$it" }
-        ?: referenceId.takeIf { it.isNotBlank() }?.let { "reference:$it|type:$type" }
+        ?: referenceId.takeIf { it.isNotBlank() }?.let { "reference:${it.length}:$it|type:${type.length}:$type" }
         ?: "unidentified:$fallbackId"
 
 // Do not surface a delayed order alert after its FCM delivery lifetime has elapsed.

@@ -67,6 +67,16 @@ class MerchantPushIntentIsolationTest {
         )
     }
 
+    @Test fun delimiterCharactersCannotAliasDifferentFallbackIdentityFields() {
+        val first = merchantPushMessageKey(null, "order|type:paid", "updated", "unused")
+        val second = merchantPushMessageKey(null, "order", "paid|type:updated", "unused")
+        assertNotEquals(first, second)
+        assertNotEquals(
+            merchantPushIntentRequestCode("shop-a", first),
+            merchantPushIntentRequestCode("shop-a", second)
+        )
+    }
+
     @Test fun sameReferenceAndTypeHaveStableIdentityWithoutFcmId() {
         assertEquals(
             merchantPushMessageKey(null, "order-1", "accepted", "first"),
