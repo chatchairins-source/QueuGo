@@ -171,7 +171,7 @@ window.qgRenderMarketCatalog=load;
 window.qgMarketCatalogSearch=e=>{e?.preventDefault?.();clearTimeout(searchTimer);searchTimer=null;state.query=String(document.getElementById('market-catalog-search')?.value||'').trim();state.category=String(document.getElementById('market-catalog-category')?.value||'');state.offset=0;load()};
 window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);const queuedShop=profileId(shop());searchTimer=setTimeout(()=>{if(location.hash.replace('#','').split('/')[0]!=='market-catalog'||!queuedShop||profileId(shop())!==queuedShop)return;state.query=String(value||'').trim();state.offset=0;load()},300)};
 window.qgMarketCatalogSetCategory=category=>{clearTimeout(searchTimer);searchTimer=null;const input=document.getElementById('market-catalog-search');if(input)state.query=String(input.value||'').trim();state.category=String(category||'');state.offset=0;load()};
-window.qgMarketCatalogPage=dir=>{if(state.loading)return;const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
+window.qgMarketCatalogPage=dir=>{if(state.loading)return;const input=document.getElementById('market-catalog-search');const typedQuery=input?String(input.value||'').trim():state.query;if(typedQuery!==state.query){clearTimeout(searchTimer);searchTimer=null;state.query=typedQuery;state.offset=0;load();return;}const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
 window.qgMarketCatalogChoose=id=>{
   const currentShop=shop();
   if(!currentShop||!permitted(currentShop)||profileId(currentShop)!==state.shop||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
