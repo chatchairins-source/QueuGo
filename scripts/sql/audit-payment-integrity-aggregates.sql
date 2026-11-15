@@ -22,6 +22,7 @@ SELECT
   (SELECT count(*) FROM public.payments WHERE transaction_reference IS NULL OR btrim(transaction_reference) = '') AS payments_without_transaction_reference,
   (SELECT count(*) FROM public.payments WHERE (transaction_reference IS NULL OR btrim(transaction_reference) = '') AND lower(btrim(status)) IN ('paid','succeeded','success','completed','captured')) AS successful_payments_without_transaction_reference,
   (SELECT count(*) FROM public.payments WHERE order_id IS NULL) AS payments_without_order_id,
+  (SELECT count(*) FROM public.payments WHERE order_id IS NULL AND lower(btrim(status)) IN ('paid','succeeded','success','completed','captured')) AS successful_payments_without_order_id,
   (SELECT count(*) FROM public.payments WHERE status IS NULL OR btrim(status) = '') AS payments_without_status,
   (SELECT count(*) FROM public.payments WHERE amount IS NULL OR amount <= 0) AS payments_with_nonpositive_amount,
   (SELECT count(*) FROM public.payments WHERE payment_method IS NULL OR btrim(payment_method) = '') AS payments_without_method,
