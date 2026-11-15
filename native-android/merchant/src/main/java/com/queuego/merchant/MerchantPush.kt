@@ -66,14 +66,20 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
         auth.session.accessToken.isNotBlank() &&
         auth.session.expiresAtMs > nowMs
 
+// Character.isWhitespace on UTF-16 code units misses supplementary Unicode format
+// characters (for example U+E0001 LANGUAGE TAG). Validate whole code points.
+internal fun merchantPushHasInvisibleCodePoint(value: String): Boolean =
+    value.codePoints().anyMatch { cp ->
+        Character.isWhitespace(cp) || Character.isISOControl(cp) ||
+            Character.getType(cp) == Character.FORMAT.toInt()
+    }
+
 // FCM registration tokens are opaque, non-whitespace values; never send malformed payloads.
 internal fun merchantUsableFcmToken(raw: String): String? =
     // Firebase registration tokens are opaque: trimming changes the token sent to the API.
     // Reject surrounding whitespace rather than silently registering a different value.
     raw.takeIf { token ->
-        token.length >= 16 && merchantPushWellFormedUtf16(token) && token.none {
-            it.isWhitespace() || it.isISOControl() || Character.getType(it) == Character.FORMAT.toInt()
-        }
+        token.length >= 16 && merchantPushWellFormedUtf16(token) && !merchantPushHasInvisibleCodePoint(token)
     }
 
 // Skip Auth validation and token registration for a cached session that is already invalid.
@@ -116,16 +122,13 @@ internal fun merchantPushMetadataWellFormed(messageId: String?, type: String): B
 // FCM identifiers and event types are machine-readable routing keys, not display text.
 // Reject invisible controls and whitespace before using them in tap navigation or identity.
 private fun merchantPushOpaqueMetadataSafe(value: String): Boolean =
-    merchantPushWellFormedUtf16(value) && value.none { char ->
-        char.isWhitespace() || char.isISOControl() ||
-            Character.getType(char) == Character.FORMAT.toInt()
-    }
+    merchantPushWellFormedUtf16(value) && !merchantPushHasInvisibleCodePoint(value)
 
 internal fun merchantPushReferenceId(data: Map<String, String>): String? {
     val references = listOfNotNull(data["referenceId"], data["reference_id"])
     // Order references are opaque identifiers, not free-form display text. Reject malformed
     // values rather than forwarding invisible controls, Unicode format characters or whitespace to the order screen.
-    if (references.any { it.isBlank() || !merchantPushWellFormedUtf16(it) || it.any { char -> char.isWhitespace() || char.isISOControl() || Character.getType(char) == Character.FORMAT.toInt() } }) return null
+    if (references.any { it.isBlank() || !merchantPushWellFormedUtf16(it) || merchantPushHasInvisibleCodePoint(it) }) return null
     if (references.distinct().size > 1) return null
     return references.firstOrNull().orEmpty()
 }
