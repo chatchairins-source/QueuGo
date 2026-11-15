@@ -174,6 +174,8 @@ window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);const queued
 window.qgMarketCatalogSetCategory=category=>{clearTimeout(searchTimer);searchTimer=null;const input=document.getElementById('market-catalog-search');if(input)state.query=String(input.value||'').trim();state.category=String(category||'');state.offset=0;load()};
 window.qgMarketCatalogPage=dir=>{if(state.loading)return;const input=document.getElementById('market-catalog-search');const typedQuery=input?String(input.value||'').trim():state.query;if(typedQuery!==state.query){clearTimeout(searchTimer);searchTimer=null;state.query=typedQuery;state.offset=0;load();return;}const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
 window.qgMarketCatalogChoose=id=>{
+  // Rows remain visible while an in-flight search loads; never select an old result.
+  if(state.loading)return;
   const currentShop=shop();
   if(!currentShop||!permitted(currentShop)||profileId(currentShop)!==state.shop||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
   // A newly typed search is not committed until debounce fires. Do not let a
