@@ -259,8 +259,10 @@
 
   <script src="https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js"></script>
   <script src="../queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024&boundary=20261025"></script>
+  <script src="queuego-map-service.js"></script>
+  <script src="queuego-map-style.js"></script>
   <script>
-  (function(){
+  (async function(){
     "use strict";
 
     window.QG_SEARCH_CONFIG={url:"https://pkypiqhlrmzocysgeqew.supabase.co",key:"sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre",providers:[]};
@@ -269,9 +271,24 @@
     const OVERPASS=["https://overpass-api.de/api/interpreter","https://overpass.kumi.systems/api/interpreter"];
     const OSRM="https://router.project-osrm.org/route/v1/driving/";
 
+    let packageInfo=null;
+    try{packageInfo=await QueueGoMapService.call("health",{},{timeout:1500})}
+    catch(error){console.warn("QueueGo local map unavailable",error)}
+    if(packageInfo&&packageInfo.vector_map){
+      if(packageInfo.vector_url!=="/map-api/vector.pmtiles")throw Error("Unexpected map vector URL");
+      await new Promise((resolve,reject)=>{
+        const script=document.createElement("script");
+        script.src="../map-assets/pmtiles.js";
+        script.onload=resolve;script.onerror=()=>reject(Error("Installed PMTiles runtime missing"));
+        document.head.appendChild(script);
+      });
+      if(!globalThis.pmtiles||typeof globalThis.pmtiles.Protocol!=="function")throw Error("PMTiles protocol unavailable");
+      const protocol=new globalThis.pmtiles.Protocol();
+      maplibregl.addProtocol("pmtiles",protocol.tile);
+    }
     const map=new maplibregl.Map({
       container:"map",
-      style:{
+      style:packageInfo&&packageInfo.vector_map?QueueGoMapStyle.create(new URL(packageInfo.vector_url,location.href).href):{
         version:8,
         sources:{osm:{type:"raster",tiles:["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],tileSize:256,attribution:"© OpenStreetMap contributors"}},
         layers:[
@@ -514,6 +531,7 @@
       return {samples,avgMps:avg,duration:route.distance/avg};
     }
     function enrichRoute(route){
+      if(packageInfo){route.signalCount=Number(route.signalCount)||0;route.restrictionCount=Number(route.restrictionCount)||0;route.estimatedDuration=Number(route.estimatedDuration)||Number(route.duration)||0;route.historySamples=0;route.historySpeed=null;return route}
       route.signalCount=countSignals(route,state.trafficSignals);
       route.restrictionCount=countRestrictions(route,state.routeRestrictions);
       const history=routeHistory(route);route.historySamples=history.samples;route.historySpeed=history.avgMps;
@@ -549,8 +567,31 @@
       map.addLayer({id:"route-options-case",type:"line",source:"route-options",filter:["==",["get","selected"],true],paint:{"line-color":"#fff","line-width":["interpolate",["linear"],["zoom"],9,7,17,13],"line-opacity":.96}});
       map.addLayer({id:"route-options-selected",type:"line",source:"route-options",filter:["==",["get","selected"],true],paint:{"line-color":"#e6002d","line-width":["interpolate",["linear"],["zoom"],9,4,17,8],"line-opacity":.98}});
     }
+    const NAVIGATION_STORAGE_KEY="queuego_map_navigation_v1";
+    function persistNavigation(){
+      try{
+        if(!state.routeStart||!state.routeEnd){localStorage.removeItem(NAVIGATION_STORAGE_KEY);return}
+        localStorage.setItem(NAVIGATION_STORAGE_KEY,JSON.stringify({version:1,start:state.routeStart,end:state.routeEnd,active:state.navigationActive,selectedRoute:state.selectedRoute,savedAt:Date.now()}));
+      }catch(error){console.warn("Navigation restoration storage unavailable")}
+    }
+    async function restoreNavigation(){
+      try{
+        const value=JSON.parse(localStorage.getItem(NAVIGATION_STORAGE_KEY)||"null");
+        if(!value||value.version!==1||Date.now()-value.savedAt>86400000)return;
+        const valid=p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lon);
+        if(!valid(value.start)||!valid(value.end))return;
+        state.routeStart=value.start;state.routeEnd=value.end;
+        state.routeStartMarker=new maplibregl.Marker({element:markerEl("#191619")}).setLngLat([value.start.lon,value.start.lat]).addTo(map);
+        state.routeEndMarker=new maplibregl.Marker({element:markerEl("#e6002d")}).setLngLat([value.end.lon,value.end.lat]).addTo(map);
+        // Recompute through the installed graph, never trust stale cached geometry/route IDs.
+        await calculateRouteOptions({fit:false});
+        if(!state.routes.length)return;
+        selectRoute(Math.max(0,Math.min(state.routes.length-1,Number(value.selectedRoute)||0)));
+        if(value.active)startNavigation();
+      }catch(error){toast("กู้เส้นทางไม่ได้ · ลองค้นหาเส้นทางใหม่")}
+    }
     function selectRoute(index){
-      state.selectedRoute=index;
+      state.selectedRoute=index;persistNavigation();
       const src=map.getSource("route-options");if(src)src.setData(routeFeatures());
       renderRouteList();
     }
@@ -587,14 +628,21 @@
       toast(options.reroute?"กำลังปรับเส้นทางใหม่":"กำลังหาเส้นทางที่เร็วที่สุด");
       ensureRouteLayers();
       try{
-        const url=OSRM+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?alternatives=true&overview=full&geometries=geojson&steps=true";
-        const r=await fetchTimeout(url,{},20000);if(!r.ok)throw Error("routing "+r.status);
-        const j=await r.json();if(!j.routes||!j.routes.length)throw Error("no routes");
+        let j;
+        if(packageInfo)j=await QueueGoMapService.call("route-alternatives",{points:[a,b]});
+        else{
+          const url=OSRM+a.lon+","+a.lat+";"+b.lon+","+b.lat+"?alternatives=true&overview=full&geometries=geojson&steps=true";
+          const r=await fetchTimeout(url,{},20000);if(!r.ok)throw Error("routing "+r.status);j=await r.json();
+        }
+        if(!j.routes||!j.routes.length)throw Error("no routes");
         state.routes=j.routes.slice(0,3);
         toast("กำลังตรวจไฟจราจรและข้อจำกัดถนน");
-        const intelligence=await Promise.allSettled([loadRouteSignals(state.routes),loadRouteRestrictions(state.routes)]);
-        state.trafficSignals=intelligence[0].status==="fulfilled"?intelligence[0].value:[];
-        state.routeRestrictions=intelligence[1].status==="fulfilled"?intelligence[1].value:[];
+        if(packageInfo){state.trafficSignals=[];state.routeRestrictions=[]}
+        else{
+          const intelligence=await Promise.allSettled([loadRouteSignals(state.routes),loadRouteRestrictions(state.routes)]);
+          state.trafficSignals=intelligence[0].status==="fulfilled"?intelligence[0].value:[];
+          state.routeRestrictions=intelligence[1].status==="fulfilled"?intelligence[1].value:[];
+        }
         state.routes.forEach(enrichRoute);
         state.selectedRoute=state.routes.reduce((best,r,i,a)=>r.estimatedDuration<a[best].estimatedDuration?i:best,0);
         map.getSource("route-options").setData(routeFeatures());
@@ -602,7 +650,7 @@
           const bounds=new maplibregl.LngLatBounds();state.routes.forEach(r=>(r.geometry.coordinates||[]).forEach(c=>bounds.extend(c)));
           map.fitBounds(bounds,{padding:{top:60,bottom:190,left:38,right:38},maxZoom:16,duration:500});
         }
-        renderRouteList();
+        renderRouteList();persistNavigation();
         if(!state.navigationActive)$("routeSheet").hidden=false;
         toast(options.reroute?"ปรับเส้นทางแล้ว":"เปรียบเทียบเส้นทางพร้อม");
       }catch(e){console.warn(e);toast(options.reroute?"ปรับเส้นทางไม่สำเร็จ":"ยังคำนวณเส้นทางไม่ได้")}
@@ -664,7 +712,7 @@
     function startNavigation(){
       if(!selectedRoute()||!state.routeEnd){toast("ยังไม่มีเส้นทาง");return}
       if(!navigator.geolocation){toast("อุปกรณ์นี้ไม่รองรับตำแหน่ง");return}
-      state.navigationActive=true;state.offRouteHits=0;$("routeSheet").hidden=true;$("navStrip").hidden=false;
+      state.navigationActive=true;state.offRouteHits=0;$("routeSheet").hidden=true;$("navStrip").hidden=false;persistNavigation();
       $("routePlanButton").classList.add("active");
       $("navInstruction").textContent="QueueGo Map กำลังติดตามและปรับเส้นทางอัตโนมัติ";
       state.watchId=navigator.geolocation.watchPosition(onNavigationPosition,()=>toast("ตำแหน่งขาดหายชั่วคราว"),{enableHighAccuracy:true,maximumAge:2500,timeout:12000});
@@ -672,14 +720,14 @@
     }
     function stopNavigation(message){
       if(state.watchId!=null&&navigator.geolocation)navigator.geolocation.clearWatch(state.watchId);
-      state.watchId=null;state.navigationActive=false;state.offRouteHits=0;$("navStrip").hidden=true;
+      state.watchId=null;state.navigationActive=false;state.offRouteHits=0;$("navStrip").hidden=true;persistNavigation();
       if(message)toast(message);
     }
     function clearRoutePlan(){
       stopNavigation();
       state.routeStart=null;state.routeEnd=null;state.routes=[];state.trafficSignals=[];state.routeRestrictions=[];state.selectedRoute=0;
       if(state.routeStartMarker)state.routeStartMarker.remove();if(state.routeEndMarker)state.routeEndMarker.remove();
-      state.routeStartMarker=state.routeEndMarker=null;
+      state.routeStartMarker=state.routeEndMarker=null;persistNavigation();
       const src=map.getSource("route-options");if(src)src.setData({type:"FeatureCollection",features:[]});
       $("routeSheet").hidden=true;$("routePlanButton").classList.remove("active");
     }
@@ -752,16 +800,19 @@
       const direct=coordinateSearch(query);
       if(direct.length){state.lastSearchProvider="coordinates";return direct}
       const center=map.getCenter();
+      if(packageInfo){state.lastSearchProvider="queuego";return QueueGoMapService.call("geocode",{q:query})}
       const rows=await window.QueueGoMapWeb?.search?.(query,{latitude:center.lat,longitude:center.lng,limit:20})||[];
       state.lastSearchProvider=rows[0]?.provider||null;
       return rows.map(row=>({...row,lat:String(row.lat),lon:String(row.lng??row.lon),display_name:row.label||row.display_name||row.name}));
     }
     async function engineReverse(lat,lon){
+      if(packageInfo)return QueueGoMapService.call("reverse-geocode",{lat,lon});
       const url=NOMINATIM+"/reverse?format=jsonv2&addressdetails=1&zoom=18&accept-language=th&lat="+encodeURIComponent(lat)+"&lon="+encodeURIComponent(lon);
       const r=await fetchTimeout(url,{headers:{"Accept-Language":"th,en"}},12000);if(!r.ok)throw Error("reverse "+r.status);
       return await r.json();
     }
     async function engineNearestRoad(lat,lon){
+      if(packageInfo){const j=await QueueGoMapService.call("nearest",{lat,lon});return j.waypoints?.[0]||null}
       const r=await fetchTimeout(OSRM.replace("/route/v1/driving/","/nearest/v1/driving/")+lon+","+lat+"?number=1",{},12000);
       if(!r.ok)throw Error("nearest "+r.status);const j=await r.json();
       return j.waypoints&&j.waypoints[0]||null;
@@ -834,22 +885,26 @@
     function routeCoordinateString(points){return points.map(p=>p.lon+","+p.lat).join(";")}
     async function engineRoute(points){
       if(points.length<2)throw Error("need two points");
+      if(packageInfo)return QueueGoMapService.call("route",{points});
       const url=OSRM+routeCoordinateString(points)+"?overview=full&geometries=geojson&steps=true";
       const r=await fetchTimeout(url,{},18000);if(!r.ok)throw Error("route "+r.status);return await r.json();
     }
     async function engineMatchTrace(points){
       if(points.length<2)throw Error("need trace points");
+      if(packageInfo)return QueueGoMapService.call("match",{points});
       const base=OSRM.replace("/route/v1/driving/","/match/v1/driving/");
       const url=base+routeCoordinateString(points)+"?overview=full&geometries=geojson&steps=true&tidy=true";
       const r=await fetchTimeout(url,{},18000);if(!r.ok)throw Error("match "+r.status);return await r.json();
     }
     async function engineMatrix(points){
       if(points.length<2)throw Error("need two points");
+      if(packageInfo)return QueueGoMapService.call("matrix",{points});
       const base=OSRM.replace("/route/v1/driving/","/table/v1/driving/");
       const r=await fetchTimeout(base+routeCoordinateString(points)+"?annotations=duration,distance",{},18000);if(!r.ok)throw Error("matrix "+r.status);return await r.json();
     }
     async function engineOptimizeStops(points){
       if(points.length<3)return {points:[...points],trip:null,order:points.map((_,i)=>i)};
+      if(packageInfo)return QueueGoMapService.call("optimize-stops",{points});
       const base=OSRM.replace("/route/v1/driving/","/trip/v1/driving/");
       const url=base+routeCoordinateString(points)+"?source=first&destination=last&roundtrip=false&overview=full&geometries=geojson&steps=true";
       const r=await fetchTimeout(url,{},22000);if(!r.ok)throw Error("trip "+r.status);const j=await r.json();
@@ -900,6 +955,7 @@
       try{renderMatrix(await engineMatrix(state.waypoints));toast("ตารางพร้อม")}catch(e){console.warn(e);toast("คำนวณตารางไม่สำเร็จ")}
     }
     async function engineNearby(category,lat,lon,radius=5000){
+      if(packageInfo){const items=await QueueGoMapService.call("nearby",{category,lat,lon,radius});return items.map(x=>({type:"Feature",geometry:{type:"Point",coordinates:[Number(x.lon),Number(x.lat)]},properties:{name:x.display_name||x.name,kind:x.category,category}}))}
       const rows=await window.QueueGoMapWeb?.search?.("",{latitude:lat,longitude:lon,category,limit:50,radius_m:Math.min(100000,Math.max(100,Number(radius)||5000))})||[];
       return rows.map(x=>({type:"Feature",geometry:{type:"Point",coordinates:[Number(x.lng),Number(x.lat)]},properties:{name:x.label||x.name,kind:x.subcategory||x.category,category,source:x.source,place_id:x.place_id}}));
     }
@@ -1037,9 +1093,14 @@
       locate,
       confirmCurrentLocation,
       get state(){return state},
-      ready:false
+      ready:false,restored:false
     };
-    map.on("load",()=>{ensureRouteLayers();ensureToolLayers();window.QueueGoMapView.ready=true});
+    map.on("load",async()=>{
+      ensureRouteLayers();ensureToolLayers();window.QueueGoMapView.ready=true;
+      try{await restoreNavigation()}finally{window.QueueGoMapView.restored=true}
+    });
+    document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")map.resize()});
+    window.addEventListener("pagehide",persistNavigation);
   })();
   </script>
   <script src="queuego-field-qa.js"></script>
