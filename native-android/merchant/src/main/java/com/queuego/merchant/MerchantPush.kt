@@ -85,6 +85,9 @@ internal fun merchantPushTargetsShop(data: Map<String, String>, currentShopId: S
     return audiences.all { it.isNotBlank() && it == currentShopId }
 }
 
+internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): Int =
+    ("shop:" + shopId + "|message:" + messageKey).hashCode()
+
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
@@ -186,7 +189,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            (message.messageId ?: referenceId + type).hashCode(),
+            merchantPushIntentRequestCode(cached.user.id, message.messageId ?: referenceId + type),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
