@@ -130,7 +130,7 @@ async function load(){
   const focusedCategory=document.activeElement?.id==='market-catalog-category';
   const epoch=++state.epoch;state.shop=id;state.loading=true;
   // Preserve the search field while filtering; replacing it on every keystroke drops keyboard focus.
-  if(!focusedSearch)shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
+  if(!focusedSearch&&!focusedCategory)shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
   await recoverPending(id,epoch);
   // Recovery may wait on the network while the merchant signs out or switches accounts.
   // Never start the subsequent catalog RPCs for a superseded session.
@@ -165,7 +165,7 @@ async function load(){
     }
   }catch(e){if(active(epoch,id)){
     // Keep the search control mounted on network failure so the merchant can retry typing.
-    if(focusedSearch){
+    if(focusedSearch||focusedCategory){
       const status=document.getElementById('market-catalog-status');
       if(status)status.textContent='โหลดแคตตาล็อกไม่สำเร็จ ลองค้นหาอีกครั้ง';
     }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p>');
