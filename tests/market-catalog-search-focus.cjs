@@ -5,9 +5,9 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../merchant/market-catalog.js'), 'utf8');
 const load = source.match(/async function load\(\)\{[\s\S]*?\n\}\n(?=window\.qgRenderMarketCatalog)/);
 assert.ok(load, 'catalog load function exists');
-async function scenario(focused) {
+async function scenario(focused, staleInput=false) {
   const calls = {shell:0,paint:0,focus:0,selection:0};
-  const input = {value:'mango',focus:()=>calls.focus++,setSelectionRange:()=>calls.selection++};
+  const input = {value:staleInput?'mango fresh':'mango',selectionStart:2,selectionEnd:4,selectionDirection:'forward',focus:()=>calls.focus++,setSelectionRange:(start,end,direction)=>{assert.deepEqual([start,end,direction],[2,4,'forward']);calls.selection++}};
   const state = {epoch:0,shop:null,loading:false,query:'mango',category:'',offset:0};
   const ctx = {
     state, shop:()=>({id:'u',shopProfileId:'merchant',type:'shop'}),
@@ -23,9 +23,9 @@ async function scenario(focused) {
   vm.createContext(ctx);
   vm.runInContext(load[0],ctx);
   await vm.runInContext('load()',ctx);
-  assert.equal(calls.paint,1,'catalog results render');
+  assert.equal(calls.paint,staleInput?0:1,'stale results must not replace newer user input');
   assert.equal(calls.shell,focused?0:1,'focused search avoids intermediate loading replacement');
-  assert.equal(calls.focus,focused?1:0,'restore keyboard focus only when search was active');
-  assert.equal(calls.selection,focused?1:0,'restore text insertion position');
+  assert.equal(calls.focus,focused&&!staleInput?1:0,'restore keyboard focus only for current results');
+  assert.equal(calls.selection,focused&&!staleInput?1:0,'restore original selection range and direction');
 }
-(async()=>{await scenario(true);await scenario(false);console.log('Catalog search keyboard focus regression passed')})().catch(e=>{console.error(e);process.exitCode=1});
+(async()=>{await scenario(true);await scenario(false);await scenario(true,true);console.log('Catalog search keyboard focus regression passed')})().catch(e=>{console.error(e);process.exitCode=1});
