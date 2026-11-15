@@ -28,7 +28,11 @@ for(const name of ['maplibre-gl.css','maplibre-gl.js']){
  await page.goto('http://127.0.0.1:8766/map-view/',{waitUntil:'domcontentloaded'});
  await page.waitForFunction(()=>window.QueueGoMapView&&QueueGoMapView.ready,null,{timeout:45000});
  assert.deepEqual([...pinnedServed].sort(),[...pinnedMaplibre.keys()].sort(),'Browser must load both verified local MapLibre assets');
- await page.waitForFunction(()=>QueueGoMapView.map.isSourceLoaded('buriram'),null,{timeout:45000});
+ // Fail immediately when the *application* has not installed the real offline Buriram
+ // vector source. A raster OSM fallback cannot satisfy the PMTiles render gate.
+ const sourceIds=await page.evaluate(()=>Object.keys(QueueGoMapView.map.getStyle()?.sources||{}));
+ assert(sourceIds.includes('buriram'),'Map View must mount actual Buriram PMTiles source; found: '+sourceIds.join(', '));
+ await page.waitForFunction(()=>QueueGoMapView.map.getSource('buriram')&&QueueGoMapView.map.isSourceLoaded('buriram'),null,{timeout:45000});
  const result=await page.evaluate(async()=>{
   const points=[{lat:14.9918756,lon:103.0994795},{lat:15.0088319,lon:103.1300059}];
   const route=await QueueGoMapEngine.route(points),matrix=await QueueGoMapEngine.routeMatrix(points),nearest=await QueueGoMapEngine.nearestRoad(points[0].lat,points[0].lon),geocode=await QueueGoMapEngine.geocode('บุรีรัมย์');
