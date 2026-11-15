@@ -7,7 +7,11 @@ const {chromium}=require('playwright-core'),assert=require('assert'),fs=require(
  const page=await context.newPage(),errors=[],external=[];
  page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE',e.message)});page.on('console',m=>{if(m.type()==='error')console.error('CONSOLE',m.text())});page.on('requestfailed',r=>console.error('REQUEST',r.url(),r.failure()));
  await page.route('**/*',r=>{if(!r.request().url().startsWith('http://127.0.0.1:8766/')&&!r.request().url().startsWith('blob:')){external.push(r.request().url());return r.abort()}return r.continue()});
- await page.goto('http://127.0.0.1:8766/map-view/',{waitUntil:'domcontentloaded'});
+ const entry=await page.goto('http://127.0.0.1:8766/map-view/',{waitUntil:'domcontentloaded'});
+ assert(entry?.ok(),'Map Engine viewer must be served by the local runtime');
+ const markup=await entry.text();
+ assert(markup.includes('../map-assets/maplibre-gl.js')&&markup.includes('../map-assets/pmtiles.js'),
+   'Map Engine viewer must load the packaged MapLibre and PMTiles clients');
  await page.waitForFunction(()=>window.QueueGoMapView&&QueueGoMapView.ready,null,{timeout:45000});
  await page.waitForFunction(()=>QueueGoMapView.map.isSourceLoaded('buriram'),null,{timeout:45000});
  const result=await page.evaluate(async()=>{
