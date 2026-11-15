@@ -275,6 +275,24 @@
     try{packageInfo=await QueueGoMapService.call("health",{},{timeout:1500})}
     catch(error){console.warn("QueueGo local map unavailable",error)}
     if(packageInfo&&packageInfo.vector_map){
+      // Local renderer assets are present in the installed Map Engine package.
+      // CDN failure must not prevent the offline Buriram map from booting.
+      await new Promise((resolve,reject)=>{
+        const link=document.createElement("link");
+        link.rel="stylesheet";link.href="../map-assets/maplibre-gl.css";
+        link.onload=resolve;
+        link.onerror=()=>reject(Error("Installed MapLibre CSS unavailable"));
+        document.head.appendChild(link);
+      });
+      if(!globalThis.maplibregl){
+        await new Promise((resolve,reject)=>{
+          const script=document.createElement("script");
+          script.src="../map-assets/maplibre-gl.js";
+          script.onload=()=>globalThis.maplibregl?resolve():reject(Error("Installed MapLibre runtime did not initialize"));
+          script.onerror=()=>reject(Error("Installed MapLibre JavaScript unavailable"));
+          document.head.appendChild(script);
+        });
+      }
       if(packageInfo.vector_url!=="/map-api/vector.pmtiles")throw Error("Unexpected map vector URL");
       await new Promise((resolve,reject)=>{
         const script=document.createElement("script");
