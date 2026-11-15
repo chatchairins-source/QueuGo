@@ -1,7 +1,12 @@
 -- Read-only, aggregate-only payment integrity triage. Never returns order IDs or customer data.
 -- Multiple payment attempts may be legitimate; these counts are investigation signals only.
 -- Success labels are heuristic and must be reconciled with the actual payment state machine.
-WITH per_order AS (
+WITH per_reference AS (
+  SELECT btrim(transaction_reference) AS reference_key, count(*) AS attempts
+  FROM public.payments
+  WHERE transaction_reference IS NOT NULL AND btrim(transaction_reference) <> ''
+  GROUP BY btrim(transaction_reference)
+), per_order AS (
   SELECT p.order_id,
          count(*) AS attempts,
          count(*) FILTER (
@@ -18,6 +23,7 @@ SELECT
   (SELECT count(*) FROM public.payments WHERE amount IS NULL OR amount <= 0) AS payments_with_nonpositive_amount,
   (SELECT count(*) FROM public.payments WHERE payment_method IS NULL OR btrim(payment_method) = '') AS payments_without_method,
   (SELECT count(*) FROM per_order WHERE attempts > 1) AS orders_with_multiple_payment_rows,
+  (SELECT count(*) FROM per_reference WHERE attempts > 1) AS duplicate_nonblank_transaction_references,
   (SELECT count(*) FROM per_order WHERE successful_attempts > 1) AS orders_with_multiple_successful_payments,
   (SELECT count(*)
      FROM public.payments AS p
