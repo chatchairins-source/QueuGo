@@ -198,8 +198,8 @@ class MerchantPushIntentIsolationTest {
         assertEquals(token, merchantUsableFcmToken(token))
         assertEquals(null, merchantUsableFcmToken(" " + token))
         assertEquals(null, merchantUsableFcmToken(token + " "))
-        assertEquals(null, merchantUsableFcmToken("\\t" + token))
-        assertEquals(null, merchantUsableFcmToken(token + "\\n"))
+        assertEquals(null, merchantUsableFcmToken("\t" + token))
+        assertEquals(null, merchantUsableFcmToken(token + "\n"))
     }
 
     @Test fun validSurrogatePairFcmTokenIsNotCorrupted() {
