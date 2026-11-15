@@ -193,6 +193,15 @@ class MerchantPushIntentIsolationTest {
         assertEquals(null, merchantUsableFcmToken("abc" + 0xD800.toChar() + "def" + 0xDC00.toChar() + "ghijklmnop"))
     }
 
+    @Test fun firebaseTokenWhitespaceIsRejectedInsteadOfSilentlyTrimmed() {
+        val token = "abcdefghijklmnop"
+        assertEquals(token, merchantUsableFcmToken(token))
+        assertEquals(null, merchantUsableFcmToken(" " + token))
+        assertEquals(null, merchantUsableFcmToken(token + " "))
+        assertEquals(null, merchantUsableFcmToken("\t" + token))
+        assertEquals(null, merchantUsableFcmToken(token + "\n"))
+    }
+
     @Test fun validSurrogatePairFcmTokenIsNotCorrupted() {
         val token = "abcdefghijklmnop" + 0xD83D.toChar() + 0xDE80.toChar()
         assertEquals(token, merchantUsableFcmToken(token))
