@@ -134,4 +134,21 @@ class MerchantPushIntentIsolationTest {
         assertEquals("", merchantPushReferenceId(emptyMap()))
     }
 
+    @Test fun expiredFcmAlertIsNotDisplayed() {
+        assertEquals(false, merchantPushWithinDeliveryLifetime(1_000L, 30, 31_001L))
+    }
+
+    @Test fun alertAtDeliveryDeadlineIsAllowed() {
+        assertEquals(true, merchantPushWithinDeliveryLifetime(1_000L, 30, 31_000L))
+    }
+
+    @Test fun missingTimestampAndImmediateDeliveryRemainCompatible() {
+        assertEquals(true, merchantPushWithinDeliveryLifetime(0L, 30, 500_000L))
+        assertEquals(true, merchantPushWithinDeliveryLifetime(1_000L, 0, 500_000L))
+    }
+
+    @Test fun futureSentTimestampDoesNotPrematurelyExpire() {
+        assertEquals(true, merchantPushWithinDeliveryLifetime(60_000L, 30, 59_000L))
+    }
+
 }
