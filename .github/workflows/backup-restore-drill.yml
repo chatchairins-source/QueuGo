@@ -187,3 +187,11 @@ jobs:
             cd restore-lab
             npx --yes supabase@2.120.0 stop --no-backup || true
           fi
+
+      - name: Remove plaintext drill files on failure or cancellation
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf -- backup restore-lab local-supabase.env verify-backup.tar.gz
+          find . -maxdepth 1 -type f -name 'queuego-backup-*.tar.gz' -delete
