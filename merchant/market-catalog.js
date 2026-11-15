@@ -5,7 +5,7 @@ const MARKET_SHOPS=new Set(['market','meat','fish','vegetable','fruit']);
 const MARKET_MASTER_CATEGORIES=new Set(['ผักสด','เห็ด','ผลไม้','เนื้อหมู','เนื้อวัว','ไก่ / เป็ด','ปลา','กุ้ง','ปู','หอย','ปลาหมึก','ไข่','เต้าหู้ / เส้นสด / ลูกชิ้น','ของแห้ง']);
 const UNITS=['ชิ้น','กิโลกรัม','ขีด','กรัม','ถุง','แพ็ก','มัด','ลูก','ขวด','กล่อง'];
 const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={epoch:0,rows:[],categories:[],query:'',category:'',offset:0,hasMore:false,loading:false,shop:null,gpRate:null};
+const state={epoch:0,rows:[],categories:[],query:'',category:'',offset:0,hasMore:false,loading:false,resultsReady:false,shop:null,gpRate:null};
 let searchTimer=null;
 const shop=()=>{const u=currentUser?.();return u?.type==='shop'?u:null};
 const profileId=u=>u&&(u.shopProfileId||QT_SYNC?.profileMaps?.shopByUserId?.get(u.id)||null);
@@ -125,10 +125,10 @@ async function recoverPending(shopId,epoch){
 }
 async function load(){
   const u=shop(),id=profileId(u);
-  if(!u||!id||!permitted(u)){++state.epoch;state.shop=null;state.loading=false;state.gpRate=null;state.rows=[];state.categories=[];state.hasMore=false;shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
+  if(!u||!id||!permitted(u)){++state.epoch;state.shop=null;state.loading=false;state.resultsReady=false;state.gpRate=null;state.rows=[];state.categories=[];state.hasMore=false;shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
   const focusedSearch=document.activeElement?.id==='market-catalog-search';
   const focusedCategory=document.activeElement?.id==='market-catalog-category';
-  const epoch=++state.epoch;state.shop=id;state.loading=true;
+  const epoch=++state.epoch;state.shop=id;state.loading=true;state.resultsReady=false;
   // Preserve the search field while filtering; replacing it on every keystroke drops keyboard focus.
   if(!focusedSearch&&!focusedCategory)shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
   await recoverPending(id,epoch);
@@ -154,6 +154,7 @@ async function load(){
     const selection=currentInput&&Number.isInteger(currentInput.selectionStart)&&Number.isInteger(currentInput.selectionEnd)
       ? [currentInput.selectionStart,currentInput.selectionEnd,currentInput.selectionDirection||'none'] : null;
     paint();
+    state.resultsReady=true;
     if(focusedSearch){
       const input=document.getElementById('market-catalog-search');
       input?.focus({preventScroll:true});
@@ -180,7 +181,7 @@ window.qgMarketCatalogSetCategory=category=>{clearTimeout(searchTimer);searchTim
 window.qgMarketCatalogPage=dir=>{if(state.loading)return;const input=document.getElementById('market-catalog-search');const typedQuery=input?String(input.value||'').trim():state.query;if(typedQuery!==state.query){clearTimeout(searchTimer);searchTimer=null;state.query=typedQuery;state.offset=0;load();return;}const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
 window.qgMarketCatalogChoose=id=>{
   // Rows remain visible while an in-flight search loads; never select an old result.
-  if(state.loading)return;
+  if(state.loading||!state.resultsReady)return;
   const currentShop=shop();
   if(!currentShop||!permitted(currentShop)||profileId(currentShop)!==state.shop||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
   // A newly typed search is not committed until debounce fires. Do not let a
