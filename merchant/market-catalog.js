@@ -126,7 +126,10 @@ async function recoverPending(shopId,epoch){
 async function load(){
   const u=shop(),id=profileId(u);
   if(!u||!id||!permitted(u)){++state.epoch;state.shop=null;state.loading=false;state.gpRate=null;state.rows=[];state.categories=[];state.hasMore=false;shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
-  const epoch=++state.epoch;state.shop=id;state.loading=true;shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
+  const focusedSearch=document.activeElement?.id==='market-catalog-search';
+  const epoch=++state.epoch;state.shop=id;state.loading=true;
+  // Preserve the search field while filtering; replacing it on every keystroke drops keyboard focus.
+  if(!focusedSearch)shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
   await recoverPending(id,epoch);
   // Recovery may wait on the network while the merchant signs out or switches accounts.
   // Never start the subsequent catalog RPCs for a superseded session.
@@ -142,6 +145,11 @@ async function load(){
     state.categories=(Array.isArray(cats)?cats:[]).filter(c=>MARKET_MASTER_CATEGORIES.has(String(c?.category||'')));
     const rows=(Array.isArray(page)?page:[]).filter(r=>MARKET_MASTER_CATEGORIES.has(String(r?.category||'')));
     state.hasMore=rows.length>50;state.rows=rows.slice(0,50);paint();
+    if(focusedSearch){
+      const input=document.getElementById('market-catalog-search');
+      input?.focus({preventScroll:true});
+      try{input?.setSelectionRange(input.value.length,input.value.length)}catch(_){}
+    }
   }catch(e){if(active(epoch,id)){shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p>');error(e)}}
   finally{if(active(epoch,id))state.loading=false}
 }
