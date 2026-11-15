@@ -92,8 +92,15 @@ assert(webMap.includes("'symbol-spacing':80")&&
   mapMotion.includes('fromScreenLocation(')&&
   mapMotion.includes('android.graphics.PointF(x.toFloat(), y.toFloat())')&&
   !mapMotion.includes('distance += 65.0'));
-assert(webRider.includes("background:'+(done?'#94a3b8':'#16a34a')")&&
-  webRider.includes("background:#16a34a")&&webRider.includes("background:#e6002d")&&
+const markerStart=webRider.indexOf('function qgStopMarkerHtml(');
+const markerEnd=webRider.indexOf('\n}',markerStart)+2;
+assert(markerStart>=0&&markerEnd>markerStart);
+const renderStop=new Function(webRider.slice(markerStart,markerEnd)+';return qgStopMarkerHtml')();
+assert(renderStop(1,'shop').includes('background:#15803d')&&
+  renderStop(2,'customer').includes('background:#e6002d')&&
+  renderStop(1,'shop',true).includes('background:#64748b')&&
+  renderStop(1,'shop').includes('data-stop-number="1"'));
+assert(
   mapMotion.includes('PropertyFactory.circleRadius(10f)')&&
   mapMotion.includes('PropertyFactory.circleRadius(8f)')&&
   mapMotion.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(148, 163, 184))')&&

@@ -44,7 +44,7 @@ eq(rider.includes('คุณอยู่ห่างจากจุดส่ง�
 eq(rider.includes('qg-confirm-yes">ยืนยันจบเที่ยว</button>'),true,'far-dropoff warning must keep explicit finish confirmation');
 eq(rider.includes("if(st==='in_progress')return qgOpenRideCompleteConfirm(o)"),true,'in-progress Ride must pass through the 100m guard');
 eq(rider.includes("return window.qgRideAction(o,'arrive_pickup'"),true,'Ride pickup arrival must not depend on a manual navigation flag');
-eq(riderIndex.includes('rider-ride.js?v=20261023-ridefix1'),true,'Rider Ride asset must be cache-busted');
+eq(/<script src="rider-ride\.js\?v=[a-z0-9-]+"><\/script>/.test(riderIndex),true,'Rider Ride asset must be cache-busted');
 eq(riderIndex.includes('rider-20261023-ridefix1'),true,'Rider web build marker must identify Ride fix');
 eq(riderIndex.includes('.qg-confirm-yes{background:#e6002d;color:#fff}'),true,'Ride confirmation must use QueueGo red');
 eq(riderIndex.includes('qg-ride-complete-ready'),false,'Ride finish CTA must not use special green styling');

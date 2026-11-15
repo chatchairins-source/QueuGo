@@ -116,7 +116,7 @@ let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};const deferred=()=
  const routeService={call:async(action,body,options)=>{requests.push({action,body,options});if(gate)return gate.promise;return routeResponse}};
  const ctx=vm.createContext({
   S,window:{QueueGoMapWeb:Q,QueueGoMapService:routeService},Date:class extends Date{static now(){return now}},Promise,AbortController,Number,String,JSON,encodeURIComponent,
-  document:{hidden:false,getElementById:id=>id==='route-badge'?badge:label},
+  document:{hidden:false,getElementById:id=>id==='route-badge'?badge:id==='route-text'?label:null},
   navigator:{onLine:true},
   riderSessionMatches:s=>s===S.session,statusFromRow:o=>o.status,haversineKm:(a,b,c,d)=>Math.hypot(a-c,b-d)*111,
   setTimeout:f=>{timers.set(++serial,f);return serial},clearTimeout:id=>timers.delete(id)
