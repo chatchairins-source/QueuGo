@@ -179,6 +179,19 @@ class MerchantPushIntentIsolationTest {
         assertEquals(false, merchantPushMetadataWellFormed(null, 0xD800.toChar() + "order"))
     }
 
+    @Test fun invisibleFcmMessageIdCannotBecomeNotificationIdentity() {
+        assertEquals(false, merchantPushMetadataWellFormed("fcm\u00001", "new"))
+        assertEquals(false, merchantPushMetadataWellFormed("fcm\u200B1", "new"))
+        assertEquals(false, merchantPushMetadataWellFormed("fcm 1", "new"))
+    }
+
+    @Test fun invisibleTypeCannotBeForwardedToOrderNavigation() {
+        assertEquals(false, merchantPushMetadataWellFormed("fcm-1", "order\tupdated"))
+        assertEquals(false, merchantPushMetadataWellFormed("fcm-1", "order\u202Eupdated"))
+        assertEquals(false, merchantPushMetadataWellFormed(null, "order\nupdated"))
+        assertEquals(true, merchantPushMetadataWellFormed("fcm-1", "order_updated"))
+    }
+
     @Test fun validSupplementaryMetadataRemainsSupported() {
         val emoji = 0xD83D.toChar().toString() + 0xDE80.toChar()
         assertEquals(true, merchantPushMetadataWellFormed("fcm-" + emoji, "type-" + emoji))
