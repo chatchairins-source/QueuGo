@@ -16,9 +16,11 @@ const qgAdminRideReadRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdmi
  window.qgRenderPassengerControls=async()=>{
   const host=document.getElementById('qg-passenger-controls');if(!host||currentUser()?.type!=='admin'||currentUser()?.status!=='approved')return;
   const owner=currentUser().id;
-  host.innerHTML='<section id="qg-ride-config-panel" aria-labelledby="qg-ride-config-title"><h3 id="qg-ride-config-title">รับส่งผู้โดยสาร</h3><p role="status">กำลังอ่านการตั้งค่าจากระบบ…</p></section><section id="qg-ride-license-panel" aria-labelledby="qg-ride-license-title"><h3 id="qg-ride-license-title">ตรวจใบขับขี่สาธารณะ</h3><p role="status">กำลังอ่านหลักฐานจากระบบ…</p></section>';
+  host.innerHTML='<section id="qg-ride-config-panel" aria-labelledby="qg-ride-config-title"><h3 id="qg-ride-config-title">รับส่งผู้โดยสาร</h3><p role="status">กำลังอ่านการตั้งค่าจากระบบ…</p></section><section id="qg-ride-license-panel" aria-labelledby="qg-ride-license-title"><h3 id="qg-ride-license-title">ตรวจใบขับขี่สาธารณะ</h3><p>คิวตรวจใบขับขี่สาธารณะสำหรับ Ride โหลดเมื่อผู้ดูแลเลือกเปิดเท่านั้น</p><button type="button" class="btn-secondary" data-license-open>เปิดคิวตรวจใบขับขี่สาธารณะ</button><p>ตรวจเอกสาร Rider ทั่วไปในศูนย์ตรวจเอกสาร Rider</p><button type="button" class="btn-secondary" data-open-rider-review>เปิดศูนย์ตรวจเอกสาร Rider</button></section>';
   const configPanel=host.querySelector('#qg-ride-config-panel');
   const licensePanel=host.querySelector('#qg-ride-license-panel');
+  licensePanel.querySelector('[data-license-open]').onclick=loadLicenses;
+  licensePanel.querySelector('[data-open-rider-review]').onclick=()=>{if(adminAlive(host,owner))navigate('admin-rider-review')};
   async function loadConfig(){
    if(!adminAlive(host,owner))return;configPanel.innerHTML='<h3 id="qg-ride-config-title">รับส่งผู้โดยสาร</h3><p role="status">กำลังอ่านการตั้งค่าจากระบบ…</p>';
    try{
@@ -89,6 +91,6 @@ const qgAdminRideReadRpc=(fn,args={})=>typeof qgAdminRpcRead==='function'?qgAdmi
       licensePanel.querySelector('[data-license-retry]').onclick=loadLicenses;
     }
   }
-  await Promise.all([loadConfig(),loadLicenses()]);
+  await loadConfig();
  };
 })();
