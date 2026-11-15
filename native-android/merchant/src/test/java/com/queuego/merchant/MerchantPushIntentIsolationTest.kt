@@ -97,6 +97,13 @@ class MerchantPushIntentIsolationTest {
         assertEquals(null, merchantPushReferenceId(mapOf("reference_id" to "order\u007f7")))
     }
 
+    @Test fun referenceWithInvisibleUnicodeFormatCharactersIsRejected() {
+        // U+200B zero-width space, U+200D zero-width joiner, U+202E bidi override.
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order\u200B7")))
+        assertEquals(null, merchantPushReferenceId(mapOf("reference_id" to "order\u200D7")))
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order\u202E7")))
+    }
+
     @Test fun validOpaqueReferenceStillRoutes() {
         assertEquals("order-7_A", merchantPushReferenceId(mapOf("referenceId" to "order-7_A")))
     }
