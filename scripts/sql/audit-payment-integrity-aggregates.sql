@@ -30,6 +30,11 @@ SELECT
   (SELECT count(*) FROM public.payments WHERE payment_method IS NULL OR btrim(payment_method) = '') AS payments_without_method,
   (SELECT count(*) FROM public.payments WHERE lower(btrim(status)) IN ('paid','succeeded','success','completed','captured') AND (amount IS NULL OR amount <= 0)) AS successful_payments_with_nonpositive_amount,
   (SELECT count(*) FROM public.payments WHERE lower(btrim(status)) IN ('paid','succeeded','success','completed','captured') AND (payment_method IS NULL OR btrim(payment_method) = '')) AS successful_payments_without_method,
+  -- Heuristic only: split payments, discounts, adjustments and refunds may explain mismatches.
+  (SELECT count(*) FROM public.payments AS p JOIN public.orders AS o ON o.id = p.order_id
+    WHERE lower(btrim(p.status)) IN ('paid','succeeded','success','completed','captured')
+      AND p.amount IS NOT NULL AND o.total_amount IS NOT NULL
+      AND p.amount <> o.total_amount) AS successful_payment_amount_order_total_mismatches,
   (SELECT count(*) FROM per_order WHERE attempts > 1) AS orders_with_multiple_payment_rows,
   (SELECT count(*) FROM per_reference WHERE attempts > 1) AS duplicate_nonblank_transaction_references,
   (SELECT count(*) FROM per_reference WHERE distinct_orders > 1) AS transaction_references_shared_across_orders,
