@@ -25,6 +25,7 @@ ok(/restore-storage\.mjs/.test(workflow),'Storage objects must be restored durin
 ok(/aes-256-cbc/.test(workflow)&&/pbkdf2/.test(workflow),'off-site artifact must be encrypted before upload');
 ok(/cmp "\$\{NAME\}\.tar\.gz" verify-backup\.tar\.gz/.test(workflow),'encrypted backup must decrypt byte-for-byte to the original archive');
 ok(workflow.includes('sha256sum --check "${QG_BACKUP_ARTIFACT}.tar.gz.enc.sha256"')&&workflow.indexOf('Verify encrypted artifact checksum before upload')<workflow.indexOf('Upload encrypted backup'),'encrypted archive checksum must be validated immediately before artifact upload');
+ok(/- name: Remove plaintext drill files on failure or cancellation\n\s+if: always\(\)/.test(workflow)&&/rm -rf -- backup restore-lab local-supabase\.env verify-backup\.tar\.gz/.test(workflow)&&/find \. -maxdepth 1 -type f -name 'queuego-backup-\*\.tar\.gz' -delete/.test(workflow),'plaintext backup and restore drill files must be removed on failure and cancellation');
 ok(/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02(?:\s|$)/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
 ok(!/upload-artifact@[\s\S]{0,400}backup\/data\.sql/.test(workflow),'plaintext database dump must never be uploaded');
 ok(/QG_BACKUP_PASSPHRASE/.test(workflow)&&/QG_SUPABASE_DB_URL/.test(workflow)&&/QG_SUPABASE_SERVICE_ROLE_KEY/.test(workflow),'backup secrets must be externalized');
