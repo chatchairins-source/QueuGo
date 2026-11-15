@@ -5,6 +5,17 @@ import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
 class MerchantPushIntentIsolationTest {
+
+    @Test fun javaStringHashCollisionDoesNotReuseNotificationTapTarget() {
+        // "Aa" and "BB" have identical Java String.hashCode values under the same prefix.
+        val first = "shop:shop-a|message:Aa"
+        val second = "shop:shop-a|message:BB"
+        assertEquals(first.hashCode(), second.hashCode())
+        assertNotEquals(
+            merchantPushIntentRequestCode("shop-a", "Aa"),
+            merchantPushIntentRequestCode("shop-a", "BB")
+        )
+    }
     @Test fun sameShopAndMessageKeepStableRequestCode() {
         assertEquals(
             merchantPushIntentRequestCode("shop-a", "order-123"),
