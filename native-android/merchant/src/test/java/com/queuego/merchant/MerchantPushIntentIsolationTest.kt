@@ -16,6 +16,22 @@ class MerchantPushIntentIsolationTest {
             merchantPushIntentRequestCode("shop-a", "BB")
         )
     }
+    @Test fun delimiterInShopIdentityCannotAliasDifferentShopAndMessage() {
+        // Both pairs produced the same concatenated string before length-prefixing.
+        val firstShop = "shop-a"
+        val firstMessage = "foo|message:bar"
+        val secondShop = "shop-a|message:foo"
+        val secondMessage = "bar"
+        assertEquals(
+            "shop:$firstShop|message:$firstMessage",
+            "shop:$secondShop|message:$secondMessage"
+        )
+        assertNotEquals(
+            merchantPushIntentRequestCode(firstShop, firstMessage),
+            merchantPushIntentRequestCode(secondShop, secondMessage)
+        )
+    }
+
     @Test fun sameShopAndMessageKeepStableRequestCode() {
         assertEquals(
             merchantPushIntentRequestCode("shop-a", "order-123"),
