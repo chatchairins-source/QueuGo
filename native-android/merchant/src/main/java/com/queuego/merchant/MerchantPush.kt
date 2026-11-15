@@ -68,7 +68,9 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
 
 // FCM registration tokens are opaque, non-whitespace values; never send malformed payloads.
 internal fun merchantUsableFcmToken(raw: String): String? =
-    raw.trim().takeIf { token ->
+    // Firebase registration tokens are opaque: trimming changes the token sent to the API.
+    // Reject surrounding whitespace rather than silently registering a different value.
+    raw.takeIf { token ->
         token.length >= 16 && merchantPushWellFormedUtf16(token) && token.none {
             it.isWhitespace() || it.isISOControl() || Character.getType(it) == Character.FORMAT.toInt()
         }
