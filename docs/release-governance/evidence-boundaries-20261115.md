@@ -27,3 +27,8 @@ This document is **not** a release certificate. All evidence must be rechecked a
 ## Fail-closed decision
 
 Do not promote a release when any required row is BLOCKED, PENDING or NOT VERIFIED. An evidence link must identify the exact source SHA, test environment, date, outcome and retained proof. Distinguish static checks, emulators, browser checks, isolated database tests, live read-only observations and real-device field trials. Never infer one from another. Do not merge to main, deploy, alter Production payments/data, or assert production readiness from this document.
+
+## Exact-head CI observation (2026-11-15)
+
+- PR #1175 source `3f498359aa6ad4fb5876c45b5ecf540c08211dfa`: [QueueGo RC Tests run 43733515146](https://github.com/chatchairins-source/QueuGo/actions/runs/43733515146) returned `completed/success` in GitHub Actions. The comparison with `main` `369e4b49b20a0781f6d52be1c54aef5bd473609d` was ahead 1 / behind 0 and changed only this governance document.
+- This confirms the reported RC workflow conclusion for that **previous** source SHA only. It does not certify every required release workflow, a signed artifact, Production behavior, or any future amendment to this PR. Re-run and inspect checks at the final candidate SHA; the release gate stays **NO-GO**.
