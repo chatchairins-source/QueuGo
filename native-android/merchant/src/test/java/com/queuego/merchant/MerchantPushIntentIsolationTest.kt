@@ -82,6 +82,25 @@ class MerchantPushIntentIsolationTest {
         assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "", "reference_id" to "order-7")))
     }
 
+    @Test fun referenceWithLeadingOrTrailingWhitespaceIsRejected() {
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to " order-7")))
+        assertEquals(null, merchantPushReferenceId(mapOf("reference_id" to "order-7 ")))
+    }
+
+    @Test fun referenceWithEmbeddedWhitespaceIsRejected() {
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order 7")))
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order\t7")))
+    }
+
+    @Test fun referenceWithInvisibleControlCharactersIsRejected() {
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order\u00007")))
+        assertEquals(null, merchantPushReferenceId(mapOf("reference_id" to "order\u007f7")))
+    }
+
+    @Test fun validOpaqueReferenceStillRoutes() {
+        assertEquals("order-7_A", merchantPushReferenceId(mapOf("referenceId" to "order-7_A")))
+    }
+
     @Test fun absentReferencePreservesNonOrderPush() {
         assertEquals("", merchantPushReferenceId(emptyMap()))
     }
