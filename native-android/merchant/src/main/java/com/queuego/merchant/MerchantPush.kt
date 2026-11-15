@@ -99,9 +99,19 @@ internal fun merchantPushReferenceId(data: Map<String, String>): String? {
 }
 
 // Java String.hashCode has trivial collisions (for example, "Aa" and "BB").
-internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): Int {
+internal fun merchantPushIdentityDigest(shopId: String, messageKey: String): ByteArray {
     val identity = "shop:${shopId.length}:$shopId|message:${messageKey.length}:$messageKey"
-    val digest = MessageDigest.getInstance("SHA-256").digest(identity.toByteArray(Charsets.UTF_8))
+    return MessageDigest.getInstance("SHA-256").digest(identity.toByteArray(Charsets.UTF_8))
+}
+
+// PendingIntent identity also includes a full SHA-256 URI, not only the 32-bit
+// notification request code. Android ignores extras when matching PendingIntents.
+internal fun merchantPushIntentUri(shopId: String, messageKey: String): String =
+    "queuego://merchant/push/" + merchantPushIdentityDigest(shopId, messageKey)
+        .joinToString("") { "%02x".format(it.toInt() and 0xff) }
+
+internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): Int {
+    val digest = merchantPushIdentityDigest(shopId, messageKey)
     return ((digest[0].toInt() and 0xff) shl 24) or
         ((digest[1].toInt() and 0xff) shl 16) or
         ((digest[2].toInt() and 0xff) shl 8) or
@@ -215,11 +225,10 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         val body = message.notification?.body ?: message.data["message"] ?: "มีรายการอัปเดตใน QueueGo"
         val referenceId = merchantPushReferenceId(message.data) ?: return
         val type = message.data["type"].orEmpty()
-        val notificationId = merchantPushIntentRequestCode(
-            cached.user.id,
-            merchantPushMessageKey(message.messageId, referenceId, type, System.nanoTime().toString())
-        )
+        val messageKey = merchantPushMessageKey(message.messageId, referenceId, type, System.nanoTime().toString())
+        val notificationId = merchantPushIntentRequestCode(cached.user.id, messageKey)
         val intent = Intent(this, MainActivity::class.java).apply {
+            data = android.net.Uri.parse(merchantPushIntentUri(cached.user.id, messageKey))
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("queuego_push_reference_id", referenceId)
             putExtra("queuego_push_type", type)
