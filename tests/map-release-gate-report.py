@@ -23,6 +23,15 @@ for status in ('failed','uncovered','uncovered_via_way'):
     ok(not mod.directional_pass({'well_formed_motorcycle_gate':True,'summary':{status:1}}),'summary cannot override '+status)
 for status in ('failed','unknown',None):
     ok(not mod.road_cases_pass({'cases':[{'status':status}]}),'road status fails closed: '+str(status))
+browser={"engine":"QueueGo/Valhalla","distance":5799,"rendered":4659,"sameMap":True,
+         "restoration_recomputed":True,"retained_on_visibility":True,
+         "external_requests_blocked":[],"page_errors":[]}
+ok(mod.browser_pass(browser),"complete same-origin browser evidence passes")
+for key in ("external_requests_blocked","page_errors"):
+    missing={name:value for name,value in browser.items() if name!=key}
+    ok(not mod.browser_pass(missing),"omitted browser evidence fails: "+key)
+    for invalid in (None,False,["unexpected error"]):
+        ok(not mod.browser_pass({**browser,key:invalid}),"invalid browser evidence fails: "+key)
 # Isolated summary fixtures: even complete candidate coverage cannot certify roads.
 with tempfile.TemporaryDirectory() as directory:
     scenarios=['village_lane','frontage_road','u_turn','parallel_road','signal_loss','background_foreground']

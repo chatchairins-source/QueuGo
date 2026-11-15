@@ -21,7 +21,7 @@ def road_cases_pass(real):
     return bool(real and real.get("cases") and all(x.get("status") in ("passed","passed_excluded","passed_unavailable") for x in real["cases"]))
 
 def browser_pass(browser):
-    return bool(browser and browser.get("engine")=="QueueGo/Valhalla" and browser.get("distance",0)>0 and browser.get("rendered",0)>0 and browser.get("sameMap") is True and browser.get("restoration_recomputed") is True and browser.get("retained_on_visibility") is True and not browser.get("external_requests_blocked") and not browser.get("page_errors"))
+    return bool(browser and browser.get("engine")=="QueueGo/Valhalla" and browser.get("distance",0)>0 and browser.get("rendered",0)>0 and browser.get("sameMap") is True and browser.get("restoration_recomputed") is True and browser.get("retained_on_visibility") is True and browser.get("external_requests_blocked")==[] and browser.get("page_errors")==[])
 
 def offline_pass(offline):
     return bool(offline and offline.get("route_distance_m",0)>0 and offline.get("dataset_sha256") and len(offline.get("checks") or [])>=6)
