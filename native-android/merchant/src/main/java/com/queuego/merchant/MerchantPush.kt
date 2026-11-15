@@ -128,7 +128,8 @@ internal fun merchantPushMessageKey(messageId: String?, referenceId: String, typ
 // Do not surface a delayed order alert after its FCM delivery lifetime has elapsed.
 // Missing timestamps and zero-TTL immediate messages retain Firebase's delivery semantics.
 internal fun merchantPushWithinDeliveryLifetime(sentTimeMs: Long, ttlSeconds: Int, nowMs: Long): Boolean =
-    sentTimeMs <= 0L || ttlSeconds <= 0 || nowMs - sentTimeMs <= ttlSeconds.toLong() * 1000L
+    sentTimeMs <= 0L || ttlSeconds <= 0 || nowMs <= sentTimeMs ||
+        nowMs - sentTimeMs <= ttlSeconds.toLong() * 1000L
 
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
