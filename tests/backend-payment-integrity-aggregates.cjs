@@ -12,8 +12,10 @@ assert.match(sql, /transaction_reference IS NOT NULL AND btrim\(transaction_refe
 assert.match(sql, /lower\(btrim\(p\.status\)\)\s+IN\s*\('paid','succeeded','success','completed','captured'\)/i);
 assert.match(sql, /FROM public\.payments/i);
 assert.match(sql, /LEFT JOIN public\.orders/i);
+assert.match(sql, /JOIN public\.orders AS o ON o\.id = p\.order_id/i);
+assert.match(sql, /p\.amount <> o\.total_amount/i);
 assert.match(sql, /p\.order_id IS NOT NULL AND o\.id IS NULL/i);
-for (const signal of ['payment_rows','payments_with_nonblank_transaction_reference','payments_without_transaction_reference','successful_payments_without_transaction_reference','payments_without_order_id','successful_payments_without_order_id','payments_without_status','payments_with_unclassified_status','payments_with_nonpositive_amount','payments_without_method','successful_payments_with_nonpositive_amount','successful_payments_without_method','orders_with_multiple_payment_rows','duplicate_nonblank_transaction_references','transaction_references_shared_across_orders','orders_with_multiple_successful_payments','payment_orphans']) {
+for (const signal of ['payment_rows','payments_with_nonblank_transaction_reference','payments_without_transaction_reference','successful_payments_without_transaction_reference','payments_without_order_id','successful_payments_without_order_id','payments_without_status','payments_with_unclassified_status','payments_with_nonpositive_amount','payments_without_method','successful_payments_with_nonpositive_amount','successful_payments_without_method','orders_with_multiple_payment_rows','successful_payment_amount_order_total_mismatches','duplicate_nonblank_transaction_references','transaction_references_shared_across_orders','orders_with_multiple_successful_payments','payment_orphans']) {
   assert.match(sql, new RegExp('AS\\s+' + signal + '\\b', 'i'));
 }
 assert.doesNotMatch(sql, /\b(insert\s+into|update\s+\w+\s+set|delete\s+from|alter\s+table|drop\s+table|truncate\s+table|grant\s+|revoke\s+)\b/i);
