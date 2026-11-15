@@ -11,6 +11,9 @@ const inventory=read('ops/backup-inventory.sql');
 const verify=read('ops/restore-verify.sql');
 
 ok(/workflow_dispatch/.test(workflow),'backup drill must be manually runnable');
+ok(/permissions:\s*\n\s+contents:\s*read/.test(workflow),'backup drill must use read-only repository permissions');
+ok(/concurrency:\s*\n\s+group:\s*queuego-backup-restore-drill\s*\n\s+cancel-in-progress:\s*false/.test(workflow),'backup drills must not cancel an in-progress restore');
+ok(/if-no-files-found:\s*error/.test(workflow)&&/retention-days:\s*14/.test(workflow),'encrypted backup upload must fail closed and have explicit retention');
 ok(/supabase@2\.120\.0 db dump/.test(workflow),'backup drill must use pinned Supabase-aware database dump');
 ok(!/supabase@latest/.test(workflow),'backup workflow must pin Supabase CLI and never use @latest');
 ok(/--role-only/.test(workflow)&&/--data-only/.test(workflow)&&/--use-copy/.test(workflow),'backup must export roles, schema and data');
