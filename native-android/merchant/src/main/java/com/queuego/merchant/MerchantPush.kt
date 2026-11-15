@@ -66,13 +66,13 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
         auth.session.accessToken.isNotBlank() &&
         auth.session.expiresAtMs > nowMs
 
-// Character.isWhitespace on UTF-16 code units misses supplementary Unicode format
-// characters (for example U+E0001 LANGUAGE TAG). Validate whole code points.
+// Character.isWhitespace misses non-breaking Unicode space separators, and UTF-16
+// code-unit checks miss supplementary FORMAT characters. Validate whole code points.
 internal fun merchantPushHasInvisibleCodePoint(value: String): Boolean {
     var index = 0
     while (index < value.length) {
         val cp = Character.codePointAt(value, index)
-        if (Character.isWhitespace(cp) || Character.isISOControl(cp) ||
+        if ((Character.isWhitespace(cp) || Character.isSpaceChar(cp)) || Character.isISOControl(cp) ||
             Character.getType(cp) == Character.FORMAT.toInt()
         ) return true
         index += Character.charCount(cp)
