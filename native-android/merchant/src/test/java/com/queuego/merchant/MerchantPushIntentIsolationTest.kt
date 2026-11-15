@@ -25,4 +25,20 @@ class MerchantPushIntentIsolationTest {
             merchantPushIntentRequestCode("shop-a", "order-124")
         )
     }
+
+    @Test fun notificationIdForSameMessageIsScopedToShop() {
+        val messageId = "fcm-message-42"
+        val firstShopNotificationId = merchantPushIntentRequestCode("shop-a", messageId)
+        val secondShopNotificationId = merchantPushIntentRequestCode("shop-b", messageId)
+        assertNotEquals(firstShopNotificationId, secondShopNotificationId)
+        assertEquals(firstShopNotificationId, merchantPushIntentRequestCode("shop-a", messageId))
+    }
+
+    @Test fun notificationIdForFallbackReferenceIsScopedToShop() {
+        val fallbackReference = "order-123"
+        assertNotEquals(
+            merchantPushIntentRequestCode("shop-a", fallbackReference),
+            merchantPushIntentRequestCode("shop-b", fallbackReference)
+        )
+    }
 }
