@@ -66,4 +66,24 @@ class MerchantPushIntentIsolationTest {
         )
     }
 
+    @Test fun matchingReferenceAliasesAreAccepted() {
+        assertEquals("order-7", merchantPushReferenceId(mapOf("referenceId" to "order-7", "reference_id" to "order-7")))
+    }
+
+    @Test fun singleLegacyReferenceAliasIsAccepted() {
+        assertEquals("order-7", merchantPushReferenceId(mapOf("reference_id" to "order-7")))
+    }
+
+    @Test fun conflictingReferenceAliasesAreRejected() {
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order-a", "reference_id" to "order-b")))
+    }
+
+    @Test fun blankReferenceAliasCannotOverrideValidReference() {
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "", "reference_id" to "order-7")))
+    }
+
+    @Test fun absentReferencePreservesNonOrderPush() {
+        assertEquals("", merchantPushReferenceId(emptyMap()))
+    }
+
 }
