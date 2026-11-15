@@ -169,6 +169,19 @@ class MerchantPushIntentIsolationTest {
         assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order\u202E7")))
     }
 
+    @Test fun malformedUtf16FcmTokenIsRejectedBeforeRegistration() {
+        val validToken = "abcdefghijklmnop"
+        assertEquals(validToken, merchantUsableFcmToken(validToken))
+        assertEquals(null, merchantUsableFcmToken(validToken + 0xD800.toChar()))
+        assertEquals(null, merchantUsableFcmToken(0xDC00.toChar() + validToken))
+        assertEquals(null, merchantUsableFcmToken("abc" + 0xD800.toChar() + "def" + 0xDC00.toChar() + "ghijklmnop"))
+    }
+
+    @Test fun validSurrogatePairFcmTokenIsNotCorrupted() {
+        val token = "abcdefghijklmnop" + 0xD83D.toChar() + 0xDE80.toChar()
+        assertEquals(token, merchantUsableFcmToken(token))
+    }
+
     @Test fun isolatedUtf16SurrogatesAreRejectedBeforeRouting() {
         assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order${0xD800.toChar()}")))
         assertEquals(null, merchantPushReferenceId(mapOf("reference_id" to "order${0xDC00.toChar()}")))
