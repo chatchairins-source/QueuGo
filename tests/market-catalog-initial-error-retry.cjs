@@ -1,0 +1,20 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const vm=require('node:vm');
+
+const source=fs.readFileSync(path.join(__dirname,'../merchant/market-catalog.js'),'utf8');
+const start=source.indexOf('async function load(){');
+const end=source.indexOf('window.qgRenderMarketCatalog=load;',start);
+assert.ok(start>=0&&end>start,'catalog load function exists');
+const load=source.slice(start,end);
+const failure=load.match(/else shell\(('(?:[^'\\]|\\.)*')\);\s*error\(e\)/);
+assert.ok(failure,'unfocused RPC failure renders a fallback shell');
+const html=vm.runInNewContext(failure[1]);
+assert.match(html,/โหลดแคตตาล็อกไม่สำเร็จ/,'error remains visible');
+assert.match(html,/<button\b[^>]*type="button"/,'retry is not a submit action');
+assert.match(html,/onclick="qgRenderMarketCatalog\(\)"/,'retry invokes existing catalog loader');
+assert.match(html,/ลองโหลดแคตตาล็อกอีกครั้ง/,'retry has an accessible text label');
+assert.match(source,/window\.qgRenderMarketCatalog=load;/,'retry target is exposed');
+console.log('market catalog initial RPC retry: 6 checks passed');
