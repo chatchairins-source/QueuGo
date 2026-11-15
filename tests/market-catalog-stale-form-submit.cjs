@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const source=fs.readFileSync(path.join(__dirname,'../merchant/market-catalog.js'),'utf8');
+const submitGuard=/const submitShop=state\.shop,submitEpoch=state\.epoch;\s*if\(([^\n]+)\)return;/;
+const match=source.match(submitGuard);
+assert.ok(match,'add form must validate merchant session immediately before saving pending request');
+assert.match(match[1],/active\(submitEpoch,submitShop\)/,'reject stale route and request epoch');
+assert.match(match[1],/profileId\(shop\(\)\)!==submitShop/,'reject form from another merchant before pending write or RPC');
+assert.match(match[1],/!permitted\(shop\(\)\)/,'reject form when merchant loses Market access');
+const guard=source.indexOf(match[0]);
+const pending=source.indexOf('localStorage.setItem(pendingKey(submitShop)',guard);
+const call=source.indexOf("await rpc('qg_market_catalog_add',body)",guard);
+assert.ok(pending>guard&&call>pending,'session check precedes pending persistence and catalog RPC');
+console.log('market catalog stale add-form session regression: passed');
