@@ -67,5 +67,33 @@ ok(html.includes('if(!packageInfo)window.QueueGoMapWeb?.attachPlaces?.(map);'),'
   await routes.api.engineMatrix(points);
   await routes.api.engineOptimizeStops([...points,points[0]]);
   equal(calls.map(c=>c.action).join(','),'route,match,matrix,optimize-stops','all four actions stay on installed QueueGo Map Service');
+  // Exercise the actual renderer fallback code, not an invented substitute.
+  const fallbackStart=html.indexOf('      // Local renderer assets are present');
+  const fallbackEnd=html.indexOf('      if(packageInfo.vector_url',fallbackStart);
+  ok(fallbackStart>=0&&fallbackEnd>fallbackStart,'installed renderer fallback exists in Map View');
+  const fallbackBody=html.slice(fallbackStart,fallbackEnd);
+  const runFallback=new Function('document','globalThis','return (async()=>{'+fallbackBody+'})()');
+  const paths=[],offlineGlobal={};
+  await runFallback({
+    createElement:kind=>({kind}),
+    head:{appendChild(node){
+      paths.push(node.href||node.src);
+      if(node.src)offlineGlobal.maplibregl={Map:function(){}};
+      node.onload();
+    }}
+  },offlineGlobal);
+  equal(paths.join(','),'../map-assets/maplibre-gl.css,../map-assets/maplibre-gl.js','no CDN required when offline');
+  ok(typeof offlineGlobal.maplibregl.Map==='function','MapLibre global initializes from local JS');
+  const onlinePaths=[];
+  await runFallback({
+    createElement:kind=>({kind}),
+    head:{appendChild(node){onlinePaths.push(node.href||node.src);node.onload()}}
+  },{maplibregl:{Map:function(){}}});
+  equal(onlinePaths.join(','),'../map-assets/maplibre-gl.css','existing CDN JS is retained without duplicate local JS fetch');
+  await assert.rejects(runFallback({
+    createElement:kind=>({kind}),
+    head:{appendChild(node){node.onerror()}}
+  },{}),/Installed MapLibre CSS unavailable/);
+  checks++;
   console.log(JSON.stringify({checks,failures:0,scope:'installed PMTiles source, same-origin Map API, local routing and retained Web map fallback; not physical field certification'}));
 })().catch(error=>{console.error(error);process.exitCode=1});
