@@ -163,6 +163,12 @@ jobs:
 
           rm -rf backup restore-lab local-supabase.env "${NAME}.tar.gz" verify-backup.tar.gz
 
+      - name: Verify encrypted artifact checksum before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check "${QG_BACKUP_ARTIFACT}.tar.gz.enc.sha256"
+
       - name: Upload encrypted backup
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
