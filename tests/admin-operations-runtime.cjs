@@ -14,9 +14,15 @@ const tick=async()=>{for(let n=0;n<12;n++)await new Promise(r=>setImmediate(r))}
  for(const state of [true,false,null]){featureState=state;w.qgRenderAdminOperations('admin-laundry');await tick();assert.equal(w.document.querySelector('#qg-service-availability').dataset.state,state===true?'enabled':state===false?'disabled':'unknown');checks++}
  featureState=true;
  calls=[];routes=[];w.qgRenderAdminOperations('admin-ride');await tick();
- assert(calls.some(x=>x.name==='queuego_admin_public_licenses'),'Approved Admin must read existing public-license review queue');
+ assert(!calls.some(x=>x.name==='queuego_admin_public_licenses'),'Navigation must not automatically read sensitive public-license evidence');
  assert(w.document.querySelector('#qg-ride-policy'));
- const licensePanel=w.document.querySelector('#qg-ride-license-panel'),licenseForm=licensePanel.querySelector('form.qg-public-license');
+ const licensePanel=w.document.querySelector('#qg-ride-license-panel');
+ const openLicense=licensePanel.querySelector('[data-license-open]');assert(openLicense);
+ assert(licensePanel.querySelector('[data-open-rider-review]'));
+ licensePanel.querySelector('[data-open-rider-review]').click();assert.deepEqual(routes,['admin-rider-review']);checks+=3;
+ await openLicense.onclick();
+ assert(calls.some(x=>x.name==='queuego_admin_public_licenses'),'Approved Admin must read license queue on explicit request');
+ const licenseForm=licensePanel.querySelector('form.qg-public-license');
  assert(licenseForm&&licensePanel.textContent.includes('ตรวจใบขับขี่สาธารณะ'));
  assert(licensePanel.querySelector('[data-evidence]'));
  checks+=4;
