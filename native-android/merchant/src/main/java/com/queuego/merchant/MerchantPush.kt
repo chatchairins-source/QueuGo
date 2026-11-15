@@ -100,7 +100,7 @@ internal fun merchantPushReferenceId(data: Map<String, String>): String? {
 
 // Java String.hashCode has trivial collisions (for example, "Aa" and "BB").
 internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): Int {
-    val identity = "shop:$shopId|message:$messageKey"
+    val identity = "shop:${shopId.length}:$shopId|message:${messageKey.length}:$messageKey"
     val digest = MessageDigest.getInstance("SHA-256").digest(identity.toByteArray(Charsets.UTF_8))
     return ((digest[0].toInt() and 0xff) shl 24) or
         ((digest[1].toInt() and 0xff) shl 16) or
