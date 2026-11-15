@@ -111,7 +111,15 @@ internal fun merchantPushWellFormedUtf16(value: String): Boolean {
 // FCM metadata participates in the notification identity and navigation intent. Reject
 // malformed UTF-16 instead of allowing distinct values to collapse during UTF-8 hashing.
 internal fun merchantPushMetadataWellFormed(messageId: String?, type: String): Boolean =
-    (messageId == null || merchantPushWellFormedUtf16(messageId)) && merchantPushWellFormedUtf16(type)
+    (messageId == null || merchantPushOpaqueMetadataSafe(messageId)) && merchantPushOpaqueMetadataSafe(type)
+
+// FCM identifiers and event types are machine-readable routing keys, not display text.
+// Reject invisible controls and whitespace before using them in tap navigation or identity.
+private fun merchantPushOpaqueMetadataSafe(value: String): Boolean =
+    merchantPushWellFormedUtf16(value) && value.none { char ->
+        char.isWhitespace() || char.isISOControl() ||
+            Character.getType(char) == Character.FORMAT.toInt()
+    }
 
 internal fun merchantPushReferenceId(data: Map<String, String>): String? {
     val references = listOfNotNull(data["referenceId"], data["reference_id"])
