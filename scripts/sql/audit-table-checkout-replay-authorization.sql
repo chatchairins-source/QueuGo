@@ -7,6 +7,9 @@ DECLARE
   guard_pos integer;
   replay_pos integer;
   duplicate_pos integer;
+  payload_guard_pos integer;
+  recent_cart_pos integer;
+  order_insert_pos integer;
 BEGIN
   SELECT lower(pg_get_functiondef(
     'public.qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision)'::regprocedure
@@ -16,12 +19,20 @@ BEGIN
   guard_pos := strpos(body, 'if v.revoked_at is not null or now()>=v.expires_at then');
   replay_pos := strpos(body, 'from public.qg_table_requests');
   duplicate_pos := strpos(body, '''duplicate'',true');
+  payload_guard_pos := strpos(body, 'if v_old.payload_hash<>v_hash then');
+  recent_cart_pos := strpos(body, "created_at>now()-interval '8 seconds'");
+  order_insert_pos := strpos(body, 'insert into public.orders(');
 
   IF lock_pos = 0 OR guard_pos = 0 OR replay_pos = 0 OR duplicate_pos = 0 THEN
     RAISE EXCEPTION 'QR checkout required authorization or replay markers missing';
   END IF;
   IF NOT (lock_pos < guard_pos AND guard_pos < replay_pos AND replay_pos < duplicate_pos) THEN
     RAISE EXCEPTION 'QR checkout must lock and authorize session before idempotent replay';
+  END IF;
+  IF payload_guard_pos = 0 OR recent_cart_pos = 0 OR order_insert_pos = 0
+     OR NOT (replay_pos < payload_guard_pos AND payload_guard_pos < duplicate_pos
+             AND guard_pos < recent_cart_pos AND recent_cart_pos < order_insert_pos) THEN
+    RAISE EXCEPTION 'QR checkout must reject mismatched request replay and authorize recent-cart deduplication';
   END IF;
   IF strpos(substring(body FROM lock_pos FOR guard_pos-lock_pos), 'for update') = 0 THEN
     RAISE EXCEPTION 'QR checkout session row must be locked before authorization';
