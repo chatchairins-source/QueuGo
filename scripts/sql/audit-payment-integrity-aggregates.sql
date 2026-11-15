@@ -10,6 +10,7 @@ WITH per_reference AS (
 ), per_order AS (
   SELECT p.order_id,
          count(*) AS attempts,
+         coalesce(sum(p.amount) FILTER (WHERE lower(btrim(p.status)) IN ('paid','succeeded','success','completed','captured')), 0) AS successful_amount_total,
          count(*) FILTER (
            WHERE lower(btrim(p.status)) IN ('paid','succeeded','success','completed','captured')
          ) AS successful_attempts
@@ -39,6 +40,9 @@ SELECT
   (SELECT count(*) FROM per_reference WHERE attempts > 1) AS duplicate_nonblank_transaction_references,
   (SELECT count(*) FROM per_reference WHERE distinct_orders > 1) AS transaction_references_shared_across_orders,
   (SELECT count(*) FROM per_order WHERE successful_attempts > 1) AS orders_with_multiple_successful_payments,
+  -- Investigation only: tips, refunds and split captures require reconciliation before escalation.
+  (SELECT count(*) FROM per_order AS po JOIN public.orders AS o ON o.id = po.order_id
+    WHERE po.successful_amount_total > o.total_amount AND o.total_amount IS NOT NULL) AS orders_with_successful_payment_sum_exceeding_total,
   (SELECT count(*)
      FROM public.payments AS p
      LEFT JOIN public.orders AS o ON o.id = p.order_id
