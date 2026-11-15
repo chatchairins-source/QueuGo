@@ -4,16 +4,18 @@ let checks=0;
 const ok=(v,m)=>{assert.ok(v,m);checks++};
 function boot(){
  const state={user:'customer',html:'',renders:0,timers:[],calls:[],maps:[],markerOptions:[],failConfig:false,failState:false};
- class FakeMap{constructor(options){this.options=options;this.markers=[];state.maps.push(this)}on(_event,callback){callback()}getContainer(){return this.options.container}remove(){this.removed=true}addControl(){}setCenter(){}fitBounds(){}touchZoomRotate={disableRotation(){}}}
+ class FakeElement{constructor(){this.style={}}setAttribute(k,v){this[k]=v}append(){}}
+ class FakeMap{constructor(options){this.options=options;this.markers=[];state.maps.push(this)}on(_event,callback){callback()}once(){}getContainer(){return this.options.container}remove(){this.removed=true}addControl(){}setCenter(){}fitBounds(){}touchZoomRotate={disableRotation(){},enableRotation(){}};touchPitch={enable(){}}}
  class FakeMarker{constructor(options){this.options=options;state.markerOptions.push(options)}setLngLat(point){this.point=point;return this}addTo(map){map.markers.push(this);return this}}
  const ctx=vm.createContext({
+  window:{},
   S:{get:()=>({userId:state.user})},V:{order:async()=>{}},routeVersion:1,currentPos:null,$:()=>null,
   location:{hash:'#ride'},localStorage:{getItem:()=>null},
-  document:{hidden:false,querySelectorAll:()=>[],addEventListener:()=>{},createElement:()=>({style:{},setAttribute(k,v){this[k]=v}})},
+  document:{hidden:false,querySelectorAll:()=>[],addEventListener:()=>{},createElement:()=>new FakeElement()},
   addEventListener:()=>{},setTimeout:fn=>{state.timers.push(fn);return state.timers.length},clearTimeout:()=>{},
-  layout:html=>{state.html=html;state.mapHost=html.includes('id="ride-live-map"')?{id:'ride-live-map'}:null;state.renders++},ico:()=>'',esc:String,baht:String,
-  maplibregl:{Map:FakeMap,Marker:FakeMarker,LngLatBounds:class{extend(){return this}},NavigationControl:class{}},qgQueueGoPickerStyle:()=>({}),
-  $:id=>id==='ride-live-map'?state.mapHost:null,
+  layout:html=>{state.html=html;state.mapHost={id:html.includes('id="ride-live-map"')?'ride-live-map':'ride-route-map'};state.renders++},ico:()=>'',esc:String,baht:String,
+  maplibregl:{Map:FakeMap,Marker:FakeMarker,LngLatBounds:class{extend(){return this}},NavigationControl:class{},AttributionControl:class{}},qgQueueGoPickerStyle:()=>({}),
+  HTMLElement:FakeElement,$:id=>id===state.mapHost?.id?state.mapHost:null,
   QueueGoOrderNumber:{format:o=>o.id},go:()=>{},
   db:async (path,opts)=>{
    state.calls.push({path,opts});
@@ -25,7 +27,11 @@ function boot(){
    return {rides:state.rides||[]};
   }
  });
- vm.runInContext(source,ctx);
+ const page=fs.readFileSync('index.html','utf8');
+ const coordinateStart=page.indexOf('function qgIsValidCoordinate(');
+ const coordinateEnd=page.indexOf('\n}',coordinateStart)+2;
+ assert(coordinateStart>=0&&coordinateEnd>coordinateStart);
+ vm.runInContext(page.slice(coordinateStart,coordinateEnd)+'\n'+source,ctx);
  return {state,ctx,open:id=>ctx.V.ride(id)};
 }
 (async()=>{
@@ -55,7 +61,7 @@ function boot(){
  const supplyCall=supply.state.calls.find(c=>c.path==='rpc/queuego_customer_ride_supply');
  ok(!!supplyCall,'Ride booking reads the existing privacy-preserving nearby supply RPC');
  ok(supplyCall.opts.body.p_lat===15&&supplyCall.opts.body.p_lng===103,'nearby supply query uses the selected pickup point');
- ok(supply.state.html.includes('id="ride-live-map"')&&supply.state.html.includes('มี Rider พร้อมรับงานใกล้จุดรับ 2 คน'),'Ride booking shows its QueueGo map and nearby Rider count');
+ ok(supply.state.html.includes('id="ride-route-map"')&&supply.state.html.includes('มี Rider พร้อมรับงานใกล้จุดรับ 2 คน'),'Ride booking shows its QueueGo map and nearby Rider count');
  ok(supply.state.html.includes('ตำแหน่งบนแผนที่เป็นแบบกลุ่มโดยประมาณ'),'supply display explains that map positions are approximate clusters');
  ok(supply.state.maps.at(-1).markers.length===2,'booking map includes the selected pickup and one validated approximate Rider cluster');
  ok(supply.state.markerOptions.some(o=>o.element?.['aria-label']==='2 Rider โดยประมาณ'),'cluster marker displays only its anonymous count');
