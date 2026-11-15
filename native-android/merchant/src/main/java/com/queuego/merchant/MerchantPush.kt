@@ -189,7 +189,11 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         val body = message.notification?.body ?: message.data["message"] ?: "มีรายการอัปเดตใน QueueGo"
         val referenceId = message.data["referenceId"] ?: message.data["reference_id"] ?: ""
         val type = message.data["type"].orEmpty()
-        val notificationId = merchantPushIntentRequestCode(\n            cached.user.id,\n            merchantPushMessageKey(message.messageId, referenceId, type, System.nanoTime().toString())\n        )\n        val intent = Intent(this, MainActivity::class.java).apply {
+        val notificationId = merchantPushIntentRequestCode(
+            cached.user.id,
+            merchantPushMessageKey(message.messageId, referenceId, type, System.nanoTime().toString())
+        )
+        val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("queuego_push_reference_id", referenceId)
             putExtra("queuego_push_type", type)
