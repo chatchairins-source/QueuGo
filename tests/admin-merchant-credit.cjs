@@ -36,7 +36,7 @@ const id=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
  w.currentUser=()=>({id:id(70),type:'admin',status:'approved'});w.toast=()=>{};
  w.qtSupabaseRpc=async(name,p)=>{
   if(name==='queuego_admin_credit_accounts')return [];
-  if(name==='queuego_admin_merchant_credit_targets')return [{user_id:id(51),name:'Shop Owner',shops:'<img src=x onerror=alert(1)>',promo_minor:0}];
+  if(name==='queuego_admin_merchant_credit_targets')return [{user_id:id(51),name:'Shop Owner',shops:'<img src=x onerror=alert(1)>',promo_minor:0}];if(name==='queuego_admin_rider_credit_targets')return [];
   requests.push(p);eq(JSON.parse(w.localStorage.getItem('qg-admin-merchant-promo-v1:'+id(70))).request,p.p_request);
   if(lost)throw Error('reply lost after server commit');return id(900);
  };
