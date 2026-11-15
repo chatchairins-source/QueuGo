@@ -112,7 +112,7 @@ function paint(){
 async function recoverPending(shopId,epoch){
   let pending=null;
   try{pending=JSON.parse(localStorage.getItem(pendingKey(shopId))||'null')}catch(_){}
-  if(!pending?.p_request_id||pending.p_master_product_id==null)return;
+  if(!pending?.p_request_id||pending.p_master_product_id==null||!active(epoch,shopId))return;
   try{
     await rpc('qg_market_catalog_add',pending);
     try{localStorage.removeItem(pendingKey(shopId))}catch(_){}
