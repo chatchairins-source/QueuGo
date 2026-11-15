@@ -25,6 +25,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
+import java.security.MessageDigest
 import kotlin.coroutines.resumeWithException
 
 // Firebase token callbacks may finish after logout or account switching.
@@ -97,8 +98,15 @@ internal fun merchantPushReferenceId(data: Map<String, String>): String? {
     return references.firstOrNull().orEmpty()
 }
 
-internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): Int =
-    ("shop:" + shopId + "|message:" + messageKey).hashCode()
+// Java String.hashCode has trivial collisions (for example, "Aa" and "BB").
+internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): Int {
+    val identity = "shop:$shopId|message:$messageKey"
+    val digest = MessageDigest.getInstance("SHA-256").digest(identity.toByteArray(Charsets.UTF_8))
+    return ((digest[0].toInt() and 0xff) shl 24) or
+        ((digest[1].toInt() and 0xff) shl 16) or
+        ((digest[2].toInt() and 0xff) shl 8) or
+        (digest[3].toInt() and 0xff)
+}
 
 // Use one identity for the tap PendingIntent and posted notification. Missing FCM IDs
 // must not reuse an old tap target when two unrelated notifications arrive.
