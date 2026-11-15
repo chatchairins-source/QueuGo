@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const sql = fs.readFileSync(path.join(__dirname, '../scripts/sql/audit-payment-integrity-aggregates.sql'), 'utf8');
 assert.match(sql, /WITH per_order AS/i);
+// Case and surrounding whitespace must not hide successful payment attempts.
+assert.match(sql, /lower\(btrim\(p\.status\)\)\s+IN\s*\('paid','succeeded','success','completed','captured'\)/i);
 assert.match(sql, /FROM public\.payments/i);
 assert.match(sql, /LEFT JOIN public\.orders/i);
 assert.match(sql, /p\.order_id IS NOT NULL AND o\.id IS NULL/i);
