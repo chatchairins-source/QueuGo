@@ -800,7 +800,7 @@
       const direct=coordinateSearch(query);
       if(direct.length){state.lastSearchProvider="coordinates";return direct}
       const center=map.getCenter();
-      if(packageInfo){state.lastSearchProvider="queuego";return QueueGoMapService.call("geocode",{q:query})}
+      if(typeof packageInfo!=="undefined"&&packageInfo){state.lastSearchProvider="queuego";return QueueGoMapService.call("geocode",{q:query})}
       const rows=await window.QueueGoMapWeb?.search?.(query,{latitude:center.lat,longitude:center.lng,limit:20})||[];
       state.lastSearchProvider=rows[0]?.provider||null;
       return rows.map(row=>({...row,lat:String(row.lat),lon:String(row.lng??row.lon),display_name:row.label||row.display_name||row.name}));
