@@ -103,7 +103,7 @@ internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): 
 // Use one identity for the tap PendingIntent and posted notification. Missing FCM IDs
 // must not reuse an old tap target when two unrelated notifications arrive.
 internal fun merchantPushMessageKey(messageId: String?, referenceId: String, type: String, fallbackId: String): String =
-    messageId?.takeIf { it.isNotBlank() }
+    messageId?.takeIf { it.isNotBlank() }?.let { "fcm:$it" }
         ?: referenceId.takeIf { it.isNotBlank() }?.let { "reference:$it|type:$type" }
         ?: "unidentified:$fallbackId"
 

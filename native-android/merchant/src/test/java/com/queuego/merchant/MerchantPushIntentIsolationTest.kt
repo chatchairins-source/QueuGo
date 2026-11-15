@@ -42,7 +42,18 @@ class MerchantPushIntentIsolationTest {
         )
     }
     @Test fun messageIdTakesPriorityOverReferenceAndType() {
-        assertEquals("fcm-1", merchantPushMessageKey("fcm-1", "order-1", "new", "fallback"))
+        assertEquals("fcm:fcm-1", merchantPushMessageKey("fcm-1", "order-1", "new", "fallback"))
+    }
+
+
+    @Test fun fcmMessageIdCannotCollideWithReferenceFallbackKey() {
+        val fallback = merchantPushMessageKey(null, "order-7", "accepted", "fallback")
+        val explicit = merchantPushMessageKey("reference:order-7|type:accepted", "other", "new", "fallback")
+        assertNotEquals(fallback, explicit)
+        assertNotEquals(
+            merchantPushIntentRequestCode("shop-a", fallback),
+            merchantPushIntentRequestCode("shop-a", explicit)
+        )
     }
 
     @Test fun sameReferenceAndTypeHaveStableIdentityWithoutFcmId() {
