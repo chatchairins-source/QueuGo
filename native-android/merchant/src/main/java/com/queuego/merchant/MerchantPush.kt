@@ -65,7 +65,9 @@ internal fun merchantPushNotificationSessionActive(auth: NativeAuth, nowMs: Long
         auth.session.accessToken.isNotBlank() &&
         auth.session.expiresAtMs > nowMs
 
-internal fun merchantUsableFcmToken(raw: String): String? = raw.trim().takeIf { it.length >= 16 }
+// FCM registration tokens are opaque, non-whitespace values; never send malformed payloads.
+internal fun merchantUsableFcmToken(raw: String): String? =
+    raw.trim().takeIf { it.length >= 16 && it.none(Char::isWhitespace) }
 
 // Skip Auth validation and token registration for a cached session that is already invalid.
 internal fun merchantPushRefreshPreflight(auth: NativeAuth, rawToken: String, nowMs: Long): Boolean =
