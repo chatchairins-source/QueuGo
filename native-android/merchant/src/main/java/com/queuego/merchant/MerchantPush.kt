@@ -106,6 +106,11 @@ internal fun merchantPushWellFormedUtf16(value: String): Boolean {
 }
 
 // Conflicting payload aliases must never route a notification tap to an arbitrary order.
+// FCM metadata participates in the notification identity and navigation intent. Reject
+// malformed UTF-16 instead of allowing distinct values to collapse during UTF-8 hashing.
+internal fun merchantPushMetadataWellFormed(messageId: String?, type: String): Boolean =
+    (messageId == null || merchantPushWellFormedUtf16(messageId)) && merchantPushWellFormedUtf16(type)
+
 internal fun merchantPushReferenceId(data: Map<String, String>): String? {
     val references = listOfNotNull(data["referenceId"], data["reference_id"])
     // Order references are opaque identifiers, not free-form display text. Reject malformed
@@ -243,6 +248,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         val body = message.notification?.body ?: message.data["message"] ?: "มีรายการอัปเดตใน QueueGo"
         val referenceId = merchantPushReferenceId(message.data) ?: return
         val type = message.data["type"].orEmpty()
+        if (!merchantPushMetadataWellFormed(message.messageId, type)) return
         val messageKey = merchantPushMessageKey(message.messageId, referenceId, type, System.nanoTime().toString())
         val notificationId = merchantPushIntentRequestCode(cached.user.id, messageKey)
         val intent = Intent(this, MainActivity::class.java).apply {
