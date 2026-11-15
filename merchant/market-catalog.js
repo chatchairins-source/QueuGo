@@ -144,7 +144,9 @@ async function load(){
     if(!active(epoch,id))return;
     // A newer typed query must not publish old rows into shared state: stale
     // cards can still be selected while the debounce timer is pending.
-    const currentInput=focusedSearch?document.getElementById('market-catalog-search'):null;
+    const currentInput=document.getElementById('market-catalog-search');
+    // A search can be typed after this load began even when another control
+    // originally held focus. Never publish rows for the superseded query.
     if(currentInput&&currentInput.value.trim()!==state.query)return;
     state.gpRate=gp;
     state.categories=(Array.isArray(cats)?cats:[]).filter(c=>MARKET_MASTER_CATEGORIES.has(String(c?.category||'')));
