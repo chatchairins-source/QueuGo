@@ -1012,7 +1012,10 @@
       }
     }
 
-    window.QueueGoMapWeb?.attachPlaces?.(map);
+    // When the installed Buriram package is active, keep the map fully same-origin.
+    // The nationwide Supabase POI overlay is an online-only enhancement; the local
+    // map service handles geocode/nearby for the installed offline runtime.
+    if(!packageInfo)window.QueueGoMapWeb?.attachPlaces?.(map);
     window.QueueGoMapEngine={
       geocode:engineGeocode,
       reverseGeocode:(lat,lon)=>engineReverse(lat,lon),
