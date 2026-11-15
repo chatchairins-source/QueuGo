@@ -128,6 +128,9 @@ async function load(){
   if(!u||!id||!permitted(u)){++state.epoch;state.shop=null;state.loading=false;state.gpRate=null;state.rows=[];state.categories=[];state.hasMore=false;shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
   const epoch=++state.epoch;state.shop=id;state.loading=true;shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
   await recoverPending(id,epoch);
+  // Recovery may wait on the network while the merchant signs out or switches accounts.
+  // Never start the subsequent catalog RPCs for a superseded session.
+  if(!active(epoch,id))return;
   try{
     const [cats,page,gp]=await Promise.all([
       rpc('qg_market_master_categories',{}),
