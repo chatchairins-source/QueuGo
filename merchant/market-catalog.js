@@ -188,7 +188,8 @@ window.qgMarketCatalogChoose=id=>{
     };
     if(!(body.p_price>0&&body.p_pack_size>0&&body.p_weight_kg>0&&body.p_cost>=0&&body.p_initial_stock>=0&&body.p_min_stock>=0))return error(Error('ตรวจราคา หน่วย น้ำหนัก ต้นทุน และสต๊อกอีกครั้ง'));
     const submitShop=state.shop,submitEpoch=state.epoch;
-    if(!submitShop||!active(submitEpoch,submitShop))return;
+    // The form can outlive an auth change before the catalog route is rendered again.
+    if(!submitShop||!active(submitEpoch,submitShop)||profileId(shop())!==submitShop||!permitted(shop()))return;
     state.loading=true;const submit=ev.submitter;if(submit)submit.disabled=true;
     try{
       localStorage.setItem(pendingKey(submitShop),JSON.stringify(body));
