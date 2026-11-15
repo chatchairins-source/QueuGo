@@ -190,6 +190,15 @@ class MerchantPushIntentIsolationTest {
         assertEquals(true, merchantPushWithinDeliveryLifetime(1_000L, 0, 500_000L))
     }
 
+    @Test fun extremeFutureTimestampDoesNotOverflowIntoExpiredAlert() {
+        assertEquals(true, merchantPushWithinDeliveryLifetime(Long.MAX_VALUE, 30, 1_000L))
+        assertEquals(true, merchantPushWithinDeliveryLifetime(Long.MAX_VALUE, 30, Long.MIN_VALUE))
+    }
+
+    @Test fun largeElapsedLifetimeStillExpiresWithoutOverflow() {
+        assertEquals(false, merchantPushWithinDeliveryLifetime(1L, Int.MAX_VALUE, Long.MAX_VALUE))
+    }
+
     @Test fun futureSentTimestampDoesNotPrematurelyExpire() {
         assertEquals(true, merchantPushWithinDeliveryLifetime(60_000L, 30, 59_000L))
     }
