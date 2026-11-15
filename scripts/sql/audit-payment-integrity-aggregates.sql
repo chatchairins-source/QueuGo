@@ -2,7 +2,8 @@
 -- Multiple payment attempts may be legitimate; these counts are investigation signals only.
 -- Success labels are heuristic and must be reconciled with the actual payment state machine.
 WITH per_reference AS (
-  SELECT btrim(transaction_reference) AS reference_key, count(*) AS attempts
+  SELECT btrim(transaction_reference) AS reference_key, count(*) AS attempts,
+         count(DISTINCT order_id) AS distinct_orders
   FROM public.payments
   WHERE transaction_reference IS NOT NULL AND btrim(transaction_reference) <> ''
   GROUP BY btrim(transaction_reference)
@@ -30,6 +31,7 @@ SELECT
   (SELECT count(*) FROM public.payments WHERE lower(btrim(status)) IN ('paid','succeeded','success','completed','captured') AND (payment_method IS NULL OR btrim(payment_method) = '')) AS successful_payments_without_method,
   (SELECT count(*) FROM per_order WHERE attempts > 1) AS orders_with_multiple_payment_rows,
   (SELECT count(*) FROM per_reference WHERE attempts > 1) AS duplicate_nonblank_transaction_references,
+  (SELECT count(*) FROM per_reference WHERE distinct_orders > 1) AS transaction_references_shared_across_orders,
   (SELECT count(*) FROM per_order WHERE successful_attempts > 1) AS orders_with_multiple_successful_payments,
   (SELECT count(*)
      FROM public.payments AS p
