@@ -88,6 +88,13 @@ internal fun merchantPushTargetsShop(data: Map<String, String>, currentShopId: S
 internal fun merchantPushIntentRequestCode(shopId: String, messageKey: String): Int =
     ("shop:" + shopId + "|message:" + messageKey).hashCode()
 
+// Use one identity for the tap PendingIntent and posted notification. Missing FCM IDs
+// must not reuse an old tap target when two unrelated notifications arrive.
+internal fun merchantPushMessageKey(messageId: String?, referenceId: String, type: String, fallbackId: String): String =
+    messageId?.takeIf { it.isNotBlank() }
+        ?: referenceId.takeIf { it.isNotBlank() }?.let { "reference:$it|type:$type" }
+        ?: "unidentified:$fallbackId"
+
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
@@ -182,6 +189,10 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         val body = message.notification?.body ?: message.data["message"] ?: "มีรายการอัปเดตใน QueueGo"
         val referenceId = message.data["referenceId"] ?: message.data["reference_id"] ?: ""
         val type = message.data["type"].orEmpty()
+        val notificationId = merchantPushIntentRequestCode(
+            cached.user.id,
+            merchantPushMessageKey(message.messageId, referenceId, type, System.nanoTime().toString())
+        )
         val intent = Intent(this, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra("queuego_push_reference_id", referenceId)
@@ -189,7 +200,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         }
         val pendingIntent = PendingIntent.getActivity(
             this,
-            merchantPushIntentRequestCode(cached.user.id, message.messageId ?: referenceId + type),
+            notificationId,
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
@@ -208,10 +219,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
             .build()
         runCatching {
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(
-                merchantPushIntentRequestCode(
-                    cached.user.id,
-                    message.messageId ?: referenceId.ifBlank { System.currentTimeMillis().toString() }
-                ),
+                notificationId,
                 notification
             )
         }

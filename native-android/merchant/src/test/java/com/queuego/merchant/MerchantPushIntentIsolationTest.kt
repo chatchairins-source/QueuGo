@@ -41,4 +41,29 @@ class MerchantPushIntentIsolationTest {
             merchantPushIntentRequestCode("shop-b", fallbackReference)
         )
     }
+    @Test fun messageIdTakesPriorityOverReferenceAndType() {
+        assertEquals("fcm-1", merchantPushMessageKey("fcm-1", "order-1", "new", "fallback"))
+    }
+
+    @Test fun sameReferenceAndTypeHaveStableIdentityWithoutFcmId() {
+        assertEquals(
+            merchantPushMessageKey(null, "order-1", "accepted", "first"),
+            merchantPushMessageKey("", "order-1", "accepted", "second")
+        )
+    }
+
+    @Test fun differentTypesOnSameReferenceCannotReplaceTapTarget() {
+        assertNotEquals(
+            merchantPushMessageKey(null, "order-1", "accepted", "first"),
+            merchantPushMessageKey(null, "order-1", "cancelled", "second")
+        )
+    }
+
+    @Test fun unidentifiedMessagesDoNotReusePreviousTapTarget() {
+        assertNotEquals(
+            merchantPushMessageKey(null, "", "", "arrival-1"),
+            merchantPushMessageKey(null, "", "", "arrival-2")
+        )
+    }
+
 }
