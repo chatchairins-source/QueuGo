@@ -32,6 +32,23 @@ class MerchantPushIntentIsolationTest {
         )
     }
 
+    @Test fun pendingIntentUriUsesFullDigestAndSeparatesShopAndMessage() {
+        val first = merchantPushIntentUri("shop-a", "Aa")
+        val second = merchantPushIntentUri("shop-a", "BB")
+        assertNotEquals(first, second)
+        assertNotEquals(first, merchantPushIntentUri("shop-b", "Aa"))
+        assertEquals(first, merchantPushIntentUri("shop-a", "Aa"))
+        assertEquals(64, first.substringAfterLast('/').length)
+        assertEquals(true, first.substringAfterLast('/').all { it in '0'..'9' || it in 'a'..'f' })
+    }
+
+    @Test fun pendingIntentUriCannotAliasDelimiterBearingFields() {
+        assertNotEquals(
+            merchantPushIntentUri("shop-a", "foo|message:bar"),
+            merchantPushIntentUri("shop-a|message:foo", "bar")
+        )
+    }
+
     @Test fun sameShopAndMessageKeepStableRequestCode() {
         assertEquals(
             merchantPushIntentRequestCode("shop-a", "order-123"),
