@@ -192,6 +192,19 @@ class MerchantPushIntentIsolationTest {
         assertEquals(true, merchantPushMetadataWellFormed("fcm-1", "order_updated"))
     }
 
+    @Test fun nonBreakingUnicodeSpaceSeparatorsCannotEnterPushRouting() {
+        // Java Character.isWhitespace is false for NBSP, figure space and narrow NBSP.
+        for (separator in listOf('\u00A0', '\u2007', '\u202F')) {
+            assertEquals(false, Character.isWhitespace(separator))
+            assertEquals(true, Character.isSpaceChar(separator))
+            assertEquals(true, merchantPushHasInvisibleCodePoint("id" + separator))
+            assertEquals(false, merchantPushMetadataWellFormed("fcm-" + separator, "updated"))
+            assertEquals(false, merchantPushMetadataWellFormed("fcm-1", "type-" + separator))
+            assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order-" + separator)))
+            assertEquals(null, merchantUsableFcmToken("abcdefghijklmnop" + separator))
+        }
+    }
+
     @Test fun supplementaryUnicodeFormatCharactersAreRejectedAcrossPushFields() {
         // U+E0001 LANGUAGE TAG is FORMAT but neither surrogate code unit is FORMAT.
         val invisibleTag = String(Character.toChars(0xE0001))
