@@ -192,6 +192,24 @@ class MerchantPushIntentIsolationTest {
         assertEquals(true, merchantPushMetadataWellFormed("fcm-1", "order_updated"))
     }
 
+    @Test fun supplementaryUnicodeFormatCharactersAreRejectedAcrossPushFields() {
+        // U+E0001 LANGUAGE TAG is FORMAT but neither surrogate code unit is FORMAT.
+        val invisibleTag = String(Character.toChars(0xE0001))
+        assertEquals(true, merchantPushHasInvisibleCodePoint("id" + invisibleTag))
+        assertEquals(false, merchantPushMetadataWellFormed("fcm-" + invisibleTag, "new"))
+        assertEquals(false, merchantPushMetadataWellFormed("fcm-1", "type-" + invisibleTag))
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order-" + invisibleTag)))
+        assertEquals(null, merchantUsableFcmToken("abcdefghijklmnop" + invisibleTag))
+    }
+
+    @Test fun visibleSupplementaryUnicodeRemainsAllowedInPushFields() {
+        val rocket = String(Character.toChars(0x1F680))
+        assertEquals(false, merchantPushHasInvisibleCodePoint("id" + rocket))
+        assertEquals(true, merchantPushMetadataWellFormed("fcm-" + rocket, "type-" + rocket))
+        assertEquals("order-" + rocket, merchantPushReferenceId(mapOf("referenceId" to "order-" + rocket)))
+        assertEquals("abcdefghijklmnop" + rocket, merchantUsableFcmToken("abcdefghijklmnop" + rocket))
+    }
+
     @Test fun validSupplementaryMetadataRemainsSupported() {
         val emoji = 0xD83D.toChar().toString() + 0xDE80.toChar()
         assertEquals(true, merchantPushMetadataWellFormed("fcm-" + emoji, "type-" + emoji))
