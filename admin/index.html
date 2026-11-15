@@ -1941,9 +1941,41 @@ async function qgLoadAdminCash(day){
  window.qgAdminTickets=function(){if(!active())return;document.getElementById('qg-v22-admin-tickets')?.remove();qgAdminTicketOwner=currentUser().id;qgAdminResetTickets();const box=document.createElement('section');box.className='qg-v22-admin-modal';box.id='qg-v22-admin-tickets';box.innerHTML='<div class="qg-v22-admin-sheet"><button type="button" class="qg-close">✕</button><h2>เรื่องร้องเรียน</h2><p id="qg-ticket-status" role="status">กำลังโหลด...</p><div class="qg-content">กำลังโหลด...</div><div class="row-btns"><button type="button" id="qg-ticket-newer">ใหม่กว่า</button><button type="button" id="qg-ticket-older">เก่ากว่า</button></div></div>';document.body.appendChild(box);box.querySelector('.qg-close').onclick=()=>box.remove();box.onclick=e=>{if(e.target===box)box.remove()};box.querySelector('#qg-ticket-newer').onclick=()=>qgAdminTicketPage(-1);box.querySelector('#qg-ticket-older').onclick=()=>qgAdminTicketPage(1);qgAdminLoadTickets()};
  window.qgAdminTicketPage=function(direction){if(direction>0){if(!qgAdminTicketMore||!qgAdminTicketRows.length)return;qgAdminTicketHistory.push(qgAdminTicketCursor);const last=qgAdminTicketRows.at(-1);qgAdminTicketCursor={at:last.created_at,id:last.id}}else{if(!qgAdminTicketHistory.length)return;qgAdminTicketCursor=qgAdminTicketHistory.pop()||null}qgAdminLoadTickets()};
  window.qgAdminLoadTickets=async function(){const body=document.querySelector('#qg-v22-admin-tickets .qg-content'),status=document.getElementById('qg-ticket-status'),actor=qgAdminTicketOwner,version=++qgAdminTicketVersion;if(!body||!status||!active()||currentUser()?.id!==actor)return;const cursor=qgAdminTicketCursor,alive=()=>body.isConnected&&active()&&currentUser()?.id===actor&&version===qgAdminTicketVersion&&qgAdminTicketCursor===cursor;status.textContent='กำลังโหลดเรื่องร้องเรียน...';try{const raw=await req('qg_support_tickets?select=id,user_id,role,order_id,original_order_id,category,details,status,admin_id,admin_note,evidence_path,created_at&order=created_at.desc,id.desc&limit=101'+qgAdminTicketAfter(cursor));if(!alive())return;const tickets=(Array.isArray(raw)?raw:[]).slice(0,100);qgAdminTicketRows=tickets;qgAdminTicketMore=(Array.isArray(raw)?raw.length:0)>100;
-   body.innerHTML=tickets.length?tickets.map(t=>'<article><b>'+safe(category[t.category]||t.category)+'</b><span>'+safe(t.status)+'</span><small>'+safe(t.role)+' · '+new Date(t.created_at).toLocaleString('th-TH')+' · '+safe(t.user_id)+'</small><p>'+safe(t.details)+'</p>'+(t.order_id||t.original_order_id?'<button type="button" data-order="'+safe(t.order_id||t.original_order_id)+'" onclick="qgAdminTrace(this.dataset.order)">ตรวจออเดอร์</button>':'')+(t.evidence_path?'<button type="button" data-path="'+safe(t.evidence_path)+'" onclick="qgAdminOpenEvidence(this.dataset.path)">ดูหลักฐาน</button>':'')+'<div><select data-ticket="'+safe(t.id)+'"><option value="OPEN">OPEN</option><option value="IN_REVIEW">IN_REVIEW</option><option value="WAITING_USER">WAITING_USER</option><option value="RESOLVED">RESOLVED</option><option value="REJECTED">REJECTED</option><option value="CLOSED">CLOSED</option></select><input data-note="'+safe(t.id)+'" placeholder="บันทึกผลการตรวจสอบ" maxlength="2000"><button type="button" data-action="'+safe(t.id)+'">บันทึกสถานะ</button></div></article>').join(''):'ยังไม่มีเรื่องร้องเรียนในหน้านี้';
+   let returnsByTicket=new Map(),returnsUnavailable=false;
+   if(tickets.length){
+     try{
+       const cases=await req('rpc/qg_admin_delivery_return_cases_v2','POST',{});
+       if(!alive())return;
+       returnsByTicket=new Map((Array.isArray(cases)?cases:[]).filter(row=>row.ticket_id).map(row=>[row.ticket_id,row]));
+     }catch(err){if(!alive())return;returnsUnavailable=true}
+   }
+   const returnStatus={reported:'รอตรวจสอบ',return_required:'ให้คืนร้านแล้ว',returning:'กำลังคืนร้าน',returned:'คืนร้านสำเร็จ',resolved_no_return:'ให้ส่งต่อแล้ว',cancelled:'ปิดเคส'};
+   const returnPanel=t=>{
+     const row=returnsByTicket.get(t.id);if(!row)return '';
+     const controls=row.status==='reported'?'<div><button type="button" data-return-action="return_to_shop">ให้คืนร้าน</button><button type="button" data-return-action="resolve_no_return">ให้ส่งต่อ</button></div>':'';
+     return '<section data-return-ticket="'+safe(t.id)+'"><b>การคืนสินค้า · '+safe(returnStatus[row.status]||row.status)+'</b><p>คืนแล้ว '+safe(row.returned_stop_count??0)+' / '+safe(row.return_stop_count??1)+' จุด</p>'+controls+'</section>';
+   };
+
+   body.innerHTML=tickets.length?tickets.map(t=>'<article><b>'+safe(category[t.category]||t.category)+'</b><span>'+safe(t.status)+'</span><small>'+safe(t.role)+' · '+new Date(t.created_at).toLocaleString('th-TH')+' · '+safe(t.user_id)+'</small><p>'+safe(t.details)+'</p>'+returnPanel(t)+(t.order_id||t.original_order_id?'<button type="button" data-order="'+safe(t.order_id||t.original_order_id)+'" onclick="qgAdminTrace(this.dataset.order)">ตรวจออเดอร์</button>':'')+(t.evidence_path?'<button type="button" data-path="'+safe(t.evidence_path)+'" onclick="qgAdminOpenEvidence(this.dataset.path)">ดูหลักฐาน</button>':'')+'<div><select data-ticket="'+safe(t.id)+'"><option value="OPEN">OPEN</option><option value="IN_REVIEW">IN_REVIEW</option><option value="WAITING_USER">WAITING_USER</option><option value="RESOLVED">RESOLVED</option><option value="REJECTED">REJECTED</option><option value="CLOSED">CLOSED</option></select><input data-note="'+safe(t.id)+'" placeholder="บันทึกผลการตรวจสอบ" maxlength="2000"><button type="button" data-action="'+safe(t.id)+'">บันทึกสถานะ</button></div></article>').join(''):'ยังไม่มีเรื่องร้องเรียนในหน้านี้';
+   body.querySelectorAll('[data-return-ticket]').forEach(panel=>{
+     const row=returnsByTicket.get(panel.dataset.returnTicket);
+     panel.querySelectorAll('[data-return-action]').forEach(button=>{
+       button.onclick=async()=>{
+         if(!alive()||button.disabled||!row?.case_id)return;
+         const controls=panel.querySelectorAll('button');
+         controls.forEach(control=>control.disabled=true);
+         try{
+           const note=panel.parentElement.querySelector('input[data-note]')?.value.trim()||null;
+           await req('rpc/qg_admin_delivery_return_action','POST',{p_case_id:row.case_id,p_action:button.dataset.returnAction,p_note:note});
+           if(alive())await qgAdminLoadTickets();
+         }catch(err){
+           if(alive()){controls.forEach(control=>control.disabled=false);toast('อัปเดตงานคืนสินค้าไม่สำเร็จ: '+err.message)}
+         }
+       };
+     });
+   });
    for(const t of tickets){const sel=body.querySelector('select[data-ticket="'+t.id+'"]');if(sel)sel.value=t.status;const btn=body.querySelector('button[data-action="'+t.id+'"]');if(btn)btn.onclick=async()=>{btn.disabled=true;try{await req('rpc/qg_admin_ticket_action','POST',{p_ticket_id:t.id,p_status:sel.value,p_note:body.querySelector('input[data-note="'+t.id+'"]').value||null,p_admin_id:null});await qgAdminLoadTickets()}catch(e){toast('บันทึก Ticket ไม่สำเร็จ: '+e.message);if(btn.isConnected)btn.disabled=false}}}
-   document.getElementById('qg-ticket-newer').disabled=!qgAdminTicketHistory.length;document.getElementById('qg-ticket-older').disabled=!qgAdminTicketMore;status.textContent='แสดงสูงสุด 100 รายการต่อหน้า · หน้า '+(qgAdminTicketHistory.length+1);
+   document.getElementById('qg-ticket-newer').disabled=!qgAdminTicketHistory.length;document.getElementById('qg-ticket-older').disabled=!qgAdminTicketMore;status.textContent='แสดงสูงสุด 100 รายการต่อหน้า · หน้า '+(qgAdminTicketHistory.length+1)+(returnsUnavailable?' · โหลดสถานะคืนสินค้าไม่สำเร็จ':'');
  }catch(e){if(alive()){body.textContent='โหลดเรื่องร้องเรียนไม่สำเร็จ: '+e.message;status.textContent='โหลดเรื่องร้องเรียนไม่สำเร็จ'}}};
  let qgAdminUGCCursor=null,qgAdminUGCRows=[],qgAdminUGCMore=false,qgAdminUGCVersion=0,qgAdminUGCOwner=null;
  const qgAdminUGCHistory=[];
