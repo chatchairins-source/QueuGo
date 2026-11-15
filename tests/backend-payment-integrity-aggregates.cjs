@@ -7,11 +7,13 @@ assert.match(sql, /WITH per_order AS/i);
 assert.match(sql, /FROM public\.payments/i);
 assert.match(sql, /LEFT JOIN public\.orders/i);
 assert.match(sql, /p\.order_id IS NOT NULL AND o\.id IS NULL/i);
-for (const signal of ['payment_rows','orders_with_multiple_payment_rows','orders_with_multiple_successful_payments','payment_orphans']) {
+for (const signal of ['payment_rows','payments_without_order_id','payments_without_status','orders_with_multiple_payment_rows','orders_with_multiple_successful_payments','payment_orphans']) {
   assert.match(sql, new RegExp('AS\\s+' + signal + '\\b', 'i'));
 }
 assert.doesNotMatch(sql, /\b(insert\s+into|update\s+\w+\s+set|delete\s+from|alter\s+table|drop\s+table|truncate\s+table|grant\s+|revoke\s+)\b/i);
 assert.doesNotMatch(sql, /SELECT\s+\*/i);
+assert.match(sql, /FROM public\.payments WHERE order_id IS NULL/i);
+assert.match(sql, /FROM public\.payments WHERE status IS NULL OR btrim\(status\) = ''/i);
 // Per-order grouping inside the CTE is required; only the outward projection must be aggregate-only.
 const outerSelect = sql.slice(sql.lastIndexOf('\nSELECT\n') + 1);
 assert.match(outerSelect, /^SELECT\s*\n/i);
