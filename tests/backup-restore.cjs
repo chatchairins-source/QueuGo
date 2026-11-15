@@ -43,5 +43,11 @@ ok(verify.includes("content_snapshot")&&verify.includes("qg_ugc_reports"),'resto
 ok(verify.includes('queuego_restore_verification_ok'),'restore SQL must emit a success sentinel');
 ok(verify.includes('qg_notifications_queuego_push'),'restore must verify unified notification trigger');
 ok(/restore_drill_certified/.test(release),'Closed Beta release must depend on restore certification');
+// Legacy Capacitor/WebView release must remain fail-closed; Native Android has its own release pipeline.
+ok(/- name: Block historical Capacitor Android release[\s\S]*?exit 1[\s\S]*?- uses: actions\/checkout@/.test(release),
+  'historical Capacitor release must exit before checkout or any build step');
+ok(/jobs:\s*\n\s+validate:\s*\n\s+if: github\.ref == 'refs\/heads\/main'/.test(release)&&
+  /build:\s*\n\s+needs: validate/.test(release),
+  'historical Android build must depend on its fail-closed validation job');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Encrypted external database + Storage backup and local restore drill'}));
