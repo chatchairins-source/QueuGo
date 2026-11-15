@@ -126,6 +126,29 @@ assert(webRider.includes("interval?.source!=='osm:maxspeed'")&&
   webRider.includes("speedLimit.className='qg-speed-limit'")&&
   webRider.includes('qg-speed-limit')&&
   webRider.includes('qgRiderSpeedLimitAt(cache,match.progressMeters)'));
+// Exercise the real Web HUD helpers instead of checking for placeholder markup.
+const speedFunctionStart=webRider.indexOf('function qgRiderSpeedLimitAt(');
+const speedFunctionEnd=webRider.indexOf('function qgRiderMissedTurnNeedsImmediateReroute(',speedFunctionStart);
+assert(speedFunctionStart>=0&&speedFunctionEnd>speedFunctionStart,'Rider speed-limit helpers must exist');
+const speedSign={hidden:true,textContent:'',attributes:{},setAttribute(name,value){this.attributes[name]=value}};
+const finiteOrNull=value=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
+const speedUi=new Function('document','qgFiniteOrNull',
+  webRider.slice(speedFunctionStart,speedFunctionEnd)+';return {qgRiderSpeedLimitAt,updateRiderSpeedLimitUI};')(
+    {getElementById:id=>id==='qg-speed-limit'?speedSign:null},finiteOrNull);
+const speedRoute={activeWork:true,speedLimits:[{start:0,end:100,kph:50,raw:'50'}]};
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt(speedRoute,0),50,'Speed interval includes start');
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt(speedRoute,99.99),50,'Speed interval includes inside');
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt(speedRoute,100),null,'Speed interval excludes end');
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt({...speedRoute,activeWork:false},10),null,'Offer preview hides speed limit');
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt(speedRoute,null),null,'Missing GPS route progress hides speed limit');
+speedUi.updateRiderSpeedLimitUI(50);
+assert(!speedSign.hidden&&speedSign.textContent==='50'&&speedSign.attributes['aria-label'].includes('50'),
+  'Validated OSM limit renders a labelled road sign');
+speedUi.updateRiderSpeedLimitUI(null);
+assert(speedSign.hidden&&speedSign.textContent===''&&speedSign.attributes['aria-label']==='',
+  'Unknown speed limit clears the sign rather than showing a guessed value');
+speedUi.updateRiderSpeedLimitUI(200);
+assert(speedSign.hidden,'Unrealistic speed limit stays hidden');
 assert(mapMotionTest.includes('markerAnimationUsesTheSame260To1250MillisecondClampAsWeb')&&
   mapMotionTest.includes('everyChangedGpsFixMovesTheMarkerAsOnWeb'));
 assert(!/com\.longdo|LongdoMapAndroidSDK|longdo\.map|api\.longdo|ms\.longdo/i.test(map));
