@@ -170,14 +170,14 @@ class MerchantPushIntentIsolationTest {
     }
 
     @Test fun isolatedUtf16SurrogatesAreRejectedBeforeRouting() {
-        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order\\uD800")))
-        assertEquals(null, merchantPushReferenceId(mapOf("reference_id" to "order\\uDC00")))
-        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "\\uD800order\\uDC00")))
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "order${0xD800.toChar()}")))
+        assertEquals(null, merchantPushReferenceId(mapOf("reference_id" to "order${0xDC00.toChar()}")))
+        assertEquals(null, merchantPushReferenceId(mapOf("referenceId" to "${0xD800.toChar()}order${0xDC00.toChar()}")))
     }
 
     @Test fun validUtf16SurrogatePairRemainsDistinctAndAccepted() {
-        assertEquals(true, merchantPushWellFormedUtf16("order\\uD83D\\uDE80"))
-        assertEquals("order\\uD83D\\uDE80", merchantPushReferenceId(mapOf("referenceId" to "order\\uD83D\\uDE80")))
+        assertEquals(true, merchantPushWellFormedUtf16("order${0xD83D.toChar()}${0xDE80.toChar()}"))
+        assertEquals("order${0xD83D.toChar()}${0xDE80.toChar()}", merchantPushReferenceId(mapOf("referenceId" to "order${0xD83D.toChar()}${0xDE80.toChar()}")))
     }
 
     @Test fun validOpaqueReferenceStillRoutes() {
