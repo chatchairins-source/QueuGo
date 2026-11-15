@@ -88,7 +88,9 @@ internal fun merchantPushTargetsShop(data: Map<String, String>, currentShopId: S
 // Conflicting payload aliases must never route a notification tap to an arbitrary order.
 internal fun merchantPushReferenceId(data: Map<String, String>): String? {
     val references = listOfNotNull(data["referenceId"], data["reference_id"])
-    if (references.any { it.isBlank() }) return null
+    // Order references are opaque identifiers, not free-form display text. Reject malformed
+    // values rather than forwarding invisible characters or whitespace to the order screen.
+    if (references.any { it.isBlank() || it.any { char -> char.isWhitespace() || char.isISOControl() } }) return null
     if (references.distinct().size > 1) return null
     return references.firstOrNull().orEmpty()
 }
