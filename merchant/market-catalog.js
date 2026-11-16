@@ -192,7 +192,12 @@ async function load(){
         });
         status.appendChild(retry);
       }
-    }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p><button type="button" class="qgm-outline" id="market-catalog-initial-retry" onclick="qgMarketCatalogRetryInitial()">ลองโหลดแคตตาล็อกอีกครั้ง</button>');
+    }else {
+      shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p><button type="button" class="qgm-outline" id="market-catalog-initial-retry" onclick="qgMarketCatalogRetryInitial()">ลองโหลดแคตตาล็อกอีกครั้ง</button>');
+      // Pagination replaces the focused button with a loading shell. On failure,
+      // focus the retry action so keyboard users do not land on the document body.
+      if(focusedPage)document.getElementById('market-catalog-initial-retry')?.focus({preventScroll:true});
+    }
     error(e);
   }}
   finally{if(active(epoch,id))state.loading=false}
