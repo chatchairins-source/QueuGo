@@ -28,4 +28,4 @@ jobs:
       - name: Compile exporter and regression tests
         run: python -m py_compile ops/play/export-certified-play-aabs.py tests/test-play-certified-export.py
       - name: Run fail-closed certified AAB exporter regressions
-        run: python -m unittest discover -s tests -p 'test-play-certified-export.py' -v
+        run: python tests/test-play-certified-export.py -v
