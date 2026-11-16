@@ -41,3 +41,28 @@ BEGIN
     RAISE EXCEPTION 'QR checkout must bind session to device hash';
   END IF;
 END $audit$;
+
+-- Structural prerequisite for race-safe request-id deduplication.
+-- The session row lock serializes checkouts per session, while the primary key
+-- must independently reject a duplicate (session_id, request_id) write.
+DO $constraints$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    WHERE c.conrelid='public.qg_table_requests'::regclass
+      AND c.contype='p'
+      AND (SELECT array_agg(a.attname ORDER BY k.ord)
+           FROM unnest(c.conkey) WITH ORDINALITY k(attnum,ord)
+           JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=k.attnum)
+          = ARRAY['session_id','request_id']::name[]
+  ) THEN
+    RAISE EXCEPTION 'QR checkout request idempotency requires (session_id, request_id) primary key';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint c
+    WHERE c.conrelid='public.qg_table_requests'::regclass
+      AND c.contype='f' AND c.confrelid='public.orders'::regclass
+  ) THEN
+    RAISE EXCEPTION 'QR checkout request must reference an existing order';
+  END IF;
+END $constraints$;
