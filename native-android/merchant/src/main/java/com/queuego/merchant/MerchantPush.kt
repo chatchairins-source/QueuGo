@@ -193,13 +193,14 @@ internal fun merchantPushSafePreview(value: String, maxUnits: Int): String {
         if (Character.isHighSurrogate(current) && index + 1 < value.length &&
             Character.isLowSurrogate(value[index + 1])
         ) {
-            if (result.length + 2 > maxUnits) break
             val codePoint = Character.toCodePoint(current, value[index + 1])
-            // Supplementary FORMAT characters (e.g. U+E0001) are invisible too.
-            // Keep valid supplementary emoji while neutralizing hidden controls.
+            // FORMAT code points are replaced by one UTF-16 unit, while visible
+            // supplementary code points need two. Check the actual output size
+            // so a hidden tag cannot prematurely truncate the notification.
             if (Character.getType(codePoint) == Character.FORMAT.toInt()) {
                 result.append('\uFFFD')
             } else {
+                if (result.length + 2 > maxUnits) break
                 result.append(current).append(value[index + 1])
             }
             index += 2
