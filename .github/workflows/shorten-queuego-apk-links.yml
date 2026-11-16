@@ -1,0 +1,52 @@
+name: Shorten public QueueGo APK download links
+on:
+  push:
+    branches: ['ops/shorten-queuego-apks-20261116']
+    paths: ['.github/workflows/shorten-queuego-apk-links.yml']
+permissions:
+  contents: read
+jobs:
+  shorten:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    steps:
+      - name: Create and reverse-verify short URLs for public debug APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          release='https://github.com/chatchairins-source/QueuGo/releases/download/queuego-debug-d7e84b0b-20261116'
+          echo '## QueueGo 16 Nov 2026 public test-APK shortened links' >> "$GITHUB_STEP_SUMMARY"
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          for role in customer merchant rider; do
+            target="$release/QueueGo-$role-Debug-d7e84b0b.apk"
+            short=''
+            provider=''
+            for service in is.gd v.gd; do
+              if result="$(curl --silent --show-error --fail --retry 1 --connect-timeout 10 --max-time 45 --get \
+                    --data-urlencode "format=simple" --data-urlencode "url=$target" "https://$service/create.php")"; then
+                if [[ "$result" =~ ^https://(is\.gd|v\.gd)/[A-Za-z0-9_]+$ ]]; then
+                  code="${result##*/}"
+                  if resolved="$(curl --silent --show-error --fail --retry 1 --connect-timeout 10 --max-time 45 --get \
+                         --data-urlencode "format=simple" --data-urlencode "shorturl=$code" "https://$service/forward.php")"; then
+                    if [[ "$resolved" == "$target" ]]; then
+                      short="$result"
+                      provider="$service"
+                      break
+                    fi
+                    echo "::warning::Reverse-lookup mismatch for $role using $service"
+                  fi
+                else
+                  echo "::warning::$service returned no short URL for $role"
+                fi
+              else
+                echo "::warning::$service creation failed for $role"
+              fi
+            done
+            if [[ -z "$short" ]]; then
+              echo "::error::Unable to create and reverse-verify short URL for $role"
+              exit 1
+            fi
+            echo "SHORT_LINK_${role^^}=$short"
+            printf '| %s | %s | %s |\n' "$role" "$short" "$target" >> "$GITHUB_STEP_SUMMARY"
+            sleep 2
+          done
