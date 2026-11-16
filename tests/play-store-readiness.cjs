@@ -193,3 +193,6 @@ ok(Array.isArray(manifest?.android?.allowed_android_build_workflows)&&
   manifest.android.allowed_android_build_workflows.includes('.github/workflows/build-native-release.yml'),
   'Only the Native pilot and fail-closed certified release workflows may be active Android build workflows');
 console.log(JSON.stringify({checks,failures:0,scope:'Play listing, app access, Data Safety, Contains Ads, 18+ Target Audience, privacy/account deletion and content-rating preparation'}));
+
+// Run role-specific Play AAB export integrity tests as part of the existing Play gate.
+require('node:child_process').execFileSync('python3', ['tests/test-play-certified-export.py'], {stdio:'inherit'});
