@@ -104,9 +104,9 @@ function paint(){
     <p id="market-catalog-status" role="status" aria-live="polite">${state.rows.length?'เลือกสินค้า ใส่ราคา แล้วกดเพิ่มสินค้าเข้าร้าน':'ลองค้นชื่อสินค้า หรือเปลี่ยนหมวดหมู่'}</p>
     <div id="market-catalog-rows">${rows}</div>
     <div class="qgg-footer">
-      <button type="button" onclick="qgMarketCatalogPage(-1)" ${state.offset===0?'disabled':''}>ก่อนหน้า</button>
+      <button type="button" id="market-catalog-prev" onclick="qgMarketCatalogPage(-1)" ${state.offset===0?'disabled':''}>ก่อนหน้า</button>
       <span>หน้า ${Math.floor(state.offset/50)+1}</span>
-      <button type="button" onclick="qgMarketCatalogPage(1)" ${state.hasMore?'':'disabled'}>ถัดไป</button>
+      <button type="button" id="market-catalog-next" onclick="qgMarketCatalogPage(1)" ${state.hasMore?'':'disabled'}>ถัดไป</button>
     </div>`);
 }
 async function recoverPending(shopId,epoch){
@@ -128,6 +128,8 @@ async function load(){
   if(!u||!id||!permitted(u)){++state.epoch;state.shop=null;state.loading=false;state.resultsReady=false;state.gpRate=null;state.rows=[];state.categories=[];state.hasMore=false;shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
   const focusedSearch=document.activeElement?.id==='market-catalog-search';
   const focusedCategory=document.activeElement?.id==='market-catalog-category';
+  const focusedPage=['market-catalog-prev','market-catalog-next'].includes(document.activeElement?.id)
+    ? document.activeElement.id : null;
   const epoch=++state.epoch;state.shop=id;state.loading=true;state.resultsReady=false;
   // Preserve the search field while filtering; replacing it on every keystroke drops keyboard focus.
   if(!focusedSearch&&!focusedCategory)shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
@@ -165,6 +167,12 @@ async function load(){
       // Repainting after a keyboard category change replaces the select node.
       // Restore focus so keyboard users can continue navigating the catalog.
       document.getElementById('market-catalog-category')?.focus({preventScroll:true});
+    }else if(focusedPage){
+      // Repainting removes the pagination button that initiated the request.
+      // If it is now disabled at the page boundary, focus the enabled sibling.
+      const primary=document.getElementById(focusedPage);
+      const sibling=document.getElementById(focusedPage==='market-catalog-next'?'market-catalog-prev':'market-catalog-next');
+      (primary&&!primary.disabled?primary:sibling&&!sibling.disabled?sibling:null)?.focus({preventScroll:true});
     }
   }catch(e){if(active(epoch,id)){
     // Keep the search control mounted on network failure so the merchant can retry typing.
