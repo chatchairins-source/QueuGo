@@ -521,7 +521,7 @@ async function qtPersistKeyRaw(key,val){
     if(key==='qt_audit_log'){ for(const a of (val||[])){ if(!qtUuidLike(a.id)) continue; await qtSupabaseTable('audit_logs?on_conflict=id',{method:'POST',accessToken:token,body:{id:a.id,user_id:qtUuidLike(a.actorId)?a.actorId:null,action:a.action||'system',entity_type:a.entityType||null,entity_id:qtUuidLike(a.entityId)?a.entityId:null,description:a.description||'',metadata:a,created_at:qtIso(a.at)}}); } return; }
     if(key==='qt_products'){ const shopProfileId=async(userId)=>{if(!qtUuidLike(userId))return null; const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token}); return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('products?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await shopProfileId(p.shopId),name:p.name||'',description:p.description||'',price:Number(p.price||0),image:p.image||null,available:p.available!==false,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_promotions'){ for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('promotions?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:p.shopId,shop_name:p.shopName||null,category:p.category||null,area:p.area||null,bid_price:Number(p.bidPrice||0),max_budget:Number(p.maxBudget||0),period_days:Number(p.periodDays||0),status:p.status||'pending',approved_by:p.approvedBy||null,approved_at:p.approvedAt?qtIso(p.approvedAt):null,payment_status:p.paymentStatus||'pending',activated_at:p.activatedAt?qtIso(p.activatedAt):null,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
-    if(key==='qt_settlements'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)) continue; await qtSupabaseTable('settlements?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,shop_id:x.shopId,date_key:x.dateKey,status:x.status||'pending_payment',amount:Number(x.amount||x.gp||0),metadata:x,created_at:qtIso(x.createdAt),updated_at:qtIso(Date.now())}}); } return; }
+    if(key==='qt_settlements')return; // Retired GP settlements are historical and read-only.
     if(key==='qt_order_audit'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)||!qtUuidLike(x.orderId)) continue; await qtSupabaseTable('order_audit?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,order_id:x.orderId,admin_id:x.adminId,action:x.action||'system',metadata:x,created_at:qtIso(x.at)}}); } return; }
   }catch(e){ console.warn('qtPersistKey',key,e); throw e; }
 }
@@ -2176,10 +2176,10 @@ async function qgLoadAdminCash(day){
     const next=future[0];
     el.innerHTML=
       '<h3>🎛️ เปิด/ปิดฟีเจอร์และราคา</h3>'+
-      '<p class="qt-admin-note">ค่าด้านล่างเป็นค่าที่มีผลกับออเดอร์ใหม่เท่านั้น ออเดอร์ที่สร้างแล้วใช้ราคาที่บันทึกไว้เดิม</p>'+
+      '<p class="qt-admin-note">ค่าราคามีผลกับออเดอร์ใหม่ ออเดอร์ที่สร้างแล้วใช้ราคาที่บันทึกไว้เดิม ส่วนส่งประหยัดใช้ปุ่มบันทึกเฉพาะและมีผลทันที</p>'+
       '<div class="qt-settings-grid">'+
         '<label class="qt-settings-toggle">ตลาดสดซื้อหลายร้าน <input id="qg-feature-market" type="checkbox" '+(getActive('feature.market_multi_shop')?'checked':'')+'></label>'+
-        '<label class="qt-settings-toggle">งานพ่วง Route Bundle <input id="qg-feature-bundle" type="checkbox" '+(getActive('feature.route_bundle')?'checked':'')+'></label>'+
+        '<div><label class="qt-settings-toggle">ส่งประหยัด (เส้นทางร่วม) <input id="qg-feature-bundle" type="checkbox" '+(getActive('feature.route_bundle')?'checked':'')+'></label>'+        '<p id="qg-saver-status" role="status">'+(getActive('feature.route_bundle')?'เปิดรับส่งประหยัด':'ปิด · รอระบบพร้อม')+'</p>'+        '<button id="qg-save-saver" class="btn-secondary" type="button" onclick="qgSaveSaverAvailability()">บันทึกส่งประหยัดตอนนี้</button>'+        '<p class="qt-admin-note">บันทึกแยกจากราคาอื่น มีผลทันทีและยกเลิกเวลาที่ตั้งล่วงหน้าของส่งประหยัด ปิดแล้วหยุดข้อเสนอ/งานพ่วงใหม่ งานที่รับแล้วทำต่อด้วยราคาและเงินสดเดิม</p></div>'+
         '<label class="qt-settings-toggle">ฝากซัก <input id="qg-feature-laundry" type="checkbox" '+(getActive('feature.laundry')?'checked':'')+'></label>'+
         '<label class="qt-settings-toggle">คิด GP <input id="qg-feature-gp" type="checkbox" '+(getActive('feature.gp')?'checked':'')+'></label>'+
         '<label>GP มาตรฐาน (%)<input id="qg-price-gp" type="number" min="0" max="100" step="0.1" value="'+getActive('pricing.gp_default_rate')+'"></label>'+
@@ -2197,13 +2197,35 @@ async function qgLoadAdminCash(day){
       '<p class="qt-admin-note">'+(next?'มีค่าที่ตั้งล่วงหน้า เริ่ม '+new Date(next.effective_from).toLocaleString('th-TH',{timeZone:'Asia/Bangkok'})+' เป็นต้นไป':'ยังไม่มีค่าที่ตั้งล่วงหน้า')+'</p>';
   };
 
+  let saverSaving=false;
+  window.qgSaveSaverAvailability=async function(){
+    if(saverSaving)return;
+    const admin=typeof qtAdminOnly==='function'?qtAdminOnly():null;if(!admin)return;
+    const control=document.getElementById('qg-feature-bundle');if(!control)return;
+    const enabled=control.checked,previous=!!getActive('feature.route_bundle');
+    const button=document.getElementById('qg-save-saver'),status=document.getElementById('qg-saver-status');
+    saverSaving=true;control.disabled=true;if(button)button.disabled=true;
+    try{
+      const result=await qtSupabaseRpc('queuego_admin_set_saver_enabled',{p_enabled:enabled});
+      if(result?.enabled!==enabled||!result?.effective_from)throw Error('ระบบยังไม่ยืนยันสถานะส่งประหยัด');
+      window.QG_PLATFORM_RULE_ROWS=(window.QG_PLATFORM_RULE_ROWS||[]).filter(r=>r.rule_key!=='feature.route_bundle')
+        .concat([{rule_key:'feature.route_bundle',value:enabled,effective_from:result.effective_from}]);
+      if(status)status.textContent=enabled?'เปิดรับส่งประหยัด':'ปิด · รอระบบพร้อม';
+      toast(enabled?'เปิดส่งประหยัดแล้ว':'ปิดส่งประหยัดแล้ว งานที่รับไว้ทำต่อได้');
+      Promise.resolve().then(()=>qgPullPlatformRules()).catch(error=>console.warn('Saver post-commit refresh failed',error));
+    }catch(error){
+      control.checked=previous;
+      if(status)status.textContent='บันทึกไม่สำเร็จ · สถานะเดิม: '+(previous?'เปิด':'ปิด');
+      toast('บันทึกส่งประหยัดไม่สำเร็จ: '+String(error.message||error).slice(0,100));
+    }finally{saverSaving=false;control.disabled=false;if(button)button.disabled=false;}
+  };
+
   window.qgSavePlatformRules=async function(){
     const admin=typeof qtAdminOnly==='function'?qtAdminOnly():null;if(!admin)return;
     try{
       const effective=bangkokLocalToIso(document.getElementById('qg-platform-effective')?.value);
       const rows=[
         {rule_key:'feature.market_multi_shop',value:checked('qg-feature-market')},
-        {rule_key:'feature.route_bundle',value:checked('qg-feature-bundle')},
         {rule_key:'feature.laundry',value:checked('qg-feature-laundry')},
         {rule_key:'feature.gp',value:checked('qg-feature-gp')},
         {rule_key:'pricing.gp_default_rate',value:num('qg-price-gp',0,100)},

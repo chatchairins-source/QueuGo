@@ -47,6 +47,7 @@ RUN python /app/ops/maps/fetch_web_assets.py /app/map-assets
 
 COPY queuego-map-engine/core.py queuego-map-engine/server.py queuego-map-engine/start_installed.py /app/queuego-map-engine/
 COPY map-view/ /app/public/map-view/
+COPY queuego-map-web.js /app/public/queuego-map-web.js
 COPY --from=builder /data /data
 
 RUN useradd --uid 10001 --create-home queuego && chown -R queuego:queuego /data /app

@@ -132,6 +132,10 @@ def handler(engine,web_root,vector=None,origins=(),assets_root=None):
                 if not head:self.wfile.write(data)
                 return
             if path=='/':self.send_response(302);self.send_header('Location','/map-view/');self.end_headers();return
+            if path in {'/map-view/', '/map-view/index.html'}:
+                # The engine serves the local vector viewer. Static hosting keeps its online map.
+                self.path='/map-view/engine.html'
+                path=self.path
             candidate=Path(self.translate_path(path)).resolve()
             if not candidate.is_relative_to(root) or any(part.startswith('.') for part in candidate.relative_to(root).parts):self.send_error(404);return
             if candidate.is_dir() and not (candidate/'index.html').is_file():self.send_error(404);return

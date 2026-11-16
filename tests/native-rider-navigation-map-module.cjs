@@ -92,20 +92,18 @@ assert(webMap.includes("'symbol-spacing':80")&&
   mapMotion.includes('fromScreenLocation(')&&
   mapMotion.includes('android.graphics.PointF(x.toFloat(), y.toFloat())')&&
   !mapMotion.includes('distance += 65.0'));
-const markerStart=webRider.indexOf('function qgStopMarkerHtml(');
-const markerEnd=webRider.indexOf('\n}',markerStart)+2;
-assert(markerStart>=0&&markerEnd>markerStart);
-const renderStop=new Function(webRider.slice(markerStart,markerEnd)+';return qgStopMarkerHtml')();
-assert(renderStop(1,'shop').includes('background:#15803d')&&
-  renderStop(2,'customer').includes('background:#e6002d')&&
-  renderStop(1,'shop',true).includes('background:#64748b')&&
-  renderStop(1,'shop').includes('data-stop-number="1"'));
-assert(
+const webStopMarker=webRider.match(/function qgStopMarkerHtml\(number,kind,done=false\)\{[\s\S]*?\n\}/)?.[0]||'';
+const stopPalette=webStopMarker.match(/const pickup=kind==='shop',color=done\?'(#[0-9a-f]{6})':pickup\?'(#[0-9a-f]{6})':'(#[0-9a-f]{6})';/);
+const stopRgb=hex=>[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)).join(', ');
+assert(stopPalette&&webStopMarker.includes("background:'+color+'")&&
+  mapMotion.includes(`PropertyFactory.circleColor(android.graphics.Color.rgb(${stopRgb(stopPalette[1])}))`)&&
+  mapMotion.includes(`PropertyFactory.circleColor(android.graphics.Color.rgb(${stopRgb(stopPalette[2])}))`)&&
+  mapMotion.includes(`PropertyFactory.circleColor(android.graphics.Color.rgb(${stopRgb(stopPalette[3])}))`)&&
   mapMotion.includes('PropertyFactory.circleRadius(10f)')&&
   mapMotion.includes('PropertyFactory.circleRadius(8f)')&&
-  mapMotion.includes('PropertyFactory.circleColor(android.graphics.Color.rgb(148, 163, 184))')&&
   mapMotion.includes('val stops = state.stops.asSequence()')&&
-  mapMotion.includes('.filter { it.point.valid && it.id.isNotBlank() && it.sequence > 0 }'));
+  mapMotion.includes('.filter { it.point.valid && it.id.isNotBlank() && it.sequence > 0 }'),
+  'Web and Native Rider must share completed/shop/customer stop colors and valid route stop layers');
 assert(webRider.includes('const RIDER_ROUTE_OFF_ROUTE_METERS=30')&&
   webRider.includes('const RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000')&&
   webRider.includes('const RIDER_ROUTE_REROUTE_COOLDOWN_MS=20000')&&
@@ -128,6 +126,29 @@ assert(webRider.includes("interval?.source!=='osm:maxspeed'")&&
   webRider.includes("speedLimit.className='qg-speed-limit'")&&
   webRider.includes('qg-speed-limit')&&
   webRider.includes('qgRiderSpeedLimitAt(cache,match.progressMeters)'));
+// Exercise the real Web HUD helpers instead of checking for placeholder markup.
+const speedFunctionStart=webRider.indexOf('function qgRiderSpeedLimitAt(');
+const speedFunctionEnd=webRider.indexOf('function qgRiderMissedTurnNeedsImmediateReroute(',speedFunctionStart);
+assert(speedFunctionStart>=0&&speedFunctionEnd>speedFunctionStart,'Rider speed-limit helpers must exist');
+const speedSign={hidden:true,textContent:'',attributes:{},setAttribute(name,value){this.attributes[name]=value}};
+const finiteOrNull=value=>value===null||value===undefined||value===''?null:(Number.isFinite(Number(value))?Number(value):null);
+const speedUi=new Function('document','qgFiniteOrNull',
+  webRider.slice(speedFunctionStart,speedFunctionEnd)+';return {qgRiderSpeedLimitAt,updateRiderSpeedLimitUI};')(
+    {getElementById:id=>id==='qg-speed-limit'?speedSign:null},finiteOrNull);
+const speedRoute={activeWork:true,speedLimits:[{start:0,end:100,kph:50,raw:'50'}]};
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt(speedRoute,0),50,'Speed interval includes start');
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt(speedRoute,99.99),50,'Speed interval includes inside');
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt(speedRoute,100),null,'Speed interval excludes end');
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt({...speedRoute,activeWork:false},10),null,'Offer preview hides speed limit');
+assert.strictEqual(speedUi.qgRiderSpeedLimitAt(speedRoute,null),null,'Missing GPS route progress hides speed limit');
+speedUi.updateRiderSpeedLimitUI(50);
+assert(!speedSign.hidden&&speedSign.textContent==='50'&&speedSign.attributes['aria-label'].includes('50'),
+  'Validated OSM limit renders a labelled road sign');
+speedUi.updateRiderSpeedLimitUI(null);
+assert(speedSign.hidden&&speedSign.textContent===''&&speedSign.attributes['aria-label']==='',
+  'Unknown speed limit clears the sign rather than showing a guessed value');
+speedUi.updateRiderSpeedLimitUI(200);
+assert(speedSign.hidden,'Unrealistic speed limit stays hidden');
 assert(mapMotionTest.includes('markerAnimationUsesTheSame260To1250MillisecondClampAsWeb')&&
   mapMotionTest.includes('everyChangedGpsFixMovesTheMarkerAsOnWeb'));
 assert(!/com\.longdo|LongdoMapAndroidSDK|longdo\.map|api\.longdo|ms\.longdo/i.test(map));

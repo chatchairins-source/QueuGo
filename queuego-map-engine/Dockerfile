@@ -7,6 +7,7 @@ COPY ops/maps/offline_package.py ops/maps/fetch_web_assets.py ops/maps/web-asset
 RUN python /app/ops/maps/fetch_web_assets.py /app/map-assets
 COPY queuego-map-engine/core.py queuego-map-engine/server.py queuego-map-engine/start_installed.py /app/queuego-map-engine/
 COPY map-view/ /app/public/map-view/
+COPY queuego-map-web.js /app/public/queuego-map-web.js
 RUN useradd --uid 10001 --create-home queuego
 USER 10001
 EXPOSE 8765

@@ -14,8 +14,9 @@ const evidence=read('supabase/migrations/20261012182500_chat_single_report_evide
 const privateHelper=read('supabase/migrations/20261007014905_move_ugc_policy_helper_private.sql');
 const anonPrivilege=read('supabase/migrations/20261007023348_ugc_chat_revoke_anon_table_privileges.sql');
 const deletion=read('QueueGo-Pilot-Account-Deletion-Privacy.sql');
-const release=read('.github/workflows/build-queuego-apks.yml');
-const pilot=read('.github/workflows/build-queuego-pilot-apks.yml');
+const nativeCustomer=read('native-android/customer/src/main/java/com/queuego/customer/CustomerChat.kt');
+const nativeRider=read('native-android/rider/src/main/java/com/queuego/rider/RiderChat.kt');
+const nativeGate=read('native-android/qa/verify-native-release-gate.py');
 const rules=read('docs/community-guidelines.html');
 
 for(const fn of ['state','accept','block','unblock','report']){
@@ -43,8 +44,19 @@ ok(!customer.includes('data-chat-report')&&!rider.includes('data-chat-report'),'
 ok(customer.includes('customer-chat-report-user')&&rider.includes('data-report'),'Customer and Rider must keep one conversation-level report action');
 ok(customer.includes('customer-chat-report-image')&&rider.includes('qg-rider-report-image'),'single report flow must ask for a screenshot attachment');
 ok(deletion.includes('qg_ugc_terms_acceptances')&&deletion.includes('qg_user_blocks')&&deletion.includes('qg_ugc_reports'),'account deletion must scrub UGC personal state');
-ok(release.includes('queuego-ugc.js')&&release.includes('community-guidelines.html'),'release bundle must include UGC safety assets');
-ok(pilot.includes('queuego-ugc.js')&&pilot.includes('community-guidelines.html'),'Pilot APK bundle must include UGC safety assets');
+// Native APKs use Kotlin UGC screens and server-owned moderation RPCs;
+// never restore the retired Capacitor bundle as a workaround.
+for(const [role,source] of [['Customer',nativeCustomer],['Rider',nativeRider]]){
+  ok(source.includes('"qg_chat_moderation_state"'),'Native '+role+' chat must read moderation state');
+  for(const rpc of ['"qg_accept_ugc_terms"','"qg_block_chat_counterpart"','"qg_unblock_chat_counterpart"'])
+    ok(source.includes(rpc),'Native '+role+' chat must enforce '+rpc);
+  ok(source.includes('community-guidelines.html'),'Native '+role+' must link to community guidelines');
+}
+ok(nativeCustomer.includes('"qg_report_chat"'),'Native Customer must provide report action');
+ok(nativeRider.includes('"qg_report_chat_with_evidence"')&&nativeRider.includes('p_evidence_data'),'Native Rider reports must support evidence');
+ok(nativeGate.includes('"ugc_chat_safety"'),'Certified Native release must enforce UGC gate');
+for(const retired of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml'])
+  ok(!fs.existsSync(path.join(root,retired)),'Retired Capacitor release must remain absent: '+retired);
 ok(/รายงานและบล็อก/.test(rules)&&/เนื้อหาที่ห้าม/.test(rules),'community rules must define prohibited content and report/block behavior');
 ok(!/dbSet\(['"]qt_order_chat_/.test(merchant),'Merchant must not have an active legacy order-chat sender without moderation UI');
 ok(!/qtPersistChat|qt_order_chat_|qt-shop-chat|qt-chat-open/.test(merchant),'Merchant must not retain dead legacy order-chat implementation');
