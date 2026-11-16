@@ -66,6 +66,16 @@ class MerchantPushIntentIsolationTest {
         assertEquals("สั่งซื้อ", merchantPushSafePreview("สั่งซื้อ", 80))
     }
 
+    @Test fun notificationPreviewNeutralizesSupplementaryFormatWithoutDamagingEmoji() {
+        // U+E0001 LANGUAGE TAG is FORMAT but its UTF-16 surrogate units are not.
+        val hiddenTag = String(Character.toChars(0xE0001))
+        val rocket = String(Character.toChars(0x1F680))
+        assertEquals("order\uFFFD123", merchantPushSafePreview("order" + hiddenTag + "123", 80))
+        assertEquals("order\uFFFD", merchantPushSafePreview("order" + hiddenTag + "123", 6))
+        assertEquals(rocket, merchantPushSafePreview(rocket, 2))
+        assertEquals("สั่งซื้อ " + rocket, merchantPushSafePreview("สั่งซื้อ " + rocket, 80))
+    }
+
     @Test fun notificationPreviewPreservesEmojiJoinerAndNormalUnicode() {
         val family = "👩\u200D👩\u200D👧"
         assertEquals(family, merchantPushSafePreview(family, 80))
