@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -2433,7 +2434,11 @@ private fun PosCounterView(
 ) {
     val openBills = snapshot.bills.filter { it.open }
     val lines = selectedBill?.let { snapshot.linesByOrder[it.id].orEmpty() }.orEmpty()
-    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+    // Match the Web POS: independent catalog + cart on wide landscape screens;
+    // a persistent expandable cart summary on portrait/phone screens.
+    var cartExpanded by rememberSaveable { mutableStateOf(false) }
+    val catalogContent: @Composable (Modifier) -> Unit = { area ->
+        Column(area) {
         if (pendingCreate) {
             Surface(
                 color = Color(0xFFFFF5E8),
@@ -2621,7 +2626,10 @@ private fun PosCounterView(
             QgCard(Modifier.fillMaxWidth()) { Text("ไม่พบสินค้าที่ขายหน้าร้าน", color = QgMuted) }
         }
 
-        if (selectedBill != null) {
+        }
+    }
+    val billContent: @Composable (Modifier) -> Unit = { area ->
+        Column(area) {        if (selectedBill != null) {
             Spacer(Modifier.height(10.dp))
             QgCard(Modifier.fillMaxWidth()) {
                 Column {
@@ -2726,7 +2734,82 @@ private fun PosCounterView(
                 }
             }
         }
-        Spacer(Modifier.height(28.dp))
+        }
+    }
+
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val desktopPos = maxWidth >= 840.dp && maxWidth > maxHeight
+        if (desktopPos) {
+            Row(
+                Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                    color = Color.White, shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE9DFE2))
+                ) {
+                    catalogContent(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp))
+                }
+                Surface(
+                    modifier = Modifier.width(330.dp).fillMaxHeight(),
+                    color = Color.White, shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE9DFE2))
+                ) {
+                    billContent(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp))
+                }
+            }
+        } else {
+            Box(Modifier.fillMaxSize()) {
+                Column(
+                    Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                        .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 104.dp)
+                ) {
+                    catalogContent(Modifier.fillMaxWidth())
+                    if (cartExpanded) {
+                        Spacer(Modifier.height(10.dp))
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color.White, shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, Color(0xFFE9DFE2))
+                        ) {
+                            billContent(Modifier.fillMaxWidth().padding(12.dp))
+                        }
+                    }
+                }
+                Surface(
+                    modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 8.dp),
+                    color = Color.White, shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE9DFE2)),
+                    shadowElevation = 4.dp
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                if (selectedBill == null) "บิลที่ยังไม่ปิด ${openBills.size}" else selectedBill.number,
+                                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = QgInk
+                            )
+                            Text(
+                                if (selectedBill == null) "เลือกสินค้าหรือเปิดบิลเพื่อคิดเงิน"
+                                else "ยอดรวม ฿${money(selectedBill.total)}",
+                                fontSize = 13.sp, color = QgRed
+                            )
+                        }
+                        Button(
+                            onClick = { cartExpanded = !cartExpanded },
+                            modifier = Modifier.heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                        ) { Text(if (cartExpanded) "ซ่อนบิล" else "ดูบิล / คิดเงิน", fontSize = 14.sp) }
+                    }
+                }
+            }
+        }
     }
 }
 
