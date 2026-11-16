@@ -207,8 +207,12 @@ async function load(){
 window.qgMarketCatalogRetryInitial=async()=>{
   // An in-flight retry must not move focus into a different route or merchant session.
   const retryShop=profileId(shop());
-  await load();
-  if(!retryShop||!active(state.epoch,retryShop)||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
+  // Capture the epoch created synchronously by this load. Another refresh in the
+  // same merchant route must not let an older retry steal focus on completion.
+  const pendingLoad=load();
+  const retryEpoch=state.epoch;
+  await pendingLoad;
+  if(!retryShop||!active(retryEpoch,retryShop)||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
   if(state.resultsReady){
     document.getElementById('market-catalog-search')?.focus({preventScroll:true});
   }else{
