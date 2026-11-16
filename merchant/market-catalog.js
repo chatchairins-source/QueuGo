@@ -208,7 +208,7 @@ window.qgMarketCatalogChoose=id=>{
   shell(`<form id="market-catalog-add-form" class="market-form">
     <button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">‹ กลับแคตตาล็อก</button>
     <div class="market-catalog-preview">${productImage(r)}</div>
-    <h2>${E(r.name_th)}</h2><p>${E(r.category)} · ขนาดสินค้า ${E(r.source_unit)}</p>
+    <h2 id="market-catalog-add-heading" tabindex="-1">${E(r.name_th)}</h2><p>${E(r.category)} · ขนาดสินค้า ${E(r.source_unit)}</p>
     <label>ราคาหน้าร้าน / ชุด (บาท)<input name="price" type="number" min="0.01" max="999999" step="0.01" value="${Number.isFinite(inlinePrice)&&inlinePrice>0?E(inlinePrice):''}" required oninput="qgMarketCatalogPricePreview()"></label>
     <small id="market-catalog-delivery-preview">ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก</small>
     <label>หน่วยสต๊อก<select name="unit">${UNITS.map(u=>`<option value="${E(u)}" ${u===suggestedUnit?'selected':''}>${E(u)}</option>`).join('')}</select></label>
@@ -221,6 +221,9 @@ window.qgMarketCatalogChoose=id=>{
     <div class="market-actions"><button class="qgm-primary" type="submit">เพิ่มสินค้าเข้าร้าน</button></div>
   </form>`);
   const form=document.getElementById('market-catalog-add-form');
+  // The selected card is replaced by a new form; move keyboard/screen-reader focus
+  // to its heading rather than leaving focus on a detached button.
+  document.getElementById('market-catalog-add-heading')?.focus({preventScroll:true});
   qgMarketAttachWeightPresets(form);
   qgMarketCatalogPricePreview();
   let pendingSubmission=null;
