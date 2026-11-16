@@ -27,6 +27,22 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+// Firebase token callbacks may finish after logout or account switching.
+internal fun merchantPushSessionCurrent(
+    validated: NativeAuth,
+    current: NativeAuth?,
+    nowMs: Long
+): Boolean =
+    current != null &&
+        validated.user.role == "shop" &&
+        validated.user.status == "active" &&
+        current.user.role == "shop" &&
+        current.user.status == "active" &&
+        current.user.id == validated.user.id &&
+        current.session.authUserId == validated.session.authUserId &&
+        current.session.sessionId == validated.session.sessionId &&
+        current.session.expiresAtMs > nowMs
+
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
@@ -88,7 +104,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         serviceScope.launch {
             runCatching {
                 val auth = NativeAuthApi().validate(cached, "shop") { sessionStore.save(it) }
-                if (auth.user.status == "active") {
+                if (merchantPushSessionCurrent(auth, sessionStore.load(), System.currentTimeMillis())) {
                     NativePushApi().subscribe(
                         auth,
                         NativePushDeviceStore(applicationContext, "shop").deviceId(),
