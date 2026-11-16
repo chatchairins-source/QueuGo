@@ -31,3 +31,6 @@ assert(read('MerchantSupportScreen.kt').includes('MerchantPageTitle("ข้อ�
 assert(read('MerchantLaundryScreen.kt').includes('MerchantPageTitle("ฝากซัก"'),'Laundry must use Merchant page-title component');
 assert(read('QueueGoMerchantApp.kt').includes('fontSize = MerchantPageTitleSize'),'Merchant Account title must use the shared page-title scale');
 console.log('native Merchant page title standard 18 checks PASS');
+
+// Keep tablet/portrait checkout parity inside the existing full regression suite.
+require('./native-merchant-pos-tablet-parity.cjs');
