@@ -100,6 +100,16 @@ class MerchantPushIntentIsolationTest {
         assertEquals("สั่งซื้อ", merchantPushSafePreview("สั่งซื้อ", 80))
     }
 
+    @Test fun notificationPreviewNeutralizesInvisibleCombiningGraphemeJoiner() {
+        // U+034F is a non-spacing mark (Mn), not FORMAT, but can hide inside order text.
+        assertEquals("order\uFFFD123", merchantPushSafePreview("order\u034F123", 80))
+        assertEquals("order\uFFFD", merchantPushSafePreview("order\u034F123", 6))
+        // Ordinary Thai combining marks and emoji ZWJ sequences remain unchanged.
+        assertEquals("สั่งซื้อ", merchantPushSafePreview("สั่งซื้อ", 80))
+        val family = "👩\u200D👩\u200D👧"
+        assertEquals(family, merchantPushSafePreview(family, 80))
+    }
+
     @Test fun notificationPreviewPreservesEmojiJoinerAndNormalUnicode() {
         val family = "👩\u200D👩\u200D👧"
         assertEquals(family, merchantPushSafePreview(family, 80))
