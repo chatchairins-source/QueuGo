@@ -198,7 +198,7 @@ internal fun merchantPushSafePreview(value: String, maxUnits: Int): String {
             // Supplementary FORMAT characters (e.g. U+E0001) are invisible too.
             // Keep valid supplementary emoji while neutralizing hidden controls.
             if (Character.getType(codePoint) == Character.FORMAT.toInt()) {
-                result.append('\u005cuFFFD')
+                result.append('\uFFFD')
             } else {
                 result.append(current).append(value[index + 1])
             }
