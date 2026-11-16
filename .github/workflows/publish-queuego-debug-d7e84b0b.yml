@@ -1,0 +1,90 @@
+name: Publish QueueGo three-app verified debug APKs (d7e84b0b)
+on:
+  push:
+    branches: ['release/queuego-public-debug-d7e84b0b-20261116']
+    paths: ['.github/workflows/publish-queuego-debug-d7e84b0b.yml']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: queuego-public-debug-d7e84b0b-20261116
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'chatchairins-source/QueuGo'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: chatchairins-source/QueuGo
+      SOURCE_SHA: d7e84b0b14f6ee421d453e76a409c443eac1532e
+      PILOT_RUN: '43853921018'
+      ARTIFACT_ID: '14220856406'
+      ARTIFACT_SHA256: 8d10d1c66b3bb054c3f9d1532b6578547b3400d82f6e3651b6c681d6e371dffd
+      RELEASE_TAG: queuego-debug-d7e84b0b-20261116
+    steps:
+      - name: Verify exact-source successful Native Pilot and original artifact provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/$GH_REPO/actions/runs/$PILOT_RUN" > pilot.json
+          jq -e --arg source "$SOURCE_SHA" '.head_sha == $source and .status == "completed" and .conclusion == "success" and .path == ".github/workflows/build-native-rider-pilot.yml"' pilot.json
+          gh api "repos/$GH_REPO/actions/runs/$PILOT_RUN/artifacts?per_page=100" > artifacts.json
+          jq -e --arg sha "$SOURCE_SHA" --arg digest "sha256:$ARTIFACT_SHA256" --argjson id "$ARTIFACT_ID" --argjson run "$PILOT_RUN" '
+            any(.artifacts[]; .id == $id and .expired == false and .name == "queuego-native-pilot-apks" and .digest == $digest and .workflow_run.id == $run and .workflow_run.head_sha == $sha)
+          ' artifacts.json
+      - name: Download APKs and independently verify each binary
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p extracted bundle
+          gh run download "$PILOT_RUN" -R "$GH_REPO" -n queuego-native-pilot-apks -D extracted
+          signer="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -n "$signer" && test -x "$signer"
+          for role in customer merchant rider; do
+            src="extracted/$role/build/outputs/apk/debug/$role-debug.apk"
+            test -s "$src"
+            unzip -t "$src" >/dev/null
+            case "$role" in
+              customer) expected=44ea7f35bca122e4afc3d0ee35a6622b12fae2c696dee57c37e56ecebe734b7e ;;
+              merchant) expected=fd3cd14f1d75a1756de530e410e07e85d4e329c8b6b54c6859023f49b618054a ;;
+              rider) expected=2b3ff9a14a1f8ca6d4d0c0788399fe4b7b27fee5badf5b7f9b021f4a0720f662 ;;
+            esac
+            printf '%s  %s\n' "$expected" "$src" | sha256sum -c -
+            dst="bundle/QueueGo-$role-Debug-d7e84b0b.apk"
+            cp "$src" "$dst"
+            "$signer" verify --verbose --print-certs "$dst" >> bundle/APK-SIGNATURES.txt
+          done
+          (cd bundle && sha256sum *.apk > SHA256SUMS.txt)
+          cat > bundle/INSTALL.txt <<'NOTES'
+          QueueGo Android test APKs — 16 November 2026
+          Customer: ลูกค้า, Merchant: ร้านค้า, Rider: ไรเดอร์
+          ติดตั้งไฟล์ APK บน Android เท่านั้น และทดสอบด้วยบัญชีทดสอบ
+          These files are debug-signed TEST builds, not Play Store/Production releases.
+          Original source SHA: d7e84b0b14f6ee421d453e76a409c443eac1532e
+          Original successful Native Pilot run: 43853921018
+          Physical-device checkout, Rider nationwide offline routing, and production
+          security/release acceptance are not certified. Do not take live payments.
+          NOTES
+      - name: Publish three separately shareable public GitHub Release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" -R "$GH_REPO" >/dev/null 2>&1; then
+            echo "The tag already exists; refusing to replace published APKs." >&2
+            exit 1
+          fi
+          cat > release-notes.md <<'NOTES'
+          QueueGo Android three-app field-test package, exact source d7e84b0b14f6ee421d453e76a409c443eac1532e.
+
+          Customer, Merchant and Rider APKs can be downloaded individually, shared by LINE/Facebook, and verified with SHA256SUMS.txt.
+
+          Source: successful Native Pilot GitHub Actions run 43853921018, artifact 14220856406.
+          Each APK's SHA-256 and Android APK signature were checked before publication.
+
+          IMPORTANT: Debug-signed test builds only. NOT approved for Google Play or live Production, and not validated by completed end-to-end real-world acceptance. Use test accounts and no real-money transactions.
+          NOTES
+          gh release create "$RELEASE_TAG" bundle/*.apk bundle/SHA256SUMS.txt bundle/APK-SIGNATURES.txt bundle/INSTALL.txt \
+            -R "$GH_REPO" --target "$SOURCE_SHA" --prerelease \
+            --title "QueueGo Customer / Merchant / Rider — Debug APKs 2026-11-16" --notes-file release-notes.md
+          gh release view "$RELEASE_TAG" -R "$GH_REPO" --json url,assets
