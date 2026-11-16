@@ -76,6 +76,18 @@ class MerchantPushIntentIsolationTest {
         assertEquals("สั่งซื้อ " + rocket, merchantPushSafePreview("สั่งซื้อ " + rocket, 80))
     }
 
+    @Test fun supplementaryFormatReplacementUsesOneUnitAtPreviewBoundary() {
+        val hiddenTag = String(Character.toChars(0xE0001))
+        val rocket = String(Character.toChars(0x1F680))
+        // A hidden supplementary FORMAT tag consumes one replacement unit, not two.
+        assertEquals("abc\uFFFD", merchantPushSafePreview("abc" + hiddenTag + "tail", 4))
+        assertEquals("\uFFFD", merchantPushSafePreview(hiddenTag + "tail", 1))
+        assertEquals("\uFFFDx", merchantPushSafePreview(hiddenTag + "xyz", 2))
+        // A visible supplementary emoji still needs two units and cannot be split.
+        assertEquals("", merchantPushSafePreview(rocket + "tail", 1))
+        assertEquals(rocket, merchantPushSafePreview(rocket + "tail", 2))
+    }
+
     @Test fun notificationPreviewPreservesEmojiJoinerAndNormalUnicode() {
         val family = "👩\u200D👩\u200D👧"
         assertEquals(family, merchantPushSafePreview(family, 80))
