@@ -106,6 +106,32 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
                 "Rider release offline asset missing or empty: ${asset.path}"
             }
         }
+        // Reject placeholders before shipping an offline-navigation release.
+        // PMTiles v3 starts with the ASCII signature "PMTiles"; mere existence
+        // and nonzero length would otherwise allow a bogus archive to pass.
+        val pmtiles = required.first()
+        val signature = pmtiles.inputStream().buffered().use { stream ->
+            ByteArray(7).also { bytes ->
+                check(stream.read(bytes) == bytes.size) {
+                    "Rider release PMTiles header is truncated"
+                }
+            }
+        }
+        check(signature.contentEquals("PMTiles".toByteArray(Charsets.US_ASCII))) {
+            "Rider release PMTiles has an invalid signature"
+        }
+
+        // Ensure routing metadata is valid JSON, not an empty placeholder.
+        listOf(required[1], required[3]).forEach { metadata ->
+            val parsed = try {
+                groovy.json.JsonSlurper().parse(metadata)
+            } catch (exception: Exception) {
+                error("Rider release routing JSON is invalid: ${metadata.path}: ${exception.message}")
+            }
+            check(parsed is Map<*, *> && parsed.isNotEmpty()) {
+                "Rider release routing metadata must be a nonempty JSON object: ${metadata.path}"
+            }
+        }
     }
 }
 
