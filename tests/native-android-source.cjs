@@ -1563,8 +1563,8 @@ const merchantPosApi=read('merchant/src/main/java/com/queuego/merchant/MerchantP
 const merchantPosScreen=read('merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt');
 const merchantPosOptions=read('merchant/src/main/java/com/queuego/merchant/MerchantPosOptions.kt');
 ok(
-  merchantPosScreen.includes('maxWidth >= 980.dp -> 4') &&
-  merchantPosScreen.includes('maxWidth >= 620.dp -> 3') &&
+  merchantPosScreen.includes('maxWidth >= 920.dp -> 4') &&
+  merchantPosScreen.includes('maxWidth >= 540.dp -> 3') &&
   merchantPosScreen.includes('products.chunked(menuColumns)') &&
   merchantPosScreen.includes('repeat(menuColumns - row.size)') &&
   merchantPosScreen.includes('!posProductSoldOut(product)') &&
