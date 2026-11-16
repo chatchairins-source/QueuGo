@@ -184,11 +184,21 @@ async function load(){
         });
         status.appendChild(retry);
       }
-    }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p><button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">ลองโหลดแคตตาล็อกอีกครั้ง</button>');
+    }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p><button type="button" class="qgm-outline" id="market-catalog-initial-retry" onclick="qgMarketCatalogRetryInitial()">ลองโหลดแคตตาล็อกอีกครั้ง</button>');
     error(e);
   }}
   finally{if(active(epoch,id))state.loading=false}
 }
+// Initial-load retry replaces its own button; return focus to a stable control
+// after success, or to the replacement retry button after another failure.
+window.qgMarketCatalogRetryInitial=async()=>{
+  await load();
+  if(state.resultsReady){
+    document.getElementById('market-catalog-search')?.focus({preventScroll:true});
+  }else{
+    document.getElementById('market-catalog-initial-retry')?.focus({preventScroll:true});
+  }
+};
 window.qgRenderMarketCatalog=load;
 window.qgMarketCatalogSearch=e=>{e?.preventDefault?.();clearTimeout(searchTimer);searchTimer=null;state.query=String(document.getElementById('market-catalog-search')?.value||'').trim();state.category=String(document.getElementById('market-catalog-category')?.value||'');state.offset=0;load()};
 window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);const queuedShop=profileId(shop()),queuedEpoch=state.epoch;searchTimer=setTimeout(()=>{searchTimer=null;if(location.hash.replace('#','').split('/')[0]!=='market-catalog'||!queuedShop||!active(queuedEpoch,queuedShop))return;state.query=String(value||'').trim();state.offset=0;load()},300)};
