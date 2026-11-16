@@ -40,6 +40,13 @@ class MerchantPushIntentIsolationTest {
         }
     }
 
+    @Test fun notificationPreviewNeutralizesArabicLetterMark() {
+        // U+061C is a bidirectional formatting mark not covered by the U+200E/U+200F ranges.
+        assertEquals("order\uFFFD123", merchantPushSafePreview("order\u061C123", 80))
+        assertEquals("order\uFFFD", merchantPushSafePreview("order\u061C123", 6))
+        assertEquals("สั่งซื้อ", merchantPushSafePreview("สั่งซื้อ", 80))
+    }
+
     @Test fun notificationPreviewPreservesEmojiJoinerAndNormalUnicode() {
         val family = "👩\u200D👩\u200D👧"
         assertEquals(family, merchantPushSafePreview(family, 80))
