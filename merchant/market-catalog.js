@@ -176,7 +176,12 @@ async function load(){
         retry.type='button';
         retry.className='qgm-outline';
         retry.textContent='ลองโหลดแคตตาล็อกอีกครั้ง';
-        retry.addEventListener('click',()=>qgRenderMarketCatalog());
+        retry.addEventListener('click',()=>{
+          // The retry button is removed by a successful repaint. Move focus back
+          // to the filter that initiated this load before replacing the status.
+          document.getElementById(focusedCategory?'market-catalog-category':'market-catalog-search')?.focus({preventScroll:true});
+          qgRenderMarketCatalog();
+        });
         status.appendChild(retry);
       }
     }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p><button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">ลองโหลดแคตตาล็อกอีกครั้ง</button>');
