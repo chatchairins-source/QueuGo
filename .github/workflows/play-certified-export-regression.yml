@@ -1,0 +1,31 @@
+name: Play certified AAB exporter regression
+
+on:
+  pull_request:
+    paths:
+      - 'ops/play/export-certified-play-aabs.py'
+      - 'tests/test-play-certified-export.py'
+      - '.github/workflows/play-certified-export-regression.yml'
+  push:
+    paths:
+      - 'ops/play/export-certified-play-aabs.py'
+      - 'tests/test-play-certified-export.py'
+      - '.github/workflows/play-certified-export-regression.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exporter-regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Compile exporter and regression tests
+        run: python -m py_compile ops/play/export-certified-play-aabs.py tests/test-play-certified-export.py
+      - name: Run fail-closed certified AAB exporter regressions
+        run: python -m unittest discover -s tests -p 'test-play-certified-export.py' -v
