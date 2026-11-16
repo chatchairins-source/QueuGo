@@ -45,6 +45,22 @@ begin
     raise exception 'สิทธิ์การสั่งอาหารจากโต๊ะนี้หมดอายุแล้ว กรุณาสแกน QR Code ที่โต๊ะอีกครั้ง';
   end if;
 
+  select * into t
+  from public.pos_tables
+  where id=v.table_id and shop_id=v.shop_id and active;
+
+  select * into s
+  from public.shop_profiles
+  where id=v.shop_id and status not in ('suspended','rejected');
+
+  if not found or t.id is null or s.latitude is null or s.longitude is null then
+    raise exception 'ร้านหรือโต๊ะไม่พร้อมรับออเดอร์';
+  end if;
+
+  if public.qg_table_distance_m(p_lat,p_lng,s.latitude,s.longitude)>100 then
+    raise exception 'กรุณาสั่งอาหารภายในระยะ 100 เมตรจากร้าน';
+  end if;
+
   v_hash:=encode(extensions.digest(p_items::text,'sha256'),'hex');
 
   select * into v_old
@@ -61,22 +77,6 @@ begin
       'duplicate',true,
       'reason','same_request'
     );
-  end if;
-
-  select * into t
-  from public.pos_tables
-  where id=v.table_id and shop_id=v.shop_id and active;
-
-  select * into s
-  from public.shop_profiles
-  where id=v.shop_id and status not in ('suspended','rejected');
-
-  if not found or t.id is null or s.latitude is null or s.longitude is null then
-    raise exception 'ร้านหรือโต๊ะไม่พร้อมรับออเดอร์';
-  end if;
-
-  if public.qg_table_distance_m(p_lat,p_lng,s.latitude,s.longitude)>100 then
-    raise exception 'กรุณาสั่งอาหารภายในระยะ 100 เมตรจากร้าน';
   end if;
 
   select * into v_old
