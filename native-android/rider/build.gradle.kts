@@ -81,3 +81,35 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
+
+
+// Fail closed for Play/Internal Testing and release APKs: an online-only Rider
+// bundle must never be distributed as a nationwide offline navigation build.
+val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineAssets") {
+    group = "verification"
+    description = "Require both nationwide offline map and Valhalla routing inputs for Rider release"
+    doLast {
+        val mapRoot = providers.environmentVariable("QG_OFFLINE_MAP_ASSETS").orNull
+            ?.takeIf { it.isNotBlank() }
+            ?: error("Rider release requires QG_OFFLINE_MAP_ASSETS")
+        val routingRoot = providers.environmentVariable("QG_OFFLINE_ROUTING_ASSETS").orNull
+            ?.takeIf { it.isNotBlank() }
+            ?: error("Rider release requires QG_OFFLINE_ROUTING_ASSETS")
+        val required = listOf(
+            file("$mapRoot/maps/thailand-shortbread.pmtiles"),
+            file("$routingRoot/routing/manifest.json"),
+            file("$routingRoot/routing/tiles.tar"),
+            file("$routingRoot/routing/valhalla.json"),
+        )
+        required.forEach { asset ->
+            check(asset.isFile && asset.length() > 0L) {
+                "Rider release offline asset missing or empty: ${asset.path}"
+            }
+        }
+    }
+}
+
+// The gate is also applied to bundleRelease for Play AAB delivery, not only APKs.
+// It does not interfere with debug emulator builds that inject test assets.
+tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }
+    .configureEach { dependsOn(verifyRiderReleaseOfflineAssets) }
