@@ -172,6 +172,15 @@ internal fun merchantPushWithinDeliveryLifetime(sentTimeMs: Long, ttlSeconds: In
     sentTimeMs <= 0L || ttlSeconds <= 0 || nowMs <= sentTimeMs ||
         nowMs - sentTimeMs <= ttlSeconds.toLong() * 1000L
 
+// Avoid cutting a UTF-16 surrogate pair when limiting notification display text.
+internal fun merchantPushSafePreview(value: String, maxUnits: Int): String {
+    if (value.length <= maxUnits) return value
+    if (maxUnits <= 0) return ""
+    val end = if (Character.isHighSurrogate(value[maxUnits - 1]) &&
+        Character.isLowSurrogate(value[maxUnits])) maxUnits - 1 else maxUnits
+    return value.substring(0, end)
+}
+
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
 
 internal fun ensureMerchantNotificationChannel(context: Context) {
@@ -284,9 +293,9 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         )
         val notification = NotificationCompat.Builder(this, MERCHANT_NOTIFICATION_CHANNEL)
             .setSmallIcon(R.drawable.qg_notification)
-            .setContentTitle(title.take(80))
-            .setContentText(body.take(220))
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body.take(220)))
+            .setContentTitle(merchantPushSafePreview(title, 80))
+            .setContentText(merchantPushSafePreview(body, 220))
+            .setStyle(NotificationCompat.BigTextStyle().bigText(merchantPushSafePreview(body, 220)))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(
                 if (type == "voice_call") NotificationCompat.CATEGORY_CALL

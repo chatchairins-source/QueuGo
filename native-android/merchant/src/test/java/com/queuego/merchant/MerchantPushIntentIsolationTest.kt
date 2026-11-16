@@ -6,6 +6,20 @@ import org.junit.Test
 
 class MerchantPushIntentIsolationTest {
 
+    @Test fun notificationPreviewDoesNotSplitSupplementaryUnicode() {
+        val rocket = String(Character.toChars(0x1F680))
+        val text = "abc" + rocket + "tail"
+        assertEquals("abc", merchantPushSafePreview(text, 4))
+        assertEquals("abc" + rocket, merchantPushSafePreview(text, 5))
+        assertEquals(text, merchantPushSafePreview(text, 20))
+        assertEquals("", merchantPushSafePreview(text, 0))
+    }
+
+    @Test fun notificationPreviewPreservesBoundaryWhenNotSurrogatePair() {
+        assertEquals("abcd", merchantPushSafePreview("abcdef", 4))
+        assertEquals("abc", merchantPushSafePreview("abc", 3))
+    }
+
     @Test fun javaStringHashCollisionDoesNotReuseNotificationTapTarget() {
         // "Aa" and "BB" have identical Java String.hashCode values under the same prefix.
         val first = "shop:shop-a|message:Aa"
