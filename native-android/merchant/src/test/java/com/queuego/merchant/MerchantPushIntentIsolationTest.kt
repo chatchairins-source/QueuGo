@@ -32,6 +32,20 @@ class MerchantPushIntentIsolationTest {
         assertEquals("", merchantPushSafePreview("abc", -1))
     }
 
+    @Test fun notificationPreviewNeutralizesBidiSpoofingControls() {
+        val dangerous = listOf('\u200E', '\u200F', '\u202A', '\u202B', '\u202C', '\u202D', '\u202E', '\u2066', '\u2067', '\u2068', '\u2069')
+        for (control in dangerous) {
+            assertEquals("order\uFFFD123", merchantPushSafePreview("order" + control + "123", 80))
+            assertEquals("order\uFFFD", merchantPushSafePreview("order" + control + "123", 6))
+        }
+    }
+
+    @Test fun notificationPreviewPreservesEmojiJoinerAndNormalUnicode() {
+        val family = "👩\u200D👩\u200D👧"
+        assertEquals(family, merchantPushSafePreview(family, 80))
+        assertEquals("สั่งซื้อ " + family, merchantPushSafePreview("สั่งซื้อ " + family, 80))
+    }
+
     @Test fun notificationPreviewPreservesBoundaryWhenNotSurrogatePair() {
         assertEquals("abcd", merchantPushSafePreview("abcdef", 4))
         assertEquals("abc", merchantPushSafePreview("abc", 3))
