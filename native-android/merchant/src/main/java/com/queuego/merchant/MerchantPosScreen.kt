@@ -105,6 +105,7 @@ import com.queuego.shared.NativeRealtimeSubscription
 import com.queuego.shared.QgCard
 import com.queuego.shared.QgGreen
 import com.queuego.shared.QgIconButton
+import com.queuego.shared.QgInk
 import com.queuego.shared.QgMuted
 import com.queuego.shared.QgRed
 import com.queuego.shared.QgRemoteImage
@@ -2341,9 +2342,9 @@ private fun PosTabs(
         val mobile = maxWidth <= 650.dp
         val narrow = maxWidth <= 700.dp
         val shape = RoundedCornerShape(if (mobile) 9.dp else 10.dp)
-        val tabHeight = if (mobile) 36.dp else if (narrow) 38.dp else 40.dp
-        val labelSize = if (mobile) 12.sp else 13.sp
-        val labelLine = if (mobile) 14.4.sp else 15.6.sp
+        val tabHeight = if (mobile) 48.dp else if (narrow) 48.dp else 48.dp
+        val labelSize = if (mobile) 14.sp else 14.sp
+        val labelLine = if (mobile) 18.sp else 18.sp
         val padding = PaddingValues(horizontal = if (mobile) 10.dp else if (narrow) 11.dp else 13.dp,
             vertical = if (mobile) 7.dp else if (narrow) 8.dp else 9.dp)
         Row(
@@ -2533,7 +2534,7 @@ private fun PosCounterView(
         }.distinct()
         if (menuCategories.isNotEmpty() || bestSellerNames.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
-            Text("หมวดหมู่", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+            Text("หมวดหมู่", fontWeight = FontWeight.Bold, fontSize = 14.sp)
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -2565,8 +2566,8 @@ private fun PosCounterView(
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val menuColumns = when {
-                maxWidth >= 980.dp -> 4
-                maxWidth >= 620.dp -> 3
+                maxWidth >= 920.dp -> 4
+                maxWidth >= 540.dp -> 3
                 else -> 2
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2599,6 +2600,12 @@ private fun PosCounterView(
                                     Text("฿" + money(product.price),
                                         color = QgRed, fontSize = 16.sp,
                                         fontWeight = FontWeight.ExtraBold)
+                                    Text(
+                                        "＋ แตะเพื่อเพิ่มลงบิล",
+                                        fontSize = 12.sp, fontWeight = FontWeight.Bold,
+                                        color = QgRed,
+                                        modifier = Modifier.padding(top = 6.dp)
+                                    )
                                     if (posProductInventoryTracked(product)) {
                                         Text(
                                             if (posProductSoldOut(product)) "สินค้าหมดสต็อก · เหลือ 0" else "เหลือ ${product.stock}",
