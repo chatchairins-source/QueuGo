@@ -121,6 +121,36 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
             "Rider release PMTiles has an invalid signature"
         }
 
+        // PMTiles v3 encodes its version immediately after the seven-byte magic.
+        // Reject a superficially valid header from an incompatible archive.
+        val pmtilesVersion = pmtiles.inputStream().buffered().use { stream ->
+            check(stream.skip(7L) == 7L) { "Rider release PMTiles header is truncated" }
+            stream.read()
+        }
+        check(pmtilesVersion == 3) {
+            "Rider release requires PMTiles version 3 (found $pmtilesVersion)"
+        }
+
+        // Valhalla routing tiles must be a nonempty, block-aligned TAR archive.
+        // A zero-filled placeholder or arbitrary binary file is not a routing graph.
+        val tilesTar = required[2]
+        check(tilesTar.length() >= 1024L && tilesTar.length() % 512L == 0L) {
+            "Rider release routing TAR has invalid block alignment or length"
+        }
+        val tarHeader = tilesTar.inputStream().buffered().use { stream ->
+            ByteArray(512).also { bytes ->
+                var offset = 0
+                while (offset < bytes.size) {
+                    val read = stream.read(bytes, offset, bytes.size - offset)
+                    check(read > 0) { "Rider release routing TAR header is truncated" }
+                    offset += read
+                }
+            }
+        }
+        check(tarHeader.copyOfRange(257, 262).contentEquals("ustar".toByteArray(Charsets.US_ASCII))) {
+            "Rider release routing TAR has no POSIX/GNU TAR header"
+        }
+
         // Ensure routing metadata is valid JSON, not an empty placeholder.
         listOf(required[1], required[3]).forEach { metadata ->
             val parsed = try {
