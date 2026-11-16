@@ -223,9 +223,10 @@ window.qgMarketCatalogChoose=id=>{
   const form=document.getElementById('market-catalog-add-form');
   qgMarketAttachWeightPresets(form);
   qgMarketCatalogPricePreview();
+  let pendingSubmission=null;
   form.onsubmit=async ev=>{
     ev.preventDefault();if(state.loading)return;
-    const f=new FormData(form),body={
+    const f=new FormData(form),candidate={
       p_master_product_id:r.id,
       p_price:Number(f.get('price')),
       p_unit:String(f.get('unit')),
@@ -237,10 +238,15 @@ window.qgMarketCatalogChoose=id=>{
       p_available:f.has('available'),
       p_request_id:crypto.randomUUID()
     };
+    // An ambiguous network failure must retry the identical RPC payload and request ID.
+    // Inputs are locked after the first attempt so the displayed values cannot diverge.
+    const body=pendingSubmission||candidate;
     if(!(body.p_price>0&&body.p_pack_size>0&&body.p_weight_kg>0&&body.p_cost>=0&&body.p_initial_stock>=0&&body.p_min_stock>=0))return error(Error('ตรวจราคา หน่วย น้ำหนัก ต้นทุน และสต๊อกอีกครั้ง'));
     const submitShop=state.shop,submitEpoch=state.epoch;
     // The form can outlive an auth change before the catalog route is rendered again.
     if(!submitShop||!active(submitEpoch,submitShop)||profileId(shop())!==submitShop||!permitted(shop()))return;
+    pendingSubmission=body;
+    form.querySelectorAll('input,select').forEach(control=>{control.disabled=true});
     state.loading=true;const submit=ev.submitter;if(submit)submit.disabled=true;
     try{
       localStorage.setItem(pendingKey(submitShop),JSON.stringify(body));
