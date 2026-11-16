@@ -205,7 +205,10 @@ async function load(){
 // Initial-load retry replaces its own button; return focus to a stable control
 // after success, or to the replacement retry button after another failure.
 window.qgMarketCatalogRetryInitial=async()=>{
+  // An in-flight retry must not move focus into a different route or merchant session.
+  const retryShop=profileId(shop());
   await load();
+  if(!retryShop||!active(state.epoch,retryShop)||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
   if(state.resultsReady){
     document.getElementById('market-catalog-search')?.focus({preventScroll:true});
   }else{
