@@ -6,6 +6,8 @@ DECLARE
   lock_pos integer;
   guard_pos integer;
   replay_pos integer;
+  shop_guard_pos integer;
+  proximity_guard_pos integer;
   duplicate_pos integer;
   payload_guard_pos integer;
   recent_cart_pos integer;
@@ -18,6 +20,8 @@ BEGIN
   lock_pos := strpos(body, 'from public.qg_table_sessions');
   guard_pos := strpos(body, 'if v.revoked_at is not null or now()>=v.expires_at then');
   replay_pos := strpos(body, 'from public.qg_table_requests');
+  shop_guard_pos := strpos(body, 'from public.shop_profiles');
+  proximity_guard_pos := strpos(body, 'if public.qg_table_distance_m(');
   duplicate_pos := strpos(body, '''duplicate'',true');
   payload_guard_pos := strpos(body, 'if v_old.payload_hash<>v_hash then');
   recent_cart_pos := strpos(body, 'created_at>now()-interval ''8 seconds''');
@@ -26,8 +30,11 @@ BEGIN
   IF lock_pos = 0 OR guard_pos = 0 OR replay_pos = 0 OR duplicate_pos = 0 THEN
     RAISE EXCEPTION 'QR checkout required authorization or replay markers missing';
   END IF;
-  IF NOT (lock_pos < guard_pos AND guard_pos < replay_pos AND replay_pos < duplicate_pos) THEN
-    RAISE EXCEPTION 'QR checkout must lock and authorize session before idempotent replay';
+  IF shop_guard_pos = 0 OR proximity_guard_pos = 0 OR
+     NOT (lock_pos < guard_pos AND guard_pos < shop_guard_pos AND
+          shop_guard_pos < proximity_guard_pos AND proximity_guard_pos < replay_pos AND
+          replay_pos < duplicate_pos) THEN
+    RAISE EXCEPTION 'QR checkout must authorize session, shop, table and proximity before idempotent replay';
   END IF;
   IF payload_guard_pos = 0 OR recent_cart_pos = 0 OR order_insert_pos = 0
      OR NOT (replay_pos < payload_guard_pos AND payload_guard_pos < duplicate_pos
