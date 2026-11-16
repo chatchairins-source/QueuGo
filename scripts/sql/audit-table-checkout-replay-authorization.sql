@@ -20,7 +20,7 @@ BEGIN
   replay_pos := strpos(body, 'from public.qg_table_requests');
   duplicate_pos := strpos(body, '''duplicate'',true');
   payload_guard_pos := strpos(body, 'if v_old.payload_hash<>v_hash then');
-  recent_cart_pos := strpos(body, "created_at>now()-interval '8 seconds'");
+  recent_cart_pos := strpos(body, 'created_at>now()-interval ''8 seconds''');
   order_insert_pos := strpos(body, 'insert into public.orders(');
 
   IF lock_pos = 0 OR guard_pos = 0 OR replay_pos = 0 OR duplicate_pos = 0 THEN
