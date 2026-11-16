@@ -49,6 +49,16 @@ class MerchantPushIntentIsolationTest {
         assertEquals("สั่งซื้อ", merchantPushSafePreview("สั่งซื้อ", 80))
     }
 
+    @Test fun notificationPreviewNeutralizesControlAndLineSeparators() {
+        // Untrusted push titles must not inject new lines, tabs or invisible C0/C1 controls.
+        val controls = listOf('\u0000', '\u0009', '\u000A', '\u000D', '\u007F', '\u0085', '\u2028', '\u2029')
+        for (control in controls) {
+            assertEquals("order\uFFFD123", merchantPushSafePreview("order" + control + "123", 80))
+            assertEquals("order\uFFFD", merchantPushSafePreview("order" + control + "123", 6))
+        }
+        assertEquals("สั่งซื้อ", merchantPushSafePreview("สั่งซื้อ", 80))
+    }
+
     @Test fun notificationPreviewNeutralizesArabicLetterMark() {
         // U+061C is a bidirectional formatting mark not covered by the U+200E/U+200F ranges.
         assertEquals("order\uFFFD123", merchantPushSafePreview("order\u061C123", 80))
