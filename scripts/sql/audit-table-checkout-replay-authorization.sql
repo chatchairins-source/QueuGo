@@ -62,7 +62,16 @@ BEGIN
     SELECT 1 FROM pg_constraint c
     WHERE c.conrelid='public.qg_table_requests'::regclass
       AND c.contype='f' AND c.confrelid='public.orders'::regclass
+      AND c.convalidated
+      AND (SELECT array_agg(a.attname ORDER BY k.ord)
+           FROM unnest(c.conkey) WITH ORDINALITY k(attnum,ord)
+           JOIN pg_attribute a ON a.attrelid=c.conrelid AND a.attnum=k.attnum)
+          = ARRAY['order_id']::name[]
+      AND (SELECT array_agg(a.attname ORDER BY k.ord)
+           FROM unnest(c.confkey) WITH ORDINALITY k(attnum,ord)
+           JOIN pg_attribute a ON a.attrelid=c.confrelid AND a.attnum=k.attnum)
+          = ARRAY['id']::name[]
   ) THEN
-    RAISE EXCEPTION 'QR checkout request must reference an existing order';
+    RAISE EXCEPTION 'QR checkout request requires validated order_id -> orders(id) foreign key';
   END IF;
 END $constraints$;
