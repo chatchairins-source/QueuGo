@@ -7,7 +7,7 @@ const source=fs.readFileSync(path.join(__dirname,'../merchant/market-catalog.js'
 const start=source.indexOf("    }else {\n      shell('<p>โหลดแคตตาล็อกไม่สำเร็จ");
 const end=source.indexOf('\n    error(e);',start);
 assert.ok(start>=0&&end>start,'error branch exposes retry focus recovery');
-const snippet=source.slice(start+6,end); // begin at the else block's opening brace
+const snippet=source.slice(start+'    }else '.length,end); // evaluate the complete else block
 function simulate(focusedPage){
   const events=[];
   const retry={focus:options=>events.push(['focus',options.preventScroll])};
