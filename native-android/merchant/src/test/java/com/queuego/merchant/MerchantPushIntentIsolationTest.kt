@@ -15,6 +15,23 @@ class MerchantPushIntentIsolationTest {
         assertEquals("", merchantPushSafePreview(text, 0))
     }
 
+
+    @Test fun notificationPreviewReplacesIsolatedSurrogates() {
+        val high = 0xD800.toChar()
+        val low = 0xDC00.toChar()
+        assertEquals("a\uFFFDb", merchantPushSafePreview("a" + high + "b", 80))
+        assertEquals("\uFFFDx", merchantPushSafePreview(low + "x", 80))
+        assertEquals("a\uFFFD", merchantPushSafePreview("a" + high + "b", 2))
+    }
+
+    @Test fun notificationPreviewHonorsLimitWithSupplementaryAndMalformedUnits() {
+        val rocket = String(Character.toChars(0x1F680))
+        assertEquals("", merchantPushSafePreview(rocket + "tail", 1))
+        assertEquals(rocket, merchantPushSafePreview(rocket + "tail", 2))
+        assertEquals(rocket + "\uFFFD", merchantPushSafePreview(rocket + 0xD800.toChar() + "tail", 3))
+        assertEquals("", merchantPushSafePreview("abc", -1))
+    }
+
     @Test fun notificationPreviewPreservesBoundaryWhenNotSurrogatePair() {
         assertEquals("abcd", merchantPushSafePreview("abcdef", 4))
         assertEquals("abc", merchantPushSafePreview("abc", 3))

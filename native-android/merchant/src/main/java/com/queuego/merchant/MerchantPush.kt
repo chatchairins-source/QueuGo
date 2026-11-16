@@ -172,13 +172,28 @@ internal fun merchantPushWithinDeliveryLifetime(sentTimeMs: Long, ttlSeconds: In
     sentTimeMs <= 0L || ttlSeconds <= 0 || nowMs <= sentTimeMs ||
         nowMs - sentTimeMs <= ttlSeconds.toLong() * 1000L
 
-// Avoid cutting a UTF-16 surrogate pair when limiting notification display text.
+// FCM display text is untrusted: never expose isolated UTF-16 surrogates or
+// truncate inside a valid supplementary code point.
 internal fun merchantPushSafePreview(value: String, maxUnits: Int): String {
-    if (value.length <= maxUnits) return value
     if (maxUnits <= 0) return ""
-    val end = if (Character.isHighSurrogate(value[maxUnits - 1]) &&
-        Character.isLowSurrogate(value[maxUnits])) maxUnits - 1 else maxUnits
-    return value.substring(0, end)
+    val result = StringBuilder()
+    var index = 0
+    while (index < value.length && result.length < maxUnits) {
+        val current = value[index]
+        if (Character.isHighSurrogate(current) && index + 1 < value.length &&
+            Character.isLowSurrogate(value[index + 1])
+        ) {
+            if (result.length + 2 > maxUnits) break
+            result.append(current).append(value[index + 1])
+            index += 2
+        } else {
+            result.append(
+                if (Character.isSurrogate(current)) '\uFFFD' else current
+            )
+            index++
+        }
+    }
+    return result.toString()
 }
 
 internal const val MERCHANT_NOTIFICATION_CHANNEL = "queuego_orders_v2"
