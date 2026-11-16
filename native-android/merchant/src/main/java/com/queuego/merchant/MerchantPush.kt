@@ -183,7 +183,7 @@ internal fun merchantPushSafePreview(value: String, maxUnits: Int): String {
         // Bidi formatting controls can visually reverse untrusted order-alert text.
         // Keep ordinary Unicode and emoji joiners intact; neutralize only bidi controls.
         if (current == '\u061C' || current == '\u200E' || current == '\u200F' ||
-            current in '\u202A'..'\u202E' || current in '\u2066'..'\u2069'
+            current in '\u202A'..'\u202E' || current in '\u2066'..'\u206F'
         ) {
             result.append('\uFFFD')
             index++
