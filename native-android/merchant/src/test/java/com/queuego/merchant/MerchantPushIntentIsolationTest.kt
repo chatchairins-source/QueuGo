@@ -88,6 +88,18 @@ class MerchantPushIntentIsolationTest {
         assertEquals(rocket, merchantPushSafePreview(rocket + "tail", 2))
     }
 
+    @Test fun notificationPreviewNeutralizesInvisibleBmpFormatControls() {
+        // These are invisible in a notification but can obscure an order reference.
+        for (control in listOf('\u200B', '\u200C', '\u2060', '\uFEFF', '\u00AD')) {
+            assertEquals("order\uFFFD123", merchantPushSafePreview("order" + control + "123", 80))
+            assertEquals("order\uFFFD", merchantPushSafePreview("order" + control + "123", 6))
+        }
+        // Keep the joiner used for family emoji, and preserve ordinary Thai.
+        val family = "👩\u200D👩\u200D👧"
+        assertEquals(family, merchantPushSafePreview(family, 80))
+        assertEquals("สั่งซื้อ", merchantPushSafePreview("สั่งซื้อ", 80))
+    }
+
     @Test fun notificationPreviewPreservesEmojiJoinerAndNormalUnicode() {
         val family = "👩\u200D👩\u200D👧"
         assertEquals(family, merchantPushSafePreview(family, 80))
