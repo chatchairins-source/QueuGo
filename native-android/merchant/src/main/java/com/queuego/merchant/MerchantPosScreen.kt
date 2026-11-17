@@ -1708,9 +1708,6 @@ fun MerchantPosScreen(
                             } else {
                                 busy = true
                                 scope.launch {
-                                    val change = if (method == "cash" && cash != null) {
-                                        " · เงินทอน ฿" + money(cash - bill.total)
-                                    } else ""
                                     suspend fun showConfirmedPayment() {
                                         selectedBillId = null
                                         cashReceived = ""
@@ -1735,10 +1732,15 @@ fun MerchantPosScreen(
                                         }
                                         if (verified != null) {
                                             receiptDialogBillId = verified.id
-                                            message = "ปิดบิลแล้ว" + change
+                                            // Show cash change only from a confirmed server receipt;
+                                            // a bill total cached before settlement can be stale.
+                                            val confirmedChange = posConfirmedCashChange(verified)?.let {
+                                                " · เงินทอน ฿" + money(it)
+                                            }.orEmpty()
+                                            message = "ปิดบิลแล้ว" + confirmedChange
                                         } else {
                                             receiptDialogBillId = null
-                                            message = "ปิดบิลแล้ว" + change +
+                                            message = "ปิดบิลแล้ว" +
                                                 " · แต่ยังโหลดใบเสร็จล่าสุดไม่ได้ กรุณากดโหลดใหม่"
                                         }
                                     }
@@ -4447,6 +4449,14 @@ private fun createQrBitmap(value: String): Bitmap? = runCatching {
         }
     }
 }.getOrNull()
+
+internal fun posConfirmedCashChange(bill: PosBill): Double? {
+    if (bill.paymentStatus != "PAID" || bill.billStatus != "CLOSED" ||
+        bill.paymentMethod != "cash") return null
+    val amount = bill.cashChange ?: bill.cashTendered?.let { it - bill.total } ?: return null
+    // Guard malformed server values; never display an invented or negative change.
+    return amount.takeIf { it.isFinite() && it >= -0.005 }?.coerceAtLeast(0.0)
+}
 
 private fun money(value: Double): String =
     String.format(Locale.US, "%,.2f", value.coerceAtLeast(0.0))
