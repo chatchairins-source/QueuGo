@@ -1516,22 +1516,32 @@ fun MerchantPosScreen(
                 "tables" -> PosTablesView(
                     snapshot = snap,
                     busy = busy,
+                    canSwitchContext = !busy && pendingPosRequestId == null &&
+                        pendingEdit == null && pendingEditError == null,
                     canManage = can("manage_staff"),
                     onOpen = { table ->
-                        mode = "DINE_IN"
-                        tableId = table.id
-                        noTable = false
-                        selectedBillId = openBills.firstOrNull { it.tableId == table.id }?.id
-                        view = "counter"
+                        if (busy || pendingPosRequestId != null || pendingEdit != null || pendingEditError != null) {
+                            message = "มีบิลหรือรายการ POS ค้างอยู่ กรุณาตรวจรายการก่อนเลือกโต๊ะ"
+                        } else {
+                            mode = "DINE_IN"
+                            tableId = table.id
+                            noTable = false
+                            selectedBillId = openBills.firstOrNull { it.tableId == table.id }?.id
+                            view = "counter"
+                        }
                     },
                     onNoTable = {
-                        mode = "DINE_IN"
-                        tableId = null
-                        noTable = true
-                        selectedBillId = openBills.firstOrNull {
-                            it.type == "DINE_IN" && it.tableId == null
-                        }?.id
-                        view = "counter"
+                        if (busy || pendingPosRequestId != null || pendingEdit != null || pendingEditError != null) {
+                            message = "มีบิลหรือรายการ POS ค้างอยู่ กรุณาตรวจรายการก่อนเลือกโต๊ะ"
+                        } else {
+                            mode = "DINE_IN"
+                            tableId = null
+                            noTable = true
+                            selectedBillId = openBills.firstOrNull {
+                                it.type == "DINE_IN" && it.tableId == null
+                            }?.id
+                            view = "counter"
+                        }
                     },
                     onAdd = {
                         editingTable = null
@@ -3114,6 +3124,7 @@ private fun PosCounterView(
 private fun PosTablesView(
     snapshot: PosSnapshot,
     busy: Boolean,
+    canSwitchContext: Boolean,
     canManage: Boolean,
     onOpen: (PosTable) -> Unit,
     onNoTable: () -> Unit,
@@ -3279,7 +3290,7 @@ private fun PosTablesView(
                                         }
                                         Button(
                                             onClick = { onOpen(table) },
-                                            enabled = (table.active || bill != null) && !busy,
+                                            enabled = (table.active || bill != null) && canSwitchContext,
                                             modifier = Modifier.fillMaxWidth().heightIn(min = 46.dp),
                                             shape = RoundedCornerShape(12.dp),
                                             colors = ButtonDefaults.buttonColors(containerColor = QgRed)
@@ -3326,7 +3337,7 @@ private fun PosTablesView(
 
         OutlinedButton(
             onClick = onNoTable,
-            enabled = !busy,
+            enabled = canSwitchContext,
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
             shape = RoundedCornerShape(14.dp)
         ) {
