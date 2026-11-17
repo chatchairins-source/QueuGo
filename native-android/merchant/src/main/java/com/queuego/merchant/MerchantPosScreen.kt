@@ -3030,7 +3030,7 @@ private fun PosCounterView(
                     }
                 }
                 if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED"))) {
-                    Button(onClick = onPay, enabled = !busy, modifier = Modifier.weight(1f)) {
+                    Button(onClick = onPay, enabled = !busy && posBillTaxSnapshotComplete(selectedBill), modifier = Modifier.weight(1f)) {
                         Text("คิดเงิน")
                     }
                 }
@@ -3094,7 +3094,7 @@ private fun PosCounterView(
                 Button(
                     // Opens the existing authenticated cashier screen; never settles here.
                     onClick = onPay,
-                    enabled = canSwitchContext &&
+                    enabled = canSwitchContext && posBillTaxSnapshotComplete(selectedBill) &&
                         (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")),
                     modifier = modifier.heightIn(min = 48.dp),
                     shape = RoundedCornerShape(10.dp),
@@ -3526,7 +3526,7 @@ private fun PosBillsView(
     onCash: (String) -> Unit,
     onPay: () -> Unit
 ) {
-    val canPaySelected = selected != null &&
+    val canPaySelected = selected != null && posBillTaxSnapshotComplete(selected) &&
         (!showKitchenStatus || selected.kitchenStatus in setOf("READY", "SERVED"))
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
@@ -3815,6 +3815,13 @@ internal fun buildPosReportCsv(
     }
 }
 
+internal fun posBillTaxSnapshotComplete(bill: PosBill): Boolean =
+    !bill.taxEnabledSnapshot || (
+        bill.taxableBase != null && bill.taxableBase.isFinite() && bill.taxableBase >= 0 &&
+        bill.taxAmount != null && bill.taxAmount.isFinite() && bill.taxAmount >= 0 &&
+        bill.taxRateSnapshot != null && bill.taxRateSnapshot.isFinite()
+    )
+
 internal fun posTaxSettingsError(failure: Throwable): String {
     val raw = failure.message.orEmpty()
     val lower = raw.lowercase(java.util.Locale.ROOT)
@@ -3834,7 +3841,7 @@ private fun PosBillTaxDetails(bill: PosBill) {
     val base = bill.taxableBase
     val tax = bill.taxAmount
     if (base == null || tax == null) {
-        Text("ยังไม่มีข้อมูลภาษีที่ยืนยันจากเซิร์ฟเวอร์สำหรับบิลนี้", color = QgRed, fontSize = 12.sp)
+        Text("ข้อมูลภาษีของบิลนี้ไม่ครบ · ยังไม่สามารถคิดเงินได้ กรุณาตรวจข้อมูลกับร้าน", color = QgRed, fontSize = 12.sp)
         return
     }
     Column(Modifier.fillMaxWidth().padding(top = 5.dp)) {
