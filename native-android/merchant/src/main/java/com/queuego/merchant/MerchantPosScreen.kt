@@ -1357,6 +1357,8 @@ fun MerchantPosScreen(
                     selectedCategory = selectedPosCategory,
                     busy = busy,
                     pendingCreate = pendingPosRequestId != null,
+                    canSwitchContext = !busy && pendingPosRequestId == null &&
+                        pendingEdit == null && pendingEditError == null,
                     canReceive = can("receive_order") || !networkValidated,
                     kitchenEnabled = kitchenEnabled,
                     canSendKitchen = kitchenEnabled && can("send_kitchen"),
@@ -1367,10 +1369,18 @@ fun MerchantPosScreen(
                     canEditPrice = can("edit_price"),
                     canManageTables = can("manage_staff"),
                     canOpenDelivery = snap.owner,
-                    onManageTables = { view = "tables" },
-                    onOpenDelivery = { view = "delivery" },
+                    onManageTables = {
+                        if (!busy && pendingPosRequestId == null && pendingEdit == null && pendingEditError == null) {
+                            view = "tables"
+                        }
+                    },
+                    onOpenDelivery = {
+                        if (!busy && pendingPosRequestId == null && pendingEdit == null && pendingEditError == null) {
+                            view = "delivery"
+                        }
+                    },
                     onMode = { next ->
-                        if (busy || pendingPosRequestId != null) {
+                        if (busy || pendingPosRequestId != null || pendingEdit != null || pendingEditError != null) {
                             message = "กำลังบันทึกหรือตรวจบิลเดิม กรุณารอผลก่อนเปลี่ยนรูปแบบการขาย"
                         } else {
                             mode = next
@@ -1380,7 +1390,7 @@ fun MerchantPosScreen(
                         }
                     },
                     onTable = { id ->
-                        if (busy || pendingPosRequestId != null) {
+                        if (busy || pendingPosRequestId != null || pendingEdit != null || pendingEditError != null) {
                             message = "กำลังบันทึกหรือตรวจบิลเดิม กรุณารอผลก่อนเปลี่ยนโต๊ะ"
                         } else {
                             mode = "DINE_IN"
@@ -1390,7 +1400,7 @@ fun MerchantPosScreen(
                         }
                     },
                     onNoTable = {
-                        if (busy || pendingPosRequestId != null) {
+                        if (busy || pendingPosRequestId != null || pendingEdit != null || pendingEditError != null) {
                             message = "กำลังบันทึกหรือตรวจบิลเดิม กรุณารอผลก่อนเปลี่ยนโต๊ะ"
                         } else {
                             mode = "DINE_IN"
@@ -2596,6 +2606,7 @@ private fun PosCounterView(
     bestSellerNames: Set<String>,
     busy: Boolean,
     pendingCreate: Boolean,
+    canSwitchContext: Boolean,
     canReceive: Boolean,
     kitchenEnabled: Boolean,
     canSendKitchen: Boolean,
@@ -2665,8 +2676,8 @@ private fun PosCounterView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (kitchenEnabled) {
-                PosChoiceButton("🍽 ทานที่ร้าน", mode == "DINE_IN", enabled = !busy && !pendingCreate) { onMode("DINE_IN") }
-                PosChoiceButton("🛍 รับกลับ", mode == "TAKEAWAY", enabled = !busy && !pendingCreate) { onMode("TAKEAWAY") }
+                PosChoiceButton("🍽 ทานที่ร้าน", mode == "DINE_IN", enabled = canSwitchContext) { onMode("DINE_IN") }
+                PosChoiceButton("🛍 รับกลับ", mode == "TAKEAWAY", enabled = canSwitchContext) { onMode("TAKEAWAY") }
             } else {
                 Surface(
                     color = QgRed,
@@ -2682,7 +2693,7 @@ private fun PosCounterView(
                 }
             }
             if (canOpenDelivery) {
-                PosChoiceButton("🛵 เดลิเวอรี", false, enabled = !busy && !pendingCreate) { onOpenDelivery() }
+                PosChoiceButton("🛵 เดลิเวอรี", false, enabled = canSwitchContext) { onOpenDelivery() }
             }
         }
         if (kitchenEnabled && mode == "DINE_IN") {
@@ -2693,7 +2704,7 @@ private fun PosCounterView(
             ) {
                 Text("เลือกโต๊ะ", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 if (canManageTables) {
-                    TextButton(onClick = onManageTables, enabled = !busy && !pendingCreate,
+                    TextButton(onClick = onManageTables, enabled = canSwitchContext,
                         modifier = Modifier.heightIn(min = 48.dp)) {
                         Text("จัดการโต๊ะ / QR", fontSize = 13.sp, color = QgRed)
                     }
@@ -2703,14 +2714,14 @@ private fun PosCounterView(
                 Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                PosChoiceButton("ไม่ระบุโต๊ะ", noTable, enabled = !busy && !pendingCreate,
+                PosChoiceButton("ไม่ระบุโต๊ะ", noTable, enabled = canSwitchContext,
                     onClick = onNoTable)
                 snapshot.tables.filter { it.active }.forEach { table ->
                     val bill = openBills.firstOrNull { it.tableId == table.id }
                     PosChoiceButton(
                         table.label + if (bill != null) " · " + bill.number else "",
                         tableId == table.id,
-                        enabled = !busy && !pendingCreate,
+                        enabled = canSwitchContext,
                         onClick = { onTable(table.id) }
                     )
                 }
@@ -2992,7 +3003,7 @@ private fun PosCounterView(
             openBills.forEach { bill ->
                 QgCard(
                     Modifier.fillMaxWidth().padding(bottom = 7.dp)
-                        .clickable(enabled = !busy && !pendingCreate) { onOpenBill(bill) }
+                        .clickable(enabled = canSwitchContext) { onOpenBill(bill) }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
