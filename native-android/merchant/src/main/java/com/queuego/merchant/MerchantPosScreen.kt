@@ -283,6 +283,11 @@ fun MerchantPosScreen(
     var paymentMethod by rememberSaveable { mutableStateOf("cash") }
     var paymentMethodMenu by remember { mutableStateOf(false) }
     var cashReceived by rememberSaveable { mutableStateOf("") }
+    // Tender is bill-specific: also clear it when selection changes from table navigation,
+    // a server refresh, an offline draft or a restored signed-in session.
+    LaunchedEffect(auth.session.authUserId, selectedBillId) {
+        cashReceived = ""
+    }
     var cashShift by remember(auth.session.authUserId) { mutableStateOf<PosCashShift?>(null) }
     var cashShiftError by remember(auth.session.authUserId) { mutableStateOf<String?>(null) }
     var cashShiftPending by remember { mutableStateOf(false) }
