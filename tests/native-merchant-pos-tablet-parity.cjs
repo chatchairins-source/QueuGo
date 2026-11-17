@@ -9,8 +9,8 @@ ok(/private fun PosCounterView\(/.test(native),'Native POS counter must exist');
 const choice = native.split('private fun PosChoiceButton(')[1]?.split('private fun PosReportLine(')[0] || '';
 ok(/val target = modifier\.heightIn\(min = 48\.dp\)/.test(choice)&&
    /fontSize = 14\.sp, maxLines = 2/.test(choice)&&
-   /Button\(onClick = onClick, modifier = target\)/.test(choice)&&
-   /OutlinedButton\(onClick = onClick, modifier = target\)/.test(choice),
+   /Button\(onClick = onClick, enabled = enabled, modifier = target\)/.test(choice)&&
+   /OutlinedButton\(onClick = onClick, enabled = enabled, modifier = target\)/.test(choice),
    'Product category and table chips need readable 14sp labels and accessible 48dp hit targets');
 
 ok(/val desktopPos = maxWidth >= 680\.dp && maxWidth > maxHeight/.test(counter),'Landscape tablets must keep cart visible after the Merchant navigation rail');
@@ -28,6 +28,17 @@ ok(/val cartDrawerMaxHeight = maxHeight \* 0\.62f/.test(counter)&&/heightIn\(max
 ok(/if \(showOrderNote \|\| note\.isNotBlank\(\)\)/.test(counter)&&/＋ เพิ่มหมายเหตุ/.test(counter),'Optional note must not take permanent POS screen space');
 ok(/จัดการโต๊ะ \/ QR/.test(counter),'Table management must be accessible from compact table toolbar');
 ok(/selectedBill\.total/.test(counter),'Cart summary must reflect authoritative selected bill total');
+ok(/onMode = \{ next ->[\s\S]*?if \(busy \|\| pendingPosRequestId != null\)/.test(native)&&
+   /onTable = \{ id ->[\s\S]*?if \(busy \|\| pendingPosRequestId != null\)/.test(native)&&
+   /onNoTable = \{[\s\S]*?if \(busy \|\| pendingPosRequestId != null\)/.test(native),
+   'Host callbacks must reject mode and table changes while a bill mutation or uncertain creation is pending');
+ok(/PosChoiceButton\("🍽 ทานที่ร้าน",[\s\S]*?enabled = !busy && !pendingCreate/.test(counter)&&
+   /PosChoiceButton\("🛍 รับกลับ",[\s\S]*?enabled = !busy && !pendingCreate/.test(counter)&&
+   /PosChoiceButton\("ไม่ระบุโต๊ะ",[\s\S]*?enabled = !busy && !pendingCreate/.test(counter)&&
+   /tableId == table.id,\s*enabled = !busy && !pendingCreate/.test(counter)&&
+   /enabled: Boolean = true/.test(choice),
+   'Actual POS mode/table buttons must disable while a bill mutation is outstanding');
+
 ok(/onClick = \{ onReduce\(line\) \}/.test(counter)&&
    /onClick = \{ onProduct\(matchingProduct\) \}/.test(counter)&&
    /!posProductSoldOut\(matchingProduct\)/.test(counter)&&
