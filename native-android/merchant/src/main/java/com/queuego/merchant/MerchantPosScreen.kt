@@ -2828,6 +2828,11 @@ private fun PosCounterView(
                     }
                     Spacer(Modifier.height(6.dp))
                     lines.forEach { line ->
+                        // Reuse the existing authoritative add-product action for the bill's + control.
+                        // Only offer it while this open bill can still be edited.
+                        val matchingProduct = line.productId?.let { id ->
+                            snapshot.products.firstOrNull { it.id == id && it.available }
+                        }
                         Row(
                             Modifier.fillMaxWidth().padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -2840,12 +2845,26 @@ private fun PosCounterView(
                             }
                             Text("฿" + money(line.total), fontWeight = FontWeight.Bold)
                             if (selectedBill.kitchenStatus == "NEW" && line.productId != null) {
-                                Spacer(Modifier.width(6.dp))
+                                Spacer(Modifier.width(4.dp))
                                 OutlinedButton(
                                     onClick = { onReduce(line) },
                                     enabled = !busy,
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 3.dp)
-                                ) { Text("−") }
+                                    modifier = Modifier.size(42.dp)
+                                        .semantics { contentDescription = "ลดจำนวน ${line.name}" },
+                                    contentPadding = PaddingValues(0.dp)
+                                ) { Text("−", fontSize = 18.sp) }
+                                if (matchingProduct != null) {
+                                    Spacer(Modifier.width(4.dp))
+                                    Button(
+                                        onClick = { onProduct(matchingProduct) },
+                                        enabled = !busy && canReceive && !pendingCreate &&
+                                            !posProductSoldOut(matchingProduct),
+                                        modifier = Modifier.size(42.dp)
+                                            .semantics { contentDescription = "เพิ่มจำนวน ${line.name}" },
+                                        contentPadding = PaddingValues(0.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                                    ) { Text("+", fontSize = 18.sp) }
+                                }
                             }
                         }
                         HorizontalDivider()
