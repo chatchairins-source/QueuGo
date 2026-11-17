@@ -19,7 +19,15 @@ ok(/billContent\(Modifier\.fillMaxSize\(\)\.verticalScroll/.test(counter),'Table
 ok(/val cartPanelWidth = if \(maxWidth >= 1000\.dp\) 330\.dp else 280\.dp/.test(counter)&&/Modifier\.width\(cartPanelWidth\)\.fillMaxHeight/.test(counter),'Tablet cart panel must resize and stay alongside the product catalog');
 ok(/val catalogContent: @Composable \(Modifier\) -> Unit/.test(counter),'Product catalog is shared between layouts');
 ok(/val billContent: @Composable \(Modifier\) -> Unit/.test(counter),'Actual bill/payment controls are shared between layouts');
-ok(/if \(cartExpanded\)/.test(counter)&&/ดูบิล \/ คิดเงิน/.test(counter),'Portrait POS needs a persistent expandable checkout');
+ok(/if \(cartExpanded\)/.test(counter)&&/onClick = \{ cartExpanded = !cartExpanded \}/.test(counter)&&/ดูบิล/.test(counter),
+   'Portrait POS must keep the independently expandable bill accessible at all times');
+ok(/if \(selectedBill != null && canClose\)/.test(counter)&&
+   /onClick = onPay,\s*enabled = !busy && !pendingCreate &&/.test(counter)&&
+   /!kitchenEnabled \|\| selectedBill\.kitchenStatus in setOf\("READY", "SERVED"\)/.test(counter)&&
+   /Text\("คิดเงิน", fontSize = 14\.sp, maxLines = 1\)/.test(counter),
+   'Phone POS checkout shortcut must only open the real payment screen for an authorized ready bill');
+ok(/maxLines = 1, overflow = androidx\.compose\.ui\.text\.style\.TextOverflow\.Ellipsis/.test(counter),
+   'Compact checkout title must truncate instead of overlapping its actual controls');
 ok(/import androidx\.compose\.foundation\.layout\.imePadding/.test(native)&&
    /Modifier\.align\(Alignment\.BottomCenter\)\.fillMaxWidth\(\)\s*\.imePadding\(\)/.test(counter),
    'Mobile POS bill and checkout must rise above the software keyboard');
