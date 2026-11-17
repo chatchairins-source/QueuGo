@@ -52,6 +52,8 @@ ok(/"tables" -> PosTablesView\([\s\S]*?onOpen = \{ table ->\s*if \(busy \|\| pen
    /"tables" -> PosTablesView\([\s\S]*?onNoTable = \{\s*if \(busy \|\| pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null\)/.test(native),
    'Table selection callbacks must fail closed during unresolved bills even when invoked programmatically');
 const billsView = native.split('private fun PosBillsView(')[1]?.split('private fun PosShiftsView(')[0] || '';
+ok(/LaunchedEffect\(auth\.session\.authUserId, selectedBillId\) \{\s*cashReceived = ""\s*\}/.test(native),
+   'Cash tender must also reset on table navigation, restored bill selection and shop-account change');
 ok(/onOpenBill = \{ bill ->[\s\S]*?if \(selectedBillId != bill\.id\) cashReceived = ""/.test(native)&&
    /onSelect = \{ bill ->[\s\S]*?if \(selectedBillId != bill\.id\) cashReceived = ""/.test(native),
    'Switching a POS bill from either counter or cashier must clear the previous cash tender');
