@@ -39,6 +39,14 @@ ok(/PosChoiceButton\("🍽 ทานที่ร้าน",[\s\S]*?enabled = !bu
    /enabled: Boolean = true/.test(choice),
    'Actual POS mode/table buttons must disable while a bill mutation is outstanding');
 
+const billsView = native.split('private fun PosBillsView(')[1]?.split('private fun PosShiftsView(')[0] || '';
+ok(/onOpenBill = \{ bill ->[\s\S]*?pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null/.test(native)&&
+   /\.clickable\(enabled = !busy && !pendingCreate\) \{ onOpenBill\(bill\) \}/.test(counter),
+   'Counter must keep the selected bill fixed during an unresolved create or edit');
+ok(/onSelect = \{ bill ->[\s\S]*?cashShiftPending \|\| pendingPosRequestId != null/.test(native)&&
+   /\.clickable\(enabled = !busy && !shiftPending\) \{ onSelect\(bill\) \}/.test(billsView),
+   'Cashier must keep the selected bill fixed during payment and cash-shift operations');
+
 ok(/onClick = \{ onReduce\(line\) \}/.test(counter)&&
    /onClick = \{ onProduct\(matchingProduct\) \}/.test(counter)&&
    /!posProductSoldOut\(matchingProduct\)/.test(counter)&&
