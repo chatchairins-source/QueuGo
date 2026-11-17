@@ -328,6 +328,8 @@ fun MerchantPosScreen(
     var taxSettings by remember { mutableStateOf(PosTaxSettings()) }
     var taxRateText by rememberSaveable { mutableStateOf("7.00") }
     var taxSettingsLoaded by remember { mutableStateOf(false) }
+    var taxSettingsError by remember { mutableStateOf<String?>(null) }
+    var taxReloadAttempt by remember { mutableStateOf(0) }
 
 
     var historyDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
@@ -982,20 +984,22 @@ fun MerchantPosScreen(
         }
     }
 
-    LaunchedEffect(view, snapshot?.shopId, snapshot?.owner) {
+    LaunchedEffect(view, snapshot?.shopId, snapshot?.owner, taxReloadAttempt) {
         val current = snapshot
         if (view == "tax" && current?.owner == true) {
             taxSettingsLoaded = false
+            taxSettingsError = null
             runCatching { api.loadTaxSettings(auth) }
                 .onSuccess { loaded ->
                     taxSettings = loaded
                     taxRateText = "%.2f".format(java.util.Locale.US, loaded.ratePercent)
                     taxSettingsLoaded = true
+                    taxSettingsError = null
                 }
                 .onFailure {
                     taxSettingsLoaded = false
-                    message = "โหลดการตั้งค่าภาษีไม่สำเร็จ · ยังบันทึกการตั้งค่าไม่ได้: " +
-                        (it.message ?: "กรุณาลองใหม่")
+                    taxSettingsError = "ยังตรวจสอบค่าภาษีจากเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่หรือให้ผู้ดูแลตรวจระบบภาษี"
+                    message = taxSettingsError
                 }
         }
     }
@@ -1847,6 +1851,8 @@ fun MerchantPosScreen(
                     settings = taxSettings,
                     rateText = taxRateText,
                     busy = busy || !taxSettingsLoaded,
+                    loadError = taxSettingsError,
+                    onRetryLoad = { taxReloadAttempt++ },
                     onEnabled = { taxSettings = taxSettings.copy(enabled = it) },
                     onRate = { taxRateText = it },
                     onPricesIncludeTax = { taxSettings = taxSettings.copy(pricesIncludeTax = it) },
@@ -1867,9 +1873,13 @@ fun MerchantPosScreen(
                                 }.onSuccess {
                                     taxSettings = it
                                     taxRateText = "%.2f".format(java.util.Locale.US, it.ratePercent)
+                                    taxSettingsLoaded = true
+                                    taxSettingsError = null
                                     message = "บันทึกการตั้งค่าภาษีแล้ว"
                                 }.onFailure {
-                                    message = it.message ?: "บันทึกการตั้งค่าภาษีไม่สำเร็จ"
+                                    taxSettingsLoaded = false
+                                    taxSettingsError = "ยังยืนยันการบันทึกค่าภาษีไม่ได้ กรุณาตรวจค่าจากเซิร์ฟเวอร์อีกครั้ง"
+                                    message = taxSettingsError
                                 }
                                 busy = false
                             }
@@ -3794,6 +3804,8 @@ private fun PosTaxSettingsView(
     settings: PosTaxSettings,
     rateText: String,
     busy: Boolean,
+    loadError: String?,
+    onRetryLoad: () -> Unit,
     onEnabled: (Boolean) -> Unit,
     onRate: (String) -> Unit,
     onPricesIncludeTax: (Boolean) -> Unit,
@@ -3805,6 +3817,16 @@ private fun PosTaxSettingsView(
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("ภาษี POS", "ตั้งค่าร้าน · ใช้กับบิล POS ใหม่เท่านั้น")
         Spacer(Modifier.height(8.dp))
+        if (loadError != null) {
+            QgCard(Modifier.fillMaxWidth()) {
+                Text(loadError, color = QgRed, fontSize = 13.sp)
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onRetryLoad, enabled = busy) {
+                    Text("ตรวจสอบระบบภาษีอีกครั้ง")
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+        }
         QgCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(checked = settings.enabled, onCheckedChange = onEnabled, enabled = !busy)
