@@ -54,7 +54,7 @@
     const login = action === 'login';
 
     if (code === 'email_not_confirmed' || /email not confirmed|email.*not.*verified/.test(lower)) {
-      return 'กรุณายืนยันอีเมลจากข้อความที่ส่งให้ก่อนเข้าสู่ระบบ';
+      return 'หากสมัครสำเร็จ กรุณาตรวจอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ หากไม่พบอีเมลให้ติดต่อผู้ดูแล';
     }
     if (code === 'invalid_credentials' || /invalid login credentials|invalid credentials|invalid_grant/.test(lower) ||
         (login && status === 400)) {
@@ -109,6 +109,7 @@
 
   function clearFormError(doc, buttonId) {
     doc.getElementById(buttonId + '-form-error')?.remove();
+    doc.getElementById(buttonId + '-form-notice')?.remove();
   }
 
   function fieldError(doc, id, message) {
@@ -140,8 +141,21 @@
     return true;
   }
 
+  function formNotice(doc, buttonId, message) {
+    const button = doc.getElementById(buttonId);
+    if (!button) return false;
+    clearFormError(doc, buttonId);
+    const notice = doc.createElement('p');
+    notice.id = buttonId + '-form-notice';
+    notice.className = 'qg-auth-form-notice';
+    notice.setAttribute('role', 'status');
+    notice.textContent = message;
+    button.insertAdjacentElement('beforebegin', notice);
+    return true;
+  }
+
   return Object.freeze({
     validateLogin, validateRegistration, errorMessage, locationMessage,
-    clearFieldError, clearFormError, fieldError, formError, cleanPhone
+    clearFieldError, clearFormError, fieldError, formError, formNotice, cleanPhone
   });
 });
