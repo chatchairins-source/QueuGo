@@ -142,6 +142,7 @@ fun MerchantPosScreen(
     auth: NativeAuth,
     onBack: () -> Unit,
     backLabel: String = "ย้อนกลับ",
+    unreadNotifications: Int,
     onNavigateApp: (String) -> Unit
 ) {
     val context = LocalContext.current
@@ -1303,6 +1304,8 @@ fun MerchantPosScreen(
                         cashierEnabled = can("close_bill") || can("view_sales"),
                         codesEnabled = can("manage_staff"),
                         stockEnabled = merchantMarketStockPermitted(snap.shopCategory),
+                        unreadNotifications = unreadNotifications,
+                        connected = networkValidated,
                         onNavigateApp = onNavigateApp,
                         onSelect = { view = it; message = null },
                         vertical = true
@@ -1316,6 +1319,8 @@ fun MerchantPosScreen(
                             cashierEnabled = can("close_bill") || can("view_sales"),
                             codesEnabled = can("manage_staff"),
                             stockEnabled = merchantMarketStockPermitted(snap.shopCategory),
+                            unreadNotifications = unreadNotifications,
+                            connected = networkValidated,
                             onNavigateApp = onNavigateApp,
                             onSelect = { view = it; message = null },
                             vertical = false
@@ -2340,6 +2345,8 @@ private fun PosTabs(
     cashierEnabled: Boolean,
     codesEnabled: Boolean,
     stockEnabled: Boolean,
+    unreadNotifications: Int,
+    connected: Boolean,
     onNavigateApp: (String) -> Unit,
     onSelect: (String) -> Unit,
     vertical: Boolean = false
@@ -2384,6 +2391,12 @@ private fun PosTabs(
                         fontSize = 16.sp, fontWeight = FontWeight.Black)
                 }
                 Text(
+                    if (connected) "● เชื่อมต่อออนไลน์" else "● ไม่มีอินเทอร์เน็ต",
+                    color = if (connected) Color(0xFF4ADE80) else Color(0xFFFBBF24),
+                    fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                )
+                Text(
                     "เมนูหลัก",
                     color = Color(0xFFAAB3C3), fontSize = 11.sp,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
@@ -2392,6 +2405,7 @@ private fun PosTabs(
                 // never demo screens or duplicate POS data flows.
                 val shortcuts = buildList {
                     add("orders" to "ออเดอร์ออนไลน์")
+                    add("notifications" to if (unreadNotifications > 0) "แจ้งเตือน (${unreadNotifications})" else "แจ้งเตือน")
                     add("products" to "สินค้า")
                     if (stockEnabled) add("market-stock" to "สต็อกสินค้า")
                     add("profile" to "ตั้งค่าร้าน")
