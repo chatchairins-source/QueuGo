@@ -63,9 +63,11 @@ ok(/PosBillTaxSummary\(selectedBill\)/.test(counter)&&
    'Counter and cashier must show only the authenticated server tax snapshot, not locally derived totals');
 ok(/taxSettingsError by remember/.test(native) &&
    /LaunchedEffect\(view, snapshot\?\.shopId, snapshot\?\.owner, taxReloadAttempt\)/.test(native) &&
-   /taxSettingsLoaded = false\s*taxSettingsError = "ยังยืนยันการบันทึกค่าภาษีไม่ได้/.test(native) &&
+   /taxSettingsLoaded = false\s*taxSettingsError = posTaxSettingsServiceError\(it\)/.test(native) &&
    /loadError = taxSettingsError/.test(native) &&
-   /onRetryLoad = \{ taxReloadAttempt\+\+ \}/.test(native) &&
+   /ready = taxSettingsLoaded/.test(native) &&
+   /onRetryLoad = \{ if \(!busy && !taxSettingsLoading\) taxReloadAttempt\+\+ \}/.test(native) &&
+   /OutlinedButton\(onClick = onRetryLoad, enabled = !busy\)/.test(native) &&
    /Text\("ตรวจสอบระบบภาษีอีกครั้ง"\)/.test(native),
    'Tax settings must fail closed when server validation fails and offer a real read-only reload action');
 ok(/ยังไม่มีรายละเอียดภาษีจากเซิร์ฟเวอร์/.test(native),
