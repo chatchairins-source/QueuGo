@@ -3879,7 +3879,7 @@ private fun PosTaxSettingsView(
                     Text(loadError ?: "กำลังตรวจสอบระบบภาษีของร้าน",
                          color = QgInk, fontSize = 12.sp)
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = onRetry, enabled = !busy && ready) {
+                    OutlinedButton(onClick = onRetry, enabled = !busy) {
                         Text("ตรวจสอบระบบภาษีอีกครั้ง")
                     }
                 }
