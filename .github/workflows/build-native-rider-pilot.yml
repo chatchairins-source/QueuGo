@@ -12,6 +12,7 @@ on:
         required: false
   pull_request:
     branches:
+      - 'worker4-qa-ci-release-*'
       - 'work-native-**'
       - 'work-production-review-20261109'
       - 'fix-rider-**'
