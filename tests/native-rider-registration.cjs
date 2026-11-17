@@ -23,6 +23,18 @@ for(const label of ['ส่วนตัว','รถและพื้นที�
   ok(screen.includes('"'+label+'"'),'Native Rider registration must retain four-step Production flow label: '+label);
 }
 ok(screen.includes('ActivityResultContracts.OpenDocument'),'Native Rider registration must use the system document picker');
+
+// Native evidence from the external Rider registration tester: a portrait file preview
+// must stay within a bounded box and never overlap the next picker/card.
+// This source contract complements (but does not replace) device screenshot QA.
+const preview = screen.slice(screen.indexOf('@Composable private fun RegistrationDocumentPreview'));
+ok(preview.includes('.width(280.dp)') && preview.includes('.height(200.dp)'),
+  'Registration document previews need fixed bounded dimensions independent of image aspect ratio');
+ok(preview.includes('Modifier.fillMaxSize()') && preview.includes('ContentScale.Fit'),
+  'Registration document images must fit entirely within their preview viewport');
+ok(!preview.includes('.aspectRatio(') && !preview.includes('ContentScale.Crop'),
+  'Registration document previews must not expand or crop portrait identity documents');
+
 ok(screen.includes('loadRegistrationDraft')&&screen.includes('saveRegistrationDraft'),'Native Rider registration must support local draft resume');
 ok(screen.includes('agreement')&&screen.includes('betaAgreement'),'Native Rider registration must require final consent state');
 
