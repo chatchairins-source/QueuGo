@@ -246,7 +246,15 @@ private fun PosStaffNativeHost(
             )
         }
         Box(Modifier.weight(1f)) {
-            MerchantPosScreen(auth = auth, onBack = onLogout)
+            MerchantPosScreen(
+                auth = auth,
+                onBack = onLogout,
+                unreadNotifications = 0,
+                // POS staff sign-in has no authenticated Merchant app shell to navigate into.
+                // Hide host-only shortcuts rather than displaying controls with no action.
+                onNavigateApp = {},
+                showMerchantAppShortcuts = false
+            )
         }
     }
 }
