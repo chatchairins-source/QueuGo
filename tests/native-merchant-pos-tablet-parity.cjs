@@ -42,6 +42,13 @@ ok(/val cartDrawerMaxHeight = maxHeight \* 0\.62f/.test(counter)&&/heightIn\(max
 ok(/if \(showOrderNote \|\| note\.isNotBlank\(\)\)/.test(counter)&&/＋ เพิ่มหมายเหตุ/.test(counter),'Optional note must not take permanent POS screen space');
 ok(/จัดการโต๊ะ \/ QR/.test(counter),'Table management must be accessible from compact table toolbar');
 ok(/selectedBill\.total/.test(counter),'Cart summary must reflect authoritative selected bill total');
+ok(/internal fun posConfirmedCashChange\(bill: PosBill\): Double\?/.test(native)&&
+   /posConfirmedCashChange\(verified\)/.test(native)&&
+   !native.includes('money(cash - bill.total)')&&
+   /bill\.paymentStatus != "PAID"/.test(native)&&
+   /bill\.billStatus != "CLOSED"/.test(native),
+   'Post-payment change must come from a confirmed server receipt, never from a cached pre-payment total');
+
 ok(/canSwitchContext = !busy && pendingPosRequestId == null &&\s*pendingEdit == null && pendingEditError == null/.test(native)&&
    /canSwitchContext: Boolean/.test(counter),
    'POS context-changing controls must cover unresolved edits and pending creates, not only a busy network call');
