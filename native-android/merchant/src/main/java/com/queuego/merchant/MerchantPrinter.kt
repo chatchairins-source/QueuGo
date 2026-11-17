@@ -158,7 +158,9 @@ fun merchantKitchenPrintKey(snapshot: PosSnapshot, bill: PosBill): String? {
 }
 
 fun merchantReceiptPrintKey(snapshot: PosSnapshot, bill: PosBill): String? =
-    if (bill.paymentStatus == "PAID") "receipt:" + snapshot.shopId + ":" + bill.id else null
+    if (bill.paymentStatus == "PAID" && bill.billStatus == "CLOSED" && bill.status != "cancelled") {
+        "receipt:" + snapshot.shopId + ":" + bill.id
+    } else null
 
 fun merchantKitchenTicket(snapshot: PosSnapshot, bill: PosBill, requestedBatch: Int? = null): String {
     val all = snapshot.linesByOrder[bill.id].orEmpty()
@@ -166,8 +168,12 @@ fun merchantKitchenTicket(snapshot: PosSnapshot, bill: PosBill, requestedBatch: 
     return merchantPrintTicket(snapshot, bill, all.filter { it.batch == batch }, receipt = false)
 }
 
-fun merchantReceiptTicket(snapshot: PosSnapshot, bill: PosBill): String =
-    merchantPrintTicket(snapshot, bill, snapshot.linesByOrder[bill.id].orEmpty(), receipt = true)
+fun merchantReceiptTicket(snapshot: PosSnapshot, bill: PosBill): String {
+    require(merchantReceiptPrintKey(snapshot, bill) != null) {
+        "ไม่สามารถออกใบเสร็จสำหรับบิลที่ยังไม่ได้รับชำระและปิดบิล"
+    }
+    return merchantPrintTicket(snapshot, bill, snapshot.linesByOrder[bill.id].orEmpty(), receipt = true)
+}
 
 private fun merchantPrintTicket(snapshot: PosSnapshot, bill: PosBill, lines: List<PosLine>, receipt: Boolean): String {
     val separator = "--------------------------------"
@@ -200,20 +206,31 @@ private fun merchantPrintTicket(snapshot: PosSnapshot, bill: PosBill, lines: Lis
         }
         if (receipt) {
             appendLine(separator)
-            if (bill.taxEnabledSnapshot) {
+            if (bill.taxEnabledSnapshot && bill.subtotal.isFinite() && bill.subtotal > 0.0) {
                 appendLine("ยอดก่อนส่วนลด " + merchantPrinterMoney(bill.subtotal))
             }
             if (bill.discount > 0) appendLine("ส่วนลด " + merchantPrinterMoney(bill.discount))
             if (bill.taxEnabledSnapshot) {
-                appendLine("มูลค่าก่อนภาษี " + merchantPrinterMoney(bill.taxableBase ?: (bill.total - (bill.taxAmount ?: 0.0))))
-                appendLine("ภาษี " + String.format(java.util.Locale.US, "%.2f%%", bill.taxRateSnapshot ?: 0.0) + " " +
-                    merchantPrinterMoney(bill.taxAmount ?: 0.0))
+                if (posBillTaxSnapshotReady(bill)) {
+                    appendLine("มูลค่าก่อนภาษี " + merchantPrinterMoney(bill.taxableBase!!))
+                    val percent = bill.taxRateSnapshot?.takeIf { it.isFinite() && it in 0.0..100.0 }
+                    appendLine("ภาษี" +
+                        (percent?.let { " " + String.format(java.util.Locale.US, "%.2f%%", it) } ?: "") +
+                        " " + merchantPrinterMoney(bill.taxAmount!!))
+                } else {
+                    // Never print a synthetic 0% / 0.00 or derive a missing tax base locally.
+                    appendLine("รายละเอียดภาษีจากเซิร์ฟเวอร์ไม่ครบ · โปรดตรวจสอบก่อนออกใบกำกับภาษี")
+                }
             }
             appendLine((if (bill.taxEnabledSnapshot) "ยอดสุทธิ " else "รวม ") + merchantPrinterMoney(bill.total))
             if (!bill.paymentMethod.isNullOrBlank()) appendLine("ชำระ " + bill.paymentMethod)
             if (bill.paymentMethod == "cash") {
-                appendLine("รับเงิน " + merchantPrinterMoney(bill.cashTendered ?: 0.0))
-                appendLine("เงินทอน " + merchantPrinterMoney(bill.cashChange ?: 0.0))
+                val tendered = bill.cashTendered?.takeIf { it.isFinite() && it >= 0.0 }
+                if (tendered != null) appendLine("รับเงิน " + merchantPrinterMoney(tendered))
+                else appendLine("ยอดรับเงินสดยังไม่มีข้อมูลยืนยัน")
+                val change = posConfirmedCashChange(bill)
+                if (change != null) appendLine("เงินทอน " + merchantPrinterMoney(change))
+                else appendLine("ยอดเงินทอนยังไม่มีข้อมูลยืนยัน")
             }
         }
         appendLine(separator)
