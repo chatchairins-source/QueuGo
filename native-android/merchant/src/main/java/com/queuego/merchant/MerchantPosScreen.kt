@@ -3106,20 +3106,35 @@ private fun PosCounterView(
                         Column(Modifier.weight(1f)) {
                             Text(
                                 if (selectedBill == null) "บิลที่ยังไม่ปิด ${openBills.size}" else selectedBill.number,
-                                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = QgInk
+                                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = QgInk,
+                                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                             Text(
-                                if (selectedBill == null) "เลือกสินค้าหรือเปิดบิลเพื่อคิดเงิน"
+                                if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล"
                                 else "ยอดรวม ฿${money(selectedBill.total)}",
-                                fontSize = 13.sp, color = QgRed
+                                fontSize = 13.sp, color = QgRed, maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                             )
                         }
-                        Button(
+                        OutlinedButton(
                             onClick = { cartExpanded = !cartExpanded },
                             modifier = Modifier.heightIn(min = 48.dp),
                             shape = RoundedCornerShape(10.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = QgRed)
-                        ) { Text(if (cartExpanded) "ซ่อนบิล" else "ดูบิล / คิดเงิน", fontSize = 14.sp) }
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) { Text(if (cartExpanded) "ซ่อน" else "ดูบิล", fontSize = 13.sp, maxLines = 1) }
+                        if (selectedBill != null && canClose) {
+                            Button(
+                                // This only opens the existing authenticated checkout screen.
+                                // The real POS payment RPC still requires separate confirmation.
+                                onClick = onPay,
+                                enabled = !busy && !pendingCreate &&
+                                    (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")),
+                                modifier = Modifier.heightIn(min = 48.dp),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                            ) { Text("คิดเงิน", fontSize = 14.sp, maxLines = 1) }
+                        }
                     }
                     }
                 }
