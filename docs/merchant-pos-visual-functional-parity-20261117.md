@@ -40,3 +40,18 @@
 5. Verify actual add/edit/remove product, table assignment, discounts, cash/electronic payment, receipt print, online order and stock decrease in a safe test shop. Do not treat static UI screenshots as financial verification.
 
 **Next distinct engineering gaps after UI CI:** camera-scanning decision and permission path, loyalty/points backend specification, real online-order unread count, evidence-based reporting profit, multi-branch permission model. These are not silently treated as implemented simply because the image depicts them.
+
+## Production tax backend verification — read-only audit, 17 Nov 2026
+
+Read-only PostgreSQL catalog checks on the owner-specified Supabase Production project `pkypiqhlrmzocysgeqew` found:
+
+- The `public.orders` table exists with RLS enabled, but no `pos_tax_*` / `pos_prices_include_tax_*` columns were present.
+- `public.pos_tax_settings` and the `public.pos_save_tax_settings` RPC were absent.
+- The existing `public.pos_take_payment` RPC exists; it must not be modified by the Native POS UI task.
+- Existing general `queuego_credit_*` RPCs **do not prove** any POS-native customer loyalty, rewards, or checkout credit contract. Do not invent customer balances.
+
+The repository includes two *root-level* draft SQL files, `QueueGo-POS-Tax-Foundation-Migration.sql` and `QueueGo-POS-Tax-Checkout-Integration-Migration.sql`. The latter adds a tax trigger and replaces an order-total integrity check. **Do not apply these to Production directly** or label POS VAT Production-ready. Backend Worker 2 must reconcile them with current migration lineage, actual checkout RPCs, existing constraints, RLS/GRANT and historical orders; use safe staging and migration review first.
+
+Native POS follow-up in this PR is **display- and print-only, fail-closed**: read immutable per-bill tax snapshot fields, clearly flag missing tax data and failed settings loads, and never print fallback tax=0 or locally synthesized base/tender. The app must not imply VAT was successfully enabled while the backend lacks the schema.
+
+Release acceptance: verify the complete safe migration and authenticated owner-only RPC in a test environment, then end-to-end create/discount/pay/receipt scenarios with both tax-inclusive and exclusive settings. Recheck Production only through the coordinated Backend release lane.
