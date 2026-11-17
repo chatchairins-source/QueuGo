@@ -87,6 +87,7 @@ import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -3048,6 +3049,31 @@ private fun PosCounterView(
         val desktopPos = maxWidth >= 680.dp && maxWidth > maxHeight
         val cartPanelWidth = if (maxWidth >= 1000.dp) 330.dp else 280.dp
         val cartDrawerMaxHeight = maxHeight * 0.62f
+        val compactCheckoutActions = maxWidth < 400.dp || LocalDensity.current.fontScale >= 1.3f
+        // A larger Android font scale or narrow phone needs a second action row:
+        // never squeeze bill text under the real checkout controls.
+        val billToggleButton: @Composable (Modifier) -> Unit = { modifier ->
+            OutlinedButton(
+                onClick = { cartExpanded = !cartExpanded },
+                modifier = modifier.heightIn(min = 48.dp),
+                shape = RoundedCornerShape(10.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+            ) { Text(if (cartExpanded) "ซ่อน" else "ดูบิล", fontSize = 13.sp, maxLines = 1) }
+        }
+        val checkoutButton: @Composable (Modifier) -> Unit = { modifier ->
+            if (selectedBill != null && canClose) {
+                Button(
+                    // Opens the existing authenticated cashier screen; never settles here.
+                    onClick = onPay,
+                    enabled = canSwitchContext &&
+                        (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")),
+                    modifier = modifier.heightIn(min = 48.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = QgRed)
+                ) { Text("คิดเงิน", fontSize = 14.sp, maxLines = 1) }
+            }
+        }
         if (desktopPos) {
             Row(
                 Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
@@ -3072,7 +3098,8 @@ private fun PosCounterView(
             Box(Modifier.fillMaxSize()) {
                 catalogContent(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-                        .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 104.dp)
+                        .padding(start = 10.dp, end = 10.dp, top = 8.dp,
+                            bottom = if (compactCheckoutActions) 154.dp else 104.dp)
                 )
                 Column(
                     // Keep the persistent bill toggle and expanded checkout above
@@ -3093,51 +3120,51 @@ private fun PosCounterView(
                         }
                     }
                     Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = Color.White, shape = RoundedCornerShape(12.dp),
-                    border = BorderStroke(1.dp, Color(0xFFE9DFE2)),
-                    shadowElevation = 4.dp
-                ) {
-                    Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White, shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, Color(0xFFE9DFE2)),
+                        shadowElevation = 4.dp
                     ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                if (selectedBill == null) "บิลที่ยังไม่ปิด ${openBills.size}" else selectedBill.number,
-                                fontSize = 14.sp, fontWeight = FontWeight.Bold, color = QgInk,
-                                maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                            )
-                            Text(
-                                if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล"
-                                else "ยอดรวม ฿${money(selectedBill.total)}",
-                                fontSize = 13.sp, color = QgRed, maxLines = 1,
-                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                            )
-                        }
-                        OutlinedButton(
-                            onClick = { cartExpanded = !cartExpanded },
-                            modifier = Modifier.heightIn(min = 48.dp),
-                            shape = RoundedCornerShape(10.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                        ) { Text(if (cartExpanded) "ซ่อน" else "ดูบิล", fontSize = 13.sp, maxLines = 1) }
-                        if (selectedBill != null && canClose) {
-                            Button(
-                                // This only opens the existing authenticated checkout screen.
-                                // The real POS payment RPC still requires separate confirmation.
-                                onClick = onPay,
-                                enabled = canSwitchContext &&
-                                    (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")),
-                                modifier = Modifier.heightIn(min = 48.dp),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = QgRed)
-                            ) { Text("คิดเงิน", fontSize = 14.sp, maxLines = 1) }
+                        Column(
+                            Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Column(Modifier.weight(1f)) {
+                                    Text(
+                                        if (selectedBill == null) "บิลที่ยังไม่ปิด ${openBills.size}" else selectedBill.number,
+                                        fontSize = 14.sp, fontWeight = FontWeight.Bold, color = QgInk,
+                                        maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล"
+                                        else "ยอดรวม ฿${money(selectedBill.total)}",
+                                        fontSize = 13.sp, color = QgRed, maxLines = 1,
+                                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                    )
+                                }
+                                if (!compactCheckoutActions) {
+                                    billToggleButton(Modifier)
+                                    checkoutButton(Modifier)
+                                }
+                            }
+                            if (compactCheckoutActions) {
+                                Row(
+                                    Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    billToggleButton(Modifier.weight(1f))
+                                    if (selectedBill != null && canClose) {
+                                        checkoutButton(Modifier.weight(1f))
+                                    }
+                                }
+                            }
                         }
                     }
-                    }
-                }
             }
         }
     }
