@@ -141,7 +141,8 @@ private val posPaymentMethods = listOf(
 fun MerchantPosScreen(
     auth: NativeAuth,
     onBack: () -> Unit,
-    backLabel: String = "ย้อนกลับ"
+    backLabel: String = "ย้อนกลับ",
+    onNavigateApp: (String) -> Unit
 ) {
     val context = LocalContext.current
     val barcodeFocusRequester = remember { FocusRequester() }
@@ -1301,6 +1302,8 @@ fun MerchantPosScreen(
                         kitchenEnabled = kitchenEnabled,
                         cashierEnabled = can("close_bill") || can("view_sales"),
                         codesEnabled = can("manage_staff"),
+                        stockEnabled = merchantMarketStockPermitted(snap.shopCategory),
+                        onNavigateApp = onNavigateApp,
                         onSelect = { view = it; message = null },
                         vertical = true
                     )
@@ -1312,6 +1315,8 @@ fun MerchantPosScreen(
                             kitchenEnabled = kitchenEnabled,
                             cashierEnabled = can("close_bill") || can("view_sales"),
                             codesEnabled = can("manage_staff"),
+                            stockEnabled = merchantMarketStockPermitted(snap.shopCategory),
+                            onNavigateApp = onNavigateApp,
                             onSelect = { view = it; message = null },
                             vertical = false
                         )
@@ -2334,6 +2339,8 @@ private fun PosTabs(
     kitchenEnabled: Boolean,
     cashierEnabled: Boolean,
     codesEnabled: Boolean,
+    stockEnabled: Boolean,
+    onNavigateApp: (String) -> Unit,
     onSelect: (String) -> Unit,
     vertical: Boolean = false
 ) {
@@ -2377,9 +2384,39 @@ private fun PosTabs(
                         fontSize = 16.sp, fontWeight = FontWeight.Black)
                 }
                 Text(
-                    "POS · จุดขายหน้าร้าน",
+                    "เมนูหลัก",
                     color = Color(0xFFAAB3C3), fontSize = 11.sp,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                )
+                // These destinations are existing authorized Merchant app pages,
+                // never demo screens or duplicate POS data flows.
+                val shortcuts = buildList {
+                    add("orders" to "ออเดอร์ออนไลน์")
+                    add("products" to "สินค้า")
+                    if (stockEnabled) add("market-stock" to "สต็อกสินค้า")
+                    add("profile" to "ตั้งค่าร้าน")
+                }
+                shortcuts.forEach { (route, label) ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .clickable { onNavigateApp(route) }
+                            .semantics { contentDescription = "เปิด $label" },
+                        color = Color.Transparent,
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            label,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
+                            fontSize = 13.sp,
+                            color = Color(0xFFE5E7EB),
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+                Text(
+                    "ระบบขายและจัดการ POS",
+                    color = Color(0xFFAAB3C3), fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 9.dp)
                 )
                 tabs.forEach { (key, label) ->
                     val selected = key == current
