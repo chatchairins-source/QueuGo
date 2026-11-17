@@ -2977,6 +2977,7 @@ private fun PosCounterView(
                         Spacer(Modifier.weight(1f))
                         Text("฿" + money(selectedBill.total), color = QgRed, fontWeight = FontWeight.Black)
                     }
+                    PosBillTaxSummary(selectedBill)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -3685,6 +3686,7 @@ private fun PosBillsView(
                     Text("ยอดรับชำระ", fontSize = 12.sp, color = QgMuted)
                     Text("฿" + money(selected.total), color = QgRed,
                         fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
+                    PosBillTaxSummary(selected)
                     if (!canPaySelected) {
                         Text("บิลร้านอาหาร/คาเฟ่ต้องพร้อมจากครัวก่อนรับเงิน",
                             color = QgRed, fontSize = 12.sp)
@@ -4450,6 +4452,39 @@ private fun createQrBitmap(value: String): Bitmap? = runCatching {
         }
     }
 }.getOrNull()
+
+// Tax is displayed only from the immutable tax snapshot of the server-selected POS bill.
+// Never recompute an authoritative amount from a product price or from a tax settings toggle.
+internal fun posBillTaxSnapshotReady(bill: PosBill): Boolean =
+    bill.taxEnabledSnapshot &&
+        bill.taxableBase?.let { it.isFinite() && it >= 0.0 } == true &&
+        bill.taxAmount?.let { it.isFinite() && it >= 0.0 } == true
+
+@Composable
+private fun PosBillTaxSummary(bill: PosBill) {
+    if (!bill.taxEnabledSnapshot) return
+    if (!posBillTaxSnapshotReady(bill)) {
+        Text(
+            "ยังไม่มีรายละเอียดภาษีจากเซิร์ฟเวอร์สำหรับบิลนี้ กรุณาตรวจสอบก่อนออกใบกำกับภาษี",
+            color = QgRed, fontSize = 12.sp
+        )
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("ฐานภาษีตามบิล", modifier = Modifier.weight(1f), color = QgMuted, fontSize = 12.sp)
+            Text("฿" + money(bill.taxableBase!!), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            val rate = bill.taxRateSnapshot?.takeIf { it.isFinite() && it in 0.0..100.0 }
+            Text(
+                "ภาษี" + (rate?.let { " (" + money(it) + "%)" } ?: ""),
+                modifier = Modifier.weight(1f), color = QgMuted, fontSize = 12.sp
+            )
+            Text("฿" + money(bill.taxAmount!!), fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
+        }
+    }
+}
 
 internal fun posConfirmedCashChange(bill: PosBill): Double? {
     if (bill.paymentStatus != "PAID" || bill.billStatus != "CLOSED" ||
