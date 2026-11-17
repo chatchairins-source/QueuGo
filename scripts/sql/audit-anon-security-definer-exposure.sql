@@ -1,6 +1,10 @@
 -- QueueGo Worker 2: read-only SECURITY DEFINER anonymous exposure inventory.
 -- Snapshot basis: Production pg_proc catalog, 2026-11-17. No production writes.
 -- Execute only with read-only DB credentials. This is NOT a runtime exploit test.
+-- PostgreSQL standard_conforming_strings=on: regex word-boundary and whitespace
+-- escapes below must use a SINGLE backslash in ordinary SQL string literals.
+-- Double backslashes would instead match a literal backslash and silently miss
+-- EXECUTE / set_config / row_security references in the function body.
 -- A callable SECURITY DEFINER routine is not necessarily vulnerable.
 WITH exposed AS (
   SELECT p.oid, p.proname, p.proowner, p.proconfig,
@@ -23,9 +27,9 @@ SELECT format('%I.%I(%s)',nspname,proname,args) AS signature,
        ) AS public_role_execute_grant,
        coalesce(array_to_string(proconfig,','),'') AS function_settings,
        provolatile AS volatility,
-       (definition ~* '\\mexecute\\M') AS contains_execute_keyword,
-       (definition ~* '\\mset_config\\s*\\(') AS contains_set_config_call,
-       (definition ~* '\\mrow_security\\M') AS references_row_security,
+       (definition ~* '\mexecute\M') AS contains_execute_keyword,
+       (definition ~* '\mset_config\s*\(') AS contains_set_config_call,
+       (definition ~* '\mrow_security\M') AS references_row_security,
        md5(definition) AS definition_fingerprint
 FROM exposed
 ORDER BY signature;
