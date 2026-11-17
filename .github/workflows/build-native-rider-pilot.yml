@@ -13,16 +13,16 @@ on:
   pull_request:
     branches:
       - 'work-native-**'
-      - 'work-production-review-20261110'
+      - 'work-production-review-20261109'
       - 'fix-rider-**'
       - 'test-rider-**'
   push:
     branches:
       - main
       - queuego-native-android-v1
-      - work-release-gate-emulator-20261110
-      - work-release-main-source-20261110
-      - work-merchant-numeric-guards-20261110
+      - work-release-gate-emulator-20261109
+      - work-release-main-source-20261109
+      - work-merchant-numeric-guards-20261109
       - 'work-native-**'
       - 'fix/native-**'
       - 'fix-native-**'
@@ -302,7 +302,7 @@ jobs:
               raise SystemExit("Geofabrik MD5 sidecar does not identify thailand-261110.osm.pbf")
           print(f"{match.group(1).lower()}  thailand-261110.osm.pbf")
           PY
-          test "$(stat -c %s "$source_pbf")" -eq 330076369
+          test "$(stat -c %s "$source_pbf")" -eq 330134552
           (cd "$QG_MAP_DATA_DIR" && md5sum --check source-check.md5)
           ln -s "$(basename "$source_pbf")" "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
           ocean_file="$QG_PLANETILER_OCEAN_PATH"
@@ -315,7 +315,7 @@ jobs:
           test -s "$ocean_file"
           echo "Planetiler ocean polygons source: $ocean_url; bytes: $(stat -c %s "$ocean_file"); SHA-256: $(sha256sum "$ocean_file" | cut -d ' ' -f 1)" >> "$GITHUB_STEP_SUMMARY"
           source_sha256="$(sha256sum "$source_pbf" | cut -d ' ' -f 1)"
-          echo "Pinned Geofabrik Thailand snapshot 2026-11-09: 330134552 bytes; SHA-256 $source_sha256" >> "$GITHUB_STEP_SUMMARY"
+          echo "Pinned Geofabrik Thailand snapshot 2026-11-10: 330134552 bytes; SHA-256 $source_sha256" >> "$GITHUB_STEP_SUMMARY"
           bash native-android/qa/build-thailand-shortbread-pmtiles.sh
           archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
           python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/queuego-offline-assets" \
