@@ -330,6 +330,10 @@ fun MerchantPosScreen(
     var taxSettingsLoaded by remember { mutableStateOf(false) }
     var taxSettingsError by remember { mutableStateOf<String?>(null) }
     var taxReloadAttempt by remember { mutableStateOf(0) }
+    var merchantCredit by remember(auth.session.authUserId) { mutableStateOf<PosMerchantCreditSummary?>(null) }
+    var merchantCreditError by remember(auth.session.authUserId) { mutableStateOf<String?>(null) }
+    var merchantCreditLoading by remember { mutableStateOf(false) }
+    var merchantCreditReload by remember { mutableStateOf(0) }
 
 
     var historyDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
@@ -1001,6 +1005,24 @@ fun MerchantPosScreen(
                     taxSettingsError = "ยังตรวจสอบค่าภาษีจากเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่หรือให้ผู้ดูแลตรวจระบบภาษี"
                     message = taxSettingsError
                 }
+        }
+    }
+
+    LaunchedEffect(view, snapshot?.shopId, snapshot?.owner, auth.session.authUserId, merchantCreditReload) {
+        if (view == "credit" && snapshot?.owner == true) {
+            merchantCredit = null
+            merchantCreditError = null
+            merchantCreditLoading = true
+            try {
+                // Reuse the existing authenticated merchant credit API, never a mock balance.
+                merchantCredit = api.merchantCreditSummary(auth)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                merchantCreditError = "ยังอ่านยอดเครดิตร้านค้าจากระบบไม่ได้ กรุณาตรวจสอบบัญชีและลองใหม่"
+            } finally {
+                merchantCreditLoading = false
+            }
         }
     }
 
@@ -1792,6 +1814,13 @@ fun MerchantPosScreen(
                     shopId = snap.shopId
                 )
 
+                "credit" -> if (snap.owner) PosMerchantCreditView(
+                    summary = merchantCredit,
+                    loading = merchantCreditLoading,
+                    error = merchantCreditError,
+                    onReload = { merchantCreditReload++ }
+                ) else Text("บัญชีนี้ไม่มีสิทธิ์ดูเครดิตร้านค้า", color = QgRed)
+
                 "reports" -> PosReportsView(
                     snapshot = snap,
                     days = reportDays,
@@ -2444,6 +2473,7 @@ private fun PosTabs(
         if (codesEnabled) add("codes" to "บาร์โค้ด/SKU")
         if (owner) {
             add("reports" to "ยอดขาย")
+            add("credit" to "เครดิตร้านค้า")
             add("history" to "ประวัติ")
             add("delivery" to "Delivery")
         }
@@ -3796,6 +3826,58 @@ internal fun buildPosReportCsv(
     }
     return "\uFEFF" + rows.joinToString("\r\n") { row ->
         row.joinToString(",") { posReportCsvCell(it) }
+    }
+}
+
+private fun posMerchantCreditMoney(minor: Long): String {
+    val format = java.text.NumberFormat.getNumberInstance(Locale.forLanguageTag("th-TH")).apply {
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+    }
+    return "฿" + format.format(java.math.BigDecimal.valueOf(minor, 2))
+}
+
+@Composable
+private fun PosMerchantCreditView(
+    summary: PosMerchantCreditSummary?,
+    loading: Boolean,
+    error: String?,
+    onReload: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QgSectionTitle("เครดิตร้านค้า", "เครดิตค่าบริการ QueueGo จากบัญชีจริง")
+        Text(
+            "ยอดนี้เป็นเครดิตค่าบริการร้านค้า ไม่ใช่คะแนนสมาชิกหรือวิธีรับเงินใน POS",
+            color = QgMuted, fontSize = 12.sp
+        )
+        when {
+            loading -> Text("กำลังอ่านยอดเครดิตจากระบบ…", color = QgMuted)
+            error != null -> Text(error, color = QgRed)
+            summary != null -> QgCard(Modifier.fillMaxWidth()) {
+                Text(
+                    if (summary.enabled) "ระบบเครดิตร้านค้าเปิดใช้งาน"
+                    else "ระบบเครดิตร้านค้ายังไม่เปิดใช้งาน",
+                    color = if (summary.enabled) Color(0xFF14804A) else QgRed,
+                    fontSize = 12.sp, fontWeight = FontWeight.Bold
+                )
+                Text("เครดิตที่ใช้ได้", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(
+                    posMerchantCreditMoney(summary.availableMinor),
+                    color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp
+                )
+                Spacer(Modifier.height(5.dp))
+                Text("เครดิตเงินสด  " + posMerchantCreditMoney(summary.cashMinor), fontSize = 13.sp)
+                Text("เครดิตส่งเสริมการขาย  " + posMerchantCreditMoney(summary.promoMinor), fontSize = 13.sp)
+                Text("ยอดกันไว้  " + posMerchantCreditMoney(summary.heldMinor), fontSize = 13.sp)
+            }
+            else -> Text("ยังไม่มีข้อมูลเครดิตจากระบบ", color = QgMuted)
+        }
+        OutlinedButton(onClick = onReload, enabled = !loading, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text("โหลดเครดิตจากระบบอีกครั้ง")
+        }
     }
 }
 
