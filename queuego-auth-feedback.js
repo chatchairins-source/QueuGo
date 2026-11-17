@@ -53,6 +53,12 @@
     const lower = raw.toLowerCase();
     const login = action === 'login';
 
+    if (code === 'customer_wrong_role') {
+      return 'ไม่พบบัญชีลูกค้าที่ใช้งานได้ กรุณาใช้แอปตามประเภทบัญชีหรือติดต่อฝ่ายช่วยเหลือ';
+    }
+    if (code === 'customer_inactive') {
+      return 'บัญชีนี้ยังไม่พร้อมใช้งาน กรุณาติดต่อฝ่ายช่วยเหลือ';
+    }
     if (code === 'email_not_confirmed' || /email not confirmed|email.*not.*verified/.test(lower)) {
       return 'หากสมัครสำเร็จ กรุณาตรวจอีเมลเพื่อยืนยันบัญชีก่อนเข้าสู่ระบบ หากไม่พบอีเมลให้ติดต่อผู้ดูแล';
     }
