@@ -3686,6 +3686,7 @@ private fun PosReportsView(
     onExportCsv: (String) -> Unit
 ) {
     val paid = snapshot.bills.filter { it.paymentStatus == "PAID" }
+    var showHourlyDetail by rememberSaveable { mutableStateOf(false) }
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
         QgSectionTitle("รายได้ทั้งหมด")
         Spacer(Modifier.height(8.dp))
@@ -3699,6 +3700,38 @@ private fun PosReportsView(
             val changeLabel = report.changePercent?.let {
                 (if (it > 0) "+" else "") + it.toString() + "%"
             } ?: "ไม่มีข้อมูลช่วงก่อน"
+            // These KPIs are computed from actual POS owner dashboard data.
+            // Profit is deliberately omitted: this endpoint provides no verified cost basis.
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFE8EBEF))
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("ยอดขายรวม", color = QgMuted, fontSize = 12.sp)
+                        Text("฿" + money(report.dineIn + report.takeaway),
+                            fontWeight = FontWeight.Black, color = QgRed, fontSize = 20.sp)
+                    }
+                }
+                Surface(
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    color = Color.White,
+                    border = BorderStroke(1.dp, Color(0xFFE8EBEF))
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("จำนวนบิล", color = QgMuted, fontSize = 12.sp)
+                        Text(report.orders.toString(),
+                            fontWeight = FontWeight.Black, color = QgInk, fontSize = 20.sp)
+                    }
+                }
+            }
+            Spacer(Modifier.height(9.dp))
             QgCard(Modifier.fillMaxWidth()) {
                 Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     PosReportLine("ทานที่ร้าน", report.dineIn)
@@ -3721,7 +3754,48 @@ private fun PosReportsView(
             if (report.hourlySales.isEmpty()) {
                 Text("ยังไม่มีรายการขายรายชั่วโมงในช่วงนี้", color = QgMuted, fontSize = 12.sp)
             } else {
-                report.hourlySales.forEach { hourly ->
+                // Scrollable real-data chart: never insert sample figures from mockups.
+                val maxHourly = report.hourlySales.maxOf { it.sales.coerceAtLeast(0.0) }
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color.White,
+                    shape = RoundedCornerShape(14.dp),
+                    border = BorderStroke(1.dp, Color(0xFFE8EBEF))
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                            .padding(horizontal = 12.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        report.hourlySales.sortedBy { it.hour }.forEach { hourly ->
+                            val height = if (maxHourly > 0.0)
+                                (96.0 * hourly.sales.coerceAtLeast(0.0) / maxHourly).coerceAtLeast(3.0).dp
+                                else 3.dp
+                            Column(
+                                Modifier.width(42.dp).height(144.dp).semantics {
+                                    contentDescription = "${hourly.hour.toString().padStart(2, '0')}:00 " +
+                                        "ยอดขาย ฿${money(hourly.sales)} จำนวน ${hourly.bills} บิล"
+                                },
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Spacer(Modifier.weight(1f))
+                                Box(
+                                    Modifier.width(26.dp).height(height)
+                                        .clip(RoundedCornerShape(topStart = 5.dp, topEnd = 5.dp))
+                                        .background(QgRed)
+                                )
+                                Spacer(Modifier.height(7.dp))
+                                Text(hourly.hour.toString().padStart(2, '0') + ":00",
+                                    fontSize = 10.sp, color = QgMuted)
+                            }
+                        }
+                    }
+                }
+                TextButton(onClick = { showHourlyDetail = !showHourlyDetail }) {
+                    Text(if (showHourlyDetail) "ซ่อนรายละเอียดรายชั่วโมง" else "ดูรายละเอียดรายชั่วโมง")
+                }
+                if (showHourlyDetail) report.hourlySales.forEach { hourly ->
                     QgCard(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(hourly.hour.toString().padStart(2, '0') + ":00",
