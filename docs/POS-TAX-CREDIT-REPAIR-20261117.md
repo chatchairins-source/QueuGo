@@ -17,11 +17,11 @@ Therefore **the Android tax settings screen cannot save successfully on current 
 
 ## Safe Android fixes in this branch
 
-1. Add an owner-only **เครดิตร้านค้า** POS tab that reuses `QueueGoCreditCard(userId=auth.user.id, token=auth.session.accessToken, kind="merchant")`; uses real balance, history, existing allowed top-up flow, no duplicated wallet/ledger. The existing `MerchantRevenueScreen` already uses the same component.
+1. Preserve the owner-only **เครดิตร้านค้า** POS tab and its existing `PosMerchantCreditView`, reading `MerchantPosApi.merchantCreditSummary(auth)` from the real authenticated `queuego_credit_summary` RPC. No additional wallet or parallel credit ledger is introduced. The standalone Merchant Revenue screen continues to use its existing shared credit component.
 2. Display specific tax backend-load failure (rather than infinite disabled form) and provide a retry that remains clickable while settings are unavailable. Disable tax edits and saves until server settings are loaded successfully.
 3. Show base amount and tax amount in the catalog cart and cashier only when the bill's immutable server tax snapshots are available. Do not calculate tax client-side for payment or invent VAT for legacy bills.
-4. Preserve cash-shift, payment reconciliation, refunds, receipts and POS permissions. Fix an inherited missing closing scope in `PosCounterView` that caused Kotlin compilation failure; update a stale regression that referred to the old cash-change string instead of the server-verified receipt amount.
-5. Add `tests/native-pos-tax-credit-readiness.cjs` to the Merchant source tests.
+4. Preserve cash-shift, payment reconciliation, refunds, receipts and POS permissions. This PR keeps the parent PR #1207 fixes to Kotlin checkout layout and server-confirmed cash/receipt handling; it only adds fail-closed VAT guards and accurate backend service errors.
+5. Add `tests/native-pos-credit-tax-service.cjs` plus `MerchantPosTaxServiceTest.kt` to Merchant source and JUnit tests.
 
 ## Backend tax delivery sequence — still required
 
