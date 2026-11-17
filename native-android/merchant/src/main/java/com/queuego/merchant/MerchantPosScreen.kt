@@ -2400,11 +2400,13 @@ private fun PosTabs(
                     fontSize = 11.sp,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
                 )
-                Text(
-                    "เมนูหลัก",
-                    color = Color(0xFFAAB3C3), fontSize = 11.sp,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-                )
+                if (showMerchantAppShortcuts) {
+                    Text(
+                        "เมนูหลัก",
+                        color = Color(0xFFAAB3C3), fontSize = 11.sp,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                    )
+                }
                 // These destinations are existing authorized Merchant app pages,
                 // never demo screens or duplicate POS data flows.
                 val shortcuts = buildList {
@@ -2849,7 +2851,7 @@ private fun PosCounterView(
                                 OutlinedButton(
                                     onClick = { onReduce(line) },
                                     enabled = !busy,
-                                    modifier = Modifier.size(42.dp)
+                                    modifier = Modifier.size(48.dp)
                                         .semantics { contentDescription = "ลดจำนวน ${line.name}" },
                                     contentPadding = PaddingValues(0.dp)
                                 ) { Text("−", fontSize = 18.sp) }
@@ -2859,7 +2861,7 @@ private fun PosCounterView(
                                         onClick = { onProduct(matchingProduct) },
                                         enabled = !busy && canReceive && !pendingCreate &&
                                             !posProductSoldOut(matchingProduct),
-                                        modifier = Modifier.size(42.dp)
+                                        modifier = Modifier.size(48.dp)
                                             .semantics { contentDescription = "เพิ่มจำนวน ${line.name}" },
                                         contentPadding = PaddingValues(0.dp),
                                         colors = ButtonDefaults.buttonColors(containerColor = QgRed)
