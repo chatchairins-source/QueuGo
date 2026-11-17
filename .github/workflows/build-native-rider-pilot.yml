@@ -320,7 +320,7 @@ jobs:
           archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
           python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/queuego-offline-assets" \
             --expected-sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
-            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-11-09
+            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-11-10
           echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets" >> "$GITHUB_ENV"
       - name: Tracking coordinate and terminal-state unit tests
         run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest --no-build-cache --stacktrace
