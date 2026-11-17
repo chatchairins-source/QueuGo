@@ -4477,10 +4477,15 @@ private fun createQrBitmap(value: String): Bitmap? = runCatching {
 
 // Tax is displayed only from the immutable tax snapshot of the server-selected POS bill.
 // Never recompute an authoritative amount from a product price or from a tax settings toggle.
-internal fun posBillTaxSnapshotReady(bill: PosBill): Boolean =
-    bill.taxEnabledSnapshot &&
-        bill.taxableBase?.let { it.isFinite() && it >= 0.0 } == true &&
-        bill.taxAmount?.let { it.isFinite() && it >= 0.0 } == true
+internal fun posBillTaxSnapshotReady(bill: PosBill): Boolean {
+    val base = bill.taxableBase ?: return false
+    val tax = bill.taxAmount ?: return false
+    if (!bill.taxEnabledSnapshot || !bill.total.isFinite() || bill.total < 0.0 ||
+        !base.isFinite() || base < 0.0 || !tax.isFinite() || tax < 0.0) return false
+    // A valid server snapshot reconciles to the same charged bill total.
+    // Allow one satang of rounding tolerance but never silently display inconsistent VAT.
+    return kotlin.math.abs((base + tax) - bill.total) <= 0.011
+}
 
 @Composable
 private fun PosBillTaxSummary(bill: PosBill) {
