@@ -38,7 +38,7 @@ class MerchantPosPaymentReceiptTest {
         assertFalse(posPaymentReceiptMatches(receipt, "bill-a", "cash", 499.0))
         assertFalse(posPaymentReceiptMatches(receipt, "bill-a", "cash", Double.NaN))
         assertFalse(posPaymentReceiptMatches(receipt, "bill-a", "cash", Double.POSITIVE_INFINITY))
-        assertFalse(posPaymentReceiptMatches(paid(tender = Double.NaN), "bill-a", "cash", 500.0))
+        assertFalse(posPaymentReceiptMatches(paid().put("cash_tendered", JSONObject.NULL), "bill-a", "cash", 500.0))
     }
 
     @Test fun nonCashStillRequiresMatchingMethodAndTerminalState() {
