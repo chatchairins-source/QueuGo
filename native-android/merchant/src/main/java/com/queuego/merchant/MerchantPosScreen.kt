@@ -1202,6 +1202,19 @@ fun MerchantPosScreen(
                 Text("QueueMarket", fontWeight = FontWeight.Black, fontSize = MerchantPageTitleSize)
                 Spacer(Modifier.width(4.dp))
                 Text("หน้าร้าน", color = QgMuted, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                // Identify the authenticated shop on larger POS displays; this is not
+                // a fake multi-branch selector (there is no verified switch contract).
+                if (snap != null && context.resources.configuration.screenWidthDp >= 700) {
+                    Spacer(Modifier.width(9.dp))
+                    Text(
+                        snap.shopName,
+                        color = QgMuted,
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 210.dp)
+                    )
+                }
             }
             if (busy) Box(Modifier.size(40.dp), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
