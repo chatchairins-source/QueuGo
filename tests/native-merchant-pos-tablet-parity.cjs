@@ -42,6 +42,15 @@ ok(/val cartDrawerMaxHeight = maxHeight \* 0\.62f/.test(counter)&&/heightIn\(max
 ok(/if \(showOrderNote \|\| note\.isNotBlank\(\)\)/.test(counter)&&/＋ เพิ่มหมายเหตุ/.test(counter),'Optional note must not take permanent POS screen space');
 ok(/จัดการโต๊ะ \/ QR/.test(counter),'Table management must be accessible from compact table toolbar');
 ok(/selectedBill\.total/.test(counter),'Cart summary must reflect authoritative selected bill total');
+ok(/PosBillTaxSummary\(selectedBill\)/.test(counter)&&
+   /PosBillTaxSummary\(selected\)/.test(native)&&
+   /private fun PosBillTaxSummary\(bill: PosBill\)/.test(native)&&
+   /posBillTaxSnapshotReady\(bill\)/.test(native)&&
+   /bill\.taxableBase!!/.test(native)&&/bill\.taxAmount!!/.test(native),
+   'Counter and cashier must show only the authenticated server tax snapshot, not locally derived totals');
+ok(/ยังไม่มีรายละเอียดภาษีจากเซิร์ฟเวอร์/.test(native),
+   'Missing enabled-tax amounts must be called out instead of presenting a made-up VAT figure');
+
 ok(/internal fun posConfirmedCashChange\(bill: PosBill\): Double\?/.test(native)&&
    /posConfirmedCashChange\(verified\)/.test(native)&&
    !native.includes('money(cash - bill.total)')&&
