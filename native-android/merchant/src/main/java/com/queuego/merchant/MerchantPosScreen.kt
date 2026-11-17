@@ -1484,6 +1484,7 @@ fun MerchantPosScreen(
                         if (busy || pendingPosRequestId != null || pendingEdit != null || pendingEditError != null) {
                             message = "มีรายการ POS ค้างอยู่ กรุณาตรวจรายการก่อนเปลี่ยนบิล"
                         } else {
+                            if (selectedBillId != bill.id) cashReceived = ""
                             selectedBillId = bill.id
                             mode = bill.type
                             tableId = bill.tableId
@@ -1675,6 +1676,8 @@ fun MerchantPosScreen(
                             pendingEdit != null || pendingEditError != null) {
                             message = "มีรายการคิดเงินหรือบิลค้างอยู่ กรุณาตรวจผลก่อนเปลี่ยนบิล"
                         } else {
+                            // Cash tender belongs to one bill. Never carry it to a different bill.
+                            if (selectedBillId != bill.id) cashReceived = ""
                             selectedBillId = bill.id
                         }
                     },
