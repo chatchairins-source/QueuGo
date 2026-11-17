@@ -1076,7 +1076,19 @@ private fun MerchantShell(
                         )
                     }
                 }
-                "pos" -> MerchantPosScreen(auth = auth, onBack = { screen = "home" })
+                "pos" -> MerchantPosScreen(
+                    auth = auth,
+                    onBack = { screen = "home" },
+                    onNavigateApp = { destination ->
+                        // Keep POS actions inside the same authenticated merchant
+                        // app; only actual existing destinations may be opened.
+                        if (destination in setOf("orders", "products", "profile") ||
+                            (destination == "market-stock" && shop?.let { merchantMarketStockPermitted(it.category) } == true)
+                        ) {
+                            screen = destination
+                        }
+                    }
+                )
                 "laundry" -> MerchantLaundryScreen(auth)
                 "revenue" -> MerchantRevenueScreen(
                     auth = auth,
