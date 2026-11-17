@@ -1574,7 +1574,9 @@ ok(
 
 ok(
   merchantPosScreen.includes('canManageTables = can("manage_staff")') &&
-  merchantPosScreen.includes('onManageTables = { view = "tables" }') &&
+  merchantPosScreen.includes('onManageTables = {') &&
+  merchantPosScreen.includes('pendingEdit == null && pendingEditError == null') &&
+  merchantPosScreen.includes('view = "tables"') &&
   merchantPosScreen.includes('if (kitchenEnabled && mode == "DINE_IN")') &&
   merchantPosScreen.includes('if (canManageTables) {') &&
   merchantPosScreen.includes('TextButton(onClick = onManageTables') &&
