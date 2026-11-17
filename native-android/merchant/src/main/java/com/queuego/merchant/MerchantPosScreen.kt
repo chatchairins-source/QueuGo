@@ -105,6 +105,7 @@ import com.queuego.shared.NativePrintQueue
 import com.queuego.shared.QueueGoHttpException
 import com.queuego.shared.NativeRealtimeSubscription
 import com.queuego.shared.QgCard
+import com.queuego.shared.QueueGoCreditCard
 import com.queuego.shared.QgGreen
 import com.queuego.shared.QgIconButton
 import com.queuego.shared.QgInk
@@ -998,7 +999,7 @@ fun MerchantPosScreen(
                 }
                 .onFailure {
                     taxSettingsLoaded = false
-                    taxSettingsError = "ยังตรวจสอบค่าภาษีจากเซิร์ฟเวอร์ไม่ได้ กรุณาลองใหม่หรือให้ผู้ดูแลตรวจระบบภาษี"
+                    taxSettingsError = posTaxSettingsServiceError(it)
                     message = taxSettingsError
                 }
         }
@@ -1705,6 +1706,8 @@ fun MerchantPosScreen(
                             val cash = if (method == "cash") cashReceived.toDoubleOrNull() else null
                             if (cashShift?.open != true) {
                                 message = "ต้องเปิดกะรับเงินก่อนคิดเงิน"
+                            } else if (!posBillReadyForPayment(bill)) {
+                                message = "ข้อมูลภาษีของบิลไม่ครบจากเซิร์ฟเวอร์ · ยังไม่รับชำระ กรุณาตรวจสอบระบบภาษี"
                             } else if (kitchenEnabled && bill.kitchenStatus !in setOf("READY", "SERVED")) {
                                 message = "รอครัวพร้อมก่อนคิดเงิน"
                             } else if (method == "cash" && (cash == null || !cash.isFinite() || cash < bill.total)) {
@@ -1847,10 +1850,25 @@ fun MerchantPosScreen(
                     }
                 )
 
+                "credit" -> if (snap.owner) {
+                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
+                        QgSectionTitle("เครดิตร้านค้า", "ยอดค่าบริการ QueueGo · ไม่ใช่เครดิตภาษีซื้อ")
+                        Spacer(Modifier.height(10.dp))
+                        QueueGoCreditCard(
+                            userId = auth.user.id,
+                            token = auth.session.accessToken,
+                            kind = "merchant"
+                        )
+                    }
+                } else {
+                    QgCard(Modifier.padding(14.dp)) { Text("เฉพาะเจ้าของร้านเท่านั้น", color = QgRed) }
+                }
+
                 "tax" -> PosTaxSettingsView(
                     settings = taxSettings,
                     rateText = taxRateText,
-                    busy = busy || !taxSettingsLoaded,
+                    busy = busy,
+                    ready = taxSettingsLoaded,
                     loadError = taxSettingsError,
                     onRetryLoad = { taxReloadAttempt++ },
                     onEnabled = { taxSettings = taxSettings.copy(enabled = it) },
@@ -1878,7 +1896,7 @@ fun MerchantPosScreen(
                                     message = "บันทึกการตั้งค่าภาษีแล้ว"
                                 }.onFailure {
                                     taxSettingsLoaded = false
-                                    taxSettingsError = "ยังยืนยันการบันทึกค่าภาษีไม่ได้ กรุณาตรวจค่าจากเซิร์ฟเวอร์อีกครั้ง"
+                                    taxSettingsError = posTaxSettingsServiceError(it)
                                     message = taxSettingsError
                                 }
                                 busy = false
@@ -2447,7 +2465,10 @@ private fun PosTabs(
             add("history" to "ประวัติ")
             add("delivery" to "Delivery")
         }
-        if (owner) add("tax" to "ภาษี POS")
+        if (owner) {
+            add("credit" to "เครดิตร้านค้า")
+            add("tax" to "ภาษี POS")
+        }
         add("printer" to "เครื่องพิมพ์")
         if (owner) {
             add("staff" to "พนักงาน")
@@ -3014,7 +3035,7 @@ private fun PosCounterView(
                     }
                 }
                 if (canClose && (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED"))) {
-                    Button(onClick = onPay, enabled = !busy, modifier = Modifier.weight(1f)) {
+                    Button(onClick = onPay, enabled = !busy && posBillReadyForPayment(selectedBill), modifier = Modifier.weight(1f)) {
                         Text("คิดเงิน")
                     }
                 }
@@ -3078,7 +3099,7 @@ private fun PosCounterView(
                 Button(
                     // Opens the existing authenticated cashier screen; never settles here.
                     onClick = onPay,
-                    enabled = canSwitchContext &&
+                    enabled = canSwitchContext && posBillReadyForPayment(selectedBill) &&
                         (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")),
                     modifier = modifier.heightIn(min = 48.dp),
                     shape = RoundedCornerShape(10.dp),
@@ -3510,7 +3531,7 @@ private fun PosBillsView(
     onCash: (String) -> Unit,
     onPay: () -> Unit
 ) {
-    val canPaySelected = selected != null &&
+    val canPaySelected = selected != null && posBillReadyForPayment(selected) &&
         (!showKitchenStatus || selected.kitchenStatus in setOf("READY", "SERVED"))
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
@@ -3804,6 +3825,7 @@ private fun PosTaxSettingsView(
     settings: PosTaxSettings,
     rateText: String,
     busy: Boolean,
+    ready: Boolean,
     loadError: String?,
     onRetryLoad: () -> Unit,
     onEnabled: (Boolean) -> Unit,
@@ -3821,7 +3843,7 @@ private fun PosTaxSettingsView(
             QgCard(Modifier.fillMaxWidth()) {
                 Text(loadError, color = QgRed, fontSize = 13.sp)
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = onRetryLoad, enabled = busy) {
+                OutlinedButton(onClick = onRetryLoad, enabled = !busy) {
                     Text("ตรวจสอบระบบภาษีอีกครั้ง")
                 }
             }
@@ -3829,14 +3851,14 @@ private fun PosTaxSettingsView(
         }
         QgCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = settings.enabled, onCheckedChange = onEnabled, enabled = !busy)
+                Checkbox(checked = settings.enabled, onCheckedChange = onEnabled, enabled = !busy && ready)
                 Column(Modifier.weight(1f)) {
                     Text("เปิดใช้ภาษี", fontWeight = FontWeight.Bold)
                     Text("ค่าเริ่มต้นปิดไว้ ไม่เปลี่ยนบิลเก่า", color = QgMuted, fontSize = 12.sp)
                 }
             }
             OutlinedTextField(
-                value = rateText, onValueChange = onRate, enabled = !busy,
+                value = rateText, onValueChange = onRate, enabled = !busy && ready,
                 label = { Text("อัตราภาษี (%)") }, singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth()
@@ -3844,14 +3866,14 @@ private fun PosTaxSettingsView(
             Spacer(Modifier.height(6.dp))
             Text("รูปแบบราคาหน้าร้าน", fontWeight = FontWeight.SemiBold)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = settings.pricesIncludeTax, onClick = { onPricesIncludeTax(true) }, enabled = !busy)
+                RadioButton(selected = settings.pricesIncludeTax, onClick = { onPricesIncludeTax(true) }, enabled = !busy && ready)
                 Column(Modifier.weight(1f)) {
                     Text("ราคารวมภาษีแล้ว")
                     Text("ยอดที่ลูกค้าเห็นคงเดิม และแยกยอดภาษีในบิล", color = QgMuted, fontSize = 11.sp)
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                RadioButton(selected = !settings.pricesIncludeTax, onClick = { onPricesIncludeTax(false) }, enabled = !busy)
+                RadioButton(selected = !settings.pricesIncludeTax, onClick = { onPricesIncludeTax(false) }, enabled = !busy && ready)
                 Column(Modifier.weight(1f)) {
                     Text("ราคายังไม่รวมภาษี")
                     Text("ระบบบวกภาษีเพิ่มจากยอดหลังหักส่วนลด", color = QgMuted, fontSize = 11.sp)
@@ -3864,22 +3886,22 @@ private fun PosTaxSettingsView(
             Spacer(Modifier.height(6.dp))
             OutlinedTextField(
                 value = settings.registrationNumber.orEmpty(), onValueChange = onRegistration,
-                enabled = !busy, label = { Text("เลขประจำตัวผู้เสียภาษี") },
+                enabled = !busy && ready, label = { Text("เลขประจำตัวผู้เสียภาษี") },
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = settings.branchCode.orEmpty(), onValueChange = onBranch,
-                enabled = !busy, label = { Text("รหัสสาขา เช่น 00000") },
+                enabled = !busy && ready, label = { Text("รหัสสาขา เช่น 00000") },
                 singleLine = true, modifier = Modifier.fillMaxWidth()
             )
             OutlinedTextField(
                 value = settings.invoiceAddress.orEmpty(), onValueChange = onAddress,
-                enabled = !busy, label = { Text("ที่อยู่สำหรับใบกำกับภาษี") },
+                enabled = !busy && ready, label = { Text("ที่อยู่สำหรับใบกำกับภาษี") },
                 modifier = Modifier.fillMaxWidth(), minLines = 2
             )
         }
         Spacer(Modifier.height(10.dp))
-        Button(onClick = onSave, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onSave, enabled = !busy && ready, modifier = Modifier.fillMaxWidth()) {
             Text(if (busy) "กำลังบันทึก…" else "บันทึกการตั้งค่าภาษี")
         }
         Text(
@@ -4474,6 +4496,25 @@ private fun createQrBitmap(value: String): Bitmap? = runCatching {
         }
     }
 }.getOrNull()
+
+internal fun posBillReadyForPayment(bill: PosBill): Boolean =
+    !bill.taxEnabledSnapshot || (
+        posBillTaxSnapshotReady(bill) &&
+        bill.taxRateSnapshot?.let { it.isFinite() && it in 0.0..100.0 } == true
+    )
+
+internal fun posTaxSettingsServiceError(failure: Throwable): String {
+    val raw = failure.message.orEmpty()
+    val reason = raw.lowercase(java.util.Locale.ROOT)
+    return when {
+        reason.contains("permission denied") || reason.contains("forbidden") ||
+            reason.contains("403") || reason.contains("401") ->
+            "บัญชีนี้ไม่มีสิทธิ์จัดการภาษี กรุณาใช้บัญชีเจ้าของร้าน"
+        reason.contains("pos_tax_settings") || reason.contains("pos_save_tax_settings") ->
+            "เซิร์ฟเวอร์ยังไม่มีระบบภาษี POS ที่จำเป็น ต้องติดตั้งและทดสอบฐานข้อมูลก่อนเปิดใช้งาน"
+        else -> "ตรวจสอบภาษีจากเซิร์ฟเวอร์ไม่ได้ กรุณาลองอีกครั้งหรือติดต่อผู้ดูแล"
+    }
+}
 
 // Tax is displayed only from the immutable tax snapshot of the server-selected POS bill.
 // Never recompute an authoritative amount from a product price or from a tax settings toggle.
