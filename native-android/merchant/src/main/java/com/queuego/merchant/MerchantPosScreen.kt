@@ -1370,24 +1370,36 @@ fun MerchantPosScreen(
                     onManageTables = { view = "tables" },
                     onOpenDelivery = { view = "delivery" },
                     onMode = { next ->
-                        mode = next
-                        tableId = null
-                        noTable = next == "DINE_IN"
-                        selectedBillId = null
+                        if (busy || pendingPosRequestId != null) {
+                            message = "กำลังบันทึกหรือตรวจบิลเดิม กรุณารอผลก่อนเปลี่ยนรูปแบบการขาย"
+                        } else {
+                            mode = next
+                            tableId = null
+                            noTable = next == "DINE_IN"
+                            selectedBillId = null
+                        }
                     },
                     onTable = { id ->
-                        mode = "DINE_IN"
-                        tableId = id
-                        noTable = false
-                        selectedBillId = openBills.firstOrNull { it.tableId == id }?.id
+                        if (busy || pendingPosRequestId != null) {
+                            message = "กำลังบันทึกหรือตรวจบิลเดิม กรุณารอผลก่อนเปลี่ยนโต๊ะ"
+                        } else {
+                            mode = "DINE_IN"
+                            tableId = id
+                            noTable = false
+                            selectedBillId = openBills.firstOrNull { it.tableId == id }?.id
+                        }
                     },
                     onNoTable = {
-                        mode = "DINE_IN"
-                        tableId = null
-                        noTable = true
-                        selectedBillId = openBills.firstOrNull {
-                            it.type == "DINE_IN" && it.tableId == null
-                        }?.id
+                        if (busy || pendingPosRequestId != null) {
+                            message = "กำลังบันทึกหรือตรวจบิลเดิม กรุณารอผลก่อนเปลี่ยนโต๊ะ"
+                        } else {
+                            mode = "DINE_IN"
+                            tableId = null
+                            noTable = true
+                            selectedBillId = openBills.firstOrNull {
+                                it.type == "DINE_IN" && it.tableId == null
+                            }?.id
+                        }
                     },
                     onNote = { note = it.take(500) },
                     onSearch = { search = it },
@@ -2642,8 +2654,8 @@ private fun PosCounterView(
             verticalAlignment = Alignment.CenterVertically
         ) {
             if (kitchenEnabled) {
-                PosChoiceButton("🍽 ทานที่ร้าน", mode == "DINE_IN") { onMode("DINE_IN") }
-                PosChoiceButton("🛍 รับกลับ", mode == "TAKEAWAY") { onMode("TAKEAWAY") }
+                PosChoiceButton("🍽 ทานที่ร้าน", mode == "DINE_IN", enabled = !busy && !pendingCreate) { onMode("DINE_IN") }
+                PosChoiceButton("🛍 รับกลับ", mode == "TAKEAWAY", enabled = !busy && !pendingCreate) { onMode("TAKEAWAY") }
             } else {
                 Surface(
                     color = QgRed,
@@ -2659,7 +2671,7 @@ private fun PosCounterView(
                 }
             }
             if (canOpenDelivery) {
-                PosChoiceButton("🛵 เดลิเวอรี", false) { onOpenDelivery() }
+                PosChoiceButton("🛵 เดลิเวอรี", false, enabled = !busy && !pendingCreate) { onOpenDelivery() }
             }
         }
         if (kitchenEnabled && mode == "DINE_IN") {
@@ -2670,7 +2682,8 @@ private fun PosCounterView(
             ) {
                 Text("เลือกโต๊ะ", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                 if (canManageTables) {
-                    TextButton(onClick = onManageTables, modifier = Modifier.heightIn(min = 44.dp)) {
+                    TextButton(onClick = onManageTables, enabled = !busy && !pendingCreate,
+                        modifier = Modifier.heightIn(min = 48.dp)) {
                         Text("จัดการโต๊ะ / QR", fontSize = 13.sp, color = QgRed)
                     }
                 }
@@ -2679,12 +2692,14 @@ private fun PosCounterView(
                 Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
             ) {
-                PosChoiceButton("ไม่ระบุโต๊ะ", noTable, onClick = onNoTable)
+                PosChoiceButton("ไม่ระบุโต๊ะ", noTable, enabled = !busy && !pendingCreate,
+                    onClick = onNoTable)
                 snapshot.tables.filter { it.active }.forEach { table ->
                     val bill = openBills.firstOrNull { it.tableId == table.id }
                     PosChoiceButton(
                         table.label + if (bill != null) " · " + bill.number else "",
                         tableId == table.id,
+                        enabled = !busy && !pendingCreate,
                         onClick = { onTable(table.id) }
                     )
                 }
@@ -4206,15 +4221,16 @@ private fun PosChoiceButton(
     label: String,
     selected: Boolean,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     // Menu categories and table chips are real actions, even on small phones.
     // Match the minimum POS touch target and keep labels readable at larger font scales.
     val target = modifier.heightIn(min = 48.dp)
     if (selected) {
-        Button(onClick = onClick, modifier = target) { Text(label, fontSize = 14.sp, maxLines = 2) }
+        Button(onClick = onClick, enabled = enabled, modifier = target) { Text(label, fontSize = 14.sp, maxLines = 2) }
     } else {
-        OutlinedButton(onClick = onClick, modifier = target) { Text(label, fontSize = 14.sp, maxLines = 2) }
+        OutlinedButton(onClick = onClick, enabled = enabled, modifier = target) { Text(label, fontSize = 14.sp, maxLines = 2) }
     }
 }
 
