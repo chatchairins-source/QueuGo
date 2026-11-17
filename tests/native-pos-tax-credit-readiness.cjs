@@ -37,4 +37,13 @@ ok(native.includes('if (!bill.taxEnabledSnapshot) return') &&
    'No fabricated VAT for legacy bills or missing authoritative snapshots');
 ok(api.includes('pos_tax_enabled_snapshot') && api.includes('pos_tax_amount'),
    'POS API must read saved immutable server tax snapshots');
+ok(native.includes('internal fun posBillTaxSnapshotComplete(bill: PosBill)'),
+   'Tax snapshot validation must be centralized and testable');
+ok(native.includes('val canPaySelected = selected != null && posBillTaxSnapshotComplete(selected)'),
+   'Cashier must fail closed on incomplete tax-enabled bills');
+ok(native.includes('enabled = !busy && posBillTaxSnapshotComplete(selectedBill)'),
+   'Catalog checkout must fail closed on incomplete tax-enabled bills');
+ok(native.includes('enabled = canSwitchContext && posBillTaxSnapshotComplete(selectedBill)'),
+   'Portrait checkout must fail closed on incomplete tax-enabled bills');
+
 console.log(JSON.stringify({checks, failures: 0, scope: 'Native POS credit and VAT readiness'}));
