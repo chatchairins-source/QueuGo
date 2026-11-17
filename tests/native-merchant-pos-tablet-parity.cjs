@@ -20,6 +20,10 @@ ok(/val cartPanelWidth = if \(maxWidth >= 1000\.dp\) 330\.dp else 280\.dp/.test(
 ok(/val catalogContent: @Composable \(Modifier\) -> Unit/.test(counter),'Product catalog is shared between layouts');
 ok(/val billContent: @Composable \(Modifier\) -> Unit/.test(counter),'Actual bill/payment controls are shared between layouts');
 ok(/if \(cartExpanded\)/.test(counter)&&/ดูบิล \/ คิดเงิน/.test(counter),'Portrait POS needs a persistent expandable checkout');
+ok(/import androidx\.compose\.foundation\.layout\.imePadding/.test(native)&&
+   /Modifier\.align\(Alignment\.BottomCenter\)\.fillMaxWidth\(\)\s*\.imePadding\(\)/.test(counter),
+   'Mobile POS bill and checkout must rise above the software keyboard');
+
 ok(/val cartDrawerMaxHeight = maxHeight \* 0\.62f/.test(counter)&&/heightIn\(max = cartDrawerMaxHeight\)/.test(counter)&&/billContent\(Modifier\.fillMaxWidth\(\)\.verticalScroll/.test(counter),'Expanded bill must be a height-bounded independently scrolling bottom drawer');
 ok(/if \(showOrderNote \|\| note\.isNotBlank\(\)\)/.test(counter)&&/＋ เพิ่มหมายเหตุ/.test(counter),'Optional note must not take permanent POS screen space');
 ok(/จัดการโต๊ะ \/ QR/.test(counter),'Table management must be accessible from compact table toolbar');
