@@ -21,13 +21,13 @@ for(const contract of ['onProduct(product)', 'onOpenBill(bill)', 'onPay', 'onDis
                          'onReduce(line)', 'onBillAction("send"', 'onBillAction("serve"']) {
     ok(counter.includes(contract),'Preserve existing POS operation: '+contract);
 }
-ok(/val wideWorkspace = maxWidth >= 1000\\.dp && maxWidth > maxHeight/.test(native),'Landscape workspace must use large-screen layout without treating portrait tablets as desktops');
-ok(/PosTabs\\([\\s\\S]*?vertical = true/.test(native),'Large screens must render actual native POS navigation rail');
-ok(/Color\\(0xFF181B22\\)/.test(native),'Navigation rail must preserve the reference charcoal-black palette');
+ok(/val wideWorkspace = maxWidth >= 1000\.dp && maxWidth > maxHeight/.test(native),'Landscape workspace must use large-screen layout without treating portrait tablets as desktops');
+ok(/PosTabs\([\s\S]*?vertical = true/.test(native),'Large screens must render actual native POS navigation rail');
+ok(/Color\(0xFF181B22\)/.test(native),'Navigation rail must preserve the reference charcoal-black palette');
 ok(/vertical = false/.test(native),'Phones and portrait tablets must retain horizontal navigation');
-ok(/canOpenDelivery = snap\\.owner/.test(native)&&/onOpenDelivery = \\{ view = "delivery" \\}/.test(native),'Delivery shortcut must navigate into the existing authorized module');
-ok(/PosChoiceButton\\("🍽 ทานที่ร้าน"/.test(counter)&&/onMode\\("DINE_IN"\\)/.test(counter),'Dine-in button must wire to original POS order mode');
-ok(/PosChoiceButton\\("🛍 รับกลับ"/.test(counter)&&/onMode\\("TAKEAWAY"\\)/.test(counter),'Takeaway button must wire to original POS order mode');
+ok(/canOpenDelivery = snap\.owner/.test(native)&&/onOpenDelivery = \{ view = "delivery" \}/.test(native),'Delivery shortcut must navigate into the existing authorized module');
+ok(/PosChoiceButton\("🍽 ทานที่ร้าน"/.test(counter)&&/onMode\("DINE_IN"\)/.test(counter),'Dine-in button must wire to original POS order mode');
+ok(/PosChoiceButton\("🛍 รับกลับ"/.test(counter)&&/onMode\("TAKEAWAY"\)/.test(counter),'Takeaway button must wire to original POS order mode');
 ok(/val tabHeight = if \(mobile\) 48\.dp/.test(native),'Tabs need accessible 48dp targets');
 ok(/val labelSize = if \(mobile\) 14\.sp/.test(native),'Tablet/phone tab labels must remain readable');
 ok(/Text\("＋", fontSize = 19\.sp/.test(counter),'Compact red add affordance must remain visible on product cards');
