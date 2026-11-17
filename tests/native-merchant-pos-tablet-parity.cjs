@@ -22,10 +22,10 @@ ok(/val billContent: @Composable \(Modifier\) -> Unit/.test(counter),'Actual bil
 ok(/if \(cartExpanded\)/.test(counter)&&/onClick = \{ cartExpanded = !cartExpanded \}/.test(counter)&&/ดูบิล/.test(counter),
    'Portrait POS must keep the independently expandable bill accessible at all times');
 ok(/if \(selectedBill != null && canClose\)/.test(counter)&&
-   /onClick = onPay,\s*enabled = !busy && !pendingCreate &&/.test(counter)&&
+   /onClick = onPay,\s*enabled = canSwitchContext &&/.test(counter)&&
    /!kitchenEnabled \|\| selectedBill\.kitchenStatus in setOf\("READY", "SERVED"\)/.test(counter)&&
    /Text\("คิดเงิน", fontSize = 14\.sp, maxLines = 1\)/.test(counter),
-   'Phone POS checkout shortcut must only open the real payment screen for an authorized ready bill');
+   'Phone POS checkout requires an authorized ready bill and no unresolved POS edits');
 ok(/maxLines = 1, overflow = androidx\.compose\.ui\.text\.style\.TextOverflow\.Ellipsis/.test(counter),
    'Compact checkout title must truncate instead of overlapping its actual controls');
 ok(/import androidx\.compose\.foundation\.layout\.imePadding/.test(native)&&
