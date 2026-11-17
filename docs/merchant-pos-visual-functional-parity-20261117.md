@@ -19,8 +19,8 @@
 | Sales reporting | `PosOwnerDashboard` totals, bills, hourlySales and itemSales | PR #1207 adds **real-data bar chart** and KPIs, never image sample data; actual profit unverified |
 | Customer/member loyalty & points | No verified Merchant POS-native member/rewards production contract found in this audit | **Not implemented/claimed**; needs data model, RLS, earning/redemption/idempotency and privacy review |
 | Store/branch selection | Artwork includes branch picker; single signed-in shop context in current POS snapshot | Multi-branch switch **not implemented/claimed** |
-| Badge/notifications | Merchant home notifications exist; POS artwork has red badges | No invented live badges; must wire actual unread counts with same access controls |
-| Online/offline claim | Durable offline POS drafts and reconnect checks exist; full offline payment sync is not proven | Do **not** describe full offline POS/settlement as complete |
+| Badge/notifications | Merchant home notifications exist; POS artwork has red badges | PR #1207 uses actual unread count, opens authorized Merchant notifications screen; no fake badges |
+| Online/offline claim | Durable offline POS drafts and reconnect checks exist; full offline payment sync is not proven | PR #1207 shows live network validation; do **not** describe full offline POS/settlement as complete |
 | KPI profit | Owner dashboard has gross sales, orders, cash sales, refunds, discounts; not verified net profit | Exclude profit card until server computes real cost-backed metric |
 
 ## Implementation boundaries
