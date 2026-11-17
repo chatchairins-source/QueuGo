@@ -2734,8 +2734,8 @@ private fun PosCounterView(
         }
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val menuColumns = when {
-                maxWidth >= 920.dp -> 4
-                maxWidth >= 540.dp -> 3
+                maxWidth >= 660.dp -> 4
+                maxWidth >= 480.dp -> 3
                 else -> 2
             }
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2947,7 +2947,10 @@ private fun PosCounterView(
     }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        val desktopPos = maxWidth >= 840.dp && maxWidth > maxHeight
+        // The outer Merchant rail already consumes 186dp on large tablets.
+        // Switch to a persistent side cart based on the remaining workspace width.
+        val desktopPos = maxWidth >= 680.dp && maxWidth > maxHeight
+        val cartPanelWidth = if (maxWidth >= 1000.dp) 330.dp else 280.dp
         val cartDrawerMaxHeight = maxHeight * 0.62f
         if (desktopPos) {
             Row(
@@ -2962,7 +2965,7 @@ private fun PosCounterView(
                     catalogContent(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(12.dp))
                 }
                 Surface(
-                    modifier = Modifier.width(330.dp).fillMaxHeight(),
+                    modifier = Modifier.width(cartPanelWidth).fillMaxHeight(),
                     color = Color.White, shape = RoundedCornerShape(16.dp),
                     border = BorderStroke(1.dp, Color(0xFFE9DFE2))
                 ) {
