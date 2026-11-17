@@ -52,6 +52,10 @@ ok(/"tables" -> PosTablesView\([\s\S]*?onOpen = \{ table ->\s*if \(busy \|\| pen
    /"tables" -> PosTablesView\([\s\S]*?onNoTable = \{\s*if \(busy \|\| pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null\)/.test(native),
    'Table selection callbacks must fail closed during unresolved bills even when invoked programmatically');
 const billsView = native.split('private fun PosBillsView(')[1]?.split('private fun PosShiftsView(')[0] || '';
+ok(/onOpenBill = \{ bill ->[\s\S]*?if \(selectedBillId != bill\.id\) cashReceived = ""/.test(native)&&
+   /onSelect = \{ bill ->[\s\S]*?if \(selectedBillId != bill\.id\) cashReceived = ""/.test(native),
+   'Switching a POS bill from either counter or cashier must clear the previous cash tender');
+
 ok(/onOpenBill = \{ bill ->[\s\S]*?pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null/.test(native)&&
    /\.clickable\(enabled = canSwitchContext\) \{ onOpenBill\(bill\) \}/.test(counter),
    'Counter must keep the selected bill fixed during an unresolved create or edit');
