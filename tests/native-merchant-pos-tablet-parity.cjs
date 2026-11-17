@@ -6,7 +6,7 @@ const counter=native.split('private fun PosCounterView(')[1]?.split('private fun
 let checks=0;
 const ok=(condition,message)=>{assert.ok(condition,message); checks++;};
 ok(/private fun PosCounterView\(/.test(native),'Native POS counter must exist');
-ok(/val desktopPos = maxWidth >= 840\.dp && maxWidth > maxHeight/.test(counter),'Large landscape tablets must use side-by-side POS');
+ok(/val desktopPos = maxWidth >= 680\.dp && maxWidth > maxHeight/.test(counter),'Landscape tablets must keep cart visible after the Merchant navigation rail');
 ok(/catalogContent\(Modifier\.fillMaxSize\(\)\.verticalScroll/.test(counter),'Tablet catalog must have its own scroll');
 ok(/billContent\(Modifier\.fillMaxSize\(\)\.verticalScroll/.test(counter),'Tablet cart must have its own scroll');
 ok(/Modifier\.width\(330\.dp\)\.fillMaxHeight/.test(counter),'Tablet cart must be visible alongside catalog');
