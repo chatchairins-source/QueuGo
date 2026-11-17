@@ -6,6 +6,13 @@ const counter=native.split('private fun PosCounterView(')[1]?.split('private fun
 let checks=0;
 const ok=(condition,message)=>{assert.ok(condition,message); checks++;};
 ok(/private fun PosCounterView\(/.test(native),'Native POS counter must exist');
+const choice = native.split('private fun PosChoiceButton(')[1]?.split('private fun PosReportLine(')[0] || '';
+ok(/val target = modifier\.heightIn\(min = 48\.dp\)/.test(choice)&&
+   /fontSize = 14\.sp, maxLines = 2/.test(choice)&&
+   /Button\(onClick = onClick, modifier = target\)/.test(choice)&&
+   /OutlinedButton\(onClick = onClick, modifier = target\)/.test(choice),
+   'Product category and table chips need readable 14sp labels and accessible 48dp hit targets');
+
 ok(/val desktopPos = maxWidth >= 680\.dp && maxWidth > maxHeight/.test(counter),'Landscape tablets must keep cart visible after the Merchant navigation rail');
 ok(/catalogContent\(Modifier\.fillMaxSize\(\)\.verticalScroll/.test(counter),'Tablet catalog must have its own scroll');
 ok(/billContent\(Modifier\.fillMaxSize\(\)\.verticalScroll/.test(counter),'Tablet cart must have its own scroll');
