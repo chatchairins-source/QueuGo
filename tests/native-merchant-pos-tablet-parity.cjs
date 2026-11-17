@@ -42,6 +42,15 @@ ok(/PosChoiceButton\("🍽 ทานที่ร้าน",[\s\S]*?enabled = can
    /enabled: Boolean = true/.test(choice),
    'Actual POS mode/table buttons must disable while a bill mutation is outstanding');
 
+const tablesView = native.split('private fun PosTablesView(')[1]?.split('private fun PosKitchenView(')[0] || '';
+ok(/canSwitchContext = !busy && pendingPosRequestId == null &&\s*pendingEdit == null && pendingEditError == null/.test(native)&&
+   /canSwitchContext: Boolean/.test(tablesView)&&
+   /enabled = \(table\.active \|\| bill != null\) && canSwitchContext/.test(tablesView)&&
+   /onClick = onNoTable,\s*enabled = canSwitchContext/.test(tablesView),
+   'Table grid opening and no-table navigation must obey unresolved POS edit guards');
+ok(/"tables" -> PosTablesView\([\s\S]*?onOpen = \{ table ->\s*if \(busy \|\| pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null\)/.test(native)&&
+   /"tables" -> PosTablesView\([\s\S]*?onNoTable = \{\s*if \(busy \|\| pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null\)/.test(native),
+   'Table selection callbacks must fail closed during unresolved bills even when invoked programmatically');
 const billsView = native.split('private fun PosBillsView(')[1]?.split('private fun PosShiftsView(')[0] || '';
 ok(/onOpenBill = \{ bill ->[\s\S]*?pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null/.test(native)&&
    /\.clickable\(enabled = canSwitchContext\) \{ onOpenBill\(bill\) \}/.test(counter),
