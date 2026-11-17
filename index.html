@@ -361,6 +361,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 <style id="queuego-customer-auth-feedback">
 .qg-auth-field-error{margin:5px 2px 11px;color:#a9102d;font-size:13px;line-height:1.5;font-weight:600}
 .qg-auth-form-error{margin:12px 0;padding:11px 12px;border:1px solid #f2bdc7;background:#fff3f5;color:#a9102d;font-size:13px;line-height:1.5;border-radius:10px}
+.qg-auth-form-notice{margin:12px 0;padding:11px 12px;border:1px solid #ace4c3;background:#edfdf4;color:#145b3b;font-size:13px;line-height:1.5;border-radius:10px}
 .in[aria-invalid="true"]{border-color:#be123c!important;box-shadow:0 0 0 2px rgba(190,18,60,.12)}
 .qg-auth-label{display:block;margin:11px 0 5px;font-size:13px;font-weight:700;color:#30343b}
 #register-email-label[hidden],#register-email[hidden]{display:none!important}
@@ -1554,8 +1555,9 @@ function bind(pg){
         go('home');
       }catch(error){
         const isLocationError=typeof error?.code==='number'&&error.code>=1&&error.code<=3;
-        feedback.formError(document,'rb',
-          isLocationError?feedback.locationMessage(error):feedback.errorMessage(error,'register'));
+        const text=isLocationError?feedback.locationMessage(error):feedback.errorMessage(error,'register');
+        if(error?.code==='email_not_confirmed')feedback.formNotice(document,'rb',text);
+        else feedback.formError(document,'rb',text);
       }finally{b.disabled=false}
     };
   }
