@@ -1,7 +1,9 @@
 package com.queuego.merchant
 
 import org.json.JSONObject
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -21,6 +23,32 @@ class MerchantPosPaymentReceiptTest {
         .put("bill_status", billStatus)
         .put("payment_method", method)
         .put("cash_tendered", tender)
+
+    private fun confirmedCash(
+        paymentStatus: String = "PAID",
+        billStatus: String = "CLOSED",
+        method: String = "cash",
+        tender: Double? = 200.0,
+        change: Double? = 50.0,
+        total: Double = 150.0
+    ): PosBill = PosBill(
+        id = "bill-a", number = "POS-001", type = "TAKEAWAY",
+        tableId = null, kitchenStatus = "NEW",
+        paymentStatus = paymentStatus, total = total, discount = 0.0,
+        paymentMethod = method, billStatus = billStatus,
+        cashTendered = tender, cashChange = change
+    )
+
+    @Test fun confirmedChangeUsesServerReceiptAndNeverAnUnpaidBill() {
+        assertEquals(50.0, posConfirmedCashChange(confirmedCash())!!, 0.0001)
+        assertEquals(60.0, posConfirmedCashChange(confirmedCash(change = null, tender = 210.0))!!, 0.0001)
+        assertNull(posConfirmedCashChange(confirmedCash(paymentStatus = "UNPAID")))
+        assertNull(posConfirmedCashChange(confirmedCash(billStatus = "OPEN")))
+        assertNull(posConfirmedCashChange(confirmedCash(method = "card")))
+        assertNull(posConfirmedCashChange(confirmedCash(tender = null, change = null)))
+        assertNull(posConfirmedCashChange(confirmedCash(change = -10.0)))
+        assertNull(posConfirmedCashChange(confirmedCash(change = Double.NaN)))
+    }
 
     @Test fun acceptsOnlySameBillWithPaidAndClosedTerminalState() {
         val receipt = paid()
