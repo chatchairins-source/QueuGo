@@ -4178,10 +4178,13 @@ private fun PosChoiceButton(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    // Menu categories and table chips are real actions, even on small phones.
+    // Match the minimum POS touch target and keep labels readable at larger font scales.
+    val target = modifier.heightIn(min = 48.dp)
     if (selected) {
-        Button(onClick = onClick, modifier = modifier) { Text(label, fontSize = 11.sp) }
+        Button(onClick = onClick, modifier = target) { Text(label, fontSize = 14.sp, maxLines = 2) }
     } else {
-        OutlinedButton(onClick = onClick, modifier = modifier) { Text(label, fontSize = 11.sp) }
+        OutlinedButton(onClick = onClick, modifier = target) { Text(label, fontSize = 14.sp, maxLines = 2) }
     }
 }
 
