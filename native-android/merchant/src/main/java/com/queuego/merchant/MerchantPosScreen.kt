@@ -3003,6 +3003,7 @@ private fun PosCounterView(
                         Spacer(Modifier.weight(1f))
                         Text("฿" + money(selectedBill.total), color = QgRed, fontWeight = FontWeight.Black)
                     }
+                    PosBillTaxDetails(selectedBill)
                 }
             }
             Spacer(Modifier.height(8.dp))
@@ -3710,6 +3711,7 @@ private fun PosBillsView(
                     Text("ยอดรับชำระ", fontSize = 12.sp, color = QgMuted)
                     Text("฿" + money(selected.total), color = QgRed,
                         fontWeight = FontWeight.ExtraBold, fontSize = 30.sp)
+                    PosBillTaxDetails(selected)
                     if (!canPaySelected) {
                         Text("บิลร้านอาหาร/คาเฟ่ต้องพร้อมจากครัวก่อนรับเงิน",
                             color = QgRed, fontSize = 12.sp)
@@ -3809,6 +3811,40 @@ internal fun buildPosReportCsv(
     }
     return "\uFEFF" + rows.joinToString("\r\n") { row ->
         row.joinToString(",") { posReportCsvCell(it) }
+    }
+}
+
+internal fun posTaxSettingsError(failure: Throwable): String {
+    val raw = failure.message.orEmpty()
+    val lower = raw.lowercase(java.util.Locale.ROOT)
+    return when {
+        lower.contains("permission denied") || lower.contains("403") || lower.contains("401") ->
+            "บัญชีนี้ไม่มีสิทธิ์เปิดดูหรือแก้ไขภาษี กรุณาตรวจสิทธิ์เจ้าของร้าน"
+        lower.contains("pos_tax_settings") || lower.contains("pos_save_tax_settings") ->
+            "ยังไม่ได้ติดตั้งระบบภาษี POS บนเซิร์ฟเวอร์ กรุณาให้ทีมพัฒนาตรวจและติดตั้ง Migration ที่ผ่านการทดสอบก่อนใช้งาน"
+        raw.isBlank() -> "ตรวจสอบการตั้งค่าภาษีไม่ได้ กรุณาตรวจอินเทอร์เน็ตและลองอีกครั้ง"
+        else -> "ตรวจสอบการตั้งค่าภาษีไม่ได้: " + raw.take(220)
+    }
+}
+
+@Composable
+private fun PosBillTaxDetails(bill: PosBill) {
+    if (!bill.taxEnabledSnapshot) return
+    val base = bill.taxableBase
+    val tax = bill.taxAmount
+    if (base == null || tax == null) {
+        Text("ยังไม่มีข้อมูลภาษีที่ยืนยันจากเซิร์ฟเวอร์สำหรับบิลนี้", color = QgRed, fontSize = 12.sp)
+        return
+    }
+    Column(Modifier.fillMaxWidth().padding(top = 5.dp)) {
+        val rate = bill.taxRateSnapshot
+        val taxType = if (bill.pricesIncludeTaxSnapshot == true) "ราคารวมภาษี" else "ราคาไม่รวมภาษี"
+        Text(
+            "ฐานภาษี ฿" + money(base) + " · ภาษี" +
+                (if (rate != null) " " + money(rate) + "%" else "") + " ฿" + money(tax),
+            fontSize = 12.sp, color = QgMuted
+        )
+        Text(taxType + " · แสดงยอดจากบิลที่บันทึกแล้ว", fontSize = 11.sp, color = QgMuted)
     }
 }
 
