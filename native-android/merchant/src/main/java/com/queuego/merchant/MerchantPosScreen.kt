@@ -143,7 +143,8 @@ fun MerchantPosScreen(
     onBack: () -> Unit,
     backLabel: String = "ย้อนกลับ",
     unreadNotifications: Int,
-    onNavigateApp: (String) -> Unit
+    onNavigateApp: (String) -> Unit,
+    showMerchantAppShortcuts: Boolean = true
 ) {
     val context = LocalContext.current
     val barcodeFocusRequester = remember { FocusRequester() }
@@ -1306,6 +1307,7 @@ fun MerchantPosScreen(
                         stockEnabled = merchantMarketStockPermitted(snap.shopCategory),
                         unreadNotifications = unreadNotifications,
                         connected = networkValidated,
+                        showMerchantAppShortcuts = showMerchantAppShortcuts,
                         onNavigateApp = onNavigateApp,
                         onSelect = { view = it; message = null },
                         vertical = true
@@ -1321,6 +1323,7 @@ fun MerchantPosScreen(
                             stockEnabled = merchantMarketStockPermitted(snap.shopCategory),
                             unreadNotifications = unreadNotifications,
                             connected = networkValidated,
+                            showMerchantAppShortcuts = showMerchantAppShortcuts,
                             onNavigateApp = onNavigateApp,
                             onSelect = { view = it; message = null },
                             vertical = false
@@ -2347,6 +2350,7 @@ private fun PosTabs(
     stockEnabled: Boolean,
     unreadNotifications: Int,
     connected: Boolean,
+    showMerchantAppShortcuts: Boolean,
     onNavigateApp: (String) -> Unit,
     onSelect: (String) -> Unit,
     vertical: Boolean = false
@@ -2404,11 +2408,13 @@ private fun PosTabs(
                 // These destinations are existing authorized Merchant app pages,
                 // never demo screens or duplicate POS data flows.
                 val shortcuts = buildList {
+                    if (showMerchantAppShortcuts) {
                     add("orders" to "ออเดอร์ออนไลน์")
                     add("notifications" to if (unreadNotifications > 0) "แจ้งเตือน (${unreadNotifications})" else "แจ้งเตือน")
                     add("products" to "สินค้า")
                     if (stockEnabled) add("market-stock" to "สต็อกสินค้า")
                     add("profile" to "ตั้งค่าร้าน")
+                    }
                 }
                 shortcuts.forEach { (route, label) ->
                     Surface(
@@ -2921,6 +2927,7 @@ private fun PosCounterView(
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val desktopPos = maxWidth >= 840.dp && maxWidth > maxHeight
+        val cartDrawerMaxHeight = maxHeight * 0.62f
         if (desktopPos) {
             Row(
                 Modifier.fillMaxSize().padding(horizontal = 10.dp, vertical = 8.dp),
@@ -2954,7 +2961,7 @@ private fun PosCounterView(
                 ) {
                     if (cartExpanded) {
                         Surface(
-                            modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight * 0.62f),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = cartDrawerMaxHeight),
                             color = Color.White, shape = RoundedCornerShape(14.dp),
                             border = BorderStroke(1.dp, Color(0xFFE9DFE2)),
                             shadowElevation = 8.dp
