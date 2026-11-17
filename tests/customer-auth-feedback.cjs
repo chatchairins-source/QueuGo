@@ -66,6 +66,10 @@ ok(feedback.formError(doc, 'rb', 'สมัครสมาชิกไม่ไ�
 equal(doc.getElementById('rb-form-error').getAttribute('role'), 'alert', 'General error is announced');
 feedback.clearFormError(doc, 'rb');
 equal(doc.getElementById('rb-form-error'), null, 'Clear stale general error');
+ok(feedback.formNotice(doc, 'rb', 'ตรวจอีเมลเพื่อยืนยันบัญชี'), 'Signup confirmation has a separate notice');
+equal(doc.getElementById('rb-form-notice').getAttribute('role'), 'status', 'Confirmation is announced as status');
+feedback.clearFormError(doc, 'rb');
+equal(doc.getElementById('rb-form-notice'), null, 'Clear old success/pending notice on retry');
 dom.window.close();
 
 const source = fs.readFileSync('index.html', 'utf8');
@@ -81,6 +85,8 @@ ok(source.includes('feedback.fieldError(document,validation.field,validation.mes
   'Submit focuses specific invalid field');
 ok(source.includes("feedback.errorMessage(error,'register')"),
   'Signup translates server errors too');
+ok(source.includes("if(email && signed?.user && !signed.session)"), 'Email signup must respect confirmation before attempting login');
+ok(source.includes("feedback.formNotice(document,'rb',text)"), 'Successful pending email verification is not displayed as failure');
 ok(source.includes('aria-invalid="true"'), 'Invalid input styling exists');
 
 console.log(JSON.stringify({checks, failures:0, scope:'Customer web signup/login field validation, Thai auth errors, A11y and safe Supabase error handling'}));
