@@ -35,5 +35,5 @@ console.log('native Merchant page title standard 18 checks PASS');
 // Keep tablet/portrait checkout parity inside the existing full regression suite.
 require('./native-merchant-pos-tablet-parity.cjs');
 
-// Keep real credit ledger and tax readiness checks in Merchant regression.
+// Validate existing owner credit and fail-closed POS tax checkout.
 require('./native-pos-credit-tax-service.cjs');

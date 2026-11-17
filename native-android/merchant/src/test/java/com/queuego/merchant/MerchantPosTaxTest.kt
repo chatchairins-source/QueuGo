@@ -22,6 +22,15 @@ class MerchantPosTaxTest {
         org.junit.Assert.assertFalse(posBillTaxSnapshotReady(serverTaxBill(tax = null)))
     }
 
+    @Test fun taxSummaryMustReconcileWithAuthoritativeBillTotal() {
+        // A one-satang rounding difference is tolerable, but never a material mismatch.
+        org.junit.Assert.assertTrue(posBillTaxSnapshotReady(serverTaxBill(base = 100.0, tax = 7.0)))
+        org.junit.Assert.assertTrue(posBillTaxSnapshotReady(serverTaxBill(base = 100.0, tax = 6.99)))
+        org.junit.Assert.assertFalse(posBillTaxSnapshotReady(serverTaxBill(base = 100.0, tax = 6.97)))
+        org.junit.Assert.assertFalse(posBillTaxSnapshotReady(serverTaxBill(base = 107.0, tax = 7.0)))
+        org.junit.Assert.assertFalse(posBillTaxSnapshotReady(serverTaxBill(base = Double.POSITIVE_INFINITY)))
+    }
+
     @Test fun taxSummaryRejectsUnusableServerNumbers() {
         org.junit.Assert.assertFalse(posBillTaxSnapshotReady(serverTaxBill(base = Double.NaN)))
         org.junit.Assert.assertFalse(posBillTaxSnapshotReady(serverTaxBill(tax = Double.POSITIVE_INFINITY)))

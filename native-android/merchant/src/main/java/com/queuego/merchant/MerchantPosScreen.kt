@@ -105,7 +105,6 @@ import com.queuego.shared.NativePrintQueue
 import com.queuego.shared.QueueGoHttpException
 import com.queuego.shared.NativeRealtimeSubscription
 import com.queuego.shared.QgCard
-import com.queuego.shared.QueueGoCreditCard
 import com.queuego.shared.QgGreen
 import com.queuego.shared.QgIconButton
 import com.queuego.shared.QgInk
@@ -329,8 +328,13 @@ fun MerchantPosScreen(
     var taxSettings by remember { mutableStateOf(PosTaxSettings()) }
     var taxRateText by rememberSaveable { mutableStateOf("7.00") }
     var taxSettingsLoaded by remember { mutableStateOf(false) }
+    var taxSettingsLoading by remember { mutableStateOf(false) }
     var taxSettingsError by remember { mutableStateOf<String?>(null) }
     var taxReloadAttempt by remember { mutableStateOf(0) }
+    var merchantCredit by remember(auth.session.authUserId) { mutableStateOf<PosMerchantCreditSummary?>(null) }
+    var merchantCreditError by remember(auth.session.authUserId) { mutableStateOf<String?>(null) }
+    var merchantCreditLoading by remember { mutableStateOf(false) }
+    var merchantCreditReload by remember { mutableStateOf(0) }
 
 
     var historyDate by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
@@ -990,18 +994,39 @@ fun MerchantPosScreen(
         if (view == "tax" && current?.owner == true) {
             taxSettingsLoaded = false
             taxSettingsError = null
+            taxSettingsLoading = true
             runCatching { api.loadTaxSettings(auth) }
                 .onSuccess { loaded ->
                     taxSettings = loaded
                     taxRateText = "%.2f".format(java.util.Locale.US, loaded.ratePercent)
                     taxSettingsLoaded = true
+                    taxSettingsLoading = false
                     taxSettingsError = null
                 }
                 .onFailure {
                     taxSettingsLoaded = false
+                    taxSettingsLoading = false
                     taxSettingsError = posTaxSettingsServiceError(it)
                     message = taxSettingsError
                 }
+        }
+    }
+
+    LaunchedEffect(view, snapshot?.shopId, snapshot?.owner, auth.session.authUserId, merchantCreditReload) {
+        if (view == "credit" && snapshot?.owner == true) {
+            merchantCredit = null
+            merchantCreditError = null
+            merchantCreditLoading = true
+            try {
+                // Reuse the existing authenticated merchant credit API, never a mock balance.
+                merchantCredit = api.merchantCreditSummary(auth)
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: Exception) {
+                merchantCreditError = "ยังอ่านยอดเครดิตร้านค้าจากระบบไม่ได้ กรุณาตรวจสอบบัญชีและลองใหม่"
+            } finally {
+                merchantCreditLoading = false
+            }
         }
     }
 
@@ -1795,6 +1820,13 @@ fun MerchantPosScreen(
                     shopId = snap.shopId
                 )
 
+                "credit" -> if (snap.owner) PosMerchantCreditView(
+                    summary = merchantCredit,
+                    loading = merchantCreditLoading,
+                    error = merchantCreditError,
+                    onReload = { merchantCreditReload++ }
+                ) else Text("บัญชีนี้ไม่มีสิทธิ์ดูเครดิตร้านค้า", color = QgRed)
+
                 "reports" -> PosReportsView(
                     snapshot = snap,
                     days = reportDays,
@@ -1850,27 +1882,13 @@ fun MerchantPosScreen(
                     }
                 )
 
-                "credit" -> if (snap.owner) {
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp)) {
-                        QgSectionTitle("เครดิตร้านค้า", "ยอดค่าบริการ QueueGo · ไม่ใช่เครดิตภาษีซื้อ")
-                        Spacer(Modifier.height(10.dp))
-                        QueueGoCreditCard(
-                            userId = auth.user.id,
-                            token = auth.session.accessToken,
-                            kind = "merchant"
-                        )
-                    }
-                } else {
-                    QgCard(Modifier.padding(14.dp)) { Text("เฉพาะเจ้าของร้านเท่านั้น", color = QgRed) }
-                }
-
                 "tax" -> PosTaxSettingsView(
                     settings = taxSettings,
                     rateText = taxRateText,
-                    busy = busy,
+                    busy = busy || taxSettingsLoading,
                     ready = taxSettingsLoaded,
                     loadError = taxSettingsError,
-                    onRetryLoad = { taxReloadAttempt++ },
+                    onRetryLoad = { if (!busy && !taxSettingsLoading) taxReloadAttempt++ },
                     onEnabled = { taxSettings = taxSettings.copy(enabled = it) },
                     onRate = { taxRateText = it },
                     onPricesIncludeTax = { taxSettings = taxSettings.copy(pricesIncludeTax = it) },
@@ -2462,13 +2480,11 @@ private fun PosTabs(
         if (codesEnabled) add("codes" to "บาร์โค้ด/SKU")
         if (owner) {
             add("reports" to "ยอดขาย")
+            add("credit" to "เครดิตร้านค้า")
             add("history" to "ประวัติ")
             add("delivery" to "Delivery")
         }
-        if (owner) {
-            add("credit" to "เครดิตร้านค้า")
-            add("tax" to "ภาษี POS")
-        }
+        if (owner) add("tax" to "ภาษี POS")
         add("printer" to "เครื่องพิมพ์")
         if (owner) {
             add("staff" to "พนักงาน")
@@ -3820,6 +3836,58 @@ internal fun buildPosReportCsv(
     }
 }
 
+private fun posMerchantCreditMoney(minor: Long): String {
+    val format = java.text.NumberFormat.getNumberInstance(Locale.forLanguageTag("th-TH")).apply {
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+    }
+    return "฿" + format.format(java.math.BigDecimal.valueOf(minor, 2))
+}
+
+@Composable
+private fun PosMerchantCreditView(
+    summary: PosMerchantCreditSummary?,
+    loading: Boolean,
+    error: String?,
+    onReload: () -> Unit
+) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        QgSectionTitle("เครดิตร้านค้า", "เครดิตค่าบริการ QueueGo จากบัญชีจริง")
+        Text(
+            "ยอดนี้เป็นเครดิตค่าบริการร้านค้า ไม่ใช่คะแนนสมาชิกหรือวิธีรับเงินใน POS",
+            color = QgMuted, fontSize = 12.sp
+        )
+        when {
+            loading -> Text("กำลังอ่านยอดเครดิตจากระบบ…", color = QgMuted)
+            error != null -> Text(error, color = QgRed)
+            summary != null -> QgCard(Modifier.fillMaxWidth()) {
+                Text(
+                    if (summary.enabled) "ระบบเครดิตร้านค้าเปิดใช้งาน"
+                    else "ระบบเครดิตร้านค้ายังไม่เปิดใช้งาน",
+                    color = if (summary.enabled) Color(0xFF14804A) else QgRed,
+                    fontSize = 12.sp, fontWeight = FontWeight.Bold
+                )
+                Text("เครดิตที่ใช้ได้", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text(
+                    posMerchantCreditMoney(summary.availableMinor),
+                    color = QgRed, fontWeight = FontWeight.ExtraBold, fontSize = 28.sp
+                )
+                Spacer(Modifier.height(5.dp))
+                Text("เครดิตเงินสด  " + posMerchantCreditMoney(summary.cashMinor), fontSize = 13.sp)
+                Text("เครดิตส่งเสริมการขาย  " + posMerchantCreditMoney(summary.promoMinor), fontSize = 13.sp)
+                Text("ยอดกันไว้  " + posMerchantCreditMoney(summary.heldMinor), fontSize = 13.sp)
+            }
+            else -> Text("ยังไม่มีข้อมูลเครดิตจากระบบ", color = QgMuted)
+        }
+        OutlinedButton(onClick = onReload, enabled = !loading, modifier = Modifier.heightIn(min = 48.dp)) {
+            Text("โหลดเครดิตจากระบบอีกครั้ง")
+        }
+    }
+}
+
 @Composable
 private fun PosTaxSettingsView(
     settings: PosTaxSettings,
@@ -4504,8 +4572,7 @@ internal fun posBillReadyForPayment(bill: PosBill): Boolean =
     )
 
 internal fun posTaxSettingsServiceError(failure: Throwable): String {
-    val raw = failure.message.orEmpty()
-    val reason = raw.lowercase(java.util.Locale.ROOT)
+    val reason = failure.message.orEmpty().lowercase(java.util.Locale.ROOT)
     return when {
         reason.contains("permission denied") || reason.contains("forbidden") ||
             reason.contains("403") || reason.contains("401") ->
@@ -4518,10 +4585,15 @@ internal fun posTaxSettingsServiceError(failure: Throwable): String {
 
 // Tax is displayed only from the immutable tax snapshot of the server-selected POS bill.
 // Never recompute an authoritative amount from a product price or from a tax settings toggle.
-internal fun posBillTaxSnapshotReady(bill: PosBill): Boolean =
-    bill.taxEnabledSnapshot &&
-        bill.taxableBase?.let { it.isFinite() && it >= 0.0 } == true &&
-        bill.taxAmount?.let { it.isFinite() && it >= 0.0 } == true
+internal fun posBillTaxSnapshotReady(bill: PosBill): Boolean {
+    val base = bill.taxableBase ?: return false
+    val tax = bill.taxAmount ?: return false
+    if (!bill.taxEnabledSnapshot || !bill.total.isFinite() || bill.total < 0.0 ||
+        !base.isFinite() || base < 0.0 || !tax.isFinite() || tax < 0.0) return false
+    // A valid server snapshot reconciles to the same charged bill total.
+    // Allow one satang of rounding tolerance but never silently display inconsistent VAT.
+    return kotlin.math.abs((base + tax) - bill.total) <= 0.011
+}
 
 @Composable
 private fun PosBillTaxSummary(bill: PosBill) {

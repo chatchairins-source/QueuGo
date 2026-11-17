@@ -2,10 +2,23 @@
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const native=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantPosScreen.kt','utf8');
 const web=fs.readFileSync('merchant/pos-table-v2.css','utf8');
+const posApi=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantPosApi.kt','utf8');
 const counter=native.split('private fun PosCounterView(')[1]?.split('private fun PosTablesView(')[0] || '';
 let checks=0;
 const ok=(condition,message)=>{assert.ok(condition,message); checks++;};
 ok(/private fun PosCounterView\(/.test(native),'Native POS counter must exist');
+ok(/suspend fun merchantCreditSummary\(auth: NativeAuth\)/.test(posApi)&&
+   /"queuego_credit_summary"/.test(posApi)&&
+   /\.put\("p_kind", "merchant"\)/.test(posApi)&&
+   /parsePosMerchantCreditSummary\(objectValue\(raw\)\)/.test(posApi),
+   'POS merchant credit must read existing authenticated server balance, not create a second wallet');
+ok(/add\("credit" to "เครดิตร้านค้า"\)/.test(native)&&
+   /"credit" -> if \(snap.owner\) PosMerchantCreditView/.test(native)&&
+   /merchantCredit = api.merchantCreditSummary\(auth\)/.test(native)&&
+   /PosMerchantCreditView\(/.test(native)&&
+   /ยอดนี้เป็นเครดิตค่าบริการร้านค้า ไม่ใช่คะแนนสมาชิกหรือวิธีรับเงินใน POS/.test(native),
+   'Owner-only POS credit tab must show genuine merchant service credit, not POS tender or loyalty points');
+
 const choice = native.split('private fun PosChoiceButton(')[1]?.split('private fun PosReportLine(')[0] || '';
 ok(/val target = modifier\.heightIn\(min = 48\.dp\)/.test(choice)&&
    /fontSize = 14\.sp, maxLines = 2/.test(choice)&&
