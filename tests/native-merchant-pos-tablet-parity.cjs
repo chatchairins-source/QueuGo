@@ -17,6 +17,12 @@ ok(/val cartDrawerMaxHeight = maxHeight \* 0\.62f/.test(counter)&&/heightIn\(max
 ok(/if \(showOrderNote \|\| note\.isNotBlank\(\)\)/.test(counter)&&/＋ เพิ่มหมายเหตุ/.test(counter),'Optional note must not take permanent POS screen space');
 ok(/จัดการโต๊ะ \/ QR/.test(counter),'Table management must be accessible from compact table toolbar');
 ok(/selectedBill\.total/.test(counter),'Cart summary must reflect authoritative selected bill total');
+ok(/onClick = \{ onReduce\(line\) \}/.test(counter)&&
+   /onClick = \{ onProduct\(matchingProduct\) \}/.test(counter)&&
+   /!posProductSoldOut\(matchingProduct\)/.test(counter)&&
+   /selectedBill\.kitchenStatus == "NEW"/.test(counter),
+   'Bill +/- controls must use real guarded POS mutations, never locally fabricated quantities');
+
 for(const contract of ['onProduct(product)', 'onOpenBill(bill)', 'onPay', 'onDiscount', 'onCancel',
                          'onReduce(line)', 'onBillAction("send"', 'onBillAction("serve"']) {
     ok(counter.includes(contract),'Preserve existing POS operation: '+contract);
