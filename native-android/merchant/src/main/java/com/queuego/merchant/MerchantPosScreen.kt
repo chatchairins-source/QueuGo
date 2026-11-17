@@ -2438,6 +2438,7 @@ private fun PosCounterView(
     // Match the Web POS: independent catalog + cart on wide landscape screens;
     // a persistent expandable cart summary on portrait/phone screens.
     var cartExpanded by rememberSaveable { mutableStateOf(false) }
+    var showOrderNote by rememberSaveable { mutableStateOf(false) }
     val catalogContent: @Composable (Modifier) -> Unit = { area ->
         Column(area) {
         if (pendingCreate) {
@@ -2467,19 +2468,19 @@ private fun PosCounterView(
             PosChoiceButton("ทานที่ร้าน", mode == "DINE_IN", Modifier.weight(1f)) { onMode("DINE_IN") }
             PosChoiceButton("รับกลับ", mode == "TAKEAWAY", Modifier.weight(1f)) { onMode("TAKEAWAY") }
         } else Text("ขายหน้าร้าน", fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        if (kitchenEnabled && mode == "DINE_IN" && canManageTables) {
-            OutlinedButton(
-                onClick = onManageTables,
-                modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Text("จัดการโต๊ะ · เพิ่มโต๊ะ / แก้ไข / QR Code")
-            }
-        }
-
         if (kitchenEnabled && mode == "DINE_IN") {
-            Spacer(Modifier.height(10.dp))
-            Text("เลือกโต๊ะ", fontWeight = FontWeight.ExtraBold)
+            Spacer(Modifier.height(6.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("เลือกโต๊ะ", fontSize = 14.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                if (canManageTables) {
+                    TextButton(onClick = onManageTables, modifier = Modifier.heightIn(min = 44.dp)) {
+                        Text("จัดการโต๊ะ / QR", fontSize = 13.sp, color = QgRed)
+                    }
+                }
+            }
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(7.dp)
@@ -2548,14 +2549,27 @@ private fun PosCounterView(
                 }
             }
         }
-        Spacer(Modifier.height(7.dp))
-        OutlinedTextField(
-            note,
-            onNote,
-            label = { Text(if (kitchenEnabled) "หมายเหตุสำหรับครัว (ถ้ามี)" else "หมายเหตุรายการ (ถ้ามี)") },
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(5.dp))
+        if (showOrderNote || note.isNotBlank()) {
+            OutlinedTextField(
+                note,
+                onNote,
+                label = { Text(if (kitchenEnabled) "หมายเหตุสำหรับครัว (ถ้ามี)" else "หมายเหตุรายการ (ถ้ามี)") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 1,
+                maxLines = 3
+            )
+            if (note.isBlank()) {
+                TextButton(onClick = { showOrderNote = false }) {
+                    Text("ซ่อนหมายเหตุ", fontSize = 12.sp, color = QgMuted)
+                }
+            }
+        } else {
+            TextButton(onClick = { showOrderNote = true }, modifier = Modifier.heightIn(min = 44.dp)) {
+                Text("＋ เพิ่มหมายเหตุ", fontSize = 13.sp, color = QgMuted)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
 
         QgSectionTitle(if (kitchenEnabled) "เมนูอาหาร" else "สินค้า", if (selectedBill == null) "เลือกสินค้าเพื่อเริ่มบิล" else selectedBill.number)
         Spacer(Modifier.height(8.dp))
@@ -2581,13 +2595,14 @@ private fun PosCounterView(
                             QgCard(
                                 Modifier
                                     .weight(1f)
-                                    .heightIn(min = 176.dp)
+                                    .heightIn(min = 148.dp)
                                     .clickable(enabled = !busy && canReceive && !posProductSoldOut(product)) { onProduct(product) }
+                                    .semantics { contentDescription = "เพิ่ม ${product.name} ลงบิล" }
                             ) {
                                 Column {
                                     QgRemoteImage(
                                         product.image,
-                                        Modifier.fillMaxWidth().height(if (menuColumns >= 3) 100.dp else 106.dp),
+                                        Modifier.fillMaxWidth().height(if (menuColumns >= 3) 86.dp else 100.dp),
                                         product.name
                                     )
                                     Spacer(Modifier.height(8.dp))
@@ -2597,15 +2612,29 @@ private fun PosCounterView(
                                         fontSize = 13.sp,
                                         maxLines = 2
                                     )
-                                    Text("฿" + money(product.price),
-                                        color = QgRed, fontSize = 16.sp,
-                                        fontWeight = FontWeight.ExtraBold)
-                                    Text(
-                                        "＋ แตะเพื่อเพิ่มลงบิล",
-                                        fontSize = 12.sp, fontWeight = FontWeight.Bold,
-                                        color = QgRed,
-                                        modifier = Modifier.padding(top = 6.dp)
-                                    )
+                                    Row(
+                                        Modifier.fillMaxWidth().padding(top = 3.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text("฿" + money(product.price),
+                                            modifier = Modifier.weight(1f),
+                                            color = QgRed, fontSize = 15.sp,
+                                            fontWeight = FontWeight.ExtraBold)
+                                        Box(
+                                            modifier = Modifier.size(29.dp)
+                                                .clip(RoundedCornerShape(8.dp))
+                                                .background(
+                                                    if (!busy && canReceive && !posProductSoldOut(product)) QgRed
+                                                    else Color(0xFFE4E7EB)
+                                                ),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text("＋", fontSize = 19.sp, fontWeight = FontWeight.Bold,
+                                                color = if (!busy && canReceive && !posProductSoldOut(product))
+                                                    Color.White else QgMuted)
+                                        }
+                                    }
                                     if (posProductInventoryTracked(product)) {
                                         Text(
                                             if (posProductSoldOut(product)) "สินค้าหมดสต็อก · เหลือ 0" else "เหลือ ${product.stock}",
@@ -2768,25 +2797,27 @@ private fun PosCounterView(
             }
         } else {
             Box(Modifier.fillMaxSize()) {
-                Column(
+                catalogContent(
                     Modifier.fillMaxSize().verticalScroll(rememberScrollState())
                         .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 104.dp)
-                ) {
-                    catalogContent(Modifier.fillMaxWidth())
-                    if (cartExpanded) {
-                        Spacer(Modifier.height(10.dp))
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = Color.White, shape = RoundedCornerShape(14.dp),
-                            border = BorderStroke(1.dp, Color(0xFFE9DFE2))
-                        ) {
-                            billContent(Modifier.fillMaxWidth().padding(12.dp))
-                        }
-                    }
-                }
-                Surface(
+                )
+                Column(
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
                         .padding(horizontal = 8.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    if (cartExpanded) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth().heightIn(max = maxHeight * 0.62f),
+                            color = Color.White, shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, Color(0xFFE9DFE2)),
+                            shadowElevation = 8.dp
+                        ) {
+                            billContent(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(12.dp))
+                        }
+                    }
+                    Surface(
+                    modifier = Modifier.fillMaxWidth(),
                     color = Color.White, shape = RoundedCornerShape(12.dp),
                     border = BorderStroke(1.dp, Color(0xFFE9DFE2)),
                     shadowElevation = 4.dp
@@ -2813,6 +2844,7 @@ private fun PosCounterView(
                             shape = RoundedCornerShape(10.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = QgRed)
                         ) { Text(if (cartExpanded) "ซ่อนบิล" else "ดูบิล / คิดเงิน", fontSize = 14.sp) }
+                    }
                     }
                 }
             }
