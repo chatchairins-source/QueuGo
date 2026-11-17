@@ -3127,7 +3127,7 @@ private fun PosCounterView(
                                 // This only opens the existing authenticated checkout screen.
                                 // The real POS payment RPC still requires separate confirmation.
                                 onClick = onPay,
-                                enabled = !busy && !pendingCreate &&
+                                enabled = canSwitchContext &&
                                     (!kitchenEnabled || selectedBill.kitchenStatus in setOf("READY", "SERVED")),
                                 modifier = Modifier.heightIn(min = 48.dp),
                                 shape = RoundedCornerShape(10.dp),
