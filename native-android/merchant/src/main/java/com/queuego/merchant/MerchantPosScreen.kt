@@ -1471,10 +1471,14 @@ fun MerchantPosScreen(
                         }
                     },
                     onOpenBill = { bill ->
-                        selectedBillId = bill.id
-                        mode = bill.type
-                        tableId = bill.tableId
-                        noTable = bill.type == "DINE_IN" && bill.tableId == null
+                        if (busy || pendingPosRequestId != null || pendingEdit != null || pendingEditError != null) {
+                            message = "มีรายการ POS ค้างอยู่ กรุณาตรวจรายการก่อนเปลี่ยนบิล"
+                        } else {
+                            selectedBillId = bill.id
+                            mode = bill.type
+                            tableId = bill.tableId
+                            noTable = bill.type == "DINE_IN" && bill.tableId == null
+                        }
                     },
                     onBillAction = { action, label ->
                         val bill = selectedBill
@@ -1646,7 +1650,14 @@ fun MerchantPosScreen(
                             }
                         }
                     },
-                    onSelect = { selectedBillId = it.id },
+                    onSelect = { bill ->
+                        if (busy || cashShiftPending || pendingPosRequestId != null ||
+                            pendingEdit != null || pendingEditError != null) {
+                            message = "มีรายการคิดเงินหรือบิลค้างอยู่ กรุณาตรวจผลก่อนเปลี่ยนบิล"
+                        } else {
+                            selectedBillId = bill.id
+                        }
+                    },
                     onPaymentMenu = { paymentMethodMenu = it },
                     onPaymentMethod = {
                         paymentMethod = it
@@ -2980,7 +2991,8 @@ private fun PosCounterView(
         } else {
             openBills.forEach { bill ->
                 QgCard(
-                    Modifier.fillMaxWidth().padding(bottom = 7.dp).clickable { onOpenBill(bill) }
+                    Modifier.fillMaxWidth().padding(bottom = 7.dp)
+                        .clickable(enabled = !busy && !pendingCreate) { onOpenBill(bill) }
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
@@ -3557,7 +3569,8 @@ private fun PosBillsView(
             bills.forEach { bill ->
                 val ready = !showKitchenStatus || bill.kitchenStatus in setOf("READY", "SERVED")
                 Surface(
-                    modifier = Modifier.fillMaxWidth().clickable { onSelect(bill) },
+                    modifier = Modifier.fillMaxWidth()
+                        .clickable(enabled = !busy && !shiftPending) { onSelect(bill) },
                     color = if (selected?.id == bill.id) Color(0xFFFFF2F4) else Color.White,
                     shape = RoundedCornerShape(14.dp),
                     border = androidx.compose.foundation.BorderStroke(
