@@ -57,7 +57,7 @@ ORDER BY 1;
 SELECT n.nspname AS schema_name,
        has_schema_privilege('anon',n.oid,'CREATE') AS anon_can_create,
        has_schema_privilege('authenticated',n.oid,'CREATE') AS authenticated_can_create,
-       has_schema_privilege('PUBLIC',n.oid,'CREATE') AS public_can_create
+       EXISTS (SELECT 1 FROM aclexplode(coalesce(n.nspacl,acldefault('n',n.nspowner))) a WHERE a.grantee=0 AND a.privilege_type='CREATE') AS public_can_create
 FROM pg_namespace n
 WHERE n.nspname='public';
 
