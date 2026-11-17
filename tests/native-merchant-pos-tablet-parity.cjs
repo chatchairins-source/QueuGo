@@ -13,7 +13,7 @@ ok(/Modifier\.width\(330\.dp\)\.fillMaxHeight/.test(counter),'Tablet cart must b
 ok(/val catalogContent: @Composable \(Modifier\) -> Unit/.test(counter),'Product catalog is shared between layouts');
 ok(/val billContent: @Composable \(Modifier\) -> Unit/.test(counter),'Actual bill/payment controls are shared between layouts');
 ok(/if \(cartExpanded\)/.test(counter)&&/ดูบิล \/ คิดเงิน/.test(counter),'Portrait POS needs a persistent expandable checkout');
-ok(/heightIn\(max = maxHeight \* 0\.62f\)/.test(counter)&&/billContent\(Modifier\.fillMaxWidth\(\)\.verticalScroll/.test(counter),'Expanded bill must be a height-bounded independently scrolling bottom drawer');
+ok(/val cartDrawerMaxHeight = maxHeight \* 0\.62f/.test(counter)&&/heightIn\(max = cartDrawerMaxHeight\)/.test(counter)&&/billContent\(Modifier\.fillMaxWidth\(\)\.verticalScroll/.test(counter),'Expanded bill must be a height-bounded independently scrolling bottom drawer');
 ok(/if \(showOrderNote \|\| note\.isNotBlank\(\)\)/.test(counter)&&/＋ เพิ่มหมายเหตุ/.test(counter),'Optional note must not take permanent POS screen space');
 ok(/จัดการโต๊ะ \/ QR/.test(counter),'Table management must be accessible from compact table toolbar');
 ok(/selectedBill\.total/.test(counter),'Cart summary must reflect authoritative selected bill total');
