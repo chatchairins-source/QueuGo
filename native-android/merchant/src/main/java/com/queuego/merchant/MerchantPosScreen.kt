@@ -1339,7 +1339,9 @@ fun MerchantPosScreen(
                     canClose = can("close_bill"),
                     canEditPrice = can("edit_price"),
                     canManageTables = can("manage_staff"),
+                    canOpenDelivery = snap.owner,
                     onManageTables = { view = "tables" },
+                    onOpenDelivery = { view = "delivery" },
                     onMode = { next ->
                         mode = next
                         tableId = null
@@ -2481,7 +2483,9 @@ private fun PosCounterView(
     canClose: Boolean,
     canEditPrice: Boolean,
     canManageTables: Boolean,
+    canOpenDelivery: Boolean,
     onManageTables: () -> Unit,
+    onOpenDelivery: () -> Unit,
     onMode: (String) -> Unit,
     onTable: (String) -> Unit,
     onNoTable: () -> Unit,
@@ -2532,10 +2536,33 @@ private fun PosCounterView(
             }
             Spacer(Modifier.height(8.dp))
         }
-        if (kitchenEnabled) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            PosChoiceButton("ทานที่ร้าน", mode == "DINE_IN", Modifier.weight(1f)) { onMode("DINE_IN") }
-            PosChoiceButton("รับกลับ", mode == "TAKEAWAY", Modifier.weight(1f)) { onMode("TAKEAWAY") }
-        } else Text("ขายหน้าร้าน", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
+                .padding(bottom = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (kitchenEnabled) {
+                PosChoiceButton("🍽 ทานที่ร้าน", mode == "DINE_IN") { onMode("DINE_IN") }
+                PosChoiceButton("🛍 รับกลับ", mode == "TAKEAWAY") { onMode("TAKEAWAY") }
+            } else {
+                Surface(
+                    color = QgRed,
+                    shape = RoundedCornerShape(11.dp)
+                ) {
+                    Text(
+                        "🛒 ขายสินค้า",
+                        modifier = Modifier.padding(horizontal = 17.dp, vertical = 12.dp),
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            if (canOpenDelivery) {
+                PosChoiceButton("🛵 เดลิเวอรี", false) { onOpenDelivery() }
+            }
+        }
         if (kitchenEnabled && mode == "DINE_IN") {
             Spacer(Modifier.height(6.dp))
             Row(
