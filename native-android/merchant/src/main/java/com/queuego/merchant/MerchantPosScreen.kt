@@ -1290,20 +1290,34 @@ fun MerchantPosScreen(
             return@Column
         }
 
-        PosTabs(
-            current = view,
-            owner = snap.owner,
-            kitchenEnabled = kitchenEnabled,
-            cashierEnabled = can("close_bill") || can("view_sales"),
-            codesEnabled = can("manage_staff"),
-            onSelect = {
-                view = it
-                message = null
-            }
-        )
-
-        Box(Modifier.fillMaxWidth().weight(1f)) {
-            when (view) {
+        // Reference POS layout: dark navigation rail on landscape tablets,
+        // compact horizontal tabs on portrait tablets and phones.
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+            val wideWorkspace = maxWidth >= 1000.dp && maxWidth > maxHeight
+            Row(Modifier.fillMaxSize()) {
+                if (wideWorkspace) {
+                    PosTabs(
+                        current = view, owner = snap.owner,
+                        kitchenEnabled = kitchenEnabled,
+                        cashierEnabled = can("close_bill") || can("view_sales"),
+                        codesEnabled = can("manage_staff"),
+                        onSelect = { view = it; message = null },
+                        vertical = true
+                    )
+                }
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    if (!wideWorkspace) {
+                        PosTabs(
+                            current = view, owner = snap.owner,
+                            kitchenEnabled = kitchenEnabled,
+                            cashierEnabled = can("close_bill") || can("view_sales"),
+                            codesEnabled = can("manage_staff"),
+                            onSelect = { view = it; message = null },
+                            vertical = false
+                        )
+                    }
+                    Box(Modifier.fillMaxWidth().weight(1f)) {
+                        when (view) {
                 "counter" -> PosCounterView(
                     snapshot = snap,
                     barcodeFocusRequester = barcodeFocusRequester,
@@ -1876,6 +1890,9 @@ fun MerchantPosScreen(
                         }
                     }
                 )
+                        }
+                    }
+                }
             }
         }
     }
@@ -2315,7 +2332,8 @@ private fun PosTabs(
     kitchenEnabled: Boolean,
     cashierEnabled: Boolean,
     codesEnabled: Boolean,
-    onSelect: (String) -> Unit
+    onSelect: (String) -> Unit,
+    vertical: Boolean = false
 ) {
     val tabs = buildList {
         add("counter" to "＋ รับออเดอร์")
@@ -2337,8 +2355,57 @@ private fun PosTabs(
             add("staff" to "พนักงาน")
         }
     }
+    if (vertical) {
+        Surface(
+            modifier = Modifier.width(186.dp).fillMaxHeight(),
+            color = Color(0xFF181B22)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+                    .padding(horizontal = 10.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(5.dp)
+            ) {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 7.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    com.queuego.shared.QueueGoBrandMark("merchant", Modifier.size(31.dp))
+                    Spacer(Modifier.width(9.dp))
+                    Text("QueueMarket", color = Color.White,
+                        fontSize = 16.sp, fontWeight = FontWeight.Black)
+                }
+                Text(
+                    "POS · จุดขายหน้าร้าน",
+                    color = Color(0xFFAAB3C3), fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                )
+                tabs.forEach { (key, label) ->
+                    val selected = key == current
+                    Surface(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .clickable { onSelect(key) }
+                            .semantics { contentDescription = "เมนู POS $label" },
+                        shape = RoundedCornerShape(11.dp),
+                        color = if (selected) QgRed else Color.Transparent
+                    ) {
+                        Row(
+                            Modifier.padding(horizontal = 11.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                label,
+                                color = if (selected) Color.White else Color(0xFFE5E7EB),
+                                fontSize = 13.sp,
+                                fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    } else {
     BoxWithConstraints(Modifier.fillMaxWidth()) {
-        // Use the final light-theme + mobile overrides, not the earlier dark rule.
+        // Keep a swipeable compact navigation strip for small screens.
         val mobile = maxWidth <= 650.dp
         val narrow = maxWidth <= 700.dp
         val shape = RoundedCornerShape(if (mobile) 9.dp else 10.dp)
@@ -2384,6 +2451,7 @@ private fun PosTabs(
         }
     }
     HorizontalDivider(color = Color(0xFFE8EBEF))
+    }
 }
 
 @Composable
