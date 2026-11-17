@@ -1965,7 +1965,13 @@ ok(merchantPosApiSource.includes('taxEnabledSnapshot = r.optBoolean("pos_tax_ena
 ok(merchantPosApiSource.includes('taxAmount = nullableDouble(r, "pos_tax_amount")'),'POS bills must parse the stored tax amount');
 const merchantPrinterSource=read('merchant/src/main/java/com/queuego/merchant/MerchantPrinter.kt');
 ok(merchantPrinterSource.includes('if (receipt && bill.taxEnabledSnapshot)'),'Receipts must use the immutable tax snapshot, not current shop settings');
-ok(merchantPrinterSource.includes('"มูลค่าก่อนภาษี "') && merchantPrinterSource.includes('"ภาษี "'),'POS receipts must print taxable base and tax breakdown');
+ok(merchantPrinterSource.includes('"มูลค่าก่อนภาษี "') &&
+   merchantPrinterSource.includes('posBillTaxSnapshotReady(bill)') &&
+   merchantPrinterSource.includes('merchantPrinterMoney(bill.taxAmount!!') &&
+   merchantPrinterSource.includes('รายละเอียดภาษีจากเซิร์ฟเวอร์ไม่ครบ') &&
+   !merchantPrinterSource.includes('bill.taxAmount ?: 0.0') &&
+   !merchantPrinterSource.includes('bill.taxableBase ?: (bill.total'),
+   'POS receipts must use valid server tax snapshots and reject fabricated fallback totals');
 
 ok(merchantPosApiSource.includes('pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_taxable_base,pos_tax_amount'),'POS bills must load immutable tax snapshots for receipts');
 ok(merchantPrinterSource.includes('มูลค่าก่อนภาษี') && merchantPrinterSource.includes('bill.taxAmount'),'POS receipts must print tax breakdown from saved bill snapshots');
