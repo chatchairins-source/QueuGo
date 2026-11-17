@@ -28,20 +28,23 @@ ok(/val cartDrawerMaxHeight = maxHeight \* 0\.62f/.test(counter)&&/heightIn\(max
 ok(/if \(showOrderNote \|\| note\.isNotBlank\(\)\)/.test(counter)&&/＋ เพิ่มหมายเหตุ/.test(counter),'Optional note must not take permanent POS screen space');
 ok(/จัดการโต๊ะ \/ QR/.test(counter),'Table management must be accessible from compact table toolbar');
 ok(/selectedBill\.total/.test(counter),'Cart summary must reflect authoritative selected bill total');
-ok(/onMode = \{ next ->[\s\S]*?if \(busy \|\| pendingPosRequestId != null\)/.test(native)&&
-   /onTable = \{ id ->[\s\S]*?if \(busy \|\| pendingPosRequestId != null\)/.test(native)&&
-   /onNoTable = \{[\s\S]*?if \(busy \|\| pendingPosRequestId != null\)/.test(native),
+ok(/canSwitchContext = !busy && pendingPosRequestId == null &&\s*pendingEdit == null && pendingEditError == null/.test(native)&&
+   /canSwitchContext: Boolean/.test(counter),
+   'POS context-changing controls must cover unresolved edits and pending creates, not only a busy network call');
+ok(/onMode = \{ next ->[\s\S]*?if \(busy \|\| pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null\)/.test(native)&&
+   /onTable = \{ id ->[\s\S]*?if \(busy \|\| pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null\)/.test(native)&&
+   /onNoTable = \{[\s\S]*?if \(busy \|\| pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null\)/.test(native),
    'Host callbacks must reject mode and table changes while a bill mutation or uncertain creation is pending');
-ok(/PosChoiceButton\("🍽 ทานที่ร้าน",[\s\S]*?enabled = !busy && !pendingCreate/.test(counter)&&
-   /PosChoiceButton\("🛍 รับกลับ",[\s\S]*?enabled = !busy && !pendingCreate/.test(counter)&&
-   /PosChoiceButton\("ไม่ระบุโต๊ะ",[\s\S]*?enabled = !busy && !pendingCreate/.test(counter)&&
-   /tableId == table.id,\s*enabled = !busy && !pendingCreate/.test(counter)&&
+ok(/PosChoiceButton\("🍽 ทานที่ร้าน",[\s\S]*?enabled = canSwitchContext/.test(counter)&&
+   /PosChoiceButton\("🛍 รับกลับ",[\s\S]*?enabled = canSwitchContext/.test(counter)&&
+   /PosChoiceButton\("ไม่ระบุโต๊ะ",[\s\S]*?enabled = canSwitchContext/.test(counter)&&
+   /tableId == table.id,\s*enabled = canSwitchContext/.test(counter)&&
    /enabled: Boolean = true/.test(choice),
    'Actual POS mode/table buttons must disable while a bill mutation is outstanding');
 
 const billsView = native.split('private fun PosBillsView(')[1]?.split('private fun PosShiftsView(')[0] || '';
 ok(/onOpenBill = \{ bill ->[\s\S]*?pendingPosRequestId != null \|\| pendingEdit != null \|\| pendingEditError != null/.test(native)&&
-   /\.clickable\(enabled = !busy && !pendingCreate\) \{ onOpenBill\(bill\) \}/.test(counter),
+   /\.clickable\(enabled = canSwitchContext\) \{ onOpenBill\(bill\) \}/.test(counter),
    'Counter must keep the selected bill fixed during an unresolved create or edit');
 ok(/onSelect = \{ bill ->[\s\S]*?cashShiftPending \|\| pendingPosRequestId != null/.test(native)&&
    /\.clickable\(enabled = !busy && !shiftPending\) \{ onSelect\(bill\) \}/.test(billsView),
@@ -63,7 +66,7 @@ ok(/Color\(0xFF181B22\)/.test(native),'Navigation rail must preserve the referen
 ok(/Text\(\s*snap\.shopName,/.test(native)&&/screenWidthDp >= 700/.test(native)&&/TextOverflow\.Ellipsis/.test(native),
    'Tablet header must display the authenticated shop name without inventing multi-branch switching');
 ok(/vertical = false/.test(native),'Phones and portrait tablets must retain horizontal navigation');
-ok(/canOpenDelivery = snap\.owner/.test(native)&&/onOpenDelivery = \{ view = "delivery" \}/.test(native),'Delivery shortcut must navigate into the existing authorized module');
+ok(/canOpenDelivery = snap\.owner/.test(native)&&/onOpenDelivery = \{[\s\S]*?pendingEdit == null && pendingEditError == null[\s\S]*?view = "delivery"/.test(native),'Delivery shortcut must navigate into the existing authorized module');
 ok(/PosChoiceButton\("🍽 ทานที่ร้าน"/.test(counter)&&/onMode\("DINE_IN"\)/.test(counter),'Dine-in button must wire to original POS order mode');
 ok(/PosChoiceButton\("🛍 รับกลับ"/.test(counter)&&/onMode\("TAKEAWAY"\)/.test(counter),'Takeaway button must wire to original POS order mode');
 ok(/val tabHeight = if \(mobile\) 48\.dp/.test(native),'Tabs need accessible 48dp targets');
