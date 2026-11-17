@@ -363,6 +363,7 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 .qg-auth-form-error{margin:12px 0;padding:11px 12px;border:1px solid #f2bdc7;background:#fff3f5;color:#a9102d;font-size:13px;line-height:1.5;border-radius:10px}
 .in[aria-invalid="true"]{border-color:#be123c!important;box-shadow:0 0 0 2px rgba(190,18,60,.12)}
 .qg-auth-label{display:block;margin:11px 0 5px;font-size:13px;font-weight:700;color:#30343b}
+#register-email-label[hidden],#register-email[hidden]{display:none!important}
 </style>
 </head>
 <body>
@@ -426,7 +427,17 @@ async function login(v,pw){
 }
 async function register({name,phone,email,password,lat,lng}){
   QueueGoPasswordPolicy.requireStrong(password);
-  await auth('signup',{email:email||emailOf(phone),password,data:{name,phone,role:'customer',latitude:lat,longitude:lng}});
+  const signed=await auth('signup',{
+    email:email||emailOf(phone),password,
+    data:{name,phone,role:'customer',latitude:lat,longitude:lng}
+  });
+  // Supabase may require email confirmation. Do not attempt an immediate
+  // password login that will fail with HTTP 400 after a successful signup.
+  if(email && signed?.user && !signed.session){
+    const pending=new Error('EMAIL_CONFIRM_REQUIRED');
+    pending.code='email_not_confirmed';
+    throw pending;
+  }
   await login(email||phone,password);
 }
 /* ===== 3) Helpers ===== */
