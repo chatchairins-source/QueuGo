@@ -233,6 +233,11 @@ jobs:
           rm -f "$tmp"
       - name: Install regression dependencies
         run: npm ci
+      # Run the negative release evidence tests before broad regression suites
+      # create untracked artifacts. The release verifier must remain fail-closed
+      # on dirty checkouts; do not weaken its source-integrity gate.
+      - name: Native release packaging guard
+        run: node tests/native-release-gate.cjs
       - name: Full QueueGo regression
         run: npm test
       - name: Native POS edit idempotency SQL contracts
@@ -241,8 +246,6 @@ jobs:
         run: node tests/native-customer-merchant-push.cjs
       - name: Native push session binding contracts
         run: node tests/native-push-session-binding.cjs
-      - name: Native release packaging guard
-        run: node tests/native-release-gate.cjs
       - name: Native voice call SQL contracts
         run: node tests/native-voice-call-contract.cjs
       - name: Native voice TURN edge contracts
