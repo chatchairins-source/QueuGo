@@ -21,6 +21,12 @@ ok(/val catalogContent: @Composable \(Modifier\) -> Unit/.test(counter),'Product
 ok(/val billContent: @Composable \(Modifier\) -> Unit/.test(counter),'Actual bill/payment controls are shared between layouts');
 ok(/if \(cartExpanded\)/.test(counter)&&/onClick = \{ cartExpanded = !cartExpanded \}/.test(counter)&&/ดูบิล/.test(counter),
    'Portrait POS must keep the independently expandable bill accessible at all times');
+ok(/val compactCheckoutActions = maxWidth < 400\.dp \|\| LocalDensity\.current\.fontScale >= 1\.3f/.test(counter)&&
+   /if \(!compactCheckoutActions\) \{\s*billToggleButton\(Modifier\)\s*checkoutButton\(Modifier\)/.test(counter)&&
+   /if \(compactCheckoutActions\) \{[\s\S]*?billToggleButton\(Modifier\.weight\(1f\)\)/.test(counter)&&
+   /checkoutButton\(Modifier\.weight\(1f\)\)/.test(counter)&&
+   /bottom = if \(compactCheckoutActions\) 154\.dp else 104\.dp/.test(counter),
+   'Narrow phones and large text must wrap real checkout actions and leave scroll padding above the fixed footer');
 ok(/if \(selectedBill != null && canClose\)/.test(counter)&&
    /onClick = onPay,\s*enabled = canSwitchContext &&/.test(counter)&&
    /!kitchenEnabled \|\| selectedBill\.kitchenStatus in setOf\("READY", "SERVED"\)/.test(counter)&&
