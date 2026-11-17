@@ -19,8 +19,8 @@ on:
       - 'test-rider-**'
   push:
     branches:
-      - 'worker4-qa-ci-release-*'
       - main
+      - 'worker4-qa-ci-release-*'
       - queuego-native-android-v1
       - work-release-gate-emulator-20261109
       - work-release-main-source-20261109
