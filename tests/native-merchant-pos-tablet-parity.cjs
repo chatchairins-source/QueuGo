@@ -30,6 +30,8 @@ for(const contract of ['onProduct(product)', 'onOpenBill(bill)', 'onPay', 'onDis
 ok(/val wideWorkspace = maxWidth >= 1000\.dp && maxWidth > maxHeight/.test(native),'Landscape workspace must use large-screen layout without treating portrait tablets as desktops');
 ok(/PosTabs\([\s\S]*?vertical = true/.test(native),'Large screens must render actual native POS navigation rail');
 ok(/Color\(0xFF181B22\)/.test(native),'Navigation rail must preserve the reference charcoal-black palette');
+ok(/Text\(\s*snap\.shopName,/.test(native)&&/screenWidthDp >= 700/.test(native)&&/TextOverflow\.Ellipsis/.test(native),
+   'Tablet header must display the authenticated shop name without inventing multi-branch switching');
 ok(/vertical = false/.test(native),'Phones and portrait tablets must retain horizontal navigation');
 ok(/canOpenDelivery = snap\.owner/.test(native)&&/onOpenDelivery = \{ view = "delivery" \}/.test(native),'Delivery shortcut must navigate into the existing authorized module');
 ok(/PosChoiceButton\("🍽 ทานที่ร้าน"/.test(counter)&&/onMode\("DINE_IN"\)/.test(counter),'Dine-in button must wire to original POS order mode');
