@@ -9,7 +9,7 @@ ok(/private fun PosCounterView\(/.test(native),'Native POS counter must exist');
 ok(/val desktopPos = maxWidth >= 680\.dp && maxWidth > maxHeight/.test(counter),'Landscape tablets must keep cart visible after the Merchant navigation rail');
 ok(/catalogContent\(Modifier\.fillMaxSize\(\)\.verticalScroll/.test(counter),'Tablet catalog must have its own scroll');
 ok(/billContent\(Modifier\.fillMaxSize\(\)\.verticalScroll/.test(counter),'Tablet cart must have its own scroll');
-ok(/Modifier\.width\(330\.dp\)\.fillMaxHeight/.test(counter),'Tablet cart must be visible alongside catalog');
+ok(/val cartPanelWidth = if \(maxWidth >= 1000\.dp\) 330\.dp else 280\.dp/.test(counter)&&/Modifier\.width\(cartPanelWidth\)\.fillMaxHeight/.test(counter),'Tablet cart panel must resize and stay alongside the product catalog');
 ok(/val catalogContent: @Composable \(Modifier\) -> Unit/.test(counter),'Product catalog is shared between layouts');
 ok(/val billContent: @Composable \(Modifier\) -> Unit/.test(counter),'Actual bill/payment controls are shared between layouts');
 ok(/if \(cartExpanded\)/.test(counter)&&/ดูบิล \/ คิดเงิน/.test(counter),'Portrait POS needs a persistent expandable checkout');
