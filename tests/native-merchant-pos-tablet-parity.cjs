@@ -33,4 +33,21 @@ ok(/val labelSize = if \(mobile\) 14\.sp/.test(native),'Tablet/phone tab labels 
 ok(/Text\("＋", fontSize = 19\.sp/.test(counter),'Compact red add affordance must remain visible on product cards');
 ok(/\.semantics \{ contentDescription = "เพิ่ม \$\{product\.name\} ลงบิล" \}/.test(counter),'Product tile must expose an accessible add-to-bill label');
 ok(/qg-pos-cart-toggle/.test(web)&&/qg-pos-grid/.test(web),'Web layout remains the blueprint');
+ok(/onNavigateApp: \(String\) -> Unit/.test(native),'The POS must accept authenticated host navigation');
+ok(/shortcuts\.forEach/.test(native)&&/onNavigateApp\(route\)/.test(native),'Sidebar shortcuts must open existing Merchant routes');
+ok(/add\("orders" to "ออเดอร์ออนไลน์"\)/.test(native),'Online orders shortcut must be available');
+ok(/add\("products" to "สินค้า"\)/.test(native),'Products shortcut must be available');
+ok(/if \(stockEnabled\) add\("market-stock" to "สต็อกสินค้า"\)/.test(native),'Stock shortcut must respect shop type');
+ok(/add\("profile" to "ตั้งค่าร้าน"\)/.test(native),'Settings shortcut must be available');
+const merchantHost = fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt','utf8');
+ok(/onNavigateApp = \{ destination ->/.test(merchantHost),'Existing merchant host must handle POS route callbacks');
+ok(/destination in setOf\("orders", "products", "profile"\)/.test(merchantHost),'POS route callback must be allowlisted');
+ok(/destination == "market-stock" && shop\?\.let \{ merchantMarketStockPermitted\(it\.category\) \}/.test(merchantHost),'Stock shortcut must block ineligible shops');
+const reportView = native.split('private fun PosReportsView(')[1]?.split('private fun PosHistoryView(')[0] || '';
+ok(/report\.hourlySales\.sortedBy/.test(reportView),'Hourly chart must use real owner dashboard hourly values');
+ok(/showHourlyDetail/.test(reportView),'Hourly details must remain reachable on demand');
+ok(/height = if \(maxHourly > 0\.0\)/.test(reportView),'Bar height must normalize against real maximum');
+ok(/report\.dineIn \+ report\.takeaway/.test(reportView),'Report total must be computed from actual POS dashboard fields');
+ok(!/Text\("กำไรสุทธิ"/.test(reportView),'Do not invent profit without actual cost-backed calculation');
+
 console.log(JSON.stringify({checks,failures:0,scope:'Native POS responsive landscape split / portrait expandable checkout with Web parity controls'}));
