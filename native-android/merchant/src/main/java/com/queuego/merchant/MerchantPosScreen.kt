@@ -3167,6 +3167,7 @@ private fun PosCounterView(
                             }
                         }
                     }
+                }
             }
         }
     }
