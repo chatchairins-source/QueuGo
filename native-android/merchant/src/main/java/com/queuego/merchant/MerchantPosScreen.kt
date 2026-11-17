@@ -2388,6 +2388,18 @@ private fun PosTabs(
             add("staff" to "พนักงาน")
         }
     }
+    // Share the exact same authorized Merchant destinations across phone and tablet.
+    // The standalone POS-staff host never receives these shortcuts.
+    val shortcuts = buildList {
+        if (showMerchantAppShortcuts) {
+            add("orders" to "ออเดอร์ออนไลน์")
+            add("notifications" to if (unreadNotifications > 0) "แจ้งเตือน (${unreadNotifications})" else "แจ้งเตือน")
+            add("products" to "สินค้า")
+            if (stockEnabled) add("market-stock" to "สต็อกสินค้า")
+            add("profile" to "ตั้งค่าร้าน")
+        }
+    }
+    var shopMenuExpanded by rememberSaveable { mutableStateOf(false) }
     if (vertical) {
         Surface(
             modifier = Modifier.width(186.dp).fillMaxHeight(),
@@ -2420,17 +2432,8 @@ private fun PosTabs(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
                     )
                 }
-                // These destinations are existing authorized Merchant app pages,
-                // never demo screens or duplicate POS data flows.
-                val shortcuts = buildList {
-                    if (showMerchantAppShortcuts) {
-                    add("orders" to "ออเดอร์ออนไลน์")
-                    add("notifications" to if (unreadNotifications > 0) "แจ้งเตือน (${unreadNotifications})" else "แจ้งเตือน")
-                    add("products" to "สินค้า")
-                    if (stockEnabled) add("market-stock" to "สต็อกสินค้า")
-                    add("profile" to "ตั้งค่าร้าน")
-                    }
-                }
+                // These destinations are existing authenticated Merchant pages,
+                // not demo screens or a separate order engine.
                 shortcuts.forEach { (route, label) ->
                     Surface(
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
@@ -2494,6 +2497,29 @@ private fun PosTabs(
                     top = if (mobile) 5.dp else 7.dp, bottom = 7.dp),
             horizontalArrangement = Arrangement.spacedBy(if (mobile) 2.dp else 4.dp)
         ) {
+            if (shortcuts.isNotEmpty()) {
+                Box {
+                    OutlinedButton(
+                        onClick = { shopMenuExpanded = true },
+                        modifier = Modifier.heightIn(min = 48.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 7.dp)
+                    ) { Text("☰ เมนูร้าน", fontSize = 14.sp, maxLines = 1) }
+                    DropdownMenu(
+                        expanded = shopMenuExpanded,
+                        onDismissRequest = { shopMenuExpanded = false }
+                    ) {
+                        shortcuts.forEach { (route, label) ->
+                            DropdownMenuItem(
+                                text = { Text(label, fontSize = 14.sp) },
+                                onClick = {
+                                    shopMenuExpanded = false
+                                    onNavigateApp(route)
+                                }
+                            )
+                        }
+                    }
+                }
+            }
             tabs.forEach { (key, label) ->
                 val active = key == current
                 val tabModifier = Modifier.widthIn(min = if (narrow) 0.dp else 88.dp).heightIn(min = tabHeight)
