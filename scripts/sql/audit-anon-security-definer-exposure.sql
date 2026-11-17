@@ -50,3 +50,26 @@ ORDER BY 1;
 -- 3. Verify object-qualified references, search_path trust boundaries, nested
 --    invocations, ownership and row-level side effects.
 -- 4. Keep qg_table_checkout fix in PR #1182; do not duplicate its migration.
+
+-- SECURITY DEFINER with search_path including public needs an explicit schema
+-- CREATE privilege review: untrusted CREATE can introduce name resolution risks.
+-- These are privilege checks, not a proof of exploitability.
+SELECT n.nspname AS schema_name,
+       has_schema_privilege('anon',n.oid,'CREATE') AS anon_can_create,
+       has_schema_privilege('authenticated',n.oid,'CREATE') AS authenticated_can_create,
+       has_schema_privilege('PUBLIC',n.oid,'CREATE') AS public_can_create
+FROM pg_namespace n
+WHERE n.nspname='public';
+
+-- Find anonymous-callable DEFINER routines with unsafe owner-controlled
+-- search_path entries; pg_temp is reported separately, not treated as trusted.
+SELECT p.oid::regprocedure::text AS signature,
+       coalesce(array_to_string(p.proconfig,','),'') AS function_settings,
+       has_schema_privilege('anon','public','CREATE') AS anon_can_create_public,
+       has_schema_privilege('authenticated','public','CREATE') AS authenticated_can_create_public
+FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+WHERE n.nspname='public' AND p.prosecdef
+  AND has_function_privilege('anon',p.oid,'EXECUTE')
+  AND EXISTS (SELECT 1 FROM unnest(coalesce(p.proconfig,ARRAY[]::text[])) cfg
+              WHERE cfg LIKE 'search_path=%public%')
+ORDER BY 1;
