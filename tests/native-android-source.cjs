@@ -1575,8 +1575,10 @@ ok(
 ok(
   merchantPosScreen.includes('canManageTables = can("manage_staff")') &&
   merchantPosScreen.includes('onManageTables = { view = "tables" }') &&
-  merchantPosScreen.includes('if (kitchenEnabled && mode == "DINE_IN" && canManageTables)') &&
-  merchantPosScreen.includes('Text("จัดการโต๊ะ · เพิ่มโต๊ะ / แก้ไข / QR Code")'),
+  merchantPosScreen.includes('if (kitchenEnabled && mode == "DINE_IN")') &&
+  merchantPosScreen.includes('if (canManageTables) {') &&
+  merchantPosScreen.includes('TextButton(onClick = onManageTables') &&
+  merchantPosScreen.includes('Text("จัดการโต๊ะ / QR"'),
   'Merchant POS counter must provide a visible route to table management for authorized owners/staff'
 );
 
