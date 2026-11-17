@@ -15,7 +15,7 @@ ok(/val billContent: @Composable \(Modifier\) -> Unit/.test(counter),'Actual bil
 ok(/if \(cartExpanded\)/.test(counter)&&/ดูบิล \/ คิดเงิน/.test(counter),'Portrait POS needs a persistent expandable checkout');
 ok(/selectedBill\.total/.test(counter),'Cart summary must reflect authoritative selected bill total');
 for(const contract of ['onProduct(product)', 'onOpenBill(bill)', 'onPay', 'onDiscount', 'onCancel',
-                         'onReduce(line)', 'onBillAction("send"', 'onBillAction("serve"') {
+                         'onReduce(line)', 'onBillAction("send"', 'onBillAction("serve"']) {
     ok(counter.includes(contract),'Preserve existing POS operation: '+contract);
 }
 ok(/val tabHeight = if \(mobile\) 48\.dp/.test(native),'Tabs need accessible 48dp targets');
