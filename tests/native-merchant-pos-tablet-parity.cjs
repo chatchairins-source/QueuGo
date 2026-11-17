@@ -13,6 +13,9 @@ ok(/Modifier\.width\(330\.dp\)\.fillMaxHeight/.test(counter),'Tablet cart must b
 ok(/val catalogContent: @Composable \(Modifier\) -> Unit/.test(counter),'Product catalog is shared between layouts');
 ok(/val billContent: @Composable \(Modifier\) -> Unit/.test(counter),'Actual bill/payment controls are shared between layouts');
 ok(/if \(cartExpanded\)/.test(counter)&&/ดูบิล \/ คิดเงิน/.test(counter),'Portrait POS needs a persistent expandable checkout');
+ok(/heightIn\(max = maxHeight \* 0\.62f\)/.test(counter)&&/billContent\(Modifier\.fillMaxWidth\(\)\.verticalScroll/.test(counter),'Expanded bill must be a height-bounded independently scrolling bottom drawer');
+ok(/if \(showOrderNote \|\| note\.isNotBlank\(\)\)/.test(counter)&&/＋ เพิ่มหมายเหตุ/.test(counter),'Optional note must not take permanent POS screen space');
+ok(/จัดการโต๊ะ \/ QR/.test(counter),'Table management must be accessible from compact table toolbar');
 ok(/selectedBill\.total/.test(counter),'Cart summary must reflect authoritative selected bill total');
 for(const contract of ['onProduct(product)', 'onOpenBill(bill)', 'onPay', 'onDiscount', 'onCancel',
                          'onReduce(line)', 'onBillAction("send"', 'onBillAction("serve"']) {
@@ -20,6 +23,7 @@ for(const contract of ['onProduct(product)', 'onOpenBill(bill)', 'onPay', 'onDis
 }
 ok(/val tabHeight = if \(mobile\) 48\.dp/.test(native),'Tabs need accessible 48dp targets');
 ok(/val labelSize = if \(mobile\) 14\.sp/.test(native),'Tablet/phone tab labels must remain readable');
-ok(/＋ แตะเพื่อเพิ่มลงบิล/.test(counter),'Catalog cards must visually advertise their add action');
+ok(/Text\("＋", fontSize = 19\.sp/.test(counter),'Compact red add affordance must remain visible on product cards');
+ok(/\.semantics \{ contentDescription = "เพิ่ม \$\{product\.name\} ลงบิล" \}/.test(counter),'Product tile must expose an accessible add-to-bill label');
 ok(/qg-pos-cart-toggle/.test(web)&&/qg-pos-grid/.test(web),'Web layout remains the blueprint');
 console.log(JSON.stringify({checks,failures:0,scope:'Native POS responsive landscape split / portrait expandable checkout with Web parity controls'}));
