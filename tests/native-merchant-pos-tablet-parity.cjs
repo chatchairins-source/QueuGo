@@ -41,7 +41,10 @@ ok(/if \(stockEnabled\) add\("market-stock" to "สต็อกสินค้�
 ok(/add\("profile" to "ตั้งค่าร้าน"\)/.test(native),'Settings shortcut must be available');
 const merchantHost = fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/QueueGoMerchantApp.kt','utf8');
 ok(/onNavigateApp = \{ destination ->/.test(merchantHost),'Existing merchant host must handle POS route callbacks');
-ok(/destination in setOf\("orders", "products", "profile"\)/.test(merchantHost),'POS route callback must be allowlisted');
+ok(/destination in setOf\("orders", "products", "profile", "notifications"\)/.test(merchantHost),'POS route callback must be allowlisted');
+ok(/unreadNotifications = notifications\.count \{ !it\.isRead \}/.test(merchantHost),'POS must receive the actual Merchant notification count');
+ok(/add\("notifications" to if \(unreadNotifications > 0\)/.test(native),'Sidebar must show a real unread notification count');
+ok(/if \(connected\) "● เชื่อมต่อออนไลน์" else "● ไม่มีอินเทอร์เน็ต"/.test(native),'Connectivity status must follow actual POS connectivity state');
 ok(/destination == "market-stock" && shop\?\.let \{ merchantMarketStockPermitted\(it\.category\) \}/.test(merchantHost),'Stock shortcut must block ineligible shops');
 const reportView = native.split('private fun PosReportsView(')[1]?.split('private fun PosHistoryView(')[0] || '';
 ok(/report\.hourlySales\.sortedBy/.test(reportView),'Hourly chart must use real owner dashboard hourly values');
