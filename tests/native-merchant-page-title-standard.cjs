@@ -34,3 +34,6 @@ console.log('native Merchant page title standard 18 checks PASS');
 
 // Keep tablet/portrait checkout parity inside the existing full regression suite.
 require('./native-merchant-pos-tablet-parity.cjs');
+
+// Financial UI cannot claim tax or credit without real backend contracts.
+require('./native-pos-tax-credit-readiness.cjs');
