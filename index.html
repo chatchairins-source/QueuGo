@@ -420,8 +420,16 @@ async function login(v,pw){
   const d=await auth('token?grant_type=password',{email:v.includes('@')?v:emailOf(v),password:pw});
   const rows=await db('users?select=*&auth_user_id=eq.'+d.user.id,{token:d.access_token});
   const me=Array.isArray(rows)&&rows[0]||null;
-  if(!me||me.role!=='customer')throw new Error('ไม่พบบัญชีลูกค้าที่ใช้งานได้ กรุณาใช้แอปตามประเภทบัญชีหรือติดต่อฝ่ายช่วยเหลือ');
-  if(me.status!=='active')throw new Error('บัญชีนี้ยังไม่พร้อมใช้งาน กรุณาติดต่อฝ่ายช่วยเหลือ');
+  if(!me||me.role!=='customer'){
+    const error=new Error('CUSTOMER_WRONG_ROLE');
+    error.code='customer_wrong_role';
+    throw error;
+  }
+  if(me.status!=='active'){
+    const error=new Error('CUSTOMER_INACTIVE');
+    error.code='customer_inactive';
+    throw error;
+  }
   S.set({role:'customer',userId:me.id,authUserId:d.user.id,name:me?.name||'',phone:me?.phone||'',email:me.email||d.user.email||'',photo:me.metadata?.profileImage||me.metadata?.profile_image||me.metadata?.avatarUrl||'',
     accessToken:d.access_token,refreshToken:d.refresh_token,expiresAt:Date.now()+(d.expires_in||3600)*1000});
   cart=readCart();if(guestCart.items.length){if(!cart.items.length)cart=guestCart;else if(cart.shopId===guestCart.shopId){for(const item of guestCart.items){const mine=cart.items.find(x=>x.id===item.id);if(mine)mine.qty=Math.min(99,mine.qty+item.qty);else cart.items.push(item)}}else toast('มีตะกร้าคนละร้าน สินค้าก่อนเข้าสู่ระบบยังเก็บไว้');saveCart();if(cart.shopId===guestCart.shopId)localStorage.removeItem('qt_cart_guest')}marketCart=readMarketCart();if(!marketCart.items.length&&guestMarketCart.items.length){marketCart=guestMarketCart;saveMarketCart();localStorage.removeItem('qg_market_cart_guest')}
