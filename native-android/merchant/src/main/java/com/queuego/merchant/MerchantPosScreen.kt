@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -3018,7 +3019,10 @@ private fun PosCounterView(
                         .padding(start = 10.dp, end = 10.dp, top = 8.dp, bottom = 104.dp)
                 )
                 Column(
+                    // Keep the persistent bill toggle and expanded checkout above
+                    // the soft keyboard while searching or entering a barcode on phones.
                     modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth()
+                        .imePadding()
                         .padding(horizontal = 8.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
