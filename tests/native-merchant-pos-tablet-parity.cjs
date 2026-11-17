@@ -55,6 +55,13 @@ ok(/unreadNotifications = 0/.test(standaloneStaff)&&/onNavigateApp = \{\}/.test(
 ok(/if \(showMerchantAppShortcuts\)/.test(native)&&
    (native.match(/showMerchantAppShortcuts = showMerchantAppShortcuts/g)||[]).length === 2,
    'Host-only sidebar links must be hidden for standalone POS staff and kept for the authenticated Merchant shell');
+
+const tabs = native.split('private fun PosTabs(')[1]?.split('private fun PosCounterView(')[0] || '';
+ok(/val shortcuts = buildList/.test(tabs)&&/if \(showMerchantAppShortcuts\)/.test(tabs)&&
+   /if \(shortcuts\.isNotEmpty\(\)\)/.test(tabs)&&
+   /DropdownMenu\(/.test(tabs)&&/DropdownMenuItem\(/.test(tabs)&&
+   /onNavigateApp\(route\)/.test(tabs),
+   'Phone/tablet Merchant POS must expose the same real authorized shop shortcuts and hide them for standalone staff');
 ok(/onNavigateApp: \(String\) -> Unit/.test(native),'The POS must accept authenticated host navigation');
 ok(/shortcuts\.forEach/.test(native)&&/onNavigateApp\(route\)/.test(native),'Sidebar shortcuts must open existing Merchant routes');
 ok(/add\("orders" to "ออเดอร์ออนไลน์"\)/.test(native),'Online orders shortcut must be available');
