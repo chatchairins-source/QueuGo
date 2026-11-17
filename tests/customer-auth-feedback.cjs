@@ -32,6 +32,8 @@ equal(registration({mode: 'email', email: 'valid@example.org', phone: ''}), null
 equal(registration({}), null, 'Valid registration passes');
 
 const mapCases = [
+  [{code: 'customer_wrong_role'}, 'login', /ประเภทบัญชี/],
+  [{code: 'customer_inactive'}, 'login', /ยังไม่พร้อมใช้งาน/],
   [{code: 'invalid_credentials', status: 400, message: 'Invalid login credentials'}, 'login', /ไม่ถูกต้อง/],
   [{message: 'HTTP 400 Bad Request', status: 400}, 'login', /ไม่ถูกต้อง/],
   [{code: 'email_not_confirmed', message: 'Email not confirmed'}, 'login', /ยืนยันอีเมล/],
