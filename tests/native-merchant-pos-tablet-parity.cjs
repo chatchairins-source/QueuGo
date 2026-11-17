@@ -33,6 +33,13 @@ ok(/val labelSize = if \(mobile\) 14\.sp/.test(native),'Tablet/phone tab labels 
 ok(/Text\("＋", fontSize = 19\.sp/.test(counter),'Compact red add affordance must remain visible on product cards');
 ok(/\.semantics \{ contentDescription = "เพิ่ม \$\{product\.name\} ลงบิล" \}/.test(counter),'Product tile must expose an accessible add-to-bill label');
 ok(/qg-pos-cart-toggle/.test(web)&&/qg-pos-grid/.test(web),'Web layout remains the blueprint');
+
+const standaloneStaff = fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MainActivity.kt','utf8');
+ok(/unreadNotifications = 0/.test(standaloneStaff)&&/onNavigateApp = \{\}/.test(standaloneStaff)&&/showMerchantAppShortcuts = false/.test(standaloneStaff),
+   'Standalone POS staff host must compile without pretending to provide Merchant-app navigation');
+ok(/if \(showMerchantAppShortcuts\)/.test(native)&&
+   (native.match(/showMerchantAppShortcuts = showMerchantAppShortcuts/g)||[]).length === 2,
+   'Host-only sidebar links must be hidden for standalone POS staff and kept for the authenticated Merchant shell');
 ok(/onNavigateApp: \(String\) -> Unit/.test(native),'The POS must accept authenticated host navigation');
 ok(/shortcuts\.forEach/.test(native)&&/onNavigateApp\(route\)/.test(native),'Sidebar shortcuts must open existing Merchant routes');
 ok(/add\("orders" to "ออเดอร์ออนไลน์"\)/.test(native),'Online orders shortcut must be available');
