@@ -1745,7 +1745,8 @@ ok(
   merchantPosScreen.includes('var receiptDialogBillId by rememberSaveable') &&
   merchantPosScreen.includes('val verified = snapshot?.bills?.firstOrNull') &&
   merchantPosScreen.includes('receiptDialogBillId = verified.id') &&
-  merchantPosScreen.includes('message = "ปิดบิลแล้ว" + change +') &&
+  merchantPosScreen.includes('message = "ปิดบิลแล้ว" + confirmedChange') &&
+  merchantPosScreen.includes('posConfirmedCashChange(verified)') &&
   merchantPosScreen.includes('it.paymentStatus == "PAID"') &&
   merchantPosScreen.includes('it.billStatus == "CLOSED"') &&
   merchantPosScreen.includes('merchantReceiptTicket(snap, paid)') &&
