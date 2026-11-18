@@ -10,6 +10,15 @@ for(const gate of ['full_native_ci','backup_restore','physical_push_customer','p
 }
 assert.ok(gates.length>=22,'bundler must cover the complete Native release gate set');
 
+// Earlier regression/build steps can leave generated files in the checkout.
+// Verify the finalizer rejects a dirty checkout before inspecting gate envelopes.
+// Never clean or bypass the source provenance check in this test.
+const checkoutState=spawnSync('git',['status','--porcelain','--untracked-files=normal'],{encoding:'utf8'});
+assert.equal(checkoutState.status,0,'must inspect source checkout state');
+const expectedFailure=checkoutState.stdout.trim()
+  ? /release evidence finalization requires a clean source checkout/
+  : /missing gate envelope:/;
+
 const root=fs.mkdtempSync(path.join(os.tmpdir(),'qg-evidence-bundler-'));
 const bundle=path.join(root,'bundle');
 const zip=path.join(root,'evidence.zip');
@@ -21,7 +30,7 @@ try{
 
   const missing=spawnSync('python3',[script,'--bundle-dir',bundle,'--zip-output',zip,'--p0','0','--p1','0'],{encoding:'utf8'});
   assert.equal(missing.status,1,'missing gate envelopes must block bundle finalization');
-  assert.match(missing.stderr,/missing gate envelope:/);
+  assert.match(missing.stderr,expectedFailure,'must fail closed at the first unsatisfied gate');
 
   const outside=path.join(root,'outside-cwd');
   fs.mkdirSync(outside);
@@ -29,7 +38,7 @@ try{
   fs.mkdirSync(outsideBundle);
   const outsideRun=spawnSync('python3',[path.resolve(script),'--bundle-dir',outsideBundle,'--zip-output',path.join(root,'outside.zip'),'--p0','0','--p1','0'],{cwd:outside,encoding:'utf8'});
   assert.equal(outsideRun.status,1,'alternate working directory must still validate QueueGo source provenance');
-  assert.match(outsideRun.stderr,/missing gate envelope:/,'alternate working directory must not switch git provenance');
+  assert.match(outsideRun.stderr,expectedFailure,'alternate working directory must not switch git provenance');
 }finally{
   fs.rmSync(root,{recursive:true,force:true});
 }
