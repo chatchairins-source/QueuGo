@@ -12,6 +12,8 @@ on:
         required: false
   pull_request:
     branches:
+      # Exercise exact-head AAB exporter fixture fixes targeting the Play handoff branch.
+      - 'ops/play-certified-aab-export-20261116'
       - 'work-native-**'
       - 'work-production-review-20261109'
       - 'fix-rider-**'
