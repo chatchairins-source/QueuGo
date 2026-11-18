@@ -46,6 +46,7 @@ jobs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${BOOTSTRAP_ARTIFACT_ID}/zip" \
             --output "${RUNNER_TEMP}/buriram-bootstrap.zip"
           echo "${BOOTSTRAP_ZIP_SHA256}  ${RUNNER_TEMP}/buriram-bootstrap.zip" | sha256sum --check
+          test "$(basename "${RUNNER_TEMP}/buriram-bootstrap.zip")" = "${RELEASE_ASSET}"
 
       - name: Verify ZIP safety, pinned OSM provenance and inner payload digests
         shell: bash
