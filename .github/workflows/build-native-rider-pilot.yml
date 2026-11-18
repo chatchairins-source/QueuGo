@@ -246,7 +246,24 @@ jobs:
       - name: Native push session binding contracts
         run: node tests/native-push-session-binding.cjs
       - name: Native release packaging guard
-        run: node tests/native-release-gate.cjs
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Run negative release-gate fixtures against a pristine source worktree.
+          # Earlier regressions and generated Firebase configs must not taint
+          # the verifier's clean-checkout precondition. Do not bypass that gate.
+          guard_tree="$(mktemp -d "${RUNNER_TEMP}/queuego-release-guard.XXXXXX")"
+          cleanup() {
+            git worktree remove --force "$guard_tree" || true
+            rm -rf "$guard_tree"
+          }
+          trap cleanup EXIT
+          git worktree add --detach "$guard_tree" HEAD
+          (
+            cd "$guard_tree"
+            test -z "$(git status --porcelain)"
+            node tests/native-release-gate.cjs
+          )
       - name: Native voice call SQL contracts
         run: node tests/native-voice-call-contract.cjs
       - name: Native voice TURN edge contracts
