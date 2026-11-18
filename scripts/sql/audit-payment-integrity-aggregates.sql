@@ -1,0 +1,49 @@
+-- Read-only, aggregate-only payment integrity triage. Never returns order IDs or customer data.
+-- Multiple payment attempts may be legitimate; these counts are investigation signals only.
+-- Success labels are heuristic and must be reconciled with the actual payment state machine.
+WITH per_reference AS (
+  SELECT btrim(transaction_reference) AS reference_key, count(*) AS attempts,
+         count(DISTINCT order_id) AS distinct_orders
+  FROM public.payments
+  WHERE transaction_reference IS NOT NULL AND btrim(transaction_reference) <> ''
+  GROUP BY btrim(transaction_reference)
+), per_order AS (
+  SELECT p.order_id,
+         count(*) AS attempts,
+         coalesce(sum(p.amount) FILTER (WHERE lower(btrim(p.status)) IN ('paid','succeeded','success','completed','captured')), 0) AS successful_amount_total,
+         count(*) FILTER (
+           WHERE lower(btrim(p.status)) IN ('paid','succeeded','success','completed','captured')
+         ) AS successful_attempts
+  FROM public.payments AS p
+  WHERE p.order_id IS NOT NULL
+  GROUP BY p.order_id
+)
+SELECT
+  (SELECT count(*) FROM public.payments) AS payment_rows,
+  (SELECT count(*) FROM public.payments WHERE transaction_reference IS NOT NULL AND btrim(transaction_reference) <> '') AS payments_with_nonblank_transaction_reference,
+  (SELECT count(*) FROM public.payments WHERE transaction_reference IS NULL OR btrim(transaction_reference) = '') AS payments_without_transaction_reference,
+  (SELECT count(*) FROM public.payments WHERE (transaction_reference IS NULL OR btrim(transaction_reference) = '') AND lower(btrim(status)) IN ('paid','succeeded','success','completed','captured')) AS successful_payments_without_transaction_reference,
+  (SELECT count(*) FROM public.payments WHERE order_id IS NULL) AS payments_without_order_id,
+  (SELECT count(*) FROM public.payments WHERE order_id IS NULL AND lower(btrim(status)) IN ('paid','succeeded','success','completed','captured')) AS successful_payments_without_order_id,
+  (SELECT count(*) FROM public.payments WHERE status IS NULL OR btrim(status) = '') AS payments_without_status,
+  (SELECT count(*) FROM public.payments WHERE status IS NOT NULL AND btrim(status) <> '' AND lower(btrim(status)) NOT IN ('paid','succeeded','success','completed','captured','pending','failed','cancelled','canceled','refunded','processing')) AS payments_with_unclassified_status,
+  (SELECT count(*) FROM public.payments WHERE amount IS NULL OR amount <= 0) AS payments_with_nonpositive_amount,
+  (SELECT count(*) FROM public.payments WHERE payment_method IS NULL OR btrim(payment_method) = '') AS payments_without_method,
+  (SELECT count(*) FROM public.payments WHERE lower(btrim(status)) IN ('paid','succeeded','success','completed','captured') AND (amount IS NULL OR amount <= 0)) AS successful_payments_with_nonpositive_amount,
+  (SELECT count(*) FROM public.payments WHERE lower(btrim(status)) IN ('paid','succeeded','success','completed','captured') AND (payment_method IS NULL OR btrim(payment_method) = '')) AS successful_payments_without_method,
+  -- Heuristic only: split payments, discounts, adjustments and refunds may explain mismatches.
+  (SELECT count(*) FROM public.payments AS p JOIN public.orders AS o ON o.id = p.order_id
+    WHERE lower(btrim(p.status)) IN ('paid','succeeded','success','completed','captured')
+      AND p.amount IS NOT NULL AND o.total_amount IS NOT NULL
+      AND p.amount <> o.total_amount) AS successful_payment_amount_order_total_mismatches,
+  (SELECT count(*) FROM per_order WHERE attempts > 1) AS orders_with_multiple_payment_rows,
+  (SELECT count(*) FROM per_reference WHERE attempts > 1) AS duplicate_nonblank_transaction_references,
+  (SELECT count(*) FROM per_reference WHERE distinct_orders > 1) AS transaction_references_shared_across_orders,
+  (SELECT count(*) FROM per_order WHERE successful_attempts > 1) AS orders_with_multiple_successful_payments,
+  -- Investigation only: tips, refunds and split captures require reconciliation before escalation.
+  (SELECT count(*) FROM per_order AS po JOIN public.orders AS o ON o.id = po.order_id
+    WHERE po.successful_amount_total > o.total_amount AND o.total_amount IS NOT NULL) AS orders_with_successful_payment_sum_exceeding_total,
+  (SELECT count(*)
+     FROM public.payments AS p
+     LEFT JOIN public.orders AS o ON o.id = p.order_id
+    WHERE p.order_id IS NOT NULL AND o.id IS NULL) AS payment_orphans;
