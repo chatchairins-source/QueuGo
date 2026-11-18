@@ -20,9 +20,9 @@ on:
       - 'test-rider-**'
   push:
     branches:
+      - main
       # Exact-head Worker 4 release infrastructure validation; never publishes Production.
       - 'worker4-qa-ci-release-**'
-      - main
       - queuego-native-android-v1
       - work-release-gate-emulator-20261109
       - work-release-main-source-20261109
