@@ -1,0 +1,166 @@
+name: QueueGo Preserve Verified Buriram Map Bootstrap
+
+# P0 #1146: the original Map Engine Actions artifact expires 2026-11-28.
+# Publish only its byte-identical, hash-verified contents as a durable release asset.
+# PR runs verify the archive but NEVER receive repository write permission.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/preserve-buriram-bootstrap.yml'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/preserve-buriram-bootstrap.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: queuego-preserve-buriram-map-bootstrap
+  cancel-in-progress: false
+
+env:
+  BOOTSTRAP_ARTIFACT_ID: '14104031368'
+  BOOTSTRAP_ZIP_SHA256: '1660dcfc376440d9811a6081bab3158332c25005db0441c92fdf2de17fefb7fe'
+  RELEASE_TAG: queuego-buriram-map-ci-20261015-preserved
+  RELEASE_ASSET: buriram-map-ci-20261015-verified.zip
+
+jobs:
+  verify-original-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Download the original retained CI artifact by immutable ID
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${BOOTSTRAP_ARTIFACT_ID}/zip" \
+            --output "${RUNNER_TEMP}/buriram-bootstrap.zip"
+          echo "${BOOTSTRAP_ZIP_SHA256}  ${RUNNER_TEMP}/buriram-bootstrap.zip" | sha256sum --check
+
+      - name: Verify ZIP safety, pinned OSM provenance and inner payload digests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import stat
+          import zipfile
+
+          archive_path = pathlib.Path(os.environ["RUNNER_TEMP"]) / "buriram-bootstrap.zip"
+          expected = {
+              "map-data/buriram.osm.pbf": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+              "map-data/buriram-map-v1.tar.gz": "c326ac706cb7244ad4d57d876244c8b2ad565e2bcf7725f5cbba46f2e20eb702",
+          }
+          with zipfile.ZipFile(archive_path) as archive:
+              entries = archive.infolist()
+              names = [entry.filename for entry in entries]
+              assert len(names) == len(set(names)), "duplicate ZIP entries"
+              assert sum(entry.file_size for entry in entries) < 1024 * 1024 * 1024, "unexpected oversized ZIP"
+              for entry in entries:
+                  path = pathlib.PurePosixPath(entry.filename)
+                  assert not path.is_absolute() and ".." not in path.parts, "unsafe ZIP path"
+                  assert stat.S_IFMT(entry.external_attr >> 16) != stat.S_IFLNK, "symlink in ZIP"
+              for name, expected_sha in expected.items():
+                  assert name in names, f"missing {name}"
+                  digest = hashlib.sha256()
+                  with archive.open(name) as stream:
+                      while chunk := stream.read(1024 * 1024):
+                          digest.update(chunk)
+                  assert digest.hexdigest() == expected_sha, f"checksum mismatch: {name}"
+              manifest = json.loads(archive.read("map-data/buriram.osm.manifest.json"))
+              assert manifest["source_sha256"] == "02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf"
+              assert manifest["extract_sha256"] == expected["map-data/buriram.osm.pbf"]
+              assert manifest["source_replication_timestamp"] == "2026-10-15T20:21:00Z"
+          print("Verified exact Buriram CI archive, source, replication timestamp and routing package")
+          PY
+
+  publish-on-main-only:
+    needs: verify-original-artifact
+    if: ${{ github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Fetch verified bytes again for release upload
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 3 \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${BOOTSTRAP_ARTIFACT_ID}/zip" \
+            --output "${RUNNER_TEMP}/buriram-bootstrap.zip"
+          echo "${BOOTSTRAP_ZIP_SHA256}  ${RUNNER_TEMP}/buriram-bootstrap.zip" | sha256sum --check
+
+      - name: Create once, or verify the existing immutable-by-digest release asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          if gh release view "${RELEASE_TAG}" --json assets > "${RUNNER_TEMP}/release.json" 2>/dev/null; then
+            python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          release = json.loads((Path(os.environ["RUNNER_TEMP"]) / "release.json").read_text())
+          matches = [asset for asset in release["assets"] if asset["name"] == os.environ["RELEASE_ASSET"]]
+          assert len(matches) == 1, "existing release missing the exact named bootstrap asset"
+          PY
+            mkdir -p "${RUNNER_TEMP}/existing"
+            gh release download "${RELEASE_TAG}" \
+              --pattern "${RELEASE_ASSET}" --dir "${RUNNER_TEMP}/existing"
+            echo "${BOOTSTRAP_ZIP_SHA256}  ${RUNNER_TEMP}/existing/${RELEASE_ASSET}" | sha256sum --check
+            echo "Existing release is byte-identical; no overwrite or mutable asset replacement."
+            exit 0
+          fi
+
+          cat > "${RUNNER_TEMP}/release-notes.md" <<'NOTES'
+          Exact byte-for-byte archival copy of QueueGo Map Engine Buriram CI artifact 14104031368
+          from successful GitHub Actions run 43569694827. Original artifact expires
+          2026-11-28. This asset is a CI bootstrap DATA package only, not a production
+          deployment or Android APK release.
+
+          Integrity: outer ZIP SHA-256
+          `1660dcfc376440d9811a6081bab3158332c25005db0441c92fdf2de17fefb7fe`
+          Buriram PBF: `426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d`
+          Offline package TAR: `c326ac706cb7244ad4d57d876244c8b2ad565e2bcf7725f5cbba46f2e20eb702`
+          Original source replication timestamp: 2026-10-15T20:21:00Z.
+          Source digest: `02fe975e34a3d1229306441f69c26824b0a31198bae1e972aef4377a1eb7dbaf`
+
+          Map data © OpenStreetMap contributors, ODbL 1.0.
+          https://www.openstreetmap.org/copyright
+          This archive must not be mistaken for nationwide offline Rider navigation.
+          The Map Engine workflow must be separately repinned to this release asset
+          and rerun on its exact source HEAD before #1146 can close.
+          NOTES
+          gh release create "${RELEASE_TAG}" \
+            "${RUNNER_TEMP}/buriram-bootstrap.zip#${RELEASE_ASSET}" \
+            --target "${GITHUB_SHA}" \
+            --title "QueueGo Buriram verified Map Engine CI bootstrap (2026-10-15 source)" \
+            --notes-file "${RUNNER_TEMP}/release-notes.md" \
+            --latest=false
+
+          mkdir -p "${RUNNER_TEMP}/published"
+          gh release download "${RELEASE_TAG}" \
+            --pattern "${RELEASE_ASSET}" --dir "${RUNNER_TEMP}/published"
+          echo "${BOOTSTRAP_ZIP_SHA256}  ${RUNNER_TEMP}/published/${RELEASE_ASSET}" | sha256sum --check
+          echo "Published bootstrap archive and independently verified downloaded release bytes."
