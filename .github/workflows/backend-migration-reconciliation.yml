@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/reconcile_migration_versions.py'
+      - 'scripts/verify_migration_sql_digests.py'
       - 'scripts/test_reconcile_migration_versions.py'
       - '.github/workflows/backend-migration-reconciliation.yml'
   push:
@@ -11,6 +12,7 @@ on:
       - 'audit/backend-migration-reconcile-20261117'
     paths:
       - 'scripts/reconcile_migration_versions.py'
+      - 'scripts/verify_migration_sql_digests.py'
       - 'scripts/test_reconcile_migration_versions.py'
       - '.github/workflows/backend-migration-reconciliation.yml'
   workflow_dispatch:
@@ -33,3 +35,5 @@ jobs:
         run: python3 -m unittest discover -s scripts -p 'test_reconcile_migration_versions.py' -v
       - name: Run CLI self-test
         run: python3 scripts/reconcile_migration_versions.py --self-test
+      - name: Run SQL digest content-parity synthetic tests
+        run: python3 scripts/verify_migration_sql_digests.py --self-test
