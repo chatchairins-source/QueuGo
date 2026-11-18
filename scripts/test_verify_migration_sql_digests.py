@@ -62,6 +62,20 @@ class DigestParityRegression(unittest.TestCase):
         self.assertEqual(self.check([self.entry])["invalid_source_files"],
                          ["manual.sql"])
 
+    def test_symlinked_source_migration_fails_closed(self):
+        outside = self.root.parent / (self.root.name + "_outside.sql")
+        outside.write_bytes(self.file.read_bytes())
+        self.addCleanup(lambda: outside.unlink(missing_ok=True))
+        self.file.unlink()
+        try:
+            self.file.symlink_to(outside)
+        except (OSError, NotImplementedError):
+            self.skipTest("symlinks unavailable on this platform")
+        result = self.check([self.entry])
+        self.assertFalse(result["verified"])
+        self.assertEqual(result["invalid_source_files"], [self.file.name])
+        self.assertEqual(result["production_only"], [self.entry["version"]])
+
     def test_uppercase_digest_rejected(self):
         with self.assertRaises(ValueError):
             self.check([{**self.entry, "sha256": "A" * 64}])
