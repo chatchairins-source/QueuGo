@@ -67,6 +67,27 @@ def self_test():
         p.write_bytes(b"select 2;\n")
         assert verify(manifest, root)["digest_mismatches"] == ["20260101000000"]
         assert not verify(manifest, root)["verified"]
+        # Fail closed when the independently exported manifest is incomplete.
+        p.write_bytes(b"select 1;\n")
+        extra = root / "20260101000001_beta.sql"
+        extra.write_bytes(b"select 3;\n")
+        result = verify(manifest, root)
+        assert result["source_only"] == ["20260101000001"]
+        assert not result["verified"]
+        # Fail closed when the repository lacks a Production migration.
+        extra.unlink()
+        missing_manifest = {"migrations": manifest["migrations"] + [
+            {"version": "20260101000002", "sha256": digest}]}
+        result = verify(missing_manifest, root)
+        assert result["production_only"] == ["20260101000002"]
+        assert not result["verified"]
+        # Reject unversioned SQL rather than silently excluding it.
+        stray = root / "unversioned.sql"
+        stray.write_bytes(b"select 4;\n")
+        result = verify(manifest, root)
+        assert result["invalid_source_files"] == ["unversioned.sql"]
+        assert not result["verified"]
+        stray.unlink()
         for invalid in ({"migrations": [{"version": "20260101000000"}]},
                         {"migrations": []},
                         {"migrations": [manifest["migrations"][0]] * 2}):
