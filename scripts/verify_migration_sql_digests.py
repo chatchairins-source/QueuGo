@@ -36,6 +36,9 @@ def verify(manifest, source):
     actual = {}
     invalid = []
     for path in sorted(pathlib.Path(source).glob("*.sql")):
+        if path.is_symlink() or not path.is_file():
+            invalid.append(path.name)
+            continue
         match = FILE_RE.fullmatch(path.name)
         if not match:
             invalid.append(path.name)
