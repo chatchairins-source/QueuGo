@@ -25,7 +25,8 @@ env:
   BOOTSTRAP_ARTIFACT_ID: '14104031368'
   BOOTSTRAP_ZIP_SHA256: '1660dcfc376440d9811a6081bab3158332c25005db0441c92fdf2de17fefb7fe'
   RELEASE_TAG: queuego-buriram-map-ci-20261015-preserved
-  RELEASE_ASSET: buriram-map-ci-20261015-verified.zip
+  # GitHub Release asset.name uses the on-disk basename, not the optional #label.
+  RELEASE_ASSET: buriram-bootstrap.zip
 
 jobs:
   verify-original-artifact:
@@ -153,7 +154,7 @@ jobs:
           and rerun on its exact source HEAD before #1146 can close.
           NOTES
           gh release create "${RELEASE_TAG}" \
-            "${RUNNER_TEMP}/buriram-bootstrap.zip#${RELEASE_ASSET}" \
+            "${RUNNER_TEMP}/${RELEASE_ASSET}" \
             --target "${GITHUB_SHA}" \
             --title "QueueGo Buriram verified Map Engine CI bootstrap (2026-10-15 source)" \
             --notes-file "${RUNNER_TEMP}/release-notes.md" \
