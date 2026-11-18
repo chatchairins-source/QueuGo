@@ -1,0 +1,16 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const sql = fs.readFileSync(path.join(__dirname,'../scripts/sql/audit-table-checkout-replay-guard.sql'),'utf8');
+const statements = sql.replace(/^--.*$/gm,'');
+assert.match(statements,/pg_get_functiondef\(p\.oid\)/);
+assert.match(statements,/p\.proname='qg_table_checkout'/);
+assert.match(statements,/validity_before_replay/);
+assert.match(statements,/validity_before_first_return/);
+assert.match(statements,/locks_session/);
+assert.match(statements,/privileged_context/);
+assert.doesNotMatch(statements,/^\s*(?:INSERT|UPDATE|DELETE|ALTER|DROP|TRUNCATE|GRANT|REVOKE|CALL|DO)\b/im);
+assert.doesNotMatch(statements,/SELECT\s+\*/i);
+assert.doesNotMatch(statements,/SELECT\s+body\b/i);
+console.log('table checkout replay guard: static checks passed');
