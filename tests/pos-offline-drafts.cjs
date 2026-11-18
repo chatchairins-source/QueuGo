@@ -18,9 +18,168 @@ function boot(){const d=new JSDOM('',{url:'https://queuego.test/merchant/',runSc
   eq(await reopened.api.remove('draft-a',scope),true,'owner can explicitly remove a draft');
   eq(await api.list(scope),[],'owner deletion is durable across tabs');
   api.rememberShop(scope);eq(api.lastShop(scope.actorId,scope.deviceId),scope.shopId,'last shop scope is actor and device keyed');
-  await api.saveCatalog(scope,[{id:'p1',name:'ชาไทย',price:30,pos_price:35,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'size',name:'ขนาด',type:'single',required:true,options:[{key:'large',name:'ใหญ่',price_delta:5}]}],accessToken:'must-not-cache',image:'https://must-not-cache',stock:7}],[]);
-  const cached=await api.getCatalog(scope);eq(cached.products.length,1);eq(cached.products[0].stock,7);eq(cached.products[0].variants[0].options[0].key,'large');ok(!JSON.stringify(cached).includes('must-not-cache'),'catalog snapshot contains only allowed fields');eq(await api.getCatalog({shopId:'shop-a',actorId:'cashier-b',deviceId:scope.deviceId}),null,'catalog snapshot is isolated by actor');
+  await api.saveCatalog(scope,[{id:'p1',name:'ชาไทย',price:30,pos_price:35,available:true,pos_available:true,category:'เครื่องดื่ม',variants:[{schema:'queuego.menu-options.v1',key:'size',name:'ขนาด',type:'single',required:true,options:[{key:'large',name:'ใหญ่',price_delta:5}]}],accessToken:'must-not-cache',image:'https://must-not-cache',stock:7}],[]);
+  const cached=await api.getCatalog(scope);eq(cached.products.length,1);eq(cached.products[0].stock,7);eq(cached.products[0].category,'เครื่องดื่ม','offline POS keeps the product category for its category filter');eq(cached.products[0].variants[0].options[0].key,'large');ok(!JSON.stringify(cached).includes('must-not-cache'),'catalog snapshot contains only allowed fields');eq(await api.getCatalog({shopId:'shop-a',actorId:'cashier-b',deviceId:scope.deviceId}),null,'catalog snapshot is isolated by actor');
+  await api.saveCatalog(scope,[
+    null, // A malformed API/catalog row must not abort the whole offline cache.
+    undefined,
+    7,
+    {id:'valid-zero',name:'สินค้าฟรี',price:0,pos_price:0,available:true,pos_available:true},
+    {id:'invalid-negative',name:'ราคาไม่ถูกต้อง',price:-10,pos_price:10,available:true,pos_available:true},
+    {id:'invalid-pos',name:'ราคาหน้าร้านไม่ถูกต้อง',price:20,pos_price:-1,available:true,pos_available:true},
+    {id:'invalid-nan',name:'ราคาเสีย',price:'not-a-price',pos_price:20,available:true,pos_available:true},
+    {id:'invalid-pos-nan',name:'ราคา POS เสีย',price:20,pos_price:'not-a-price',available:true,pos_available:true},
+    {id:'missing-price',name:'ไม่มีราคา',pos_price:20,available:true,pos_available:true},
+    {id:'null-price',name:'ราคา null',price:null,pos_price:20,available:true,pos_available:true},
+    {id:'blank-price',name:'ราคาว่าง',price:'  ',pos_price:20,available:true,pos_available:true},
+    {id:'blank-pos-price',name:'ราคา POS ว่าง',price:20,pos_price:' ',available:true,pos_available:true},
+    {id:'null-pos-price',name:'ไม่มีราคาหน้าร้าน',price:20,pos_price:null,available:true,pos_available:true}
+  ],[]);
+  eq((await api.getCatalog(scope)).products.map(p=>p.id),['valid-zero','null-pos-price'],'offline catalog rejects missing, blank and invalid price snapshots, permits nullable POS price and retains valid zero-price products');
+  await api.saveCatalog(scope,[
+    {id:'stock-valid',name:'สินค้าคงเหลือ',price:20,pos_price:20,stock:3,inventory_stock_tracking:true},
+    {id:'stock-zero',name:'สินค้าหมด',price:20,pos_price:20,stock:0,inventory_stock_tracking:true},
+    {id:'stock-negative',name:'สต็อกติดลบ',price:20,pos_price:20,stock:-1,inventory_stock_tracking:true},
+    {id:'stock-nan',name:'สต็อกเสีย',price:20,pos_price:20,stock:'invalid',inventory_stock_tracking:true},
+    {id:'stock-blank',name:'สต็อกว่าง',price:20,pos_price:20,stock:'   ',inventory_stock_tracking:true},
+    {id:'stock-infinite',name:'สต็อกไม่จำกัดผิดรูป',price:20,pos_price:20,stock:Infinity,inventory_stock_tracking:true},
+    {id:'stock-missing',name:'สินค้าไม่ติดตามสต็อก',price:20,pos_price:20}
+  ],[]);
+  eq((await api.getCatalog(scope)).products.map(p=>[p.id,p.stock]),[['stock-valid',3],['stock-zero',0],['stock-missing',0]],'offline catalog rejects negative, blank and nonfinite stock and preserves zero or absent stock');
+  // Boolean API fields must not silently coerce into monetary or inventory quantities.
+  await api.saveCatalog(scope,[
+    {id:'bool-price',name:'bad',price:true,pos_price:20,stock:2},
+    {id:'bool-pos-price',name:'bad',price:20,pos_price:false,stock:2},
+    {id:'bool-stock',name:'bad',price:20,pos_price:20,stock:true},
+    {id:'numeric-string',name:'valid',price:'20',pos_price:'25',stock:'3'},
+    {id:'zero-stock',name:'valid',price:0,pos_price:0,stock:0}
+  ],[]);
+  eq((await api.getCatalog(scope)).products.map(p=>[p.id,p.price,p.pos_price,p.stock]),[
+    ['numeric-string',20,25,3],['zero-stock',0,0,0]
+  ],'boolean price/POS price/stock are rejected rather than coerced to 0 or 1; valid numeric strings and zero remain supported');
+  // Arrays and objects must never be coerced to monetary or stock numbers.
+  await api.saveCatalog(scope,[
+    {id:'array-price',name:'bad',price:[20],pos_price:20,stock:2},
+    {id:'object-price',name:'bad',price:{valueOf:()=>20},pos_price:20,stock:2},
+    {id:'array-pos-price',name:'bad',price:20,pos_price:[25],stock:2},
+    {id:'array-stock',name:'bad',price:20,pos_price:20,stock:[3]},
+    {id:'object-stock',name:'bad',price:20,pos_price:20,stock:{valueOf:()=>3}},
+    {id:'valid-numeric-string',name:'valid',price:'20',pos_price:'25',stock:'3'},
+    {id:'valid-null-pos-stock',name:'valid',price:0,pos_price:null,stock:null}
+  ],[]);
+  eq((await api.getCatalog(scope)).products.map(p=>[p.id,p.price,p.pos_price,p.stock]),[
+    ['valid-numeric-string',20,25,3],['valid-null-pos-stock',0,null,0]
+  ],'offline catalog rejects array/object numeric coercion while preserving valid scalar and nullable fields');
+  await api.saveCatalog(scope,[{id:'p1',name:'ชาไทย',price:30,pos_price:35,available:true,pos_available:true}],[
+    null,undefined,7,[],{id:'table-1',label:'โต๊ะ 1',active:true},{id:'',label:'ไม่มีรหัส',active:true},{id:'table-2',label:'โต๊ะ 2',active:false}
+  ]);
+  eq((await api.getCatalog(scope)).tables.map(t=>t.id),['table-1','table-2'],'offline POS skips malformed table rows without losing valid restaurant tables');
+  await api.saveCatalog(scope,[{id:'options-valid',name:'ตัวเลือกสินค้า',price:40,pos_price:40,available:true,pos_available:true,variants:[{schema:'queuego.menu-options.v1',key:'size',name:'ขนาด',type:'single',required:false,options:[null,undefined,7,[],{key:'large',name:'ใหญ่',price_delta:5}]}]}],[]);
+  const safeOptions=(await api.getCatalog(scope)).products[0].variants[0].options;
+  eq(safeOptions.map(o=>o.key),['large'],'malformed option rows are skipped without discarding valid menu options');
+  // Boolean option price deltas must not coerce to 1 or 0 baht in offline mode.
+  await api.saveCatalog(scope,[{id:'option-deltas',name:'ตัวเลือก',price:40,pos_price:40,variants:[{schema:'queuego.menu-options.v1',key:'extras',name:'เพิ่ม',options:[
+    {key:'bad-true',name:'ผิดรูปแบบ',price_delta:true},
+    {key:'bad-false',name:'ผิดรูปแบบ',price_delta:false},
+    {key:'valid-zero',name:'ฟรี',price_delta:0},
+    {key:'valid-five',name:'เพิ่ม 5',price_delta:'5'}
+  ]}]}],[]);
+  eq((await api.getCatalog(scope)).products[0].variants[0].options.map(o=>[o.key,o.price_delta]),[['valid-zero',0],['valid-five',5]],'boolean option price deltas are rejected; zero and numeric strings remain valid');
+  // Array/object and blank option prices must not coerce to numeric deltas.
+  await api.saveCatalog(scope,[{id:'option-malformed-deltas',name:'ตัวเลือก',price:40,pos_price:40,variants:[{schema:'queuego.menu-options.v1',key:'extras',name:'เพิ่ม',options:[
+    {key:'array',name:'ผิด',price_delta:[5]},
+    {key:'object',name:'ผิด',price_delta:{valueOf:()=>5}},
+    {key:'blank',name:'ผิด',price_delta:'   '},
+    {key:'valid',name:'ถูก',price_delta:'5'},
+    {key:'zero',name:'ฟรี',price_delta:0}
+  ]}]}],[]);
+  eq((await api.getCatalog(scope)).products[0].variants[0].options.map(o=>[o.key,o.price_delta]),[['valid',5],['zero',0]],'malformed and blank option prices are rejected without losing valid option prices');
+  // Offline option strings must obey the same 100-character limit as array values.
+  let oversizedOptionRejected=false;
+  try{await api.save({...first,id:'draft-oversized-option',items:[{...first.items[0],options:{size:'x'.repeat(101)}}]})}catch(_){oversizedOptionRejected=true}
+  ok(oversizedOptionRejected,'oversized scalar option values must not bypass the 100-character limit');
+  const maxLengthOption=await api.save({...first,id:'draft-max-option',items:[{...first.items[0],options:{size:'x'.repeat(100)}}]});
+  eq(maxLengthOption.items[0].options.size.length,100,'valid 100-character scalar option remains supported');
   let invalidRejected=false;try{await api.save({...first,id:'bad',items:[{productId:'p1',quantity:0,priceSnapshot:35,nameSnapshot:'ชาไทย',options:{}}]})}catch(_){invalidRejected=true}ok(invalidRejected,'invalid quantities are rejected');
+  // Replay IDs are an immutable snapshot: caller mutation after save() starts must not alter persisted identity.
+  const mutableReplay=['immutable-unit-1','immutable-unit-2'];
+  const mutableDraft={...first,id:'draft-replay-snapshot',items:[{...first.items[0],requestIds:mutableReplay}]};
+  const pendingSnapshot=api.save(mutableDraft);
+  mutableReplay[0]='tampered-unit';
+  mutableReplay.push('extra-unit');
+  const snapshotSaved=await pendingSnapshot;
+  eq(snapshotSaved.items[0].requestIds,['immutable-unit-1','immutable-unit-2'],'draft save snapshots replay IDs before awaiting IndexedDB');
+  const persistedSnapshot=(await api.list(scope)).find(x=>x.id==='draft-replay-snapshot');
+  eq(persistedSnapshot.items[0].requestIds,['immutable-unit-1','immutable-unit-2'],'persisted replay IDs cannot be changed by caller array mutation');
+  // Submission replay IDs must be exactly one per unit, never silently truncated.
+  const replayItem={...first.items[0],requestIds:['unit-1','unit-2']};
+  const replaySaved=await api.save({...first,id:'draft-replay-keys',items:[replayItem]});
+  eq(replaySaved.items[0].requestIds,['unit-1','unit-2'],'valid replay keys survive persistence unchanged');
+  let surplusRejected=false;
+  try{await api.save({...first,id:'draft-surplus-keys',items:[{...replayItem,requestIds:['unit-1','unit-2','unit-3']}]})}catch(_){surplusRejected=true}
+  ok(surplusRejected,'surplus replay keys must fail instead of being silently truncated');
+  let missingRejected=false;
+  try{await api.save({...first,id:'draft-missing-keys',items:[{...replayItem,requestIds:['unit-1']}]})}catch(_){missingRejected=true}
+  ok(missingRejected,'partial replay keys must fail before storing an ambiguous submission');
+  // Malformed replay-key containers must not be treated as a new unsent draft.
+  for(const malformed of ['unit-1',{'0':'unit-1'},42]){
+    let rejected=false;
+    try{await api.save({...first,id:'draft-malformed-replay-'+typeof malformed,items:[{...replayItem,requestIds:malformed}]})}catch(_){rejected=true}
+    ok(rejected,'non-array replay IDs are rejected instead of silently discarded');
+  }
+  // Empty and whitespace-only replay keys cannot safely identify a sale unit.
+  for(const badKey of ['', '   ']){
+    let rejected=false;
+    try{await api.save({...first,id:'draft-blank-replay-'+badKey.length,items:[{...replayItem,requestIds:[badKey,'unit-2']}]})}catch(_){rejected=true}
+    ok(rejected,'blank replay IDs must not be persisted as valid idempotency keys');
+  }
+  const legacyNoIds=await api.save({...first,id:'draft-legacy-no-ids',items:[{...first.items[0]}]});
+  eq(legacyNoIds.items[0].requestIds,[],'legacy unsent drafts without replay IDs remain supported');
+  // The server uses replay IDs to deduplicate units across the entire bill, not per line.
+  const duplicateAcrossLines=[
+    {...replayItem,productId:'p1'},
+    {...replayItem,productId:'p2',requestIds:['unit-2','unit-3']}
+  ];
+  let crossLineRejected=false;
+  try{await api.save({...first,id:'draft-cross-line-duplicate',items:duplicateAcrossLines})}catch(_){crossLineRejected=true}
+  ok(crossLineRejected,'duplicate replay keys across different product lines are rejected');
+  const uniqueAcrossLines=await api.save({...first,id:'draft-cross-line-unique',items:[
+    {...replayItem,productId:'p1'},
+    {...replayItem,productId:'p2',requestIds:['unit-3','unit-4']}
+  ]});
+  eq(uniqueAcrossLines.items[1].requestIds,['unit-3','unit-4'],'unique replay keys across product lines remain valid');
+  // A bill-create idempotency key must never be reused for a product-unit mutation.
+  let billCollisionRejected=false;
+  try{await api.save({...first,id:'draft-bill-replay-collision',requestId:'unit-2',items:[replayItem]})}catch(_){billCollisionRejected=true}
+  ok(billCollisionRejected,'bill creation request ID cannot collide with any item replay key');
+  const distinctBill=await api.save({...first,id:'draft-distinct-bill-replay',requestId:'bill-distinct',items:[replayItem]});
+  eq(distinctBill.requestId,'bill-distinct','a distinct bill creation key remains valid');
+  // A malformed bill-level idempotency key must not be silently reused or normalized.
+  for(const badId of ['', '   ', 42, {}, 'x'.repeat(101)]){
+    let rejected=false;
+    try{await api.save({...first,id:'draft-bad-bill-id-'+String(badId).length,requestId:badId})}catch(_){rejected=true}
+    ok(rejected,'invalid bill creation request IDs must be rejected');
+  }
+  const legacyBill=await api.save({...first,id:'draft-legacy-generated-bill',requestId:undefined});
+  ok(typeof legacyBill.requestId==='string'&&legacyBill.requestId.length>0,'legacy draft without bill request ID receives a generated key');
+  // Colon-delimited scope keys used to alias different shop/actor combinations.
+  const colonA={shopId:'shop:cashier',actorId:'one',deviceId:scope.deviceId};
+  const colonB={shopId:'shop',actorId:'cashier:one',deviceId:scope.deviceId};
+  await api.saveCatalog(colonA,[{id:'only-a',name:'A',price:10,stock:1}],[]);
+  await api.saveCatalog(colonB,[{id:'only-b',name:'B',price:20,stock:2}],[]);
+  eq((await api.getCatalog(colonA)).products.map(p=>p.id),['only-a'],'catalog scope A must not be overwritten by colon-colliding scope B');
+  eq((await api.getCatalog(colonB)).products.map(p=>p.id),['only-b'],'catalog scope B must retain its own product snapshot');
+  eq((await reopened.api.getCatalog(colonA)).products.map(p=>p.id),['only-a'],'scope isolation persists across POS tabs');
+  // Another tab can delete/recreate the IndexedDB database; a closed connection must not be reused.
+  await new Promise((resolve,reject)=>{
+    const deletion=indexedDB.deleteDatabase('queuego-pos-offline-drafts-v1');
+    deletion.onsuccess=resolve;
+    deletion.onerror=()=>reject(deletion.error||Error('IndexedDB test deletion failed'));
+    deletion.onblocked=()=>reject(Error('Other POS tabs did not close on versionchange'));
+  });
+  const recovered=await reopened.api.save({...first,id:'draft-after-versionchange'});
+  eq(recovered.id,'draft-after-versionchange','POS can save again after another tab invalidates its IndexedDB connection');
+  eq((await api.list(scope)).map(d=>d.id),['draft-after-versionchange'],'all open POS tabs recover their own closed IndexedDB connections');
   one.d.window.close();reopened.d.window.close();
   console.log(JSON.stringify({checks,failures:0,scope:'identity and device scoped local POS drafts; no order/payment RPC or Production data'}));
 })().catch(e=>{console.error(e);process.exit(1)});
