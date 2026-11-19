@@ -185,11 +185,24 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
             var entries = 0
             // Validate every entry, not just the first plausible tile: a valid first
             // tile must not conceal corrupt or unsafe entries later in the archive.
-            while (offset + 512L <= archive.length() && entries < 100000) {
+            while (offset + 512L <= archive.length()) {
+                check(entries < 100000) {
+                    "Rider release routing TAR exceeds the safe entry inspection limit"
+                }
                 archive.seek(offset)
                 val header = ByteArray(512)
                 archive.readFully(header)
-                if (header.all { it == 0.toByte() }) break
+                if (header.all { it == 0.toByte() }) {
+                    check(offset + 1024L <= archive.length()) {
+                        "Rider release routing TAR is missing its second end marker"
+                    }
+                    val secondMarker = ByteArray(512)
+                    archive.readFully(secondMarker)
+                    check(secondMarker.all { it == 0.toByte() }) {
+                        "Rider release routing TAR has a corrupt end marker"
+                    }
+                    break
+                }
                 check(header.copyOfRange(257, 262).contentEquals("ustar".toByteArray(Charsets.US_ASCII))) {
                     "Rider release routing TAR contains an invalid entry header"
                 }
