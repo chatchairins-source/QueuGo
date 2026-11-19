@@ -232,5 +232,52 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                 conn.rollback()
 
 
+
+    def test_wrong_device_cannot_replay_existing_request(self):
+        """An exposed anon RPC must not return an existing order to a different device."""
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.fail("Integration test NOT RUN: disposable database required")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if (parsed.scheme not in ("postgres", "postgresql")
+                or (parsed.hostname or "").lower() not in ("localhost", "127.0.0.1", "::1")
+                or "pkypiqhlrmzocysgeqew" in url.lower()):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+        session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
+        device = UUID(os.environ["QUEUEGO_TEST_DEVICE_KEY"])
+        wrong_device = str(UUID(int=device.int ^ 1))
+        request = str(UUID(os.environ["QUEUEGO_TEST_REQUEST"]))
+        items = json.dumps(json.loads(os.environ["QUEUEGO_TEST_ITEMS_JSON"]))
+        lat = float(os.environ["QUEUEGO_TEST_LAT"])
+        lng = float(os.environ["QUEUEGO_TEST_LNG"])
+        with psycopg.connect(url, autocommit=False) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(cur.fetchone()[0], ("postgres", "template0", "template1"))
+                    cur.execute("select count(*) from public.qg_table_requests where session_id=%s and request_id=%s",
+                                (session, request))
+                    before = cur.fetchone()[0]
+                    self.assertEqual(before, 1, "Fixture must have exactly one successful checkout")
+                    cur.execute("set local role anon")
+                    cur.execute("select current_user")
+                    self.assertEqual(cur.fetchone()[0], "anon")
+                    cur.execute("savepoint wrong_device_replay")
+                    with self.assertRaises(psycopg.Error) as caught:
+                        cur.execute("select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
+                                    (session, wrong_device, request, items, lat, lng))
+                    self.assertIn("ไม่พบสิทธิ์", str(caught.exception))
+                    cur.execute("rollback to savepoint wrong_device_replay")
+                    cur.execute("reset role")
+                    cur.execute("select count(*) from public.qg_table_requests where session_id=%s and request_id=%s",
+                                (session, request))
+                    self.assertEqual(cur.fetchone()[0], before, "Denied replay must not insert requests")
+            finally:
+                conn.rollback()
+
 if __name__ == "__main__":
     unittest.main()
