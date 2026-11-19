@@ -55,6 +55,21 @@ class BundledOfflineRoutingCacheRecoveryTest {
             directory.deleteRecursively()
         }
     }
+    @Test fun rejectsSymlinkedRoutingParentBeforeCreatingGraphDirectory() {
+        val directory = Files.createTempDirectory("queuego-routing-parent-link").toFile()
+        try {
+            val external = directory.resolve("external")
+            org.junit.Assert.assertTrue(external.mkdir())
+            val routing = directory.resolve("routing")
+            Files.createSymbolicLink(routing.toPath(), external.toPath())
+            assertThrows(IllegalStateException::class.java) {
+                rejectOfflineRoutingSymlink(routing, "offline routing parent")
+            }
+            org.junit.Assert.assertTrue(external.listFiles().orEmpty().isEmpty())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
     @Test fun refusesSymlinkAtOfflineGraphCachePath() {
         val directory = Files.createTempDirectory("queuego-graph-symlink").toFile()
         try {
