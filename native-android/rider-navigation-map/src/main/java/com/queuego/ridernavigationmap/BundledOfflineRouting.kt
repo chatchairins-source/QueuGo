@@ -78,7 +78,7 @@ object BundledOfflineRouting {
         // A killed copy may leave a large partial file. Reclaim it before the
         // free-space check, including when a verified installed graph is reusable.
         val temporary = File(target.parentFile, target.name + ".part")
-        check(!temporary.exists() || temporary.delete()) { "Cannot remove interrupted offline graph copy" }
+        reclaimInterruptedOfflineGraphCopy(temporary)
         if (!java.nio.file.Files.isSymbolicLink(target.toPath()) && target.isFile && target.length() == expectedBytes && sha256(target) == expectedHash) return
         // Reclaim a corrupt cached graph before checking free space. Otherwise the
         // old bytes can prevent recovery when storage is nearly full.
@@ -134,6 +134,14 @@ internal fun readBoundedRoutingText(input: InputStream, maxBytes: Int): String {
         output.write(buffer, 0, count)
     }
     return output.toString(Charsets.UTF_8.name())
+}
+
+/** Reject links and directories before removing an interrupted .part file. */
+internal fun reclaimInterruptedOfflineGraphCopy(temporary: File) {
+    check(!java.nio.file.Files.isSymbolicLink(temporary.toPath())) { "Refusing symlink at interrupted offline graph copy" }
+    if (temporary.exists()) {
+        check(temporary.isFile && temporary.delete()) { "Cannot remove interrupted offline graph copy" }
+    }
 }
 
 /** Fail closed on directories and reclaim corrupt cached bytes before the space check. */

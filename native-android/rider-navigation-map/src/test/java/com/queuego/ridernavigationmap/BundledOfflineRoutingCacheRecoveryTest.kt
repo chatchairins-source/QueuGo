@@ -70,5 +70,34 @@ class BundledOfflineRoutingCacheRecoveryTest {
             directory.deleteRecursively()
         }
     }
-}
+    @Test fun refusesSymlinkOrDirectoryAtInterruptedCopyWithoutTouchingTarget() {
+        val directory = Files.createTempDirectory("queuego-part-guard").toFile()
+        try {
+            val external = directory.resolve("external.tar")
+            external.writeText("preserve")
+            val part = directory.resolve("tiles.tar.part")
+            Files.createSymbolicLink(part.toPath(), external.toPath())
+            assertThrows(IllegalStateException::class.java) { reclaimInterruptedOfflineGraphCopy(part) }
+            org.junit.Assert.assertEquals("preserve", external.readText())
+            Files.delete(part.toPath())
+            org.junit.Assert.assertTrue(part.mkdir())
+            assertThrows(IllegalStateException::class.java) { reclaimInterruptedOfflineGraphCopy(part) }
+            org.junit.Assert.assertTrue(part.isDirectory)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
 
+    @Test fun removesInterruptedRegularFileAndAllowsMissingPart() {
+        val directory = Files.createTempDirectory("queuego-part-recovery").toFile()
+        try {
+            val part = directory.resolve("tiles.tar.part")
+            part.writeText("incomplete")
+            reclaimInterruptedOfflineGraphCopy(part)
+            assertFalse(part.exists())
+            reclaimInterruptedOfflineGraphCopy(part)
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
+}
