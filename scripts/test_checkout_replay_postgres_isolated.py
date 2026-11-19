@@ -80,5 +80,64 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                 conn.rollback()
 
 
+    def test_expired_session_cannot_replay_existing_request(self):
+        """A previously successful checkout must not bypass session expiry."""
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.skipTest("Disposable database explicitly required")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if parsed.scheme not in ("postgres", "postgresql") or (
+            parsed.hostname or ""
+        ).lower() not in ("localhost", "127.0.0.1", "::1"):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        if "pkypiqhlrmzocysgeqew" in url.lower():
+            self.fail("Production project reference is forbidden")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+
+        session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
+        device = str(UUID(os.environ["QUEUEGO_TEST_DEVICE_KEY"]))
+        request = str(UUID(os.environ["QUEUEGO_TEST_REQUEST"]))
+        items = json.dumps(json.loads(os.environ["QUEUEGO_TEST_ITEMS_JSON"]))
+        lat = float(os.environ["QUEUEGO_TEST_LAT"])
+        lng = float(os.environ["QUEUEGO_TEST_LNG"])
+        with psycopg.connect(url, autocommit=False) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(
+                        cur.fetchone()[0], ("postgres", "template0", "template1"),
+                        "Use a dedicated disposable test database",
+                    )
+                    cur.execute(
+                        "select 1 from public.qg_table_requests where session_id=%s and request_id=%s",
+                        (session, request),
+                    )
+                    self.assertIsNotNone(cur.fetchone(), "Fixture needs existing checkout")
+                    cur.execute(
+                        "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
+                        (session, device, request, items, lat, lng),
+                    )
+                    replay = cur.fetchone()[0]
+                    self.assertTrue(replay["duplicate"], "Fixture must be replayable")
+                    self.assertEqual(replay["reason"], "same_request")
+                    cur.execute(
+                        "update public.qg_table_sessions set expires_at=now()-interval '1 second' "
+                        "where id=%s and revoked_at is null and expires_at>now()",
+                        (session,),
+                    )
+                    self.assertEqual(cur.rowcount, 1, "Fixture needs unexpired active session")
+                    with self.assertRaises(psycopg.Error) as caught:
+                        cur.execute(
+                            "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
+                            (session, device, request, items, lat, lng),
+                        )
+                    self.assertIn("หมดอายุ", str(caught.exception))
+            finally:
+                conn.rollback()
+
+
 if __name__ == "__main__":
     unittest.main()
