@@ -335,8 +335,8 @@ jobs:
           mkdir -p "$QG_MAP_DATA_DIR"
           source_pbf="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf"
           source_md5="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf.md5"
-          curl --fail --location --retry 6 --retry-delay 5 --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
-          curl --fail --location --retry 6 --retry-delay 5 --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
+          curl --fail --location --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
+          curl --fail --location --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
           python3 - "$source_md5" > "$QG_MAP_DATA_DIR/source-check.md5" <<'PY'
           import re, sys
           text=open(sys.argv[1], encoding="ascii").read().strip()
