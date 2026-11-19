@@ -379,16 +379,6 @@ jobs:
             sha256sum "$apk" >> artifacts/native-pilot-apks/SHA256SUMS
           done
           sha256sum --check artifacts/native-pilot-apks/SHA256SUMS
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: queuego-native-pilot-apks
-          path: |
-            native-android/customer/build/outputs/apk/debug/customer-debug.apk
-            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
-            native-android/rider/build/outputs/apk/debug/rider-debug.apk
-            artifacts/native-pilot-apks/SHA256SUMS
-            artifacts/native-pilot-apks/PROVENANCE.txt
-          if-no-files-found: error
       - name: Regression test bounded Android SDK download recovery
         run: python3 -m unittest discover -s native-android/qa -p 'test_android_sdk_recovery.py'
       - name: Enable runner-only access to Android acceleration
@@ -427,6 +417,17 @@ jobs:
             artifacts/rider-navigation-map-runtime/
             native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
           if-no-files-found: warn
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-native-pilot-apks
+          path: |
+            native-android/customer/build/outputs/apk/debug/customer-debug.apk
+            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+            artifacts/native-pilot-apks/SHA256SUMS
+            artifacts/native-pilot-apks/PROVENANCE.txt
+          if-no-files-found: error
       - name: Export freshly built role APKs after runtime gates
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
         run: |
