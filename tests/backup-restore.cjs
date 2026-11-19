@@ -11,6 +11,9 @@ const inventory=read('ops/backup-inventory.sql');
 const verify=read('ops/restore-verify.sql');
 
 ok(/workflow_dispatch/.test(workflow),'backup drill must be manually runnable');
+ok(/permissions:\s*\n\s+contents:\s*read/.test(workflow),'backup drill must use read-only repository permissions');
+ok(/concurrency:\s*\n\s+group:\s*queuego-backup-restore-drill\s*\n\s+cancel-in-progress:\s*false/.test(workflow),'backup drills must not cancel an in-progress restore');
+ok(/if-no-files-found:\s*error/.test(workflow)&&/retention-days:\s*14/.test(workflow),'encrypted backup upload must fail closed and have explicit retention');
 ok(/supabase@2\.120\.0 db dump/.test(workflow),'backup drill must use pinned Supabase-aware database dump');
 ok(!/supabase@latest/.test(workflow),'backup workflow must pin Supabase CLI and never use @latest');
 ok(/--role-only/.test(workflow)&&/--data-only/.test(workflow)&&/--use-copy/.test(workflow),'backup must export roles, schema and data');
@@ -23,7 +26,10 @@ ok(workflow.indexOf('sha256sum --check backup/core.sha256')<workflow.indexOf('--
   'verify core backup checksums before local restore and archive creation');
 ok(/restore-storage\.mjs/.test(workflow),'Storage objects must be restored during the drill');
 ok(/aes-256-cbc/.test(workflow)&&/pbkdf2/.test(workflow),'off-site artifact must be encrypted before upload');
-ok(/upload-artifact@v4/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
+ok(/cmp "\$\{NAME\}\.tar\.gz" verify-backup\.tar\.gz/.test(workflow),'encrypted backup must decrypt byte-for-byte to the original archive');
+ok(workflow.includes('sha256sum --check "${QG_BACKUP_ARTIFACT}.tar.gz.enc.sha256"')&&workflow.indexOf('Verify encrypted artifact checksum before upload')<workflow.indexOf('Upload encrypted backup'),'encrypted archive checksum must be validated immediately before artifact upload');
+ok(/- name: Remove plaintext drill files on failure or cancellation\n\s+if: always\(\)/.test(workflow)&&/rm -rf -- backup restore-lab local-supabase\.env verify-backup\.tar\.gz/.test(workflow)&&/find \. -maxdepth 1 -type f -name 'queuego-backup-\*\.tar\.gz' -delete/.test(workflow),'plaintext backup and restore drill files must be removed on failure and cancellation');
+ok(/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02(?:\s|$)/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
 ok(!/upload-artifact@[\s\S]{0,400}backup\/data\.sql/.test(workflow),'plaintext database dump must never be uploaded');
 ok(/QG_BACKUP_PASSPHRASE/.test(workflow)&&/QG_SUPABASE_DB_URL/.test(workflow)&&/QG_SUPABASE_SERVICE_ROLE_KEY/.test(workflow),'backup secrets must be externalized');
 ok(/missing=0[\s\S]*Missing required secret: \$name[\s\S]*missing=1[\s\S]*if \[ "\$missing" -ne 0 \]/.test(workflow),'backup secret preflight must report all missing secrets before failing');
@@ -37,5 +43,11 @@ ok(verify.includes("content_snapshot")&&verify.includes("qg_ugc_reports"),'resto
 ok(verify.includes('queuego_restore_verification_ok'),'restore SQL must emit a success sentinel');
 ok(verify.includes('qg_notifications_queuego_push'),'restore must verify unified notification trigger');
 ok(/restore_drill_certified/.test(release),'Closed Beta release must depend on restore certification');
+// Legacy Capacitor/WebView release must remain fail-closed; Native Android has its own release pipeline.
+ok(/- name: Block historical Capacitor Android release[\s\S]*?exit 1[\s\S]*?- uses: actions\/checkout@/.test(release),
+  'historical Capacitor release must exit before checkout or any build step');
+ok(/jobs:\s*\n\s+validate:\s*\n\s+if: github\.ref == 'refs\/heads\/main'/.test(release)&&
+  /build:\s*\n\s+needs: validate/.test(release),
+  'historical Android build must depend on its fail-closed validation job');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Encrypted external database + Storage backup and local restore drill'}));

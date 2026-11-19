@@ -21,9 +21,9 @@ jobs:
       QG_BACKUP_PASSPHRASE: ${{ secrets.QG_BACKUP_PASSPHRASE }}
       QG_STORAGE_BACKUP_DIR: backup/storage
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
@@ -156,14 +156,21 @@ jobs:
             -out verify-backup.tar.gz \
             -pass env:QG_BACKUP_PASSPHRASE
           tar -tzf verify-backup.tar.gz >/dev/null
+          cmp "${NAME}.tar.gz" verify-backup.tar.gz
 
           sha256sum "${NAME}.tar.gz.enc" > "${NAME}.tar.gz.enc.sha256"
           echo "QG_BACKUP_ARTIFACT=${NAME}" >> "$GITHUB_ENV"
 
           rm -rf backup restore-lab local-supabase.env "${NAME}.tar.gz" verify-backup.tar.gz
 
+      - name: Verify encrypted artifact checksum before upload
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha256sum --check "${QG_BACKUP_ARTIFACT}.tar.gz.enc.sha256"
+
       - name: Upload encrypted backup
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.QG_BACKUP_ARTIFACT }}
           path: |
@@ -180,3 +187,11 @@ jobs:
             cd restore-lab
             npx --yes supabase@2.120.0 stop --no-backup || true
           fi
+
+      - name: Remove plaintext drill files on failure or cancellation
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf -- backup restore-lab local-supabase.env verify-backup.tar.gz
+          find . -maxdepth 1 -type f -name 'queuego-backup-*.tar.gz' -delete
