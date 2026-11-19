@@ -68,19 +68,33 @@ with (log_dir / "emulator.log").open("w") as log:
         for scale in ("window_animation_scale", "transition_animation_scale", "animator_duration_scale"):
             run(adb + ["shell", "settings", "put", "global", scale, "1"])
 
+        command = [
+            gradle, "-p", "native-android",
+            ":rider-maplibre-osm:connectedDebugAndroidTest",
+            "--no-build-cache", "--stacktrace",
+        ]
         result = subprocess.run(
-            [gradle, "-p", "native-android",
-             ":rider-maplibre-osm:connectedDebugAndroidTest",
-             "--no-build-cache", "--stacktrace"],
-            cwd=repo,
-            capture_output=True,
-            text=True,
-            timeout=600,
+            command, cwd=repo, capture_output=True, text=True, timeout=600,
         )
-        (log_dir / "gradle.txt").write_text(result.stdout + result.stderr)
-        print(result.stdout)
-        if result.stderr:
-            print(result.stderr)
+        output = result.stdout + result.stderr
+        # A fresh runner may temporarily fail to resolve public Android test
+        # dependencies. Retry only this known dependency-fetch failure, never
+        # compilation errors, assertion failures or emulator failures.
+        missing_test_dependency = (
+            "Could not find org.junit:junit-bom:5.13.3" in output
+            or "Could not find org.jetbrains.kotlin:kotlin-stdlib:2.2.10" in output
+        )
+        if result.returncode != 0 and missing_test_dependency:
+            print("Retrying MapLibre instrumentation once after dependency resolution failure")
+            time.sleep(10)
+            retry = subprocess.run(
+                command + ["--refresh-dependencies"],
+                cwd=repo, capture_output=True, text=True, timeout=600,
+            )
+            output += "\n--- dependency-resolution retry ---\n" + retry.stdout + retry.stderr
+            result = retry
+        (log_dir / "gradle.txt").write_text(output)
+        print(output)
         if result.returncode != 0:
             raise SystemExit("MapLibre OSM connected Android test failed")
         print("QUEUEGO_MAPLIBRE_OSM_RUNTIME_PASS")
