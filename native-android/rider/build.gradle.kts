@@ -1,3 +1,5 @@
+import java.io.RandomAccessFile
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.plugin.compose")
@@ -178,7 +180,7 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
         // Walk headers until an actual nonempty regular tile is found instead
         // of rejecting a legitimate archive solely because its first entry is a directory.
         var foundTile = false
-        java.io.RandomAccessFile(tilesTar, "r").use { archive ->
+        RandomAccessFile(tilesTar, "r").use { archive ->
             var offset = 0L
             var entries = 0
             while (offset + 512L <= archive.length() && entries < 100000 && !foundTile) {
