@@ -49,7 +49,7 @@ begin
   for update;
   if not found then raise exception 'ไม่พบสิทธิ์การสั่งอาหารบนเครื่องนี้'; end if;
 
-  if v.revoked_at is not null or now()>=v.expires_at then
+  if v.revoked_at is not null or v.expires_at is null or now()>=v.expires_at then
     raise exception 'สิทธิ์การสั่งอาหารจากโต๊ะนี้หมดอายุแล้ว กรุณาสแกน QR Code ที่โต๊ะอีกครั้ง';
   end if;
 
