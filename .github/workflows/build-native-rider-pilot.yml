@@ -299,7 +299,7 @@ jobs:
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
       - name: Build and bundle pinned nationwide offline map
-        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' }}
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' || github.head_ref == 'ops/play-certified-aab-export-20261116' || github.ref == 'refs/heads/ops/play-certified-aab-export-20261116' }}
         env:
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
           QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261101.osm.pbf
