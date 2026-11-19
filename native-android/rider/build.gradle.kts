@@ -151,6 +151,34 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
             "Rider release routing TAR has no POSIX/GNU TAR header"
         }
 
+        // A TAR with a valid ustar magic can still contain only empty entries.
+        // Validate the first header checksum, path and payload length before
+        // allowing a Play release; this is an integrity gate, not road coverage proof.
+        val tarName = tarHeader.copyOfRange(0, 100).toString(Charsets.US_ASCII).trimEnd('\\u0000', ' ')
+        check(tarName.isNotBlank() && !tarName.startsWith("/") &&
+            tarName.split('/').none { it == ".." }) {
+            "Rider release routing TAR has an invalid first entry path"
+        }
+        fun tarOctal(start: Int, length: Int): Long {
+            val raw = tarHeader.copyOfRange(start, start + length)
+                .toString(Charsets.US_ASCII).trim('\\u0000', ' ')
+            check(raw.isNotEmpty() && raw.all { it in '0'..'7' }) {
+                "Rider release routing TAR contains invalid octal header field"
+            }
+            return raw.toLong(8)
+        }
+        val recordedChecksum = tarOctal(148, 8)
+        val actualChecksum = tarHeader.indices.sumOf { index ->
+            if (index in 148..155) 32 else tarHeader[index].toInt() and 0xff
+        }.toLong()
+        check(recordedChecksum == actualChecksum) {
+            "Rider release routing TAR header checksum mismatch"
+        }
+        val firstEntrySize = tarOctal(124, 12)
+        check(firstEntrySize > 0L && firstEntrySize <= tilesTar.length() - 1024L) {
+            "Rider release routing TAR first entry has no valid payload"
+        }
+
         // Ensure routing metadata is valid JSON, not an empty placeholder.
         listOf(required[1], required[3]).forEach { metadata ->
             val parsed = try {
