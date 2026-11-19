@@ -18,13 +18,13 @@ class CheckoutReplayAuthorizationTests(unittest.TestCase):
         cls.compact = re.sub(r"\s+", " ", cls.sql.lower())
 
     def test_guard_precedes_first_request_replay_lookup(self):
-        guard = self.compact.index("if v.revoked_at is not null or now()>=v.expires_at then")
+        guard = self.compact.index("if v.revoked_at is not null or v.expires_at is null or now()>=v.expires_at then")
         replay = self.compact.index("from public.qg_table_requests")
         self.assertLess(guard, replay)
 
     def test_guard_follows_device_bound_session_lock(self):
         lock = self.compact.index("for update;")
-        guard = self.compact.index("if v.revoked_at is not null or now()>=v.expires_at then")
+        guard = self.compact.index("if v.revoked_at is not null or v.expires_at is null or now()>=v.expires_at then")
         self.assertLess(lock, guard)
         self.assertIn("device_hash=encode(extensions.digest(p_device_key::text,'sha256'),'hex')", self.compact)
 
@@ -33,6 +33,10 @@ class CheckoutReplayAuthorizationTests(unittest.TestCase):
         self.assertIn("'reason','same_request'", self.compact)
         self.assertIn("'reason','recent_same_cart'", self.compact)
         self.assertIn("for update;", self.compact)
+
+    def test_missing_expiry_fails_closed(self):
+        self.assertIn("v.expires_at is null", self.compact)
+        self.assertLess(self.compact.index("v.expires_at is null"), self.compact.index("from public.qg_table_requests"))
 
     def test_no_privilege_expansion(self):
         self.assertNotRegex(self.compact, r"\bgrant\s+")
