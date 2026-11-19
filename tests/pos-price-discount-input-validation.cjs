@@ -40,5 +40,5 @@ async function check(fn, input, accepted) {
   await check('qgPosChangePrice', '19.99', true);
   assert.ok(errors.length >= 15);
   assert.equal(calls.at(-1).args.p_price, 19.99);
-  console.log('POS discount/price input validation: 20 checks passed (isolated JS; not browser/payment E2E)');
+  console.log('POS discount/price input validation: 19 checks passed (isolated JS; not browser/payment E2E)');
 })().catch(e => { console.error(e); process.exitCode = 1; });
