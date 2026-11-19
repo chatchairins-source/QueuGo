@@ -180,6 +180,85 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                 conn.rollback()
 
 
+    def test_null_expiry_session_cannot_replay_existing_request(self):
+        """A previously successful checkout must not bypass NULL session expiry."""
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.fail("Integration test NOT RUN: set QUEUEGO_DISPOSABLE_DB=1 and supply a loopback test database")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if parsed.scheme not in ("postgres", "postgresql") or (
+            parsed.hostname or ""
+        ).lower() not in ("localhost", "127.0.0.1", "::1"):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        if "pkypiqhlrmzocysgeqew" in url.lower():
+            self.fail("Production project reference is forbidden")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+
+        session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
+        device = str(UUID(os.environ["QUEUEGO_TEST_DEVICE_KEY"]))
+        request = str(UUID(os.environ["QUEUEGO_TEST_REQUEST"]))
+        items = json.dumps(json.loads(os.environ["QUEUEGO_TEST_ITEMS_JSON"]))
+        lat = float(os.environ["QUEUEGO_TEST_LAT"])
+        lng = float(os.environ["QUEUEGO_TEST_LNG"])
+        with psycopg.connect(url, autocommit=False) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(
+                        cur.fetchone()[0], ("postgres", "template0", "template1"),
+                        "Use a dedicated disposable test database",
+                    )
+                    cur.execute(
+                        "select 1 from public.qg_table_requests where session_id=%s and request_id=%s",
+                        (session, request),
+                    )
+                    self.assertIsNotNone(cur.fetchone(), "Fixture needs existing checkout")
+                    cur.execute("set local role anon")
+                    cur.execute("select current_user, session_user")
+                    active_role, login_role = cur.fetchone()
+                    self.assertEqual(active_role, "anon", "RPC must execute as anon, not fixture owner")
+                    self.assertNotEqual(login_role, "anon", "Fixture connection must retain a privileged setup role")
+                    cur.execute(
+                        "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
+                        (session, device, request, items, lat, lng),
+                    )
+                    replay = cur.fetchone()[0]
+                    self.assertTrue(replay["duplicate"], "Fixture must be replayable")
+                    self.assertEqual(replay["reason"], "same_request")
+                    cur.execute("reset role")
+                    cur.execute(
+                        "update public.qg_table_sessions set expires_at=NULL "
+                        "where id=%s and revoked_at is null and expires_at>now()",
+                        (session,),
+                    )
+                    self.assertEqual(cur.rowcount, 1, "Fixture needs active session with expiry")
+                    # Savepoint permits post-error assertions without masking a failed SQL transaction.
+                    cur.execute("set local role anon")
+                    cur.execute("select current_user, session_user")
+                    active_role, login_role = cur.fetchone()
+                    self.assertEqual(active_role, "anon", "RPC must execute as anon, not fixture owner")
+                    self.assertNotEqual(login_role, "anon", "Fixture connection must retain a privileged setup role")
+                    cur.execute("savepoint rejected_replay")
+                    with self.assertRaises(psycopg.Error) as caught:
+                        cur.execute(
+                            "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
+                            (session, device, request, items, lat, lng),
+                        )
+                    self.assertIn("หมดอายุ", str(caught.exception))
+                    cur.execute("rollback to savepoint rejected_replay")
+                    cur.execute("reset role")
+                    cur.execute(
+                        "select count(*) from public.qg_table_requests where session_id=%s and request_id=%s",
+                        (session, request),
+                    )
+                    self.assertEqual(cur.fetchone()[0], 1, "Rejected replay must not create another request")
+            finally:
+                conn.rollback()
+
+
     def test_anon_cannot_mutate_table_session_directly(self):
         """Verify anon cannot revoke a session directly, even if UPDATE is granted.
 
