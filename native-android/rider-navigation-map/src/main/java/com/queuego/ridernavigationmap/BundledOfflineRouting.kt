@@ -46,7 +46,9 @@ object BundledOfflineRouting {
         val graphHash = graph.getString("sha256")
         require(graphHash.matches(Regex("[a-f0-9]{64}"))) { "Invalid offline graph checksum" }
         val root = File(context.noBackupFilesDir, "routing/$graphHash")
+        check(!java.nio.file.Files.isSymbolicLink(root.toPath())) { "Refusing symlink at offline graph root" }
         check(root.isDirectory || root.mkdirs()) { "Cannot create private offline graph directory" }
+        check(!java.nio.file.Files.isSymbolicLink(root.toPath())) { "Refusing symlink at offline graph root" }
         // Verify cached bytes once per process too: never trust a marker after disk damage.
         copyVerified(context, "tiles.tar", File(root, "tiles.tar"), graph)
         copyVerified(context, "valhalla.json", File(root, "source.json"), config)
@@ -59,6 +61,7 @@ object BundledOfflineRouting {
         mjolnir.put("max_cache_size", 64 * 1024 * 1024)
         local.optJSONObject("additional_data")?.put("elevation", "")
         val target = File(root, "valhalla.json")
+        check(!java.nio.file.Files.isSymbolicLink(target.toPath())) { "Refusing symlink at generated offline routing config" }
         FileOutputStream(target).use { output ->
             output.write(local.toString().toByteArray(Charsets.UTF_8))
             output.fd.sync()
