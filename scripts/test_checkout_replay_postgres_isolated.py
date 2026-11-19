@@ -57,6 +57,10 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     self.assertIsNotNone(cur.fetchone(), "Fixture needs existing checkout")
                     # Execute RPC as the exposed anon role, not as fixture owner.
                     cur.execute("set local role anon")
+                    cur.execute("select current_user, session_user")
+                    active_role, login_role = cur.fetchone()
+                    self.assertEqual(active_role, "anon", "RPC must execute as anon, not fixture owner")
+                    self.assertNotEqual(login_role, "anon", "Fixture connection must retain a privileged setup role")
                     # Verify fixture is a successful replay before testing revocation.
                     cur.execute(
                         "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
@@ -75,6 +79,10 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     # an invalid fixture or a missing PostgreSQL dependency.
                     # Savepoint permits post-error assertions without masking a failed SQL transaction.
                     cur.execute("set local role anon")
+                    cur.execute("select current_user, session_user")
+                    active_role, login_role = cur.fetchone()
+                    self.assertEqual(active_role, "anon", "RPC must execute as anon, not fixture owner")
+                    self.assertNotEqual(login_role, "anon", "Fixture connection must retain a privileged setup role")
                     cur.execute("savepoint rejected_replay")
                     with self.assertRaises(psycopg.Error) as caught:
                         cur.execute(
@@ -130,6 +138,10 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     )
                     self.assertIsNotNone(cur.fetchone(), "Fixture needs existing checkout")
                     cur.execute("set local role anon")
+                    cur.execute("select current_user, session_user")
+                    active_role, login_role = cur.fetchone()
+                    self.assertEqual(active_role, "anon", "RPC must execute as anon, not fixture owner")
+                    self.assertNotEqual(login_role, "anon", "Fixture connection must retain a privileged setup role")
                     cur.execute(
                         "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
                         (session, device, request, items, lat, lng),
@@ -146,6 +158,10 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     self.assertEqual(cur.rowcount, 1, "Fixture needs unexpired active session")
                     # Savepoint permits post-error assertions without masking a failed SQL transaction.
                     cur.execute("set local role anon")
+                    cur.execute("select current_user, session_user")
+                    active_role, login_role = cur.fetchone()
+                    self.assertEqual(active_role, "anon", "RPC must execute as anon, not fixture owner")
+                    self.assertNotEqual(login_role, "anon", "Fixture connection must retain a privileged setup role")
                     cur.execute("savepoint rejected_replay")
                     with self.assertRaises(psycopg.Error) as caught:
                         cur.execute(
