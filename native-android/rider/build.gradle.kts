@@ -174,9 +174,54 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
         check(recordedChecksum == actualChecksum) {
             "Rider release routing TAR header checksum mismatch"
         }
-        val firstEntrySize = tarOctal(124, 12)
-        check(firstEntrySize > 0L && firstEntrySize <= tilesTar.length() - 1024L) {
-            "Rider release routing TAR first entry has no valid payload"
+        // Graph TARs commonly begin with directory entries (size=0).
+        // Walk headers until an actual nonempty regular tile is found instead
+        // of rejecting a legitimate archive solely because its first entry is a directory.
+        var foundTile = false
+        java.io.RandomAccessFile(tilesTar, "r").use { archive ->
+            var offset = 0L
+            var entries = 0
+            while (offset + 512L <= archive.length() && entries < 100000 && !foundTile) {
+                archive.seek(offset)
+                val header = ByteArray(512)
+                archive.readFully(header)
+                if (header.all { it == 0.toByte() }) break
+                check(header.copyOfRange(257, 262).contentEquals("ustar".toByteArray(Charsets.US_ASCII))) {
+                    "Rider release routing TAR contains an invalid entry header"
+                }
+                val name = header.copyOfRange(0, 100).toString(Charsets.US_ASCII).trimEnd('\u0000', ' ')
+                check(name.isNotBlank() && !name.startsWith("/") &&
+                    name.split('/').none { it == ".." }) {
+                    "Rider release routing TAR contains an unsafe entry path"
+                }
+                fun octal(start: Int, count: Int): Long {
+                    val value = header.copyOfRange(start, start + count)
+                        .toString(Charsets.US_ASCII).trim('\u0000', ' ')
+                    check(value.isNotEmpty() && value.all { it in '0'..'7' }) {
+                        "Rider release routing TAR contains an invalid numeric field"
+                    }
+                    return value.toLong(8)
+                }
+                val checksum = header.indices.sumOf { index ->
+                    if (index in 148..155) 32 else header[index].toInt() and 0xff
+                }.toLong()
+                check(octal(148, 8) == checksum) {
+                    "Rider release routing TAR contains a corrupt header checksum"
+                }
+                val size = octal(124, 12)
+                val padded = Math.multiplyExact(Math.floorDiv(Math.addExact(size, 511L), 512L), 512L)
+                val next = Math.addExact(offset, Math.addExact(512L, padded))
+                check(next <= archive.length()) {
+                    "Rider release routing TAR entry extends past end of archive"
+                }
+                val type = header[156].toInt().toChar()
+                if ((type == '0' || type == '\u0000') && size > 0L) foundTile = true
+                offset = next
+                entries++
+            }
+        }
+        check(foundTile) {
+            "Rider release routing TAR contains no nonempty regular routing tile"
         }
 
         // Ensure routing metadata is valid JSON, not an empty placeholder.
