@@ -157,8 +157,31 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
+      - name: Guard bounded Rider Maven dependency recovery
+        run: node tests/native-parallel-rider-maven-recovery.cjs
       - name: Compile, run real JVM unit tests and assemble role APK
-        run: gradle -p native-android ":${{ matrix.role }}:testDebugUnitTest" ":${{ matrix.role }}:assembleDebug" --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -euo pipefail
+          role="${{ matrix.role }}"
+          command=(gradle -p native-android ":${role}:testDebugUnitTest" ":${role}:assembleDebug" --no-daemon --stacktrace)
+          log="$RUNNER_TEMP/${role}-gradle-first.log"
+          if "${command[@]}" 2>&1 | tee "$log"; then
+            echo "Exact-source ${role} Gradle build passed first attempt"
+          else
+            # Only a missing, version-pinned external Maven package may be retried.
+            # Kotlin compilation, test assertion and Android package errors stay fatal.
+            if [[ "$role" != rider ]] || ! grep -Fq 'Could not find io.github.rallista:valhalla-mobile:0.6.4' "$log"; then
+              echo "::error::${role} build failed for a non-retryable reason"
+              exit 1
+            fi
+            artifact="https://repo.maven.apache.org/maven2/io/github/rallista/valhalla-mobile/0.6.4/valhalla-mobile-0.6.4.pom"
+            curl --fail --show-error --silent --location --retry 2 --connect-timeout 15 --max-time 90 "$artifact" -o "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
+            test -s "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
+            grep -Fq '<artifactId>valhalla-mobile</artifactId>' "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
+            echo "::warning::Retrying Rider Gradle once after verified Maven Central metadata; no dependency substitution"
+            "${command[@]}" --refresh-dependencies
+          fi
       - name: Verify generated role APK integrity and 16 KB packaging
         shell: bash
         run: |

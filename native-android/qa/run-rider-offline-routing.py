@@ -6,6 +6,8 @@ from pathlib import Path
 import json
 import os
 import subprocess
+
+from adb_install_recovery import install_verified_apk
 import time
 
 repo = Path(__file__).resolve().parents[2]
@@ -41,10 +43,10 @@ with (output/'emulator.log').open('w') as log:
             time.sleep(2)
         else:
             raise RuntimeError('Emulator failed to boot')
-        run(adb + ['install', '-r', repo/'native-android/rider/build/outputs/apk/debug/rider-debug.apk'], timeout=300)
+        install_verified_apk(adb, repo/'native-android/rider/build/outputs/apk/debug/rider-debug.apk', 'com.queuego.rider')
         tests = list((repo/'native-android/rider/build/outputs/apk/androidTest/debug').glob('*.apk'))
         assert len(tests) == 1, 'Expected one Rider instrumentation APK'
-        run(adb + ['install', '-r', tests[0]])
+        install_verified_apk(adb, tests[0], 'com.queuego.rider.test')
         # The emulator must be offline BEFORE the first routing request. Merely
         # describing this as an airplane-mode test does not disable its network.
         # ConnectivityService toggles the radios as the shell user; broadcasting
