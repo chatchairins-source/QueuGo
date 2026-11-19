@@ -40,7 +40,22 @@ jobs:
         run: node tests/rc-webkit-runner-contract.cjs
       - run: npm test
       - name: Install WebKit for complete Merchant mobile boot checks
-        run: npx playwright-core install --with-deps webkit
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Retry only temporary Ubuntu apt mirror failures; never skip browser gates.
+          for attempt in 1 2; do
+            if timeout 600s npx playwright-core install --with-deps webkit; then
+              echo "WebKit installer succeeded on attempt ${attempt}"
+              exit 0
+            fi
+            if [[ "${attempt}" -lt 2 ]]; then
+              echo "::warning::WebKit installer failed; retrying once after 20 seconds"
+              sleep 20
+            fi
+          done
+          echo "::error::WebKit installer failed twice; browser gates remain blocking"
+          exit 1
       - name: Verify Admin fast boot and section isolation in mobile WebKit
         run: node tests/admin-boot-browser.cjs
       - name: Preserve Admin layout evidence
