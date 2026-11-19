@@ -32,4 +32,20 @@ class BundledOfflineRoutingCacheRecoveryTest {
             directory.deleteRecursively()
         }
     }
+    @Test fun refusesSymlinkAtOfflineGraphCachePath() {
+        val directory = Files.createTempDirectory("queuego-graph-symlink").toFile()
+        try {
+            val external = directory.resolve("external.tar")
+            external.writeBytes(ByteArray(128) { 7 })
+            val cached = directory.resolve("tiles.tar")
+            Files.createSymbolicLink(cached.toPath(), external.toPath())
+            assertThrows(IllegalStateException::class.java) {
+                reclaimInvalidOfflineGraphCache(cached)
+            }
+            org.junit.Assert.assertTrue(external.exists())
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
 }
+
