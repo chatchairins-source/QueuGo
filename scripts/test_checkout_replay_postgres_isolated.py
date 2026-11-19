@@ -55,6 +55,8 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                         (session, request),
                     )
                     self.assertIsNotNone(cur.fetchone(), "Fixture needs existing checkout")
+                    # Execute RPC as the exposed anon role, not as fixture owner.
+                    cur.execute("set local role anon")
                     # Verify fixture is a successful replay before testing revocation.
                     cur.execute(
                         "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
@@ -63,6 +65,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     replay = cur.fetchone()[0]
                     self.assertTrue(replay["duplicate"], "Fixture must be replayable")
                     self.assertEqual(replay["reason"], "same_request")
+                    cur.execute("reset role")
                     cur.execute(
                         "update public.qg_table_sessions set revoked_at=now() where id=%s and revoked_at is null",
                         (session,),
@@ -71,6 +74,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     # The exception must originate from the function, not from
                     # an invalid fixture or a missing PostgreSQL dependency.
                     # Savepoint permits post-error assertions without masking a failed SQL transaction.
+                    cur.execute("set local role anon")
                     cur.execute("savepoint rejected_replay")
                     with self.assertRaises(psycopg.Error) as caught:
                         cur.execute(
@@ -79,6 +83,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                         )
                     self.assertIn("หมดอายุ", str(caught.exception))
                     cur.execute("rollback to savepoint rejected_replay")
+                    cur.execute("reset role")
                     cur.execute(
                         "select count(*) from public.qg_table_requests where session_id=%s and request_id=%s",
                         (session, request),
@@ -124,6 +129,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                         (session, request),
                     )
                     self.assertIsNotNone(cur.fetchone(), "Fixture needs existing checkout")
+                    cur.execute("set local role anon")
                     cur.execute(
                         "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
                         (session, device, request, items, lat, lng),
@@ -131,6 +137,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     replay = cur.fetchone()[0]
                     self.assertTrue(replay["duplicate"], "Fixture must be replayable")
                     self.assertEqual(replay["reason"], "same_request")
+                    cur.execute("reset role")
                     cur.execute(
                         "update public.qg_table_sessions set expires_at=now()-interval '1 second' "
                         "where id=%s and revoked_at is null and expires_at>now()",
@@ -138,6 +145,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     )
                     self.assertEqual(cur.rowcount, 1, "Fixture needs unexpired active session")
                     # Savepoint permits post-error assertions without masking a failed SQL transaction.
+                    cur.execute("set local role anon")
                     cur.execute("savepoint rejected_replay")
                     with self.assertRaises(psycopg.Error) as caught:
                         cur.execute(
@@ -146,6 +154,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                         )
                     self.assertIn("หมดอายุ", str(caught.exception))
                     cur.execute("rollback to savepoint rejected_replay")
+                    cur.execute("reset role")
                     cur.execute(
                         "select count(*) from public.qg_table_requests where session_id=%s and request_id=%s",
                         (session, request),
