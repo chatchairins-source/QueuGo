@@ -59,7 +59,7 @@ begin
   from public.qg_table_requests
   where session_id=p_session and request_id=p_request;
   if found then
-    if v_old.payload_hash<>v_hash then
+    if v_old.payload_hash is distinct from v_hash then
       raise exception 'รหัสคำขอถูกใช้กับรายการอาหารอื่น';
     end if;
     select o.order_number into v_order_number from public.orders o where o.id=v_old.order_id;
