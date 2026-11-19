@@ -643,5 +643,63 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                 conn.rollback()
 
 
+    def test_same_request_different_cart_is_rejected_without_mutation(self):
+        """An existing request ID cannot be replayed with a changed cart payload."""
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.fail("Integration test NOT RUN: disposable database required")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if (parsed.scheme not in ("postgres", "postgresql")
+                or (parsed.hostname or "").lower() not in ("localhost", "127.0.0.1", "::1")
+                or "pkypiqhlrmzocysgeqew" in url.lower()):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+        session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
+        device = str(UUID(os.environ["QUEUEGO_TEST_DEVICE_KEY"]))
+        request = str(UUID(os.environ["QUEUEGO_TEST_REQUEST"]))
+        items = json.loads(os.environ["QUEUEGO_TEST_ITEMS_JSON"])
+        # The RPC hashes the serialized cart. A different valid JSON shape
+        # must never resolve to the prior successful order for this request ID.
+        altered_items = json.dumps({"invalid_replay_cart": items})
+        lat = float(os.environ["QUEUEGO_TEST_LAT"])
+        lng = float(os.environ["QUEUEGO_TEST_LNG"])
+        with psycopg.connect(url, autocommit=False) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(cur.fetchone()[0], ("postgres", "template0", "template1"))
+                    cur.execute(
+                        "select payload_hash, order_id from public.qg_table_requests "
+                        "where session_id=%s and request_id=%s", (session, request))
+                    original = cur.fetchone()
+                    self.assertIsNotNone(original, "Fixture needs an existing checkout")
+                    cur.execute("set local role anon")
+                    cur.execute("select current_user")
+                    self.assertEqual(cur.fetchone()[0], "anon")
+                    cur.execute("savepoint mismatched_replay")
+                    with self.assertRaises(psycopg.Error) as caught:
+                        cur.execute(
+                            "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
+                            (session, device, request, altered_items, lat, lng))
+                    # Fail if rejected only by a later invalid-cart validation:
+                    # the idempotency hash mismatch must be checked first.
+                    self.assertIn("request", str(caught.exception).lower())
+                    cur.execute("rollback to savepoint mismatched_replay")
+                    cur.execute("reset role")
+                    cur.execute(
+                        "select payload_hash, order_id from public.qg_table_requests "
+                        "where session_id=%s and request_id=%s", (session, request))
+                    self.assertEqual(cur.fetchone(), original)
+                    cur.execute(
+                        "select count(*) from public.qg_table_requests "
+                        "where session_id=%s and request_id=%s", (session, request))
+                    self.assertEqual(cur.fetchone()[0], 1)
+            finally:
+                conn.rollback()
+
+
 if __name__ == "__main__":
     unittest.main()
