@@ -13,7 +13,7 @@ assert(build>=0 && run>build && publish>run && exportGate>publish,
 assert.equal(yaml.split('name: queuego-native-pilot-apks').length-1,1,
   'only one source of native-pilot APK artifacts is allowed');
 const region=yaml.slice(yaml.lastIndexOf('      - uses: actions/upload-artifact@',publish),exportGate);
-assert(region.includes("if: \${{ env.QG_OFFLINE_MAP_ASSETS != '' }}"),
+assert(region.includes("if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}"),
   'country map gate cannot be bypassed when running generic Native CI');
 for(const role of ['customer','merchant','rider']){
   assert(region.includes('artifacts/native-pilot-apks/'+role+'-debug.apk'),
@@ -29,7 +29,7 @@ assert(prepared.includes('cd artifacts/native-pilot-apks') &&
   prepared.includes('sha256sum customer-debug.apk merchant-debug.apk rider-debug.apk > SHA256SUMS') &&
   prepared.includes('sha256sum --check SHA256SUMS'),
   'downloaded artifact checksum must be self-contained and verified');
-assert(yaml.includes("if: \${{ env.QG_OFFLINE_MAP_ASSETS != '' }}\n        timeout-minutes: 20"),
+assert(yaml.includes("if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}\n        timeout-minutes: 20"),
   'installed map runtime must remain enabled for a country build');
 assert(yaml.includes('run: python3 native-android/qa/run-rider-navigation-map-runtime.py'),
   'must run real installed map instrumentation instead of a stub');
