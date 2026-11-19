@@ -180,6 +180,7 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
         // Walk headers until an actual nonempty regular tile is found instead
         // of rejecting a legitimate archive solely because its first entry is a directory.
         var foundTile = false
+        var foundEndMarker = false
         RandomAccessFile(tilesTar, "r").use { archive ->
             var offset = 0L
             var entries = 0
@@ -201,6 +202,7 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
                     check(secondMarker.all { it == 0.toByte() }) {
                         "Rider release routing TAR has a corrupt end marker"
                     }
+                    foundEndMarker = true
                     break
                 }
                 check(header.copyOfRange(257, 262).contentEquals("ustar".toByteArray(Charsets.US_ASCII))) {
@@ -236,6 +238,9 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
                 offset = next
                 entries++
             }
+        }
+        check(foundEndMarker) {
+            "Rider release routing TAR has no complete two-block end marker"
         }
         check(foundTile) {
             "Rider release routing TAR contains no nonempty regular routing tile"
