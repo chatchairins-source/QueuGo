@@ -167,6 +167,8 @@ jobs:
         run: |
           test -c /dev/kvm
           if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then sudo chown "$(id -u):$(id -g)" /dev/kvm; fi
+      - name: Android emulator package-service fail-closed regression
+        run: python3 -m unittest discover -s native-android/qa -p "test_emulator_package_service.py" -v
       - name: Run actual installed Rider offline routing and cold process restart
         run: python3 native-android/qa/run-rider-offline-routing.py
       - name: Run actual offline country rendering and GPS-camera instrumentation
