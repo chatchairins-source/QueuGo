@@ -29,10 +29,14 @@ class CheckoutReplayAuthorizationTests(unittest.TestCase):
         self.assertIn("device_hash=encode(extensions.digest(p_device_key::text,'sha256'),'hex')", self.compact)
 
     def test_replay_idempotency_and_payload_mismatch_still_present(self):
-        self.assertIn("if v_old.payload_hash<>v_hash then", self.compact)
+        self.assertIn("if v_old.payload_hash is distinct from v_hash then", self.compact)
         self.assertIn("'reason','same_request'", self.compact)
         self.assertIn("'reason','recent_same_cart'", self.compact)
         self.assertIn("for update;", self.compact)
+
+    def test_null_hash_cannot_bypass_replay_mismatch(self):
+        self.assertIn("if v_old.payload_hash is distinct from v_hash then", self.compact)
+        self.assertNotIn("v_old.payload_hash<>v_hash", self.compact)
 
     def test_missing_expiry_fails_closed(self):
         self.assertIn("v.expires_at is null", self.compact)
