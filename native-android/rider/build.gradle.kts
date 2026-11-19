@@ -183,7 +183,9 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
         RandomAccessFile(tilesTar, "r").use { archive ->
             var offset = 0L
             var entries = 0
-            while (offset + 512L <= archive.length() && entries < 100000 && !foundTile) {
+            // Validate every entry, not just the first plausible tile: a valid first
+            // tile must not conceal corrupt or unsafe entries later in the archive.
+            while (offset + 512L <= archive.length() && entries < 100000) {
                 archive.seek(offset)
                 val header = ByteArray(512)
                 archive.readFully(header)
