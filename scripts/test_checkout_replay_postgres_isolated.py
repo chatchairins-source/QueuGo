@@ -663,7 +663,9 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
         items = json.loads(os.environ["QUEUEGO_TEST_ITEMS_JSON"])
         # The RPC hashes the serialized cart. A different valid JSON shape
         # must never resolve to the prior successful order for this request ID.
-        altered_items = json.dumps({"invalid_replay_cart": items})
+        self.assertIsInstance(items, list, "Fixture items must be a JSON array")
+        self.assertTrue(items, "Fixture cart must be nonempty")
+        altered_items = json.dumps(items + [items[0]] if len(items) < 50 else items[:-1])
         lat = float(os.environ["QUEUEGO_TEST_LAT"])
         lng = float(os.environ["QUEUEGO_TEST_LNG"])
         with psycopg.connect(url, autocommit=False) as conn:
