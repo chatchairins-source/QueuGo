@@ -502,5 +502,53 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
             finally:
                 conn.rollback()
 
+    def test_anon_cannot_delete_checkout_dedupe_row(self):
+        """A guest cannot erase a completed request and bypass replay protection."""
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.fail("Integration test NOT RUN: disposable database required")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if (parsed.scheme not in ("postgres", "postgresql")
+                or (parsed.hostname or "").lower() not in ("localhost", "127.0.0.1", "::1")
+                or "pkypiqhlrmzocysgeqew" in url.lower()):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+        session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
+        request = str(UUID(os.environ["QUEUEGO_TEST_REQUEST"]))
+        with psycopg.connect(url, autocommit=False) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(cur.fetchone()[0], ("postgres", "template0", "template1"))
+                    cur.execute(
+                        "select count(*) from public.qg_table_requests "
+                        "where session_id=%s and request_id=%s", (session, request))
+                    self.assertEqual(cur.fetchone()[0], 1, "Fixture needs a committed checkout")
+                    cur.execute("set local role anon")
+                    cur.execute("select current_user")
+                    self.assertEqual(cur.fetchone()[0], "anon")
+                    cur.execute("savepoint anon_delete_attempt")
+                    affected = None
+                    try:
+                        cur.execute(
+                            "delete from public.qg_table_requests "
+                            "where session_id=%s and request_id=%s", (session, request))
+                        affected = cur.rowcount
+                    except psycopg.errors.InsufficientPrivilege:
+                        pass
+                    finally:
+                        cur.execute("rollback to savepoint anon_delete_attempt")
+                        cur.execute("reset role")
+                    self.assertEqual(affected or 0, 0, "anon must not delete dedupe rows")
+                    cur.execute(
+                        "select count(*) from public.qg_table_requests "
+                        "where session_id=%s and request_id=%s", (session, request))
+                    self.assertEqual(cur.fetchone()[0], 1, "Original dedupe row must remain")
+            finally:
+                conn.rollback()
+
 if __name__ == "__main__":
     unittest.main()
