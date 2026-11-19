@@ -551,8 +551,8 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                 conn.rollback()
 
 
-    def test_anon_cannot_repoint_existing_checkout_request(self):
-        """Anon must not change a dedupe row to reference another order."""
+    def test_anon_cannot_modify_existing_checkout_hash(self):
+        """Anon must not change the payload hash of an existing dedupe row."""
         if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
             self.fail("Integration test NOT RUN: disposable database required")
         url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
@@ -574,7 +574,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     cur.execute("select current_database()")
                     self.assertNotIn(cur.fetchone()[0], ("postgres", "template0", "template1"))
                     cur.execute(
-                        "select order_id from public.qg_table_requests "
+                        "select payload_hash from public.qg_table_requests "
                         "where session_id=%s and request_id=%s", (session, request))
                     original = cur.fetchone()
                     self.assertIsNotNone(original, "Fixture needs a committed checkout")
@@ -585,18 +585,17 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     affected = None
                     try:
                         cur.execute(
-                            "update public.qg_table_requests set order_id=%s "
+                            "update public.qg_table_requests set payload_hash=%s "
                             "where session_id=%s and request_id=%s",
-                            (str(uuid4()), session, request))
+                            (uuid4().hex, session, request))
                         affected = cur.rowcount
-                    except (psycopg.errors.InsufficientPrivilege,
-                            psycopg.errors.ForeignKeyViolation):
+                    except psycopg.errors.InsufficientPrivilege:
                         pass
                     finally:
                         cur.execute("rollback to savepoint anon_repoint_attempt")
                         cur.execute("reset role")
                     self.assertEqual(affected or 0, 0,
-                                     "anon must not repoint an existing checkout")
+                                     "anon must not alter an existing checkout hash")
                     cur.execute(
                         "select order_id from public.qg_table_requests "
                         "where session_id=%s and request_id=%s", (session, request))
