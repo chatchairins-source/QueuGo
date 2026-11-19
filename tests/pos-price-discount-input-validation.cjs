@@ -6,10 +6,11 @@ const source = fs.readFileSync(require('node:path').join(__dirname, '../merchant
 const calls = [];
 const errors = [];
 let response = '';
+let activeOrder={ id: 'o1', total_amount: 90, discount_amount: 10 };
 const context = {
   window: {},
   state: { products: [{ id: 'p1', name: 'Sample', pos_price: 50 }] },
-  selected: () => ({ id: 'o1', total_amount: 90, discount_amount: 10 }),
+  selected: () => activeOrder,
   prompt: () => response,
   message: msg => errors.push(msg),
   busy: () => {},
@@ -36,9 +37,18 @@ async function check(fn, input, accepted) {
   await check('qgPosDiscount', '101', false);
   await check('qgPosDiscount', '100', true);
   await check('qgPosDiscount', '0', true);
+  for (const invalid of [null, '', 'NaN', -1, Infinity]) {
+    activeOrder={ id: 'o1', total_amount: invalid, discount_amount: 10 };
+    await check('qgPosDiscount', '1', false);
+  }
+  activeOrder={ id: 'o1', total_amount: 90, discount_amount: 'not-a-number' };
+  await check('qgPosDiscount', '1', false);
+  activeOrder={ id: 'o1', total_amount: 90, discount_amount: -100 };
+  await check('qgPosDiscount', '1', false);
+  activeOrder={ id: 'o1', total_amount: 90, discount_amount: 10 };
   await check('qgPosChangePrice', '0', true);
   await check('qgPosChangePrice', '19.99', true);
   assert.ok(errors.length >= 15);
   assert.equal(calls.at(-1).args.p_price, 19.99);
-  console.log('POS discount/price input validation: 19 checks passed (isolated JS; not browser/payment E2E)');
+  console.log('POS discount/price input validation: 26 checks passed (isolated JS; not browser/payment E2E)');
 })().catch(e => { console.error(e); process.exitCode = 1; });
