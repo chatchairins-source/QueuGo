@@ -399,16 +399,20 @@ jobs:
           for role in customer merchant rider; do
             apk="native-android/$role/build/outputs/apk/debug/$role-debug.apk"
             test -s "$apk"
-            sha256sum "$apk" >> artifacts/native-pilot-apks/SHA256SUMS
+            cp "$apk" "artifacts/native-pilot-apks/$role-debug.apk"
           done
-          sha256sum --check artifacts/native-pilot-apks/SHA256SUMS
+          (
+            cd artifacts/native-pilot-apks
+            sha256sum customer-debug.apk merchant-debug.apk rider-debug.apk > SHA256SUMS
+            sha256sum --check SHA256SUMS
+          )
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: queuego-native-pilot-apks
           path: |
-            native-android/customer/build/outputs/apk/debug/customer-debug.apk
-            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
-            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+            artifacts/native-pilot-apks/customer-debug.apk
+            artifacts/native-pilot-apks/merchant-debug.apk
+            artifacts/native-pilot-apks/rider-debug.apk
             artifacts/native-pilot-apks/SHA256SUMS
             artifacts/native-pilot-apks/PROVENANCE.txt
           if-no-files-found: error
