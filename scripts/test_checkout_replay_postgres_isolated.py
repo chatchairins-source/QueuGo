@@ -35,7 +35,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
         try:
             import psycopg
         except ImportError:
-            self.skipTest("Install psycopg to run PostgreSQL integration test")
+            self.fail("psycopg is required for integration tests")
 
         session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
         device = str(UUID(os.environ["QUEUEGO_TEST_DEVICE_KEY"]))
@@ -55,6 +55,14 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                         (session, request),
                     )
                     self.assertIsNotNone(cur.fetchone(), "Fixture needs existing checkout")
+                    # Verify fixture is a successful replay before testing revocation.
+                    cur.execute(
+                        "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
+                        (session, device, request, items, lat, lng),
+                    )
+                    replay = cur.fetchone()[0]
+                    self.assertTrue(replay["duplicate"], "Fixture must be replayable")
+                    self.assertEqual(replay["reason"], "same_request")
                     cur.execute(
                         "update public.qg_table_sessions set revoked_at=now() where id=%s and revoked_at is null",
                         (session,),
