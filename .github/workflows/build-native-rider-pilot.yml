@@ -299,28 +299,31 @@ jobs:
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
       - name: Build and bundle pinned nationwide offline map
-        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') }}
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' }}
         env:
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
-          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261109.osm.pbf
+          QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261101.osm.pbf
           QG_PLANETILER_DOWNLOAD: '0'
           QG_PLANETILER_OCEAN_PATH: ${{ runner.temp }}/queuego-country-map/water-polygons-split-3857.zip
         run: |
           set -euo pipefail
           mkdir -p "$QG_MAP_DATA_DIR"
-          source_pbf="$QG_MAP_DATA_DIR/thailand-261109.osm.pbf"
-          source_md5="$QG_MAP_DATA_DIR/thailand-261109.osm.pbf.md5"
-          curl --fail --location --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
-          curl --fail --location --retry 6 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
+          source_pbf="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf"
+          source_md5="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf.md5"
+          curl --fail --location --retry 6 --retry-delay 5 --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
+          curl --fail --location --retry 6 --retry-delay 5 --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
           python3 - "$source_md5" > "$QG_MAP_DATA_DIR/source-check.md5" <<'PY'
           import re, sys
           text=open(sys.argv[1], encoding="ascii").read().strip()
-          match=re.fullmatch(r"([0-9a-fA-F]{32})\s+\*?thailand-261109\.osm\.pbf", text)
+          match=re.fullmatch(r"([0-9a-fA-F]{32})\s+\*?thailand-261101\.osm\.pbf", text)
           if not match:
-              raise SystemExit("Geofabrik MD5 sidecar does not identify thailand-261109.osm.pbf")
-          print(f"{match.group(1).lower()}  thailand-261109.osm.pbf")
+              raise SystemExit("Geofabrik MD5 sidecar does not identify thailand-261101.osm.pbf")
+          print(f"{match.group(1).lower()}  thailand-261101.osm.pbf")
           PY
-          test "$(stat -c %s "$source_pbf")" -eq 330076369
+          source_size="$(stat -c %s "$source_pbf")"
+          # A fixed monthly snapshot is verified by its official MD5 sidecar below.
+          # Reject implausible/truncated country downloads without hardcoding unverified bytes.
+          test "$source_size" -ge 300000000 && test "$source_size" -le 400000000
           (cd "$QG_MAP_DATA_DIR" && md5sum --check source-check.md5)
           ln -s "$(basename "$source_pbf")" "$QG_MAP_DATA_DIR/thailand-latest.osm.pbf"
           ocean_file="$QG_PLANETILER_OCEAN_PATH"
@@ -333,12 +336,12 @@ jobs:
           test -s "$ocean_file"
           echo "Planetiler ocean polygons source: $ocean_url; bytes: $(stat -c %s "$ocean_file"); SHA-256: $(sha256sum "$ocean_file" | cut -d ' ' -f 1)" >> "$GITHUB_STEP_SUMMARY"
           source_sha256="$(sha256sum "$source_pbf" | cut -d ' ' -f 1)"
-          echo "Pinned Geofabrik Thailand snapshot 2026-11-09: 330076369 bytes; SHA-256 $source_sha256" >> "$GITHUB_STEP_SUMMARY"
+          echo "Monthly Geofabrik Thailand snapshot 2026-11-01: $source_size bytes; SHA-256 $source_sha256" >> "$GITHUB_STEP_SUMMARY"
           bash native-android/qa/build-thailand-shortbread-pmtiles.sh
           archive="$QG_MAP_DATA_DIR/thailand-shortbread.pmtiles"
           python3 native-android/qa/prepare-thailand-map-assets.py "$archive" "$RUNNER_TEMP/queuego-offline-assets" \
             --expected-sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
-            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-11-09
+            --source-url "$QG_THAILAND_PBF_URL" --source-date 2026-11-01
           echo "QG_OFFLINE_MAP_ASSETS=$RUNNER_TEMP/queuego-offline-assets" >> "$GITHUB_ENV"
       - name: Tracking coordinate and terminal-state unit tests
         run: gradle -p native-android :shared:testDebugUnitTest :merchant:testDebugUnitTest :customer:testDebugUnitTest :rider:testDebugUnitTest :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest --no-build-cache --stacktrace
