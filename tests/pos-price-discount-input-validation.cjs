@@ -50,5 +50,31 @@ async function check(fn, input, accepted) {
   await check('qgPosChangePrice', '19.99', true);
   assert.ok(errors.length >= 15);
   assert.equal(calls.at(-1).args.p_price, 19.99);
-  console.log('POS discount/price input validation: 26 checks passed (isolated JS; not browser/payment E2E)');
+  // Refund audit must not submit an empty or too-short reason to the RPC.
+  let refundReason = '', confirmed = 0;
+  const refundCalls = [];
+  const refundCtx = {
+    window: {}, prompt: () => refundReason,
+    confirm: () => { confirmed++; return true; },
+    message: msg => errors.push(msg), busy: () => {},
+    rpc: async (name, args) => { refundCalls.push({ name, args }); },
+    load: async () => {},
+  };
+  vm.createContext(refundCtx);
+  const refundLine = source.split('\\n').find(line => line.trim().startsWith('window.qgPosRefund='));
+  assert.ok(refundLine, 'missing qgPosRefund');
+  vm.runInContext(refundLine, refundCtx);
+  for (const invalid of ['', '   ', 'abc', 'abcd']) {
+    refundReason = invalid;
+    await refundCtx.window.qgPosRefund('o1');
+    assert.equal(refundCalls.length, 0, 'invalid refund reason must not call RPC');
+  }
+  assert.equal(confirmed, 0, 'invalid refund must not request confirmation');
+  refundReason = 'คืนเงินผิดบิล';
+  await refundCtx.window.qgPosRefund('o1');
+  assert.equal(refundCalls.length, 1);
+  assert.equal(refundCalls[0].name, 'pos_refund_bill');
+  assert.equal(refundCalls[0].args.p_reason, refundReason);
+  assert.equal(confirmed, 1);
+  console.log('POS price/discount/refund reason checks passed (isolated JS; not browser/payment E2E)');
 })().catch(e => { console.error(e); process.exitCode = 1; });
