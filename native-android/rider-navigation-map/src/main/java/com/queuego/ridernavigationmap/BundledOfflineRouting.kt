@@ -46,6 +46,7 @@ object BundledOfflineRouting {
         val graphHash = graph.getString("sha256")
         require(graphHash.matches(Regex("[a-f0-9]{64}"))) { "Invalid offline graph checksum" }
         val root = File(context.noBackupFilesDir, "routing/$graphHash")
+        rejectOfflineRoutingSymlink(root.parentFile!!, "offline routing parent")
         rejectOfflineRoutingSymlink(root, "offline graph root")
         check(root.isDirectory || root.mkdirs()) { "Cannot create private offline graph directory" }
         rejectOfflineRoutingSymlink(root, "offline graph root")
