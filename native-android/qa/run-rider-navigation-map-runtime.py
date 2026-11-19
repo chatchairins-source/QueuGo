@@ -8,6 +8,8 @@ import subprocess
 import sys
 import time
 
+from emulator_package_service import await_package_service
+
 def run(args, **kwargs):
     return subprocess.run(args, check=True, timeout=kwargs.pop("timeout", 240), **kwargs)
 
@@ -112,7 +114,8 @@ with (log_dir / "emulator.log").open("w") as log:
     emulator = subprocess.Popen(
         [emulator_bin, "-avd", name, "-port", "5554", "-accel", "on",
          "-no-window", "-no-snapshot", "-no-audio", "-gpu", gpu,
-         "-memory", "2048", "-cores", "2"],
+         "-memory", "4096" if gpu == "swangle" else "3072",
+          "-partition-size", "6144", "-cores", "2"],
         stdout=log,
         stderr=subprocess.STDOUT,
     )
@@ -130,6 +133,8 @@ with (log_dir / "emulator.log").open("w") as log:
                 break
             assert time.monotonic() < deadline, "Navigation-map Android boot timed out"
             time.sleep(4)
+
+        await_package_service(adb, emulator)
 
         for scale in ("window_animation_scale", "transition_animation_scale", "animator_duration_scale"):
             run(adb + ["shell", "settings", "put", "global", scale, "1"])
@@ -180,6 +185,12 @@ with (log_dir / "emulator.log").open("w") as log:
                                    capture_output=True, text=True, check=True)
             (log_dir / "offline-connectivity.txt").write_text(state.stdout)
         staged_map_dir = stage_verified_map_for_isolated_debug_runtime()
+        # The large country map and a software GPU must not hide a dying
+        # Android system_server. Require a live PackageManager before UTP install.
+        await_package_service(adb, emulator)
+        (log_dir / "package-service-before-instrumentation.txt").write_text(
+            "Service package: found\\n", encoding="utf-8"
+        )
         # Reject stale XML from an earlier emulator run or Gradle invocation.
         shutil.rmtree(connected_reports, ignore_errors=True)
         result = subprocess.run(
