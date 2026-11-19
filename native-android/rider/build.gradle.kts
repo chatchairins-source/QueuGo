@@ -154,14 +154,14 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
         // A TAR with a valid ustar magic can still contain only empty entries.
         // Validate the first header checksum, path and payload length before
         // allowing a Play release; this is an integrity gate, not road coverage proof.
-        val tarName = tarHeader.copyOfRange(0, 100).toString(Charsets.US_ASCII).trimEnd('\\u0000', ' ')
+        val tarName = tarHeader.copyOfRange(0, 100).toString(Charsets.US_ASCII).trimEnd('\u0000', ' ')
         check(tarName.isNotBlank() && !tarName.startsWith("/") &&
             tarName.split('/').none { it == ".." }) {
             "Rider release routing TAR has an invalid first entry path"
         }
         fun tarOctal(start: Int, length: Int): Long {
             val raw = tarHeader.copyOfRange(start, start + length)
-                .toString(Charsets.US_ASCII).trim('\\u0000', ' ')
+                .toString(Charsets.US_ASCII).trim('\u0000', ' ')
             check(raw.isNotEmpty() && raw.all { it in '0'..'7' }) {
                 "Rider release routing TAR contains invalid octal header field"
             }
