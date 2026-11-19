@@ -61,7 +61,7 @@ async function check(fn, input, accepted) {
     load: async () => {},
   };
   vm.createContext(refundCtx);
-  const refundLine = source.split('\\n').find(line => line.trim().startsWith('window.qgPosRefund='));
+  const refundLine = source.split('\n').find(line => line.trim().startsWith('window.qgPosRefund='));
   assert.ok(refundLine, 'missing qgPosRefund');
   vm.runInContext(refundLine, refundCtx);
   for (const invalid of ['', '   ', 'abc', 'abcd']) {
