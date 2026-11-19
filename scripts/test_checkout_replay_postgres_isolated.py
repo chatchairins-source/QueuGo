@@ -359,5 +359,69 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
             finally:
                 check_conn.rollback()
 
+
+    def test_anon_cannot_insert_forged_checkout_request(self):
+        """Anon must not bypass checkout authorization by writing dedupe rows.
+
+        Uses a savepoint to roll back any attempted insert. An RLS denial or
+        permission error is acceptable; an inserted row is a release failure.
+        """
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.fail("Integration test NOT RUN: disposable database required")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if (parsed.scheme not in ("postgres", "postgresql")
+                or (parsed.hostname or "").lower() not in ("localhost", "127.0.0.1", "::1")
+                or "pkypiqhlrmzocysgeqew" in url.lower()):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+        from uuid import uuid4
+
+        session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
+        request = str(UUID(os.environ["QUEUEGO_TEST_REQUEST"]))
+        forged_request = str(uuid4())
+        with psycopg.connect(url, autocommit=False) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(cur.fetchone()[0], ("postgres", "template0", "template1"))
+                    cur.execute(
+                        "select payload_hash, order_id from public.qg_table_requests "
+                        "where session_id=%s and request_id=%s",
+                        (session, request),
+                    )
+                    existing = cur.fetchone()
+                    self.assertIsNotNone(existing, "Fixture must have an existing checkout")
+                    cur.execute("set local role anon")
+                    cur.execute("select current_user")
+                    self.assertEqual(cur.fetchone()[0], "anon")
+                    cur.execute("savepoint forged_request_attempt")
+                    affected = None
+                    try:
+                        cur.execute(
+                            "insert into public.qg_table_requests"
+                            "(session_id,request_id,payload_hash,order_id) "
+                            "values (%s,%s,%s,%s)",
+                            (session, forged_request, existing[0], existing[1]),
+                        )
+                        affected = cur.rowcount
+                    except psycopg.errors.InsufficientPrivilege:
+                        pass
+                    finally:
+                        cur.execute("rollback to savepoint forged_request_attempt")
+                        cur.execute("reset role")
+                    self.assertEqual(affected or 0, 0, "anon must not forge checkout request rows")
+                    cur.execute(
+                        "select count(*) from public.qg_table_requests "
+                        "where session_id=%s and request_id=%s",
+                        (session, forged_request),
+                    )
+                    self.assertEqual(cur.fetchone()[0], 0)
+            finally:
+                conn.rollback()
+
 if __name__ == "__main__":
     unittest.main()
