@@ -581,7 +581,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     cur.execute("set local role anon")
                     cur.execute("select current_user")
                     self.assertEqual(cur.fetchone()[0], "anon")
-                    cur.execute("savepoint anon_repoint_attempt")
+                    cur.execute("savepoint anon_hash_update_attempt")
                     affected = None
                     try:
                         cur.execute(
@@ -592,12 +592,12 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                     except psycopg.errors.InsufficientPrivilege:
                         pass
                     finally:
-                        cur.execute("rollback to savepoint anon_repoint_attempt")
+                        cur.execute("rollback to savepoint anon_hash_update_attempt")
                         cur.execute("reset role")
                     self.assertEqual(affected or 0, 0,
                                      "anon must not alter an existing checkout hash")
                     cur.execute(
-                        "select order_id from public.qg_table_requests "
+                        "select payload_hash from public.qg_table_requests "
                         "where session_id=%s and request_id=%s", (session, request))
                     self.assertEqual(cur.fetchone()[0], original[0])
             finally:
