@@ -234,7 +234,10 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
                     "Rider release routing TAR entry extends past end of archive"
                 }
                 val type = header[156].toInt().toChar()
-                if ((type == '0' || type == '\u0000') && size > 0L) foundTile = true
+                // Valhalla graph tiles use .gph payloads. A TAR containing only an
+                // unrelated nonempty README must not satisfy the release gate.
+                if ((type == '0' || type == '\u0000') && size > 0L &&
+                    name.endsWith(".gph", ignoreCase = true)) foundTile = true
                 offset = next
                 entries++
             }
