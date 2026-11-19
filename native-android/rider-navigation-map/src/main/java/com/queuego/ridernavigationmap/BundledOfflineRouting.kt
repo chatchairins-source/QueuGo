@@ -79,9 +79,7 @@ object BundledOfflineRouting {
         if (target.isFile && target.length() == expectedBytes && sha256(target) == expectedHash) return
         // Reclaim a corrupt cached graph before checking free space. Otherwise the
         // old bytes can prevent recovery when storage is nearly full.
-        if (target.exists()) {
-            check(target.isFile && target.delete()) { "Cannot remove invalid offline graph cache" }
-        }
+        reclaimInvalidOfflineGraphCache(target)
         require(target.parentFile!!.usableSpace > expectedBytes + 32 * 1024 * 1024) {
             "พื้นที่จัดเก็บไม่พอสำหรับข้อมูลเส้นทางออฟไลน์"
         }
@@ -133,4 +131,11 @@ internal fun readBoundedRoutingText(input: InputStream, maxBytes: Int): String {
         output.write(buffer, 0, count)
     }
     return output.toString(Charsets.UTF_8.name())
+}
+
+/** Fail closed on directories and reclaim corrupt cached bytes before the space check. */
+internal fun reclaimInvalidOfflineGraphCache(target: File) {
+    if (target.exists()) {
+        check(target.isFile && target.delete()) { "Cannot remove invalid offline graph cache" }
+    }
 }
