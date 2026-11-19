@@ -20,7 +20,7 @@ from uuid import UUID
 class RevokedReplayDatabaseTest(unittest.TestCase):
     def test_revoked_session_cannot_replay_existing_request(self):
         if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
-            self.skipTest("Disposable database explicitly required")
+            self.fail("Integration test NOT RUN: set QUEUEGO_DISPOSABLE_DB=1 and supply a loopback test database")
         url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
         parsed = urlparse(url)
         host = (parsed.hostname or "").lower()
@@ -91,7 +91,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
     def test_expired_session_cannot_replay_existing_request(self):
         """A previously successful checkout must not bypass session expiry."""
         if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
-            self.skipTest("Disposable database explicitly required")
+            self.fail("Integration test NOT RUN: set QUEUEGO_DISPOSABLE_DB=1 and supply a loopback test database")
         url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
         parsed = urlparse(url)
         if parsed.scheme not in ("postgres", "postgresql") or (
