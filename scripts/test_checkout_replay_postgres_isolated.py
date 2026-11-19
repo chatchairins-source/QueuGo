@@ -487,7 +487,10 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                             (session, forged_request, existing[0], existing[1]),
                         )
                         affected = cur.rowcount
-                    except psycopg.errors.InsufficientPrivilege:
+                    except (psycopg.errors.InsufficientPrivilege,
+                            psycopg.errors.CheckViolation):
+                        # PostgreSQL may reject the INSERT through GRANT or
+                        # through RLS WITH CHECK; both enforce the boundary.
                         pass
                     finally:
                         cur.execute("rollback to savepoint forged_request_attempt")
