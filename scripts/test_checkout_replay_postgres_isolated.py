@@ -603,5 +603,42 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
             finally:
                 conn.rollback()
 
+
+    def test_anon_has_no_truncate_privilege_on_checkout_tables(self):
+        """TRUNCATE bypasses row-level security; deny it even on empty tables."""
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.fail("Integration test NOT RUN: disposable database required")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if (parsed.scheme not in ("postgres", "postgresql")
+                or (parsed.hostname or "").lower() not in ("localhost", "127.0.0.1", "::1")
+                or "pkypiqhlrmzocysgeqew" in url.lower()):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+        with psycopg.connect(url, autocommit=False) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(cur.fetchone()[0], ("postgres", "template0", "template1"))
+                    cur.execute("set local role anon")
+                    cur.execute("select current_user, session_user")
+                    active_role, login_role = cur.fetchone()
+                    self.assertEqual(active_role, "anon")
+                    self.assertNotEqual(login_role, "anon")
+                    for table in ("qg_table_requests", "qg_table_sessions"):
+                        with self.subTest(table=table):
+                            cur.execute(
+                                "select has_table_privilege(current_user, %s, 'TRUNCATE')",
+                                ("public." + table,),
+                            )
+                            self.assertFalse(cur.fetchone()[0],
+                                             "anon must not bypass RLS via TRUNCATE on " + table)
+            finally:
+                conn.rollback()
+
+
 if __name__ == "__main__":
     unittest.main()
