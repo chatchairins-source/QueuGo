@@ -321,6 +321,8 @@ jobs:
         run: node tests/native-launcher-assets.cjs
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
+      - name: Verify fail-closed Native pilot APK artifact publication
+        run: node tests/native-apk-artifact-policy.cjs
       - name: Build and bundle pinned nationwide offline map
         if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' }}
         env:
@@ -406,16 +408,6 @@ jobs:
             sha256sum customer-debug.apk merchant-debug.apk rider-debug.apk > SHA256SUMS
             sha256sum --check SHA256SUMS
           )
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: queuego-native-pilot-apks
-          path: |
-            artifacts/native-pilot-apks/customer-debug.apk
-            artifacts/native-pilot-apks/merchant-debug.apk
-            artifacts/native-pilot-apks/rider-debug.apk
-            artifacts/native-pilot-apks/SHA256SUMS
-            artifacts/native-pilot-apks/PROVENANCE.txt
-          if-no-files-found: error
       - name: Regression test bounded Android SDK download recovery
         run: python3 -m unittest discover -s native-android/qa -p 'test_android_sdk_recovery.py'
       - name: Enable runner-only access to Android acceleration
@@ -454,6 +446,19 @@ jobs:
             artifacts/rider-navigation-map-runtime/
             native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
           if-no-files-found: warn
+      # This artifact is intentionally unavailable until the installed country
+      # map and no-network Android Runtime Gate have both succeeded.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-native-pilot-apks
+          path: |
+            artifacts/native-pilot-apks/customer-debug.apk
+            artifacts/native-pilot-apks/merchant-debug.apk
+            artifacts/native-pilot-apks/rider-debug.apk
+            artifacts/native-pilot-apks/SHA256SUMS
+            artifacts/native-pilot-apks/PROVENANCE.txt
+          if-no-files-found: error
       - name: Export freshly built role APKs after runtime gates
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
         run: |
