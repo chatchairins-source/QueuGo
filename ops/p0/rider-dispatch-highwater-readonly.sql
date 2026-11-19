@@ -36,6 +36,9 @@ stats AS (
     (SELECT count(*) FROM overdue)::integer AS overdue_searching_orders,
     (SELECT count(*) FROM public.qg_rider_order_offers x
       JOIN overdue o ON o.id=x.order_id)::integer AS late_active_offers,
+    (SELECT count(*) FROM public.qg_rider_order_offers x
+      JOIN public.orders o ON o.id=x.order_id
+      WHERE o.status<>'searching_rider' OR o.rider_id IS NOT NULL)::integer AS invalid_status_active_offers,
     (SELECT count(*) FROM public.qg_rider_offer_history x
       JOIN overdue o ON o.id=x.order_id)::bigint AS overdue_historical_offers,
     (SELECT count(*) FROM public.qg_rider_offer_history x
@@ -50,7 +53,7 @@ stats AS (
 )
 SELECT *,
   CASE
-    WHEN overdue_searching_orders>0 OR late_active_offers>0
+    WHEN overdue_searching_orders>0 OR late_active_offers>0 OR invalid_status_active_offers>0
       OR overdue_offers_last_hour>0 OR overdue_notifications_last_hour>0
       OR overdue_offer_attempts_above_120>0
     THEN 'NO_GO_DISPATCH_P0'
