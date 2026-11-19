@@ -324,7 +324,7 @@ jobs:
       - name: Verify fail-closed Native pilot APK artifact publication
         run: node tests/native-apk-artifact-policy.cjs
       - name: Build and bundle pinned nationwide offline map
-        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' || github.head_ref == 'work-native-reconcile-main-20261114' || startsWith(github.ref_name, 'worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') }}
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' || startsWith(github.ref_name, 'work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref_name, 'worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') }}
         env:
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
           QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261101.osm.pbf
