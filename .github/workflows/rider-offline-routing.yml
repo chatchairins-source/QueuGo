@@ -10,6 +10,7 @@ on:
       - 'native-android/merchant/**'
       - 'native-android/qa/run-rider-offline-routing.py'
       - 'native-android/qa/run-rider-fused-gps.py'
+      - 'native-android/qa/test-rider-fused-gps-preflight.py'
       - 'native-android/qa/maplibre-swiftshader/**'
       - 'native-android/build.gradle.kts'
       - 'native-android/settings.gradle.kts'
@@ -188,6 +189,7 @@ jobs:
           sha256sum -c artifacts/rider-offline-routing/apk.sha256
       - name: Verify real Fused GPS on Google APIs emulator using the same Rider APK
         run: |
+          python3 native-android/qa/test-rider-fused-gps-preflight.py
           python3 native-android/qa/run-rider-fused-gps.py
           sha256sum -c artifacts/rider-offline-routing/apk.sha256
       - name: Split the exact installed internal candidate for verified transfer
