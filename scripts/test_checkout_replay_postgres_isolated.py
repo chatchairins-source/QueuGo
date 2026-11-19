@@ -279,5 +279,85 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
             finally:
                 conn.rollback()
 
+
+    def test_concurrent_existing_request_replay_is_idempotent(self):
+        """Two anon clients replaying one successful request must see one durable row.
+
+        Each client owns its connection and transaction; the barrier synchronizes
+        the calls. This is an isolated replay race, not a new-checkout race.
+        """
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.fail("Integration test NOT RUN: disposable database required")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if (parsed.scheme not in ("postgres", "postgresql")
+                or (parsed.hostname or "").lower() not in ("localhost", "127.0.0.1", "::1")
+                or "pkypiqhlrmzocysgeqew" in url.lower()):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+        from concurrent.futures import ThreadPoolExecutor
+        from threading import Barrier
+
+        session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
+        device = str(UUID(os.environ["QUEUEGO_TEST_DEVICE_KEY"]))
+        request = str(UUID(os.environ["QUEUEGO_TEST_REQUEST"]))
+        items = json.dumps(json.loads(os.environ["QUEUEGO_TEST_ITEMS_JSON"]))
+        lat = float(os.environ["QUEUEGO_TEST_LAT"])
+        lng = float(os.environ["QUEUEGO_TEST_LNG"])
+        barrier = Barrier(2, timeout=15)
+
+        def replay_once(_):
+            with psycopg.connect(url, autocommit=False, connect_timeout=10) as conn:
+                try:
+                    with conn.cursor() as cur:
+                        cur.execute("select current_database()")
+                        if cur.fetchone()[0] in ("postgres", "template0", "template1"):
+                            raise AssertionError("Use a dedicated disposable test database")
+                        cur.execute("set local statement_timeout = '15000ms'")
+                        cur.execute("set local role anon")
+                        cur.execute("select current_user")
+                        if cur.fetchone()[0] != "anon":
+                            raise AssertionError("Replay must execute as anon")
+                        barrier.wait()
+                        cur.execute(
+                            "select public.qg_table_checkout(%s,%s,%s,%s::jsonb,%s,%s)",
+                            (session, device, request, items, lat, lng),
+                        )
+                        result = cur.fetchone()[0]
+                        if result["duplicate"] is not True or result["reason"] != "same_request":
+                            raise AssertionError("Concurrent replay was not recognized as same_request")
+                        return True
+                finally:
+                    conn.rollback()
+
+        with psycopg.connect(url, autocommit=False) as check_conn:
+            try:
+                with check_conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(cur.fetchone()[0], ("postgres", "template0", "template1"))
+                    cur.execute(
+                        "select count(*) from public.qg_table_requests where session_id=%s and request_id=%s",
+                        (session, request),
+                    )
+                    self.assertEqual(cur.fetchone()[0], 1, "Fixture needs one committed checkout")
+            finally:
+                check_conn.rollback()
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(replay_once, range(2)))
+        self.assertEqual(results, [True, True])
+        with psycopg.connect(url, autocommit=False) as check_conn:
+            try:
+                with check_conn.cursor() as cur:
+                    cur.execute(
+                        "select count(*) from public.qg_table_requests where session_id=%s and request_id=%s",
+                        (session, request),
+                    )
+                    self.assertEqual(cur.fetchone()[0], 1, "Concurrent replay must not duplicate requests")
+            finally:
+                check_conn.rollback()
+
 if __name__ == "__main__":
     unittest.main()
