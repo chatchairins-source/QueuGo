@@ -32,6 +32,29 @@ class BundledOfflineRoutingCacheRecoveryTest {
             directory.deleteRecursively()
         }
     }
+    @Test fun rejectsSymlinkedOfflineGraphRootAndGeneratedConfigWithoutTouchingTarget() {
+        val directory = Files.createTempDirectory("queuego-graph-root-link").toFile()
+        try {
+            val real = directory.resolve("real")
+            org.junit.Assert.assertTrue(real.mkdir())
+            val linkedRoot = directory.resolve("routing-root")
+            Files.createSymbolicLink(linkedRoot.toPath(), real.toPath())
+            assertThrows(IllegalStateException::class.java) {
+                rejectOfflineRoutingSymlink(linkedRoot, "offline graph root")
+            }
+            val config = real.resolve("config.json")
+            config.writeText("keep")
+            val linkedConfig = directory.resolve("valhalla.json")
+            Files.createSymbolicLink(linkedConfig.toPath(), config.toPath())
+            assertThrows(IllegalStateException::class.java) {
+                rejectOfflineRoutingSymlink(linkedConfig, "generated offline routing config")
+            }
+            org.junit.Assert.assertEquals("keep", config.readText())
+            rejectOfflineRoutingSymlink(real, "offline graph root")
+        } finally {
+            directory.deleteRecursively()
+        }
+    }
     @Test fun refusesSymlinkAtOfflineGraphCachePath() {
         val directory = Files.createTempDirectory("queuego-graph-symlink").toFile()
         try {
