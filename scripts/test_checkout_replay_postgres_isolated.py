@@ -180,5 +180,57 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                 conn.rollback()
 
 
+    def test_anon_cannot_mutate_table_session_directly(self):
+        """Verify anon cannot revoke a session directly, even if UPDATE is granted.
+
+        Run against the same disposable seeded database as the replay tests.
+        A denied UPDATE may raise insufficient_privilege or affect zero rows
+        under RLS; both are acceptable, but an actual row update is a failure.
+        """
+        if os.getenv("QUEUEGO_DISPOSABLE_DB") != "1":
+            self.fail("Integration test NOT RUN: disposable database required")
+        url = os.environ["QUEUEGO_TEST_DATABASE_URL"]
+        parsed = urlparse(url)
+        if (parsed.scheme not in ("postgres", "postgresql")
+                or (parsed.hostname or "").lower() not in ("localhost", "127.0.0.1", "::1")
+                or "pkypiqhlrmzocysgeqew" in url.lower()):
+            self.fail("Only loopback disposable PostgreSQL is allowed")
+        try:
+            import psycopg
+        except ImportError:
+            self.fail("psycopg is required for integration tests")
+        session = str(UUID(os.environ["QUEUEGO_TEST_SESSION"]))
+        with psycopg.connect(url, autocommit=False) as conn:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute("select current_database()")
+                    self.assertNotIn(cur.fetchone()[0], ("postgres", "template0", "template1"))
+                    cur.execute("select revoked_at from public.qg_table_sessions where id=%s", (session,))
+                    row = cur.fetchone()
+                    self.assertIsNotNone(row, "Fixture session must exist")
+                    self.assertIsNone(row[0], "Fixture session must not be revoked")
+                    cur.execute("set local role anon")
+                    cur.execute("select current_user")
+                    self.assertEqual(cur.fetchone()[0], "anon")
+                    cur.execute("savepoint anon_update_attempt")
+                    affected = None
+                    try:
+                        cur.execute(
+                            "update public.qg_table_sessions set revoked_at=now() where id=%s",
+                            (session,),
+                        )
+                        affected = cur.rowcount
+                    except psycopg.errors.InsufficientPrivilege:
+                        pass
+                    finally:
+                        cur.execute("rollback to savepoint anon_update_attempt")
+                        cur.execute("reset role")
+                    self.assertEqual(affected or 0, 0, "anon must not modify table sessions")
+                    cur.execute("select revoked_at from public.qg_table_sessions where id=%s", (session,))
+                    self.assertIsNone(cur.fetchone()[0], "Session must remain unchanged")
+            finally:
+                conn.rollback()
+
+
 if __name__ == "__main__":
     unittest.main()
