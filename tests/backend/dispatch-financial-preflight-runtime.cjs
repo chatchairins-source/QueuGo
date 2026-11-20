@@ -28,8 +28,8 @@ async function main() {
       CREATE TABLE grocery_stock_reservations(order_id integer, released boolean);
       CREATE TABLE pos_inventory_reservations(order_id integer, released boolean);
       CREATE TABLE qg_rider_offer_history(order_id integer);
-      INSERT INTO orders(id,status,payment_status,payment_method,rider_search_started_at)
-        VALUES(1,'searching_rider','unpaid','cash',now()-interval '31 minutes');
+      INSERT INTO orders(id,status,payment_status,payment_method,rider_search_started_at,created_at)
+        VALUES(1,'searching_rider','unpaid','cash',now()-interval '31 minutes',now()-interval '35 minutes');
     `);
     let row = await snapshot();
     equal(row.configured_timeout_minutes, 30);
@@ -69,7 +69,9 @@ async function main() {
     }
     await db.exec('UPDATE orders SET rider_search_started_at=NULL;');
     row = await snapshot();
-    equal(row.unknown_search_start, 1);
+    // A reporting fallback remains available, but the actual rider search start is absent.
+    equal(row.missing_actual_rider_search_start, 1);
+    equal(row.unknown_search_start, 0);
     equal(row.financial_preflight_only_candidates, 0);
     assert.ok(Object.keys(row).every(key => !/(^id$|order_id|rider_id|address|phone)/.test(key)));
     checks++;
