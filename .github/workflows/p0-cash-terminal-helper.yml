@@ -1,0 +1,24 @@
+name: QueueGo P0 Cash Terminal Helper Review
+on:
+  pull_request:
+    branches: [work-native-reconcile-main-20261114]
+    paths:
+      - ops/p0/terminal-cash-dependents-review-only.sql
+      - tests/backend/terminal-cash-dependents-runtime.cjs
+      - tests/fixtures/cash-cancel-prod-snapshot-20261120.sql
+      - .github/workflows/p0-cash-terminal-helper.yml
+permissions:
+  contents: read
+jobs:
+  isolated-cash-helper:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Verify captured cash cancellation and guarded terminal cleanup
+        run: node tests/backend/terminal-cash-dependents-runtime.cjs

@@ -1,3 +1,10 @@
+## 2026-11-20 P0 cash dependent terminal-state candidate — REVIEW ONLY
+
+- Production READ ONLY catalog and aggregate: overdue ledger is pending/cash, no paid_at or processor reference; orders payment fields remain unknown. Cash-order lock table is an order-guard marker (order_id/locked_at), not evidence of a monetary balance or a captured payment. Do not delete it or infer permission to cancel.
+- Captured actual queuego_cancel_cash_dependents() definition MD5 8da535eedbd36995dcd259c3474fd201, owner postgres, ACL postgres/service_role only. Current helper cleans pending cash payments/deliveries for cancelled but not no_rider_available. Reproduced this gap in disposable PGlite.
+- Added ops/p0/terminal-cash-dependents-review-only.sql: preserves ordinary cancellation behavior and existing signature/ACL, covers only unassigned searching->no_rider_available with exactly one matching pending cash payment, no capture/reference, no money change, Market group, stock reservation, merchant receipt, rider advance/refund or progressed delivery. Reject unknown/historical state atomically. Keep guard marker; do not release funds or initiate transitions. Isolated 70 checks include baseline reproduction, old cancellation, NULL status, repeated update, ACL preservation, 18 negative financial states and downstream rollback.
+- NOT a migration/deployment or complete timeout lifecycle. No Production writes. Still requires exact-head CI, real PostgreSQL concurrency with all live triggers, audit/notification/stock lifecycle, migration drift, encrypted backup/actual restore, independent review and separately approved rollout. Do not use this candidate to resolve the live stranded order or claim #1268 closed.
+
 ## 2026-11-20 Reproduced Customer Android11 SurfaceView native crash
 
 - PR #1314 at `44a1b6a5` passed Customer API26/33/35. API30 run `44695889504` job `136152416974` crashed in the unchanged thirty-picker-cycle test: native `RefBase::incStrong` / `SurfaceControl.nativeSetFlags` / `SurfaceView.positionLost` on RenderThread after repeated disposal. This is an actual app-process SIGSEGV, not a test to retry away.
