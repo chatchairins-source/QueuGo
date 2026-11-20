@@ -90,12 +90,13 @@ private const val QUEUEGO_LOCATION_PICKER_LAYER = "queuego-location-picker-point
 
 internal fun queueGoOnlineMapOptions(context: Context): MapLibreMapOptions =
     MapLibreMapOptions.createFromAttributes(context)
-        // Android 11 SurfaceView can race RenderThread.positionLost with its
+        // Legacy SurfaceView can race RenderThread.positionLost with its
         // released SurfaceControl during repeated Compose picker disposal.
-        // Reproduced SIGSEGV in nativeSetFlags on API30 run 44695889504.
+        // Reproduced SIGSEGV in nativeSetFlags on API30 run 44695889504;
+        // API26 run 44697222895 also lost geographic pixels after EGL_BAD_MATCH.
         // TextureView renders in the normal view tree without that separate
-        // SurfaceControl. Other OS versions retain the default surface mode.
-        .textureMode(Build.VERSION.SDK_INT == Build.VERSION_CODES.R)
+        // SurfaceControl. Android12+ retains the default surface mode.
+        .textureMode(Build.VERSION.SDK_INT <= Build.VERSION_CODES.R)
 
 fun queueGoMapServiceBaseUrl(context: Context): String? = runCatching {
     context.packageManager
