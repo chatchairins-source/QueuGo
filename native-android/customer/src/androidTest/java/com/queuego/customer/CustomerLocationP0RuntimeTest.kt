@@ -37,7 +37,8 @@ class CustomerLocationP0RuntimeTest {
         val ready = AtomicBoolean(false)
         compose.setContent {
             com.queuego.shared.QgLocationPickerMap(
-                initialPoint = null, modifier = Modifier.fillMaxSize(),
+                initialPoint = null, recenterPoint = null, recenterToken = 0,
+                modifier = Modifier.fillMaxSize(),
                 onPointSelected = {}, onReady = { ready.set(it) })
         }
         compose.waitUntil(30_000) { ready.get() }
