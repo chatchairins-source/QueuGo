@@ -286,6 +286,38 @@ data class PosTaxSettings(
     val invoiceAddress: String? = null
 )
 
+/** Read-only merchant platform-credit amounts returned in minor THB units by an existing RPC.
+ * Never conflate this balance with POS customer loyalty, payment tender or stored-value sales.
+ */
+data class PosMerchantCreditSummary(
+    val enabled: Boolean,
+    val cashMinor: Long,
+    val promoMinor: Long,
+    val heldMinor: Long,
+    val availableMinor: Long
+)
+
+internal fun parsePosMerchantCreditSummary(row: JSONObject): PosMerchantCreditSummary {
+    require(row.optString("kind") == "merchant") { "ข้อมูลเครดิตไม่ใช่บัญชีร้านค้า" }
+    val enabled = row.opt("enabled") as? Boolean
+        ?: throw IllegalStateException("Server ไม่ส่งสถานะระบบเครดิตร้านค้า")
+
+    fun minor(name: String): Long {
+        val value = row.opt(name)
+        require(value != null && value != JSONObject.NULL) { "Server ไม่ส่งยอดเครดิตร้านค้า: $name" }
+        return value.toString().toLongOrNull()
+            ?: throw IllegalStateException("Server ส่งยอดเครดิตร้านค้าไม่ถูกต้อง: $name")
+    }
+
+    return PosMerchantCreditSummary(
+        enabled = enabled,
+        cashMinor = minor("cash_minor"),
+        promoMinor = minor("promo_minor"),
+        heldMinor = minor("held_minor"),
+        availableMinor = minor("available_minor")
+    )
+}
+
 data class PosSnapshot(
     val shopId: String,
     val shopName: String,
@@ -978,6 +1010,17 @@ class MerchantPosApi(
                 .put("p_branch_code", settings.branchCode ?: JSONObject.NULL)
                 .put("p_invoice_address", settings.invoiceAddress ?: JSONObject.NULL)
         )
+    }
+
+    // Existing authenticated platform credit RPC; read-only and scoped by
+    // qg_private.credit_owner('merchant') on the server. No local credit arithmetic.
+    suspend fun merchantCreditSummary(auth: NativeAuth): PosMerchantCreditSummary {
+        val raw = http.rpc(
+            "queuego_credit_summary",
+            auth.session.accessToken,
+            JSONObject().put("p_kind", "merchant").put("p_topup", JSONObject.NULL)
+        )
+        return parsePosMerchantCreditSummary(objectValue(raw))
     }
 
     suspend fun ownerDashboard(auth: NativeAuth, days: Int): PosOwnerDashboard {
