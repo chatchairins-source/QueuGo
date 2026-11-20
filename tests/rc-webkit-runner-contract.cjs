@@ -23,5 +23,20 @@ for (const required of [
 ]) {
   assert.ok(job.includes(required), 'RC browser/evidence gate must remain enabled: ' + required);
 }
-console.log(JSON.stringify({checks: 11, failures: 0,
-  scope: 'RC supported WebKit runner, full browser gates and failure evidence retained'}));
+assert.match(job, /for attempt in 1 2; do/, 'bounded installer retries must remain enabled');
+assert.match(job, /timeout --kill-after=15s 900s npx playwright-core install --with-deps webkit/,
+  'bounded but sufficient WebKit installer must run the actual dependencies command');
+assert.match(job, /apt_locks=\(\/var\/lib\/dpkg\/lock-frontend/,
+  'apt retry must inspect the real dpkg frontend lock');
+assert.match(job, /for lock_wait in \{1\.\.24\}; do/,
+  'orphaned apt lock wait must be bounded');
+assert.match(job, /if ! sudo fuser "\$\{apt_locks\[@\]\}"/,
+  'retry must verify all tracked apt locks are released');
+assert.match(job, /if sudo fuser "\$\{apt_locks\[@\]\}"[^]*?echo "::error::Prior WebKit apt installer still holds dpkg\/apt locks; fail closed"\s*\n\s*exit 1/,
+  'a still-locked package manager must block rather than race retry');
+assert.doesNotMatch(job, /(?:pkill|killall) .*apt/,
+  'CI must not blindly terminate system package processes');
+assert.match(job, /echo "::error::WebKit installer failed twice; browser gates remain blocking"\s*\n\s*exit 1/, 'terminal WebKit failure must fail RC');
+assert.doesNotMatch(job, /continue-on-error:\s*true/, 'browser tests must never be bypassed');
+console.log(JSON.stringify({checks: 20, failures: 0,
+  scope: 'RC supported WebKit runner, bounded installer retries and fail-closed browser gates'}));

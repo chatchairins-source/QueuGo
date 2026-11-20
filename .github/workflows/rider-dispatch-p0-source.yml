@@ -1,0 +1,59 @@
+name: QueueGo Rider Dispatch P0 Source Gate
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - 'work-native-**'
+    paths:
+      - 'ops/p0/rider-*.sql'
+      - 'tests/rider-offer-deadline*.cjs'
+      - 'tests/rider-dispatch-highwater*.cjs'
+      - 'tests/fixtures/rider-dispatch-prod-snapshot-20261119.sql'
+      - 'tests/fixtures/rider-dispatch-schema.cjs'
+      - '.github/workflows/rider-dispatch-p0-source.yml'
+      - 'package.json'
+      - 'package-lock.json'
+  push:
+    branches:
+      - 'fix/p0-rider-offer-timeout-containment-20261119'
+      - 'work-native-reconcile-main-20261114'
+    paths:
+      - 'ops/p0/rider-*.sql'
+      - 'tests/rider-offer-deadline*.cjs'
+      - 'tests/rider-dispatch-highwater*.cjs'
+      - 'tests/fixtures/rider-dispatch-prod-snapshot-20261119.sql'
+      - 'tests/fixtures/rider-dispatch-schema.cjs'
+      - '.github/workflows/rider-dispatch-p0-source.yml'
+      - 'package.json'
+      - 'package-lock.json'
+permissions:
+  contents: read
+concurrency:
+  group: rider-dispatch-p0-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolated-postgres-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 pinned
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 pinned
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install exact locked test dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify isolated PGlite guard, live dispatch snapshot, and read-only metrics
+        run: |
+          set -euo pipefail
+          node tests/rider-offer-deadline-guard.cjs
+          node tests/rider-offer-deadline-live-dispatch.cjs
+          node tests/rider-dispatch-highwater-readonly.cjs
+      - name: Enforce source-only nondeployment
+        run: |
+          set -euo pipefail
+          test -f ops/p0/rider-offer-deadline-guard.sql
+          test -f ops/p0/rider-dispatch-highwater-readonly.sql
+          test -f tests/fixtures/rider-dispatch-prod-snapshot-20261119.sql
+          ! grep -Eiq '(^|[[:space:]])(DROP TABLE|TRUNCATE TABLE|ALTER TABLE .* DISABLE ROW LEVEL SECURITY)([[:space:]]|$)' ops/p0/rider-offer-deadline-guard.sql
+          echo 'P0 guard is source-only. No Production migration or live-order mutation performed.'

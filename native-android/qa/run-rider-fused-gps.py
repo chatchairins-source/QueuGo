@@ -46,6 +46,38 @@ def wait_boot(proc):
         time.sleep(3)
     raise RuntimeError("Google APIs emulator boot timeout")
 
+def ensure_emulator_location_enabled():
+    # Permissions alone do not turn on Android's global Location switch.
+    # AOSP API 30 supports `cmd location`; fail closed if it is unavailable.
+    adb("shell", "cmd", "location", "set-location-enabled", "true", timeout=15)
+    # Google APIs emulators can temporarily drop ADB transport during
+    # location-provider startup. Retry only ADB transport exit 255, never
+    # a disabled switch, unknown command, or a GPS instrumentation failure.
+    for attempt in range(3):
+        try:
+            state = adb("shell", "cmd", "location", "is-location-enabled",
+                        capture_output=True, text=True, timeout=15).stdout.strip()
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 255:
+                raise
+            if attempt < 2:
+                time.sleep(2)
+                continue
+            # Android 11 (API 30) can lack the newer 'is-location-enabled'
+            # shell subcommand even though 'set-location-enabled' succeeded.
+            # Settings.Secure.LOCATION_MODE is retained on API 30 but
+            # deprecated/removed on newer versions; this gate pins API 30.
+            mode = adb("shell", "settings", "get", "secure", "location_mode",
+                       capture_output=True, text=True, timeout=15).stdout.strip()
+            if mode in ("1", "2", "3"):
+                print("API30 legacy master Location mode verified: " + mode, flush=True)
+                return
+            raise RuntimeError("API30 master Location switch not verified: " + repr(mode))
+        if state != "true":
+            raise RuntimeError("Google APIs emulator master Location switch is disabled: " + repr(state))
+        return
+    raise RuntimeError("Unable to verify Google APIs emulator master Location switch")
+
 def run_case(label, longitude, latitude):
     # Run the identical instrumented test twice in separate target processes.
     adb("shell", "am", "force-stop", PACKAGE)
@@ -138,6 +170,7 @@ def main():
                 provider = adb("shell", "pm", "list", "packages", "com.google.android.gms",
                                capture_output=True, text=True).stdout
                 assert "com.google.android.gms" in provider, "Google Play services absent"
+                ensure_emulator_location_enabled()
                 run_case(label, longitude, latitude)
             finally:
                 subprocess.run([*ADB_TARGET, "emu", "kill"], capture_output=True, timeout=15)
