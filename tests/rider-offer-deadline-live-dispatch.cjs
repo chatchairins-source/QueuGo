@@ -72,6 +72,17 @@ async function main(){
    eq(await run(),1,'admin increase to 120 minutes permits dispatch for a valid order');
    eq(await count('notifications',804),1,'notification reappears only when offer is legitimate');
 
+   // Reproduce the real dispatcher deriving its next attempt from historical offers.
+   // Even with a generous configured deadline, attempt 121 must not create
+   // another offer or another notification after 120 prior expirations.
+   await db.exec("UPDATE system_settings SET value='{\"orderTimeout\":120}'::jsonb WHERE key='app'");
+   await seed(805,'1 minute');
+   await db.query("INSERT INTO qg_rider_offer_history(order_id,rider_id,offered_at,resolved_at,outcome,attempt) SELECT $1,$2,now()-interval '2 minutes',now()-interval '2 minutes','expired',generate_series(1,120)",[id(805),id(11)]);
+   eq(await run(),0,'real dispatcher must not create attempt 121');
+   eq(await count('qg_rider_order_offers',805),0,'hard cap leaves no active offer');
+   eq(await count('notifications',805),0,'hard cap cannot amplify notifications');
+   eq(await count('qg_rider_offer_history',805),120,'hard cap must not create another history row');
+
    assert(!/\b(?:update|delete)\s+public\.orders\b/i.test(guard),'guard cannot modify order state');checks++;
    assert(!/\b(?:update|delete|insert\s+into)\s+public\.(?:payments|settlements)\b/i.test(guard),'guard cannot modify money');checks++;
  }finally{await db.close();}
