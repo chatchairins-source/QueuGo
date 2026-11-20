@@ -15,7 +15,10 @@ async function main(){
    await db.exec("CREATE FUNCTION qg_private.ride_owner_authorized(uuid) RETURNS boolean LANGUAGE sql AS $$SELECT false$$;");
    // Two real codepaths: the owner-configured timeout trigger and the captured
    // 2026-11-19 live PostgreSQL dispatcher body, not a synthetic dispatcher.
-   const guard=fs.readFileSync('ops/p0/rider-offer-deadline-guard.sql','utf8');
+   const guard=fs.readFileSync('supabase/migrations/20261120043000_rider_offer_deadline_guard_p0.sql','utf8');
+   const source=fs.readFileSync('ops/p0/rider-offer-deadline-guard.sql','utf8');
+   assert(guard.endsWith(source), 'migration must preserve reviewed offer guard byte-for-byte');
+   checks++;
    const deployed=fs.readFileSync('tests/fixtures/rider-dispatch-prod-snapshot-20261119.sql','utf8');
    assert(deployed.includes('left join qg_private.rider_destination_preferences'), 'preserve live destination ranking');
    assert(deployed.includes('for update of r skip locked'), 'preserve production rider claim serialization');
