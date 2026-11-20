@@ -96,15 +96,18 @@ jobs:
             fi
             echo "QG_MAP_BOOTSTRAP_PACKAGE=0" >> "${GITHUB_ENV}"
           else
-            echo "Pinned Geofabrik source is no longer available; restoring the exact verified package from successful Map Engine run 43569694827 (retained through 2026-11-28)."
+            echo "Pinned Geofabrik source unavailable; restoring identical verified 2026-10-15 Buriram package from durable versioned GitHub Release."
             BOOTSTRAP_ZIP="$(mktemp --suffix=.zip)"
             BOOTSTRAP_DIR="$(mktemp -d)"
-            curl --fail --location --retry 3 \
-              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-              -H "Accept: application/vnd.github+json" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/14104031368/zip" \
-              --output "${BOOTSTRAP_ZIP}"
+            # Read a release TAG + exact asset NAME; never fetch a mutable 'latest' or an expiring Actions artifact.
+            # GH_TOKEN is scoped to the existing read-only GITHUB_TOKEN; SHA-256 below guards release asset replacement.
+            GH_TOKEN="${GITHUB_TOKEN}" gh release download \
+              "queuego-buriram-map-ci-20261015-preserved" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --pattern "buriram-bootstrap.zip" \
+              --dir "${BOOTSTRAP_DIR}"
+            test -s "${BOOTSTRAP_DIR}/buriram-bootstrap.zip"
+            mv -- "${BOOTSTRAP_DIR}/buriram-bootstrap.zip" "${BOOTSTRAP_ZIP}"
             echo "1660dcfc376440d9811a6081bab3158332c25005db0441c92fdf2de17fefb7fe  ${BOOTSTRAP_ZIP}" | sha256sum --check
             unzip -q "${BOOTSTRAP_ZIP}" -d "${BOOTSTRAP_DIR}"
             echo "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d  ${BOOTSTRAP_DIR}/map-data/buriram.osm.pbf" | sha256sum --check

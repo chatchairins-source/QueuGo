@@ -50,6 +50,17 @@ class EmulatorInstallRecoveryTests(unittest.TestCase):
                 self.assertNotIn('run(["install"', source)
                 self.assertNotIn('ADB+["install"', source)
 
+    def test_offline_routing_emulator_does_not_stream_large_apks(self):
+        # Route acceptance must install exactly the signed APK verified on host.
+        # Non-streaming transfer avoids corruption on hosted Android emulators.
+        # The existing helper rejects non-transient signing errors and verifies pm path.
+        source = Path(__file__).with_name("run-rider-offline-routing.py").read_text(encoding="utf-8")
+        self.assertIn("from adb_install_recovery import install_verified_apk", source)
+        self.assertEqual(source.count("install_verified_apk(adb,"), 2)
+        self.assertIn("install_verified_apk(adb, tests[0], 'com.queuego.rider.test')", source)
+        self.assertIn("install_verified_apk(adb, repo/'native-android/rider/build/outputs/apk/debug/rider-debug.apk', 'com.queuego.rider')", source)
+        self.assertNotIn("run(adb + ['install'", source)
+
     def test_verified_non_streaming_install(self):
         invoke = Mock(side_effect=[result(out="Success\n"), result(out="package:/data/app/rider/base.apk\n")])
         install_verified_apk(["adb", "-s", "emulator-5554"], "/tmp/rider.apk",

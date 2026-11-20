@@ -21,7 +21,20 @@ registry.mkdir(parents=True, exist_ok=True)
 os.environ['ANDROID_AVD_HOME'] = str(registry)
 manager = sdk / 'cmdline-tools/latest/bin'
 image = f'system-images;android-{api};default;x86_64'
-run([manager / 'sdkmanager', 'emulator', 'platform-tools', image], input='y\n' * 100, text=True, timeout=300)
+def install_emulator_sdk():
+    # Android artifact mirrors can fail during unzip/download on one API image.
+    # Retry only the SDK installer once; real picker tests and assertions remain mandatory.
+    command = [manager / 'sdkmanager', 'emulator', 'platform-tools', image]
+    for attempt in (1, 2):
+        try:
+            return run(command, input='y\n' * 100, text=True, timeout=300)
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+            if attempt == 2:
+                raise
+            print('::warning::Customer Android SDK setup failed; retrying once', flush=True)
+            time.sleep(5)
+
+install_emulator_sdk()
 name = 'queuego_p0_' + api
 run([manager / 'avdmanager', 'create', 'avd', '-n', name, '-k', image, '-p', registry / name, '-d', 'pixel'], input='no\n', text=True)
 adb = [sdk / 'platform-tools/adb', '-s', 'emulator-5554']
