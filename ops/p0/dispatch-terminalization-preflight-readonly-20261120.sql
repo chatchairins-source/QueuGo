@@ -22,7 +22,7 @@ WITH overdue AS (
         EXISTS (SELECT 1 FROM public.pos_inventory_reservations p WHERE p.order_id=o.id AND p.released IS DISTINCT FROM true) AS unreleased_pos_reservation_exists,
         EXISTS (SELECT 1 FROM public.payments p WHERE p.order_id=o.id AND (p.status IS NULL OR lower(p.status) NOT IN ('failed','cancelled','canceled'))) AS payment_requires_reconciliation,
         (SELECT count(*) FROM public.qg_rider_offer_history h WHERE h.order_id=o.id) AS offer_history_count,
-        (SELECT count(*) FROM public.orders sibling WHERE sibling.market_order_id=o.market_order_id AND sibling.id<>o.id AND sibling.status NOT IN ('cancelled')) AS active_market_siblings
+        (SELECT count(*) FROM public.orders sibling WHERE sibling.market_order_id=o.market_order_id AND sibling.id<>o.id AND sibling.status IS DISTINCT FROM 'cancelled') AS active_market_siblings
  FROM overdue o
 )
 SELECT count(*) AS searching_orders,
