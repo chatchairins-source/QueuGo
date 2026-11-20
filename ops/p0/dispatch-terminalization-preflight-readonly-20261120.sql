@@ -50,12 +50,14 @@ SELECT count(*) AS searching_orders,
        count(*) FILTER (WHERE cancelled_at IS NOT NULL) AS contradictory_cancelled_timestamp,
        count(*) FILTER (WHERE market_order_id IS NOT NULL) AS market_group_needs_review,
        count(*) FILTER (WHERE live_offer_row_exists) AS with_offer_row,
-       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND search_start IS NOT NULL AND search_start <= now() AND payment_status='unpaid' AND payment_method IS NOT NULL AND btrim(payment_method)<>'' AND paid_at IS NULL AND rider_assigned_at IS NULL AND cancelled_at IS NULL AND NOT cash_lock_exists AND NOT live_offer_row_exists AND NOT payment_ledger_exists AND NOT grocery_reservation_exists AND NOT pos_reservation_exists AND active_market_siblings=0 AND market_order_id IS NULL) AS financial_preflight_only_candidates,
-       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_ledger_exists OR merchant_cash_receipt_exists OR rider_cash_advance_exists OR rider_cash_refund_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR payment_method IS NULL OR btrim(payment_method) = '' OR paid_at IS NOT NULL OR rider_assigned_at IS NOT NULL OR cancelled_at IS NOT NULL OR live_offer_row_exists OR active_market_siblings>0)) AS overdue_blocked_for_manual_review,
+       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND search_start IS NOT NULL AND search_start <= now() AND payment_status='unpaid' AND payment_method IS NOT NULL AND btrim(payment_method)<>'' AND paid_at IS NULL AND rider_assigned_at IS NULL AND cancelled_at IS NULL AND NOT cash_lock_exists AND NOT live_offer_row_exists AND NOT payment_ledger_exists AND NOT merchant_cash_receipt_exists AND NOT rider_cash_advance_exists AND NOT rider_cash_refund_exists AND NOT grocery_reservation_exists AND NOT pos_reservation_exists AND active_market_siblings=0 AND market_order_id IS NULL) AS financial_preflight_only_candidates,
+       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_ledger_exists OR merchant_cash_receipt_exists OR rider_cash_advance_exists OR rider_cash_refund_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR payment_method IS NULL OR btrim(payment_method) = '' OR paid_at IS NOT NULL OR rider_assigned_at IS NOT NULL OR cancelled_at IS NOT NULL OR live_offer_row_exists OR active_market_siblings>0 OR market_order_id IS NOT NULL)) AS overdue_blocked_for_manual_review,
        coalesce(max(offer_history_count),0) AS max_offer_history,
        count(*) FILTER (WHERE active_market_siblings>0) AS with_active_siblings
 FROM facts;
 COMMIT;
+-- Candidate and blocked counts are intentionally disjoint for the financial flags;
+-- any merchant receipt, rider cash advance/refund, or market group is fail-closed.
 -- financial_preflight_only_candidates is NOT authorization to cancel: stock movement,
 -- merchant notification outbox, settlement, and payment gateway state remain unverified.
 -- This is an aggregate-only snapshot, NOT proof that a cancellation is safe.
