@@ -92,7 +92,7 @@ async function check(fn, input, accepted) {
     load: async () => {}, 
   };
   vm.createContext(payCtx);
-  const payLine = source.split('\\n').find(line => line.trim().startsWith('window.qgPosConfirmPay='));
+  const payLine = source.split('\n').find(line => line.trim().startsWith('window.qgPosConfirmPay='));
   assert.ok(payLine, 'missing qgPosConfirmPay');
   vm.runInContext(payLine, payCtx);
   await payCtx.window.qgPosConfirmPay();
