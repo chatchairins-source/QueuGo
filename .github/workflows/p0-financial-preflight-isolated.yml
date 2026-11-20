@@ -7,6 +7,8 @@ on:
       - fix/backend-p0-terminalization-preflight-20261120
     paths:
       - 'tests/backend/dispatch-financial-preflight-negative.sql'
+      - 'tests/backend/dispatch-financial-preflight-runtime.cjs'
+      - 'ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql'
       - '.github/workflows/p0-financial-preflight-isolated.yml'
   pull_request:
     branches:
@@ -14,6 +16,8 @@ on:
       - work-native-reconcile-main-20261114
     paths:
       - 'tests/backend/dispatch-financial-preflight-negative.sql'
+      - 'tests/backend/dispatch-financial-preflight-runtime.cjs'
+      - 'ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql'
       - '.github/workflows/p0-financial-preflight-isolated.yml'
 
 permissions:
@@ -38,6 +42,10 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned v4
+      - name: Test actual read-only operator SQL on disposable PGlite
+        run: |
+          npm ci --ignore-scripts
+          node tests/backend/dispatch-financial-preflight-runtime.cjs
       - name: Confirm synthetic temp-table-only fixture
         run: |
           set -euo pipefail
