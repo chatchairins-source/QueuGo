@@ -100,6 +100,15 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
         self.assertIn("raise AssertionError(\"Real Fused GPS test failed:", SOURCE)
         self.assertIn('"allowDebugStoreInjection", "false"', SOURCE)
 
+    def test_rejected_fused_subscription_stops_navigation_service(self):
+        # Source contract only; the exact-head Android emulator gate remains mandatory.
+        service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
+        failure = service.split('.addOnFailureListener { error ->', 1)[1].split('fusedClient.lastLocation', 1)[0]
+        self.assertIn('foreground_fused_subscription_failed', failure)
+        self.assertIn('locationUpdatesStarted = false', failure)
+        self.assertIn('RiderNavigationLocationStore.clear()', failure)
+        self.assertIn('stopSelf()', failure)
+
     def test_preflight_required_before_real_instrumentation(self):
         self.assertIn("ensure_emulator_location_enabled()\n                run_case(label, longitude, latitude)", SOURCE)
         self.assertIn('"allowDebugStoreInjection", "false"', SOURCE)
