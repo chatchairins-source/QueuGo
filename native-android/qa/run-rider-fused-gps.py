@@ -50,10 +50,22 @@ def ensure_emulator_location_enabled():
     # Permissions alone do not turn on Android's global Location switch.
     # AOSP API 30 supports `cmd location`; fail closed if it is unavailable.
     adb("shell", "cmd", "location", "set-location-enabled", "true", timeout=15)
-    state = adb("shell", "cmd", "location", "is-location-enabled",
-                capture_output=True, text=True, timeout=15).stdout.strip()
-    if state != "true":
-        raise RuntimeError("Google APIs emulator master Location switch is disabled: " + repr(state))
+    # Google APIs emulators can temporarily drop ADB transport during
+    # location-provider startup. Retry only ADB transport exit 255, never
+    # a disabled switch, unknown command, or a GPS instrumentation failure.
+    for attempt in range(3):
+        try:
+            state = adb("shell", "cmd", "location", "is-location-enabled",
+                        capture_output=True, text=True, timeout=15).stdout.strip()
+        except subprocess.CalledProcessError as error:
+            if error.returncode != 255 or attempt == 2:
+                raise
+            time.sleep(2)
+            continue
+        if state != "true":
+            raise RuntimeError("Google APIs emulator master Location switch is disabled: " + repr(state))
+        return
+    raise RuntimeError("Unable to verify Google APIs emulator master Location switch")
 
 def run_case(label, longitude, latitude):
     # Run the identical instrumented test twice in separate target processes.
