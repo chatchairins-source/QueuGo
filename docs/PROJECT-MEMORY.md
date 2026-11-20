@@ -1,3 +1,8 @@
+## 2026-11-20 Reproduced Customer Android11 SurfaceView native crash
+
+- PR #1314 at `44a1b6a5` passed Customer API26/33/35. API30 run `44695889504` job `136152416974` crashed in the unchanged thirty-picker-cycle test: native `RefBase::incStrong` / `SurfaceControl.nativeSetFlags` / `SurfaceView.positionLost` on RenderThread after repeated disposal. This is an actual app-process SIGSEGV, not a test to retry away.
+- Shared online map factories now request MapLibre TextureView specifically on Android11 (API30), retaining default surface mode on other OS versions and the existing style, gestures, GPS and lifecycle ownership. Dedicated Rider offline renderer is unchanged. Added actual installed-view instrumentation for TextureView versus SurfaceView across the full four-API matrix; retain rendered-road detail and thirty open/GPS/save/close cycles with early background. Fresh exact-head build/runtime acceptance is required before declaring the crash fixed.
+
 ## 2026-11-20 Pilot convergence: exact-source Android review recovery
 
 - Reviewed main `db366228` and Integration #1072 `7e776164`. Exact Integration RC, Native Pilot, Map Buriram, P0 source gate, release-evidence/exporter regressions and installed nationwide routing + real Google APIs Fused GPS passed. Customer API35 metadata retrieval and authenticated Rider Profile review failed; do not replace those failures with older successes.
