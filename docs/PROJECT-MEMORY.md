@@ -1006,3 +1006,10 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 
 - Added tests/rider-offer-deadline-postgres.cjs and an isolated pinned PostgreSQL17.6 CI service alongside existing PGlite gates. Local real PostgreSQL17.6 passed 30 checks using three sessions: simultaneous cron, claim/terminal lock commit and rollback, no resurrection/spam/attempt121, role ACLs and transactional DDL rollback. Added migration-file workflow path filters. See docs/P0-DISPATCH-POSTGRES-20261120.md.
 - Scope is synthetic dispatch/locking proof; live financial terminalization, backup/restore and Production deployment remain incomplete. No Production writes or readiness-percentage certification.
+
+
+## 2026-11-20 Dispatch financial preflight timeout alignment
+
+- Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. The read-only financial preflight hardcoded 30 minutes while dispatcher/highwater honors Admin orderTimeout. Align with finite 1–1440 minute config and 30 minute fallback; report configured_timeout_minutes and overdue_at_configured_timeout. This changes diagnostic output, not cancellation authority. Deadline comparison includes the exact boundary.
+- Added actual-SQL PGlite execution regression (48 checks): configured timeout, invalid config fallback, each financial/stock/offer blocker, unknown identity/status/timestamps and read-only transaction enforcement. CI now watches and executes the operational SQL; previous negative fixture duplicated its predicate and could miss drift.
+- No Production writes, migrations, cancellations, cash unlock, refunds, stock changes or deployment. P0 #1268 stays OPEN/NO-GO. Exact-head CI and review remain required before integration; backup/restore, financial terminalization and authorized stranded-order resolution remain outstanding.
