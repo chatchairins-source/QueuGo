@@ -8,6 +8,7 @@ async function main(){
  try{
   await db.exec("CREATE SCHEMA auth; CREATE ROLE anon; CREATE ROLE authenticated;");
   await db.exec("CREATE TABLE auth.users(id uuid PRIMARY KEY);");
+  await db.exec("INSERT INTO auth.users(id) VALUES('00000000-0000-4000-8000-000000000001');");
   await db.exec("CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql AS $$ SELECT '00000000-0000-4000-8000-000000000001'::uuid $$;");
   await db.exec("CREATE TABLE public.shop_profiles(id uuid PRIMARY KEY); INSERT INTO public.shop_profiles VALUES('00000000-0000-4000-8000-000000000020');");
   await db.exec("CREATE FUNCTION public.pos_my_shop() RETURNS uuid LANGUAGE sql AS $$ SELECT '00000000-0000-4000-8000-000000000020'::uuid $$;");
