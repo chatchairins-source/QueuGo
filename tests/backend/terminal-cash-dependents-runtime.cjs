@@ -2,8 +2,20 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const {PGlite} = require('@electric-sql/pglite');
+const {Client} = require('pg');
+const testUrl = process.env.QG_CASH_HELPER_TEST_DATABASE_URL;
+async function database() {
+ if(!testUrl) return new PGlite();
+ const url=new URL(testUrl);
+ assert.ok(['postgres:','postgresql:'].includes(url.protocol) &&
+   ['127.0.0.1','localhost','[::1]'].includes(url.hostname) &&
+   /^\/qg_cash_helper_test_[a-z0-9_]+$/.test(url.pathname), 'disposable loopback test database required');
+ const client=new Client({connectionString:testUrl,connectionTimeoutMillis:5000});await client.connect();
+ await client.query("SET statement_timeout='10s'; SET lock_timeout='5s'");
+ return {query:(...args)=>client.query(...args),exec:sql=>client.query(sql),close:()=>client.end()};
+}
 async function main() {
- const db = new PGlite(); let checks=0, next=0;
+ const db = await database(); let checks=0, next=0;
  const equal=(a,b)=>{assert.equal(a,b); checks++;};
  try {
   await db.exec(`CREATE ROLE service_role;
@@ -70,12 +82,37 @@ async function main() {
   await db.query('UPDATE orders SET rider_assigned_at=now() WHERE id=$1',[historical]);
   await assert.rejects(db.query("UPDATE orders SET status='no_rider_available',rider_assigned_at=NULL WHERE id=$1",[historical]),/financial lifecycle review/);checks++;
   equal(await status(historical,'payments'),'pending');
+  if(testUrl) {
+   const peer=new Client({connectionString:testUrl,connectionTimeoutMillis:5000});await peer.connect();
+   try {
+    const concurrent=await seed();
+    await peer.query('BEGIN');
+    await peer.query('SELECT 1 FROM payments WHERE order_id=$1 FOR UPDATE',[concurrent]);
+    const mainPid=(await db.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+    const peerPid=(await peer.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+    const flight=transition(concurrent).then(value=>({value}),error=>({error}));
+    let blocked=false;
+    for(let attempt=0;attempt<100;attempt++) {
+     const blockers=(await peer.query('SELECT pg_blocking_pids($1) AS pids',[mainPid])).rows[0].pids;
+     if(blockers.includes(peerPid)){blocked=true;break;}
+     await new Promise(resolve=>setTimeout(resolve,10));
+    }
+    assert.ok(blocked,'terminal helper must wait on concurrent payment writer');checks++;
+    await peer.query("UPDATE payments SET status='paid',paid_at=now() WHERE order_id=$1",[concurrent]);
+    await peer.query('COMMIT');
+    const outcome=await flight;
+    assert.match(String(outcome.error),/financial lifecycle review/);checks++;
+    equal(await status(concurrent,'orders'),'searching_rider');
+    equal(await status(concurrent,'payments'),'paid');
+    equal(await status(concurrent,'deliveries'),'pending');
+   } finally {await peer.query('ROLLBACK');await peer.end();}
+  }
   // Simulate downstream failure: status and cash cleanup roll back together.
   await db.exec(`CREATE FUNCTION fail_terminal() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.status='no_rider_available' THEN RAISE EXCEPTION 'fixture downstream failure'; END IF; RETURN NEW; END $$;
     CREATE TRIGGER zzz_failure AFTER UPDATE OF status ON orders FOR EACH ROW EXECUTE FUNCTION fail_terminal();`);
   const atomic=await seed();await assert.rejects(transition(atomic),/fixture downstream failure/);checks++;
   equal(await status(atomic,'orders'),'searching_rider');equal(await status(atomic,'payments'),'pending');equal(await status(atomic,'deliveries'),'pending');
  } finally {await db.close();}
- console.log(JSON.stringify({checks,failures:0,scope:'review-only cash dependent helper, actual captured baseline + disposable synthetic rows; NOT timeout scheduler or Production certification'}));
+ console.log(JSON.stringify({checks,failures:0,engine:testUrl?'real PostgreSQL':'PGlite',scope:'review-only cash dependent helper, actual captured baseline + disposable synthetic rows; NOT timeout scheduler or Production certification'}));
 }
 main().catch(error=>{console.error(error);process.exitCode=1;});
