@@ -46,7 +46,10 @@ object BundledOfflineRouting {
         val graphHash = graph.getString("sha256")
         require(graphHash.matches(Regex("[a-f0-9]{64}"))) { "Invalid offline graph checksum" }
         val root = File(context.noBackupFilesDir, "routing/$graphHash")
+        rejectOfflineRoutingSymlink(root.parentFile!!, "offline routing parent")
+        rejectOfflineRoutingSymlink(root, "offline graph root")
         check(root.isDirectory || root.mkdirs()) { "Cannot create private offline graph directory" }
+        rejectOfflineRoutingSymlink(root, "offline graph root")
         // Verify cached bytes once per process too: never trust a marker after disk damage.
         copyVerified(context, "tiles.tar", File(root, "tiles.tar"), graph)
         copyVerified(context, "valhalla.json", File(root, "source.json"), config)
@@ -59,6 +62,7 @@ object BundledOfflineRouting {
         mjolnir.put("max_cache_size", 64 * 1024 * 1024)
         local.optJSONObject("additional_data")?.put("elevation", "")
         val target = File(root, "valhalla.json")
+        rejectOfflineRoutingSymlink(target, "generated offline routing config")
         FileOutputStream(target).use { output ->
             output.write(local.toString().toByteArray(Charsets.UTF_8))
             output.fd.sync()
@@ -75,8 +79,8 @@ object BundledOfflineRouting {
         // A killed copy may leave a large partial file. Reclaim it before the
         // free-space check, including when a verified installed graph is reusable.
         val temporary = File(target.parentFile, target.name + ".part")
-        check(!temporary.exists() || temporary.delete()) { "Cannot remove interrupted offline graph copy" }
-        if (target.isFile && target.length() == expectedBytes && sha256(target) == expectedHash) return
+        reclaimInterruptedOfflineGraphCopy(temporary)
+        if (!java.nio.file.Files.isSymbolicLink(target.toPath()) && target.isFile && target.length() == expectedBytes && sha256(target) == expectedHash) return
         // Reclaim a corrupt cached graph before checking free space. Otherwise the
         // old bytes can prevent recovery when storage is nearly full.
         reclaimInvalidOfflineGraphCache(target)
@@ -133,9 +137,23 @@ internal fun readBoundedRoutingText(input: InputStream, maxBytes: Int): String {
     return output.toString(Charsets.UTF_8.name())
 }
 
+/** Reject links and directories before removing an interrupted .part file. */
+internal fun reclaimInterruptedOfflineGraphCopy(temporary: File) {
+    check(!java.nio.file.Files.isSymbolicLink(temporary.toPath())) { "Refusing symlink at interrupted offline graph copy" }
+    if (temporary.exists()) {
+        check(temporary.isFile && temporary.delete()) { "Cannot remove interrupted offline graph copy" }
+    }
+}
+
 /** Fail closed on directories and reclaim corrupt cached bytes before the space check. */
 internal fun reclaimInvalidOfflineGraphCache(target: File) {
-    if (target.exists()) {
+    if (target.exists() || java.nio.file.Files.isSymbolicLink(target.toPath())) {
+        check(!java.nio.file.Files.isSymbolicLink(target.toPath())) { "Refusing symlink at offline graph cache path" }
         check(target.isFile && target.delete()) { "Cannot remove invalid offline graph cache" }
     }
+}
+
+/** Never follow a link when installing or rewriting private routing assets. */
+internal fun rejectOfflineRoutingSymlink(path: File, label: String) {
+    check(!java.nio.file.Files.isSymbolicLink(path.toPath())) { "Refusing symlink at $label" }
 }
