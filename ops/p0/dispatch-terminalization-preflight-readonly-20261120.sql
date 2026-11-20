@@ -6,7 +6,7 @@ BEGIN READ ONLY;
 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SET LOCAL statement_timeout = '10s';
 WITH overdue AS (
- SELECT o.id, o.market_order_id, o.status, o.payment_status, o.payment_method,
+ SELECT o.id, o.market_order_id, o.status, o.payment_status, o.payment_method, o.paid_at, o.cancelled_at, o.rider_assigned_at,
         o.merchant_accepted_at, o.rider_search_started_at, o.created_at,
         COALESCE(o.rider_search_started_at,o.merchant_accepted_at,o.created_at) AS search_start
  FROM public.orders o
@@ -38,9 +38,12 @@ SELECT count(*) AS searching_orders,
        count(*) FILTER (WHERE payment_requires_reconciliation) AS with_payment_requiring_reconciliation,
        count(*) FILTER (WHERE payment_status IS DISTINCT FROM 'unpaid') AS payment_needs_review,
        count(*) FILTER (WHERE payment_status IS NULL) AS unknown_payment_status,
+       count(*) FILTER (WHERE paid_at IS NOT NULL) AS with_paid_at,
+       count(*) FILTER (WHERE rider_assigned_at IS NOT NULL) AS previously_assigned,
+       count(*) FILTER (WHERE cancelled_at IS NOT NULL) AS contradictory_cancelled_timestamp,
        count(*) FILTER (WHERE market_order_id IS NOT NULL) AS market_group_needs_review,
        count(*) FILTER (WHERE live_offer_row_exists) AS with_offer_row,
-       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_ledger_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR live_offer_row_exists OR active_market_siblings>0)) AS overdue_blocked_for_manual_review,
+       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_ledger_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR paid_at IS NOT NULL OR rider_assigned_at IS NOT NULL OR cancelled_at IS NOT NULL OR live_offer_row_exists OR active_market_siblings>0)) AS overdue_blocked_for_manual_review,
        coalesce(max(offer_history_count),0) AS max_offer_history,
        count(*) FILTER (WHERE active_market_siblings>0) AS with_active_siblings
 FROM facts;
