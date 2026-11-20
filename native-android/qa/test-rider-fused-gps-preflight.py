@@ -113,6 +113,14 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
         self.assertIn('RiderNavigationLocationStore.clear()', failure)
         self.assertIn('stopSelf()', failure)
 
+    def test_stale_fused_callback_cannot_publish_after_restart(self):
+        # Contract guard only: installed emulator GPS evidence is still required.
+        service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
+        callback = service.split("override fun onLocationResult(result: LocationResult)", 1)[1].split("callback = nextCallback", 1)[0]
+        self.assertIn("callback !== this || !locationUpdatesStarted", callback)
+        cached = service.split("fusedClient.lastLocation.addOnSuccessListener", 1)[1].split("accept(location)", 1)[0]
+        self.assertIn("callback !== nextCallback", cached)
+
     def test_preflight_required_before_real_instrumentation(self):
         self.assertIn("ensure_emulator_location_enabled()\n                run_case(label, longitude, latitude)", SOURCE)
         self.assertIn('"allowDebugStoreInjection", "false"', SOURCE)
