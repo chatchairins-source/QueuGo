@@ -97,6 +97,17 @@ async function main() {
     await db.exec(`UPDATE orders SET rider_search_started_at=now()-interval '31 minutes';`);
     row = await snapshot();
     equal(row.financial_preflight_only_candidates, 1);
+    // NULL created_at used to evade the chronological comparison (NULL >= x
+    // evaluates UNKNOWN). It must be routed to manual review, not a candidate.
+    await db.exec('UPDATE orders SET created_at=NULL;');
+    row = await snapshot();
+    equal(row.missing_order_created_at, 1);
+    equal(row.financial_preflight_only_candidates, 0);
+    equal(row.overdue_blocked_for_manual_review, 1);
+    await db.exec(`UPDATE orders SET created_at=now()-interval '35 minutes';`);
+    row = await snapshot();
+    equal(row.missing_order_created_at, 0);
+    equal(row.financial_preflight_only_candidates, 1);
     assert.ok(Object.keys(row).every(key => !/(^id$|order_id|rider_id|address|phone)/.test(key)));
     checks++;
     // The operational query itself must run in a read-only transaction.
