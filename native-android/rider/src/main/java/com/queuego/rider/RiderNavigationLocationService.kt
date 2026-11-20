@@ -368,7 +368,11 @@ class RiderNavigationLocationService : Service() {
                 longitude = location.longitude,
                 accuracyMeters = location.accuracy.takeIf { location.hasAccuracy() }
             )
-        ) return
+        ) {
+            // Diagnostic only: never log Rider coordinates or relax the fix gate.
+            Log.d("QueueGoNavLocation", "fused_fix_rejected_freshness_or_accuracy")
+            return
+        }
 
         val previous = lastAccepted
         if (previous != null) {
