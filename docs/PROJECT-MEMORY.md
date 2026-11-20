@@ -987,3 +987,9 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Post-deploy readback: zero code rows, RLS enabled, no direct anon/authenticated table grants, four SECURITY DEFINER RPCs with fixed search paths and authenticated-only EXECUTE; lookup reads `coalesce(pos_price,price)` and has no GP/Delivery markup reference. Save/remove write audit_logs in the same transaction; no fake product, order or payment was made.
 - Production advisor identified missing child-side product_id/created_by indexes. PR #618 added both indexes with PGlite tests; exact RC `39772099278` passed and merge SHA is `bc8bdc173a8b798e84dee09833b76caf8b546614`. Applied as `20261022114328_pos_product_code_fk_indexes`; readback confirmed both. The remaining unused-index notice is expected while the registry is empty.
 - NEXT: align both migration filenames with Production versions, then proceed through the remaining POS inventory and authenticated cashier/device gates. QueueGo/POS remain NOT DONE.
+
+
+## 2026-11-20 P0 real PostgreSQL concurrency proof
+
+- Added tests/rider-offer-deadline-postgres.cjs and an isolated pinned PostgreSQL17.6 CI service alongside existing PGlite gates. Local real PostgreSQL17.6 passed 30 checks using three sessions: simultaneous cron, claim/terminal lock commit and rollback, no resurrection/spam/attempt121, role ACLs and transactional DDL rollback. Added migration-file workflow path filters. See docs/P0-DISPATCH-POSTGRES-20261120.md.
+- Scope is synthetic dispatch/locking proof; live financial terminalization, backup/restore and Production deployment remain incomplete. No Production writes or readiness-percentage certification.
