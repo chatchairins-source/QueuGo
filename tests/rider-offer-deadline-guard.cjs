@@ -92,7 +92,7 @@ async function main() {
   await db.query('DELETE FROM public.qg_rider_order_offers WHERE order_id=$1', [id(2)]);
   await equal(await offer(2), false, 'concurrent terminal state prevents cron revival');
 
-  const priv = (await db.query(
+  // Hard cap is enforced by the server trigger even if a caller bypasses the\n  // normal dispatcher and submits an arbitrary attempt counter.\n  await seed(10, 'searching_rider', null, '1 minute');\n  const insertAttempt = async attempt => {\n    const result = await db.query(\n      'INSERT INTO public.qg_rider_order_offers(order_id,rider_id,offered_at,expires_at,attempt) VALUES($1,$2,now(),now()+interval \'30 seconds\',$3) ON CONFLICT(order_id) DO NOTHING RETURNING attempt',\n      [id(10), id(11), attempt]\n    );\n    return result.rows.length;\n  };\n  await equal(await insertAttempt(121), 0, 'attempt 121 must be rejected before notification');\n  await equal(await insertAttempt(0), 0, 'attempt zero must be rejected');\n  await equal(await insertAttempt(120), 1, 'attempt 120 remains valid inside deadline');\n  await equal(await counts(10), [1, 0], 'rejected attempts must not create offers or notifications');\n\n  const priv = (await db.query(
     "SELECT has_function_privilege('anon','qg_private.guard_rider_offer_deadline()','EXECUTE') anon, has_function_privilege('authenticated','qg_private.guard_rider_offer_deadline()','EXECUTE') authenticated"
   )).rows[0];
   await equal([priv.anon,priv.authenticated], [false,false], 'no public direct execute grant');
