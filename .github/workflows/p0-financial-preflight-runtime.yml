@@ -44,4 +44,5 @@ jobs:
         run: |
           set -euo pipefail
           test -f ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql
-          ! grep -Eq 'supabase (db push|migration up)|psql .*prod|supabase link' .github/workflows/p0-financial-preflight-runtime.yml
+          # Match only executable shell command lines, not this grep expression itself.
+          ! grep -Eq '^[[:space:]]*(supabase[[:space:]]+(db[[:space:]]+push|migration[[:space:]]+up|link)([[:space:]]|$)|psql[[:space:]].*prod)' .github/workflows/p0-financial-preflight-runtime.yml
