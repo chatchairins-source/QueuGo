@@ -58,10 +58,21 @@ def ensure_emulator_location_enabled():
             state = adb("shell", "cmd", "location", "is-location-enabled",
                         capture_output=True, text=True, timeout=15).stdout.strip()
         except subprocess.CalledProcessError as error:
-            if error.returncode != 255 or attempt == 2:
+            if error.returncode != 255:
                 raise
-            time.sleep(2)
-            continue
+            if attempt < 2:
+                time.sleep(2)
+                continue
+            # Android 11 (API 30) can lack the newer 'is-location-enabled'
+            # shell subcommand even though 'set-location-enabled' succeeded.
+            # Settings.Secure.LOCATION_MODE is retained on API 30 but
+            # deprecated/removed on newer versions; this gate pins API 30.
+            mode = adb("shell", "settings", "get", "secure", "location_mode",
+                       capture_output=True, text=True, timeout=15).stdout.strip()
+            if mode in ("1", "2", "3"):
+                print("API30 legacy master Location mode verified: " + mode, flush=True)
+                return
+            raise RuntimeError("API30 master Location switch not verified: " + repr(mode))
         if state != "true":
             raise RuntimeError("Google APIs emulator master Location switch is disabled: " + repr(state))
         return

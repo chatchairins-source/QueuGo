@@ -58,10 +58,31 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
             if args[-1] == "is-location-enabled":
                 raise subprocess.CalledProcessError(255, "adb shell cmd location is-location-enabled")
             return SimpleNamespace(stdout="")
-        with self.assertRaises(subprocess.CalledProcessError):
+        with self.assertRaisesRegex(RuntimeError, 'master Location switch not verified'):
             extracted_preflight(fake_adb)()
         self.assertEqual(sum(x[-1] == "is-location-enabled" for x in calls), 3)
+        self.assertEqual(sum(x[-1] == "location_mode" for x in calls), 1)
 
+    def test_api30_legacy_location_mode_accepted_only_when_enabled(self):
+        for expected_mode in ('1', '2', '3'):
+            calls = []
+            def fake_adb(*args, **kwargs):
+                calls.append(args)
+                if args[-1] == 'is-location-enabled':
+                    raise subprocess.CalledProcessError(255, 'unsupported cmd location is-location-enabled')
+                return SimpleNamespace(stdout=expected_mode + '\n' if args[-1] == 'location_mode' else '')
+            extracted_preflight(fake_adb)()
+            self.assertEqual(sum(x[-1] == 'is-location-enabled' for x in calls), 3)
+            self.assertEqual(sum(x[-1] == 'location_mode' for x in calls), 1)
+
+    def test_api30_legacy_location_mode_disabled_and_unknown_fail_closed(self):
+        for mode in ('0', 'null', '', '4'):
+            def fake_adb(*args, **kwargs):
+                if args[-1] == 'is-location-enabled':
+                    raise subprocess.CalledProcessError(255, 'unsupported cmd')
+                return SimpleNamespace(stdout=mode + '\n' if args[-1] == 'location_mode' else '')
+            with self.assertRaisesRegex(RuntimeError, 'master Location switch not verified'):
+                extracted_preflight(fake_adb)()
     def test_other_adb_failure_is_not_retried(self):
         calls = []
         def fake_adb(*args, **kwargs):
