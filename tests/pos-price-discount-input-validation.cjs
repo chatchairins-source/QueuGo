@@ -76,5 +76,34 @@ async function check(fn, input, accepted) {
   assert.equal(refundCalls[0].name, 'pos_refund_bill');
   assert.equal(refundCalls[0].args.p_reason, refundReason);
   assert.equal(confirmed, 1);
+  // Noncash payment must require explicit cashier verification before RPC.
+  const paymentCalls = [];
+  let paymentVerified = false;
+  const payCtx = {
+    window: {}, navigator: { onLine: true }, state: { loading: false, orders: [] },
+    selected: () => ({ id: 'o1', total_amount: 90 }),
+    document: {
+      getElementById: id => id === 'qg-pos-method' ? { value: 'promptpay' } :
+        id === 'qg-pos-external-payment-confirmed' ? { checked: paymentVerified } : null,
+      querySelector: () => null,
+    },
+    busy: () => {}, message: msg => errors.push(msg),
+    rpc: async (name, args) => { paymentCalls.push({ name, args }); return { id: 'o1' }; },
+    load: async () => {}, 
+  };
+  vm.createContext(payCtx);
+  const payLine = source.split('\\n').find(line => line.trim().startsWith('window.qgPosConfirmPay='));
+  assert.ok(payLine, 'missing qgPosConfirmPay');
+  vm.runInContext(payLine, payCtx);
+  await payCtx.window.qgPosConfirmPay();
+  assert.equal(paymentCalls.length, 0, 'unverified PromptPay must not close bill');
+  paymentVerified = true;
+  payCtx.window.qgPosReceipt = () => {};
+  await payCtx.window.qgPosConfirmPay();
+  assert.equal(paymentCalls.length, 1, 'verified cashier payment may call RPC');
+  assert.equal(paymentCalls[0].name, 'pos_take_payment');
+  assert.equal(paymentCalls[0].args.p_method, 'promptpay');
+  assert.ok(source.includes('ระบบนี้บันทึกวิธีชำระเงินเท่านั้น'), 'cashier must see manual verification warning');
+  console.log('POS noncash cashier acknowledgement contract checks passed (isolated JS; not payment E2E)');
   console.log('POS price/discount/refund reason checks passed (isolated JS; not browser/payment E2E)');
 })().catch(e => { console.error(e); process.exitCode = 1; });
