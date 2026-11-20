@@ -279,6 +279,10 @@ class RiderNavigationLocationService : Service() {
                         // fix, send dispatch readiness, or forge a provider result.
                         locationUpdatesStarted = false
                         RiderNavigationLocationStore.clear()
+                        // A rejected provider subscription is not an active navigation
+                        // session. Terminate the foreground service and both dispatch
+                        // heartbeats rather than leaving a misleading GPS notification.
+                        stopSelf()
                     }
                 }
             fusedClient.lastLocation.addOnSuccessListener { location ->
