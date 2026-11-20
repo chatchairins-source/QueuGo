@@ -27,7 +27,7 @@ class MerchantPrinterTest {
     }
     @Test fun receiptIncludesDiscountCashAndChangeAndRefusesUnpaidReceipt() {
         assertNull(merchantReceiptPrintKey(snapshot(), bill))
-        val paid = bill.copy(paymentStatus = "PAID", paymentMethod = "cash", cashTendered = 100.0, cashChange = 10.0)
+        val paid = bill.copy(paymentStatus = "PAID", billStatus = "CLOSED", paymentMethod = "cash", cashTendered = 100.0, cashChange = 10.0)
         val text = merchantReceiptTicket(snapshot(paid), paid)
         assertEquals("receipt:shop:bill", merchantReceiptPrintKey(snapshot(paid), paid))
         assertTrue(text.contains("QT-0123"))
@@ -44,7 +44,7 @@ class MerchantPrinterTest {
     }
     @Test fun receiptPrintsTaxAndRegistrationFromImmutableBillSnapshot() {
         val taxed = bill.copy(
-            paymentStatus = "PAID",
+            paymentStatus = "PAID", billStatus = "CLOSED",
             taxEnabledSnapshot = true,
             taxRateSnapshot = 7.0,
             pricesIncludeTaxSnapshot = true,
@@ -63,6 +63,41 @@ class MerchantPrinterTest {
         assertTrue(text.contains("ภาษี 7.00% 5.89 ฿"))
         assertTrue(text.contains("ยอดสุทธิ 90.00 ฿"))
         assertFalse(text.contains("รวม 90.00 ฿"))
+    }
+
+    @Test fun receiptNeedsConfirmedPaidAndClosedBill() {
+        val paidButOpen = bill.copy(paymentStatus = "PAID", billStatus = "OPEN")
+        assertNull(merchantReceiptPrintKey(snapshot(paidButOpen), paidButOpen))
+        assertThrows(IllegalArgumentException::class.java) {
+            merchantReceiptTicket(snapshot(paidButOpen), paidButOpen)
+        }
+        val closedButUnpaid = bill.copy(paymentStatus = "UNPAID", billStatus = "CLOSED")
+        assertNull(merchantReceiptPrintKey(snapshot(closedButUnpaid), closedButUnpaid))
+    }
+
+    @Test fun taxReceiptDoesNotInventMissingTaxBaseRateOrAmount() {
+        val taxed = bill.copy(
+            paymentStatus = "PAID", billStatus = "CLOSED",
+            taxEnabledSnapshot = true, taxRateSnapshot = null,
+            taxableBase = null, taxAmount = null
+        )
+        val output = merchantReceiptTicket(snapshot(taxed), taxed)
+        assertTrue(output.contains("รายละเอียดภาษีจากเซิร์ฟเวอร์ไม่ครบ"))
+        assertFalse(output.contains("ภาษี 0.00%"))
+        assertFalse(output.contains("มูลค่าก่อนภาษี"))
+        assertTrue(output.contains("ยอดสุทธิ 90.00 ฿"))
+    }
+
+    @Test fun cashReceiptDoesNotReplaceMissingServerAmountsWithZero() {
+        val paid = bill.copy(
+            paymentStatus = "PAID", billStatus = "CLOSED",
+            paymentMethod = "cash", cashTendered = null, cashChange = null
+        )
+        val output = merchantReceiptTicket(snapshot(paid), paid)
+        assertTrue(output.contains("ยอดรับเงินสดยังไม่มีข้อมูลยืนยัน"))
+        assertTrue(output.contains("ยอดเงินทอนยังไม่มีข้อมูลยืนยัน"))
+        assertFalse(output.contains("รับเงิน 0.00 ฿"))
+        assertFalse(output.contains("เงินทอน 0.00 ฿"))
     }
 
     @Test fun printHistoryRetainsTheMostRecentJobsAfterRestoreAndClockCorrection() {
