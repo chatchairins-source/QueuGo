@@ -15,6 +15,9 @@ WITH overdue AS (
  SELECT o.*,
         EXISTS (SELECT 1 FROM public.queuego_cash_order_locks l WHERE l.order_id=o.id) AS cash_lock_exists,
         EXISTS (SELECT 1 FROM public.qg_rider_order_offers f WHERE f.order_id=o.id) AS live_offer_row_exists,
+        EXISTS (SELECT 1 FROM public.payments p WHERE p.order_id=o.id) AS payment_ledger_exists,
+        EXISTS (SELECT 1 FROM public.grocery_stock_reservations g WHERE g.order_id=o.id) AS grocery_reservation_exists,
+        EXISTS (SELECT 1 FROM public.pos_inventory_reservations p WHERE p.order_id=o.id) AS pos_reservation_exists,
         (SELECT count(*) FROM public.qg_rider_offer_history h WHERE h.order_id=o.id) AS offer_history_count,
         (SELECT count(*) FROM public.orders sibling WHERE sibling.market_order_id=o.market_order_id AND sibling.id<>o.id AND sibling.status NOT IN ('cancelled')) AS active_market_siblings
  FROM overdue o
@@ -24,11 +27,14 @@ SELECT count(*) AS searching_orders,
        count(*) FILTER (WHERE search_start IS NULL) AS unknown_search_start,
        count(*) FILTER (WHERE search_start > now()) AS future_search_start,
        count(*) FILTER (WHERE cash_lock_exists) AS with_cash_lock,
+       count(*) FILTER (WHERE payment_ledger_exists) AS with_payment_ledger,
+       count(*) FILTER (WHERE grocery_reservation_exists) AS with_grocery_reservation,
+       count(*) FILTER (WHERE pos_reservation_exists) AS with_pos_reservation,
        count(*) FILTER (WHERE payment_status IS DISTINCT FROM 'unpaid') AS payment_needs_review,
        count(*) FILTER (WHERE payment_status IS NULL) AS unknown_payment_status,
        count(*) FILTER (WHERE market_order_id IS NOT NULL) AS market_group_needs_review,
        count(*) FILTER (WHERE live_offer_row_exists) AS with_offer_row,
-       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_status IS DISTINCT FROM 'unpaid' OR live_offer_row_exists OR active_market_siblings>0)) AS overdue_blocked_for_manual_review,
+       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_ledger_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR live_offer_row_exists OR active_market_siblings>0)) AS overdue_blocked_for_manual_review,
        coalesce(max(offer_history_count),0) AS max_offer_history,
        count(*) FILTER (WHERE active_market_siblings>0) AS with_active_siblings
 FROM facts;
