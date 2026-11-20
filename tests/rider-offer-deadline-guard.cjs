@@ -5,6 +5,7 @@ const { PGlite } = require('@electric-sql/pglite');
 
 const guardFile = 'ops/p0/rider-offer-deadline-guard.sql';
 const guardSql = fs.readFileSync(guardFile, 'utf8');
+assert.ok(!guardSql.includes('\\n'), 'SQL guard must use real line separators; escaped newline comments can silently disable conditions');
 const id = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
 
 async function main() {

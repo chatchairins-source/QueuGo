@@ -49,7 +49,13 @@ BEGIN
     END IF;
   END IF;
 
-  -- Independent hard cap: a misconfigured long timeout must not allow\n  -- unlimited retry history or notification amplification.\n  IF NEW.attempt IS NULL OR NEW.attempt < 1 OR NEW.attempt > 120 THEN\n    RETURN NULL;\n  END IF;\n\n  v_deadline := v_order.started_at + make_interval(mins => v_timeout_minutes);
+  -- Independent hard cap: a misconfigured long timeout must not allow
+  -- unlimited retry history or notification amplification.
+  IF NEW.attempt IS NULL OR NEW.attempt < 1 OR NEW.attempt > 120 THEN
+    RETURN NULL;
+  END IF;
+
+  v_deadline := v_order.started_at + make_interval(mins => v_timeout_minutes);
   IF now() >= v_deadline THEN
     RETURN NULL;
   END IF;
