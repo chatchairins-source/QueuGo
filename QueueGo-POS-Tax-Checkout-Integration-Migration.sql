@@ -10,7 +10,7 @@ create or replace function public.pos_save_tax_settings(
   p_branch_code text default null,
   p_invoice_address text default null
 ) returns jsonb
-language plpgsql security definer set search_path=public,pg_temp as $$
+language plpgsql security definer set search_path='' as $$
 declare v_shop uuid; v_result jsonb;
 begin
   v_shop := public.pos_my_shop();
@@ -31,10 +31,23 @@ begin
 end $$;
 
 create or replace function public.pos_apply_tax_snapshot()
-returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
+returns trigger language plpgsql security definer set search_path='' as $$
 declare v_settings public.pos_tax_settings%rowtype; v_rate numeric; v_base numeric; v_tax numeric; v_net numeric;
 begin
   if new.sales_channel is distinct from 'POS' then return new; end if;
+
+  -- Tax identity/rate come from the settings at bill creation, not from the
+  -- cashier's later edits. Approved line changes only recalculate amounts.
+  if tg_op = 'UPDATE' and (
+       new.pos_tax_enabled_snapshot is distinct from old.pos_tax_enabled_snapshot
+    or new.pos_tax_rate_snapshot is distinct from old.pos_tax_rate_snapshot
+    or new.pos_prices_include_tax_snapshot is distinct from old.pos_prices_include_tax_snapshot
+    or new.pos_tax_registration_snapshot is distinct from old.pos_tax_registration_snapshot
+    or new.pos_tax_branch_snapshot is distinct from old.pos_tax_branch_snapshot
+    or new.pos_tax_address_snapshot is distinct from old.pos_tax_address_snapshot
+  ) then
+    raise exception 'POS tax configuration snapshots are immutable after bill creation';
+  end if;
 
   if tg_op = 'INSERT' then
     select * into v_settings from public.pos_tax_settings where shop_id=new.shop_id;
@@ -71,7 +84,7 @@ end $$;
 
 drop trigger if exists pos_apply_tax_snapshot on public.orders;
 create trigger pos_apply_tax_snapshot
-before insert or update of subtotal,discount_amount,sales_channel,pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot
+before insert or update of subtotal,discount_amount,sales_channel,pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot
 on public.orders for each row execute function public.pos_apply_tax_snapshot();
 
 -- POS's original integrity check assumed every bill total excluded tax.

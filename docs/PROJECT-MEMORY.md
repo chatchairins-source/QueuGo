@@ -1,3 +1,16 @@
+## 2026-11-20 Reproduced Customer Android11 SurfaceView native crash
+
+- PR #1314 at `44a1b6a5` passed Customer API26/33/35. API30 run `44695889504` job `136152416974` crashed in the unchanged thirty-picker-cycle test: native `RefBase::incStrong` / `SurfaceControl.nativeSetFlags` / `SurfaceView.positionLost` on RenderThread after repeated disposal. This is an actual app-process SIGSEGV, not a test to retry away.
+- Shared online map factories now request MapLibre TextureView on legacy Android through API30, retaining default surface mode on Android12+ and the existing style, gestures, GPS and lifecycle ownership. Android11 passed the full six-test matrix at 9f608c66; Android8/API26 instead reproduced missing geographic pixels (3 colors) after EGL_BAD_MATCH in the old SurfaceView path, so the workaround includes legacy APIs. Dedicated Rider offline renderer is unchanged. Actual installed-view instrumentation verifies TextureView versus SurfaceView across all four APIs; retain rendered-road detail and thirty picker cycles/early background. Fresh exact-head build/runtime acceptance remains required.
+
+## 2026-11-20 Pilot convergence: exact-source Android review recovery
+
+- Reviewed main `db366228` and Integration #1072 `7e776164`. Exact Integration RC, Native Pilot, Map Buriram, P0 source gate, release-evidence/exporter regressions and installed nationwide routing + real Google APIs Fused GPS passed. Customer API35 metadata retrieval and authenticated Rider Profile review failed; do not replace those failures with older successes.
+- Customer run `44689261223`, job `136130882429`: Gradle could not retrieve pinned Central modules, then curl returned HTTP 404. Existing curl retries excluded 404. Retry only the same allowlisted POM retrieval, with two retries and a 45-second retry budget; validate nonempty artifactId before the existing single Gradle refresh. Actual local HTTP tests reproduce temporary 404 recovery and persistent 404 exhaustion; no test/compile failure bypass.
+- Rider run `44689261539`, job `136131557770`: diagnostics entry did not satisfy scroll visibility. Profile heading and bottom tab share text, while the previous minimum-label calculation could treat the heading as navigation. Identify the actual horizontal four-tab row and clickable tab bounds; keep occluded targets blocked. Preserve a genuine failure viewport and only target/navigation bounds if scrolling still fails. Exact-device acceptance remains pending; this is not a claim that the reproduced emulator failure is fully resolved.
+- Source regression checks cover duplicate Profile labels, navigation-icon overlap and missing tabs. The authenticated workflow runs them before capture. Real screenshots, background Rider FCM and full API matrix require the fresh commit's hosted CI.
+- Production read-only on 2026-11-20: 392 migrations, latest `20261111111354`; bounded-offer function/trigger are absent. P0 #1268 remains open. The timestamped source migration passes 114 isolated PGlite checks (guard/live dispatcher/negative/highwater), but containment/financial-safe terminalization, backup+restore evidence, VAT backend and signed three-role Play releases remain unverified. Do not claim 90% or Production readiness from source CI alone.
+
 ## 2026-11-14 Release reconciliation candidate
 
 - Reconcile Web main `369e4b49` with Native candidate `b37405ea` on an isolated integration branch. Keep main's Web/POS implementations and browser CI. Use the Native release and certification workflows with the existing main-only attestation rules.
@@ -987,3 +1000,16 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Post-deploy readback: zero code rows, RLS enabled, no direct anon/authenticated table grants, four SECURITY DEFINER RPCs with fixed search paths and authenticated-only EXECUTE; lookup reads `coalesce(pos_price,price)` and has no GP/Delivery markup reference. Save/remove write audit_logs in the same transaction; no fake product, order or payment was made.
 - Production advisor identified missing child-side product_id/created_by indexes. PR #618 added both indexes with PGlite tests; exact RC `39772099278` passed and merge SHA is `bc8bdc173a8b798e84dee09833b76caf8b546614`. Applied as `20261022114328_pos_product_code_fk_indexes`; readback confirmed both. The remaining unused-index notice is expected while the registry is empty.
 - NEXT: align both migration filenames with Production versions, then proceed through the remaining POS inventory and authenticated cashier/device gates. QueueGo/POS remain NOT DONE.
+
+
+## 2026-11-20 P0 real PostgreSQL concurrency proof
+
+- Added tests/rider-offer-deadline-postgres.cjs and an isolated pinned PostgreSQL17.6 CI service alongside existing PGlite gates. Local real PostgreSQL17.6 passed 30 checks using three sessions: simultaneous cron, claim/terminal lock commit and rollback, no resurrection/spam/attempt121, role ACLs and transactional DDL rollback. Added migration-file workflow path filters. See docs/P0-DISPATCH-POSTGRES-20261120.md.
+- Scope is synthetic dispatch/locking proof; live financial terminalization, backup/restore and Production deployment remain incomplete. No Production writes or readiness-percentage certification.
+
+
+## 2026-11-20 Dispatch financial preflight timeout alignment
+
+- Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. The read-only financial preflight hardcoded 30 minutes while dispatcher/highwater honors Admin orderTimeout. Align with finite 1–1440 minute config and 30 minute fallback; report configured_timeout_minutes and overdue_at_configured_timeout. This changes diagnostic output, not cancellation authority. Deadline comparison includes the exact boundary.
+- Added actual-SQL PGlite execution regression (48 checks): configured timeout, invalid config fallback, each financial/stock/offer blocker, unknown identity/status/timestamps and read-only transaction enforcement. CI now watches and executes the operational SQL; previous negative fixture duplicated its predicate and could miss drift.
+- No Production writes, migrations, cancellations, cash unlock, refunds, stock changes or deployment. P0 #1268 stays OPEN/NO-GO. Exact-head CI and review remain required before integration; backup/restore, financial terminalization and authorized stranded-order resolution remain outstanding.

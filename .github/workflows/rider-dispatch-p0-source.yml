@@ -6,6 +6,7 @@ on:
       - 'work-native-**'
     paths:
       - 'ops/p0/rider-*.sql'
+      - 'supabase/migrations/*_rider_offer_deadline_guard_p0.sql'
       - 'tests/rider-offer-deadline*.cjs'
       - 'tests/rider-dispatch-highwater*.cjs'
       - 'tests/fixtures/rider-dispatch-prod-snapshot-20261119.sql'
@@ -19,6 +20,7 @@ on:
       - 'work-native-reconcile-main-20261114'
     paths:
       - 'ops/p0/rider-*.sql'
+      - 'supabase/migrations/*_rider_offer_deadline_guard_p0.sql'
       - 'tests/rider-offer-deadline*.cjs'
       - 'tests/rider-dispatch-highwater*.cjs'
       - 'tests/fixtures/rider-dispatch-prod-snapshot-20261119.sql'
@@ -32,6 +34,44 @@ concurrency:
   group: rider-dispatch-p0-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  concurrent-postgres-guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+        env:
+          POSTGRES_DB: qg_dispatch_test_ci
+          POSTGRES_PASSWORD: isolated-dispatch-test-only
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qg_dispatch_test_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 pinned
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 pinned
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install exact locked test dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Exercise real PostgreSQL concurrency and role ACLs
+        env:
+          QG_DISPATCH_TEST_DATABASE_URL: postgresql://postgres:isolated-dispatch-test-only@127.0.0.1:55432/qg_dispatch_test_ci
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/dispatch-postgres
+          node tests/rider-offer-deadline-postgres.cjs | tee artifacts/dispatch-postgres/result.json
+      - name: Preserve actual PostgreSQL concurrency evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4 pinned
+        with:
+          name: dispatch-postgres-concurrency
+          path: artifacts/dispatch-postgres/
+          if-no-files-found: warn
   isolated-postgres-guard:
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -48,6 +88,7 @@ jobs:
           set -euo pipefail
           node tests/rider-offer-deadline-guard.cjs
           node tests/rider-offer-deadline-live-dispatch.cjs
+          node tests/rider-offer-deadline-negative.cjs
           node tests/rider-dispatch-highwater-readonly.cjs
       - name: Enforce source-only nondeployment
         run: |

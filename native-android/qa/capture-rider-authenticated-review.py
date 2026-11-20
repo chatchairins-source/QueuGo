@@ -209,6 +209,34 @@ def provision_map():
     assert verified == expected, "App-private map archive checksum mismatch"
 
 
+def rider_bottom_navigation_top(ns):
+    # The Profile heading has the same text as its tab. Identify the actual
+    # horizontal four-tab row instead of treating any matching page heading
+    # (or partially clipped stale semantics node) as the bottom navigation.
+    labels = {"หน้าแรก", "ข้อความ", "รายได้", "โปรไฟล์"}
+    candidates = [n for n in ns if n.get("text", "").strip() in labels and rect(n)]
+    rows = []
+    for anchor in candidates:
+        a = rect(anchor)
+        row = [n for n in candidates if max(rect(n)[1], a[1]) < min(rect(n)[3], a[3])]
+        if {n.get("text", "").strip() for n in row} != labels:
+            continue
+        # Labels sit below their icons. Use the actual clickable tab bounds
+        # so the icon/upper part of the navigation is also excluded from taps.
+        tops = []
+        for n in row:
+            b = rect(n)
+            cx, cy = (b[0] + b[2]) // 2, (b[1] + b[3]) // 2
+            parents = [(((r[2]-r[0])*(r[3]-r[1])), r)
+                       for p in ns if p.get("clickable") == "true"
+                       and (r := rect(p)) and r[0] <= cx <= r[2] and r[1] <= cy <= r[3]]
+            tops.append(min(parents, key=lambda p: p[0])[1][1] if parents else b[1])
+        rows.append(min(tops))
+    if not rows:
+        raise AssertionError("Actual four-tab Rider bottom navigation is not visible")
+    return max(rows)
+
+
 def scroll_to_text(label):
     # UIAutomator can report a partially occluded row as present. On the
     # authenticated Profile screen the support row may sit *behind* the fixed
@@ -216,17 +244,20 @@ def scroll_to_text(label):
     # Require the entire target label to be above the navigation before tap.
     for _ in range(12):
         ns=nodes()
-        nav_top=min(
-            (rect(n)[1] for n in ns
-             if n.get("text", "").strip() in ("หน้าแรก", "ข้อความ", "รายได้", "โปรไฟล์")
-             and rect(n) and rect(n)[1] > 0),
-            default=10**9,
-        )
+        nav_top=rider_bottom_navigation_top(ns)
         matches=[n for n in ns if n.get("text","").strip()==label and rect(n)]
         if matches and any(rect(n)[3] < nav_top - 24 for n in matches):
             return ns
         swipe_vertical("up")
         time.sleep(0.5)
+    # Retain the actual final viewport for a failed scroll, too. Previously
+    # failure occurred before capture_profile_dialog could preserve evidence.
+    shot("failure-profile-scroll")
+    safe = [{"bounds": n.get("bounds", ""),
+             "kind": "target" if n.get("text", "").strip() == label else "navigation"}
+            for n in ns if n.get("text", "").strip() in
+            {label, "หน้าแรก", "ข้อความ", "รายได้", "โปรไฟล์"} and rect(n)]
+    (OUT / "failure-profile-scroll-bounds.json").write_text(json.dumps(safe) + "\n")
     raise AssertionError("Rider profile entry not safely above bottom navigation: "+label)
 
 def expand_profile_extra_tools():

@@ -1,0 +1,68 @@
+name: QueueGo P0 Financial Preflight Isolated
+
+on:
+  push:
+    branches:
+      - test/backend-p0-financial-failclosed-20261120
+      - fix/backend-p0-terminalization-preflight-20261120
+    paths:
+      - 'tests/backend/dispatch-financial-preflight-negative.sql'
+      - 'tests/backend/dispatch-financial-preflight-runtime.cjs'
+      - 'ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql'
+      - '.github/workflows/p0-financial-preflight-isolated.yml'
+  pull_request:
+    branches:
+      - fix/backend-p0-terminalization-preflight-20261120
+      - work-native-reconcile-main-20261114
+    paths:
+      - 'tests/backend/dispatch-financial-preflight-negative.sql'
+      - 'tests/backend/dispatch-financial-preflight-runtime.cjs'
+      - 'ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql'
+      - '.github/workflows/p0-financial-preflight-isolated.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  financial-preflight-negative:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+        env:
+          POSTGRES_DB: qg_p0_financial_test_ci
+          POSTGRES_PASSWORD: isolated-financial-test-only
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qg_p0_financial_test_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned v4
+      - name: Test actual read-only operator SQL on disposable PGlite
+        run: |
+          npm ci --ignore-scripts
+          node tests/backend/dispatch-financial-preflight-runtime.cjs
+      - name: Confirm synthetic temp-table-only fixture
+        run: |
+          set -euo pipefail
+          path=tests/backend/dispatch-financial-preflight-negative.sql
+          test -s "$path"
+          grep -Fq "CREATE TEMP TABLE p0_preflight_cases" "$path"
+          grep -Fq "ON COMMIT DROP" "$path"
+          grep -Fxq 'ROLLBACK;' "$path"
+      - name: Test fail-closed financial preflight on disposable PostgreSQL 17.6
+        env:
+          PGPASSWORD: isolated-financial-test-only
+        run: |
+          set -euo pipefail
+          docker run --rm --network host \
+            -v "$GITHUB_WORKSPACE:/src:ro" \
+            -e PGPASSWORD="$PGPASSWORD" \
+            postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929 \
+            psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 55439 -U postgres \
+            -d qg_p0_financial_test_ci \
+            -f /src/tests/backend/dispatch-financial-preflight-negative.sql
