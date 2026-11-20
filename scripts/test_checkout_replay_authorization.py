@@ -42,6 +42,16 @@ class CheckoutReplayAuthorizationTests(unittest.TestCase):
         self.assertIn("v.expires_at is null", self.compact)
         self.assertLess(self.compact.index("v.expires_at is null"), self.compact.index("from public.qg_table_requests"))
 
+    def test_replay_never_returns_missing_order_as_success(self):
+        # Both same-request and recent-cart deduplication must reject stale FK
+        # references instead of returning a duplicate with no order number.
+        guard = "if v_order_number is null then"
+        self.assertEqual(self.compact.count(guard), 2)
+        self.assertEqual(self.compact.count("raise exception 'ไม่พบออเดอร์เดิมสำหรับรหัสคำขอนี้'"), 2)
+        self.assertLess(self.compact.index(guard), self.compact.index("'reason','same_request'"))
+        second_guard = self.compact.index(guard, self.compact.index(guard) + 1)
+        self.assertLess(second_guard, self.compact.index("'reason','recent_same_cart'"))
+
     def test_no_privilege_expansion(self):
         self.assertNotRegex(self.compact, r"\bgrant\s+")
         self.assertNotRegex(self.compact, r"\balter\s+table\s+.*disable\s+row\s+level\s+security")
