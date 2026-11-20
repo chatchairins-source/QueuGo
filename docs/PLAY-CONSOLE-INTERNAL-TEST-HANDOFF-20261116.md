@@ -19,9 +19,9 @@ Goal: replace GitHub Debug APK sideloading with easier Google Play Internal Test
 4. Download/extract the certified workflow artifact locally and run:
 
     python3 -m unittest discover -s tests -p 'test-play-certified-export.py' -v
-    python3 ops/play/export-certified-play-aabs.py --artifact-dir /path/to/certified-artifact --output-dir /path/to/new-empty/play-upload
+    python3 ops/play/export-certified-play-aabs.py --artifact-dir /path/to/certified-artifact --output-dir /path/to/new-empty/play-upload --expected-source-sha FULL_40_CHARACTER_CERTIFIED_COMMIT_SHA
 
-   The exporter re-verifies each AAB checksum, bundle structure and actual signing certificate against the certified report, refuses stale versionCodes and outputs three role-named AABs, PLAY-UPLOAD-MANIFEST.json and SHA256SUMS.txt. It never compiles, signs, claims certification, uploads or publishes on the owner's behalf.
+   The required `--expected-source-sha` must be the exact commit independently verified against the release run; it rejects certified-looking artifacts from any other commit before writing output. The exporter re-verifies each AAB checksum, bundle structure and actual signing certificate against the certified report, refuses stale versionCodes and outputs three role-named AABs, PLAY-UPLOAD-MANIFEST.json and SHA256SUMS.txt. It never compiles, signs, claims certification, uploads or publishes on the owner's behalf.
 5. Review Play descriptions, native screenshots, data safety, account deletion, ad and content declarations, specialUse/microphone foreground-service disclosures and role-based reviewer access from the exact final artifacts. Use existing docs/play-closed-beta-readiness.md, docs/play-store-listing-draft.md and docs/play-app-access-content-rating.md drafts; they are not a final Console approval.
 
 ## The owner's account actions (outside engineering)

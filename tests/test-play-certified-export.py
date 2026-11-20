@@ -54,6 +54,23 @@ class PlayExportTests(unittest.TestCase):
         self.assertTrue((self.output / "SHA256SUMS.txt").is_file())
         self.assertTrue((self.output / "PLAY-UPLOAD-MANIFEST.json").is_file())
 
+    def test_exact_source_sha_match_allows_export(self):
+        with patch.object(MOD, "signer_of", return_value=self.cert):
+            result = MOD.export(self.artifacts, self.output, "b" * 40)
+        self.assertEqual(result["source_sha"], "b" * 40)
+
+    def test_stale_certified_artifact_rejected_before_output(self):
+        with patch.object(MOD, "signer_of", return_value=self.cert):
+            with self.assertRaisesRegex(ValueError, "does not match requested exact HEAD"):
+                MOD.export(self.artifacts, self.output, "c" * 40)
+        self.assertFalse(self.output.exists())
+
+    def test_abbreviated_expected_source_sha_rejected(self):
+        with patch.object(MOD, "signer_of", return_value=self.cert):
+            with self.assertRaisesRegex(ValueError, "full 40-character"):
+                MOD.export(self.artifacts, self.output, "b" * 8)
+        self.assertFalse(self.output.exists())
+
     def test_tampered_bundle_fails_closed(self):
         with (self.artifacts / "rider-release.aab").open("ab") as f:
             f.write(b"changed")

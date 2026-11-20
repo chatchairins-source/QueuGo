@@ -321,8 +321,12 @@ jobs:
         run: node tests/native-launcher-assets.cjs
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
+      - name: Verify certified Play AAB exporter fail-closed regressions
+        run: python3 tests/test-play-certified-export.py -v
+      - name: Verify fail-closed Native pilot APK artifact publication
+        run: node tests/native-apk-artifact-policy.cjs
       - name: Build and bundle pinned nationwide offline map
-        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' }}
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' || startsWith(github.ref_name, 'work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref_name, 'worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') }}
         env:
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
           QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261101.osm.pbf
@@ -333,8 +337,8 @@ jobs:
           mkdir -p "$QG_MAP_DATA_DIR"
           source_pbf="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf"
           source_md5="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf.md5"
-          curl --fail --location --retry 6 --retry-delay 5 --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
-          curl --fail --location --retry 6 --retry-delay 5 --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
+          curl --fail --location --retry 6 --retry-delay 5 --retry-connrefused --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
+          curl --fail --location --retry 6 --retry-delay 5 --retry-connrefused --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
           python3 - "$source_md5" > "$QG_MAP_DATA_DIR/source-check.md5" <<'PY'
           import re, sys
           text=open(sys.argv[1], encoding="ascii").read().strip()
@@ -399,19 +403,13 @@ jobs:
           for role in customer merchant rider; do
             apk="native-android/$role/build/outputs/apk/debug/$role-debug.apk"
             test -s "$apk"
-            sha256sum "$apk" >> artifacts/native-pilot-apks/SHA256SUMS
+            cp "$apk" "artifacts/native-pilot-apks/$role-debug.apk"
           done
-          sha256sum --check artifacts/native-pilot-apks/SHA256SUMS
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: queuego-native-pilot-apks
-          path: |
-            native-android/customer/build/outputs/apk/debug/customer-debug.apk
-            native-android/merchant/build/outputs/apk/debug/merchant-debug.apk
-            native-android/rider/build/outputs/apk/debug/rider-debug.apk
-            artifacts/native-pilot-apks/SHA256SUMS
-            artifacts/native-pilot-apks/PROVENANCE.txt
-          if-no-files-found: error
+          (
+            cd artifacts/native-pilot-apks
+            sha256sum customer-debug.apk merchant-debug.apk rider-debug.apk > SHA256SUMS
+            sha256sum --check SHA256SUMS
+          )
       - name: Regression test bounded Android SDK download recovery
         run: python3 -m unittest discover -s native-android/qa -p 'test_android_sdk_recovery.py'
       - name: Enable runner-only access to Android acceleration
@@ -450,6 +448,19 @@ jobs:
             artifacts/rider-navigation-map-runtime/
             native-android/rider-navigation-map/build/outputs/androidTest-results/connected/
           if-no-files-found: warn
+      # This artifact is intentionally unavailable until the installed country
+      # map and no-network Android Runtime Gate have both succeeded.
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-native-pilot-apks
+          path: |
+            artifacts/native-pilot-apks/customer-debug.apk
+            artifacts/native-pilot-apks/merchant-debug.apk
+            artifacts/native-pilot-apks/rider-debug.apk
+            artifacts/native-pilot-apks/SHA256SUMS
+            artifacts/native-pilot-apks/PROVENANCE.txt
+          if-no-files-found: error
       - name: Export freshly built role APKs after runtime gates
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
         run: |
@@ -523,7 +534,7 @@ jobs:
         run: node tests/native-rpc-catalog-postgres.cjs
 
   continuous-dispatch-races:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref, 'refs/heads/worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -555,7 +566,7 @@ jobs:
         run: node tests/rider-continuous-dispatch-races.cjs
 
   route-bundle-stack-races:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref, 'refs/heads/worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -587,7 +598,7 @@ jobs:
         run: node tests/route-bundle-stack-races.cjs
 
   passenger-ride-races:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref, 'refs/heads/worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -617,7 +628,7 @@ jobs:
         run: node tests/passenger-ride-races.cjs
 
   credit-races:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref, 'refs/heads/worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     services:
@@ -648,7 +659,7 @@ jobs:
 
 
   express-races:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.head_ref, 'work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref, 'refs/heads/worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || startsWith(github.head_ref, 'work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-express-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 6
     services:
@@ -680,11 +691,13 @@ jobs:
         run: node tests/express-races.cjs
 
   map-display-only:
-    if: ${{ github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.head_ref == 'fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref, 'refs/heads/work-native-reconcile-main-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') || startsWith(github.ref, 'refs/heads/worker4-qa-ci-release-') || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.head_ref == 'fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/fix/native-location-map-gps-tap-20261031' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || github.ref == 'refs/heads/work-native-credit-live-enablement-20261016' || startsWith(github.ref, 'refs/heads/work-native-map-display-') || github.ref == 'refs/heads/work-native-rider-authenticated-20261012' || github.ref == 'refs/heads/work-native-marker-family-20261013' || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
         with:
           distribution: temurin
@@ -723,7 +736,7 @@ jobs:
 
   # The Play AAB exporter must exercise this runtime gate on its exact PR head.
   navigation-map-runtime:
-    if: ${{ github.head_ref == 'ops/play-certified-aab-export-20261116' || github.ref == 'refs/heads/ops/play-certified-aab-export-20261116' || inputs.bundle_country || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.head_ref, 'work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-map-runtime-xml-') || startsWith(github.head_ref, 'work-native-rider-map-runtime-xml-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'ops/play-certified-aab-export-20261116' || github.ref == 'refs/heads/ops/play-certified-aab-export-20261116' || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref, 'refs/heads/work-native-reconcile-main-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') || startsWith(github.ref, 'refs/heads/worker4-qa-ci-release-') || inputs.bundle_country || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-credit-') || startsWith(github.ref, 'refs/heads/work-native-rider-continuous-dispatch-') || startsWith(github.ref, 'refs/heads/work-native-ride-passenger-') || startsWith(github.ref, 'refs/heads/work-native-rider-navigation-map-') || startsWith(github.head_ref, 'work-native-rider-navigation-map-') || startsWith(github.ref, 'refs/heads/work-native-rider-map-runtime-xml-') || startsWith(github.head_ref, 'work-native-rider-map-runtime-xml-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-heading-confidence-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-viewport-puck-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cache-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-resilience-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-route-cancellation-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-unified-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -761,7 +774,7 @@ jobs:
 
   # The Play AAB exporter must exercise this runtime gate on its exact PR head.
   maplibre-osm-runtime:
-    if: ${{ github.head_ref == 'ops/play-certified-aab-export-20261116' || github.ref == 'refs/heads/ops/play-certified-aab-export-20261116' || inputs.bundle_country || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
+    if: ${{ github.head_ref == 'ops/play-certified-aab-export-20261116' || github.ref == 'refs/heads/ops/play-certified-aab-export-20261116' || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref, 'refs/heads/work-native-reconcile-main-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') || startsWith(github.ref, 'refs/heads/worker4-qa-ci-release-') || inputs.bundle_country || github.head_ref == 'fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/fix-rider-invalid-step-metrics-20261106' || github.ref == 'refs/heads/work-native-rider-nav-unified-offline-20261030' || github.head_ref == 'work-native-rider-nav-unified-offline-20261030' || github.ref == 'refs/heads/queuego-native-android-v1' || github.ref == 'refs/heads/work-native-rider-map-follow-stability-20261016' || startsWith(github.ref, 'refs/heads/work-native-rider-maplibre-') || startsWith(github.ref, 'refs/heads/work-native-rider-queuego-route-authority-') || startsWith(github.ref, 'refs/heads/work-native-rider-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-rider-nav-local-roads-') || startsWith(github.ref, 'refs/heads/work-native-ride-entry-recovery-') || startsWith(github.ref, 'refs/heads/work-native-release-unified-') || startsWith(github.ref, 'refs/heads/work-native-route-bundle-') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
