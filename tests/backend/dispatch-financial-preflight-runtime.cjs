@@ -73,6 +73,30 @@ async function main() {
     equal(row.missing_actual_rider_search_start, 1);
     equal(row.unknown_search_start, 0);
     equal(row.financial_preflight_only_candidates, 0);
+    // Timestamp gates must fail closed, and recover only when the actual
+    // search timestamp is again valid. Use an overdue fixture for each case.
+    await db.exec(`UPDATE orders SET rider_search_started_at=now()-interval '31 minutes',
+      created_at=now()-interval '35 minutes', merchant_accepted_at=NULL;`);
+    row = await snapshot();
+    equal(row.financial_preflight_only_candidates, 1);
+    await db.exec(`UPDATE orders SET created_at=now()-interval '20 minutes';`);
+    row = await snapshot();
+    equal(row.inconsistent_rider_search_start, 1);
+    equal(row.financial_preflight_only_candidates, 0);
+    equal(row.overdue_blocked_for_manual_review, 1);
+    await db.exec(`UPDATE orders SET created_at=now()-interval '35 minutes',
+      merchant_accepted_at=now()-interval '25 minutes';`);
+    row = await snapshot();
+    equal(row.inconsistent_rider_search_start, 1);
+    equal(row.financial_preflight_only_candidates, 0);
+    await db.exec(`UPDATE orders SET merchant_accepted_at=NULL,
+      rider_search_started_at=now()+interval '5 minutes';`);
+    row = await snapshot();
+    equal(row.future_search_start, 1);
+    equal(row.financial_preflight_only_candidates, 0);
+    await db.exec(`UPDATE orders SET rider_search_started_at=now()-interval '31 minutes';`);
+    row = await snapshot();
+    equal(row.financial_preflight_only_candidates, 1);
     assert.ok(Object.keys(row).every(key => !/(^id$|order_id|rider_id|address|phone)/.test(key)));
     checks++;
     // The operational query itself must run in a read-only transaction.
