@@ -36,6 +36,15 @@ declare v_settings public.pos_tax_settings%rowtype; v_rate numeric; v_base numer
 begin
   if new.sales_channel is distinct from 'POS' then return new; end if;
 
+  -- PostgreSQL numeric NaN passes ordinary >= 0 comparisons. Reject special
+  -- numeric values before disabled-tax/legacy returns and before arithmetic.
+  if new.subtotal::text in ('NaN','Infinity','-Infinity')
+     or new.discount_amount::text in ('NaN','Infinity','-Infinity')
+     or new.total_amount::text in ('NaN','Infinity','-Infinity') then
+    raise exception 'finite POS bill amounts required';
+  end if;
+
+
   -- Tax identity/rate come from the settings at bill creation, not from the
   -- cashier's later edits. Approved line changes only recalculate amounts.
   if tg_op = 'UPDATE' and (

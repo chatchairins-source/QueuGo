@@ -57,6 +57,14 @@ async function main(){
   await db.query('SELECT public.pos_save_tax_settings(false,7,true,null,null,null)');
   row=await insert(105,100);
   assert.equal(Number(row.total_amount),100);assert.equal(row.pos_tax_enabled_snapshot,false);checks+=2;
+  // PostgreSQL numeric admits NaN; comparison-based CHECKs alone are insufficient.
+  for(const [index,special] of ['NaN','Infinity','-Infinity'].entries()) {
+   await assert.rejects(insert(106+index,special),/finite POS bill amounts required/i);checks++;
+   await assert.rejects(db.query('UPDATE orders SET discount_amount=$2::numeric WHERE id=$1',[uuid(104),special]),/finite POS bill amounts required/i);checks++;
+  }
+  row=(await db.query('SELECT total_amount,discount_amount FROM orders WHERE id=$1',[uuid(104)])).rows[0];
+  assert.equal(Number(row.total_amount),214);assert.equal(Number(row.discount_amount),0);checks+=2;
+
   console.log(JSON.stringify({checks,failures:0,scope:'isolated PGlite POS tax settings/snapshot/checkout; no Production writes'}));
  }finally{await db.close();}
 }
