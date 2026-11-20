@@ -272,11 +272,8 @@ class RiderNavigationLocationService : Service() {
                     // Play Services can reject an asynchronous registration after the
                     // Java API call returns. Never keep a false 'GPS active' lease.
                     Log.e("QueueGoNavLocation", "foreground_fused_subscription_failed", error)
-                    if (callback === nextCallback && locationUpdatesStarted) {
-                        // Some CI AOSP emulators have no functional GMS location
-                        // provider. Keep the foreground lifecycle alive for the
-                        // explicit start/stop test, but never advertise a valid GPS
-                        // fix, send dispatch readiness, or forge a provider result.
+                    if (callback === nextCallback) {
+                        // A provider rejection can race with requestLocationUpdates()\n                        // returning, before locationUpdatesStarted is assigned.\n                        // The callback identity, not that provisional flag, owns\n                        // the subscription; always fail closed on its rejection.
                         locationUpdatesStarted = false
                         RiderNavigationLocationStore.clear()
                         // A rejected provider subscription is not an active navigation
