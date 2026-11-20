@@ -30,7 +30,6 @@ INSERT INTO p0_preflight_cases(case_name,payment_status,payment_method,search_st
  ('existing_offer','unpaid','cash',now()-interval '31 minutes',false,false,false,false,false,false,false,false,true,false,0),
  ('market_group','unpaid','cash',now()-interval '31 minutes',false,false,false,false,false,false,false,false,false,true,0),
  ('active_sibling','unpaid','cash',now()-interval '31 minutes',false,false,false,false,false,false,false,false,false,false,1);
-UPDATE p0_preflight_cases SET paid_at=now() WHERE case_name='clean_unpaid';
 INSERT INTO p0_preflight_cases(case_name,payment_status,payment_method,search_start,expected) VALUES
  ('paid_at','unpaid','cash',now()-interval '31 minutes',false);
 UPDATE p0_preflight_cases SET paid_at=now() WHERE case_name='paid_at';
@@ -39,7 +38,7 @@ INSERT INTO p0_preflight_cases(case_name,payment_status,payment_method,search_st
  ('contradictory_cancelled','unpaid','cash',now()-interval '31 minutes',false);
 UPDATE p0_preflight_cases SET rider_assigned_at=now() WHERE case_name='previously_assigned';
 UPDATE p0_preflight_cases SET cancelled_at=now() WHERE case_name='contradictory_cancelled';
--- Clean control is intentionally reinserted after mutating the original fixture.
+-- Additional clean control ensures positive cases are not all blocked.
 INSERT INTO p0_preflight_cases(case_name,payment_status,payment_method,search_start,expected) VALUES
  ('clean_control','unpaid','cash',now()-interval '31 minutes',true);
 DO $assert$
