@@ -1,0 +1,2360 @@
+{
+  "project_ref": "pkypiqhlrmzocysgeqew",
+  "checked_at": "2026-11-20 07:46:59.083785+00",
+  "source": "server-side sha256(convert_to(statements[1], 'UTF8')) from supabase_migrations.schema_migrations; exactly one stored SQL body per version",
+  "normalization": "none",
+  "migrations": [
+    {
+      "version": "20260924094832",
+      "name": "admin_delete_user_and_ghost_order_detection",
+      "sha256": "3dba583c74b398119984c8e690f019d7323a1e62ae28f2f29bfa5a711bdd62f3",
+      "sql_bytes": 2919
+    },
+    {
+      "version": "20260924100014",
+      "name": "harden_users_suspension_and_system_settings",
+      "sha256": "cd67a3bfdbb9a7e53c9a189208290af5f40f0a1037541060e7f8a8eae1f0c63f",
+      "sql_bytes": 6518
+    },
+    {
+      "version": "20260924100619",
+      "name": "per_shop_gp_rates",
+      "sha256": "22d81bdaba4ffebf52a8afc9a01933c49e3c8605c449f5e96f1b23d42ef18c5b",
+      "sql_bytes": 3560
+    },
+    {
+      "version": "20260925134754",
+      "name": "add_user_suspension_details",
+      "sha256": "ae82e2620bcfb2117a9bf13ad30ae9b9cdb5e465ff45504c060b99316a57ac7f",
+      "sql_bytes": 168
+    },
+    {
+      "version": "20260925134852",
+      "name": "record_user_suspension_on_status_change",
+      "sha256": "d51325211aec14a691fad9b6b577cfbb5fee2e1cb57cb2b1b0b2825cf1439a40",
+      "sql_bytes": 1362
+    },
+    {
+      "version": "20260925152611",
+      "name": "guest_safe_shop_product_fields",
+      "sha256": "57498d9367f8e19c00753934352fc116b3f90e4cf7eda0b9933077e8747b29c4",
+      "sql_bytes": 1360
+    },
+    {
+      "version": "20260925161806",
+      "name": "admin_manage_shop_profiles",
+      "sha256": "fb0f421d579a5855f8fd34e4b680997a4c5aecaafdc9e3edbc39f43d27ac44ae",
+      "sql_bytes": 312
+    },
+    {
+      "version": "20260925162100",
+      "name": "admin_profile_upsert_permissions",
+      "sha256": "f27db7410265d687099fbb56e1b3160b5cd2b1634c933ec73b13f0cf845cb10d",
+      "sql_bytes": 434
+    },
+    {
+      "version": "20260925173153",
+      "name": "shop_support_messages_private_chat",
+      "sha256": "16cb7aee422165440cea34d7d72e560e25c730325430775f84cb9b95c932b63f",
+      "sql_bytes": 1421
+    },
+    {
+      "version": "20260926060639",
+      "name": "public_read_home_service_banner",
+      "sha256": "fa50e432b075608bf7a8d72f2a3a9c83e8c08de9847f8fce01087940edbcfbc9",
+      "sql_bytes": 135
+    },
+    {
+      "version": "20260926075903",
+      "name": "queuego_shop_database_migration",
+      "sha256": "24c3b33cbd770d39c1c9a6ca15a909c945824dc64b7261be573df38ab1feec01",
+      "sql_bytes": 2526
+    },
+    {
+      "version": "20260926090433",
+      "name": "merchant_ui_product_fields_20260926",
+      "sha256": "32019c2da4c630c0da9af18497e95d66b0665f1b3f035e4011de8f1b53499c88",
+      "sql_bytes": 442
+    },
+    {
+      "version": "20260926091718",
+      "name": "lock_customer_shop_rider_ownership",
+      "sha256": "d447834d487a0261172f421d6bc8031377d233e798b280ced144fd678b5efc07",
+      "sql_bytes": 2684
+    },
+    {
+      "version": "20260926092554",
+      "name": "restore_pre_ownership_client_compatibility",
+      "sha256": "2cff31b628000a670d400e1a35a93077c69112d78a75f8770ff48ce314564d8e",
+      "sql_bytes": 3418
+    },
+    {
+      "version": "20260926102302",
+      "name": "merchant_media_bucket_and_owner_policies",
+      "sha256": "d11bd511e798d433dd895be0bee1f097140b7ff97a1f4d144b9d16727b0f27fe",
+      "sql_bytes": 944
+    },
+    {
+      "version": "20260926125403",
+      "name": "queuego_rider_cash_advance_and_actions",
+      "sha256": "cb2d1071ef05c20bd858fc979a95a1ab98c26df7b23e139bd71421fd16be29bf",
+      "sql_bytes": 5708
+    },
+    {
+      "version": "20260926125902",
+      "name": "queuego_rider_arrival_cash_flow",
+      "sha256": "cc21b1635a68d775c4a9eba05ce688297c983c4126fdd7ee1502485d7e68078d",
+      "sql_bytes": 3129
+    },
+    {
+      "version": "20260926144500",
+      "name": "queuego_public_shop_pickup_location",
+      "sha256": "5a0e97fdc7a66d3bfd75d4ebe293ff2915c07dbbbd0826d39039658d62ec775b",
+      "sql_bytes": 73
+    },
+    {
+      "version": "20260926144600",
+      "name": "queuego_gp_bangkok_business_date",
+      "sha256": "89f8f0879ce5076b4b6c8d8d8006c437fd020493f743a118701995c09e4d5b02",
+      "sql_bytes": 557
+    },
+    {
+      "version": "20260926155514",
+      "name": "queuego_cash_checkout_atomic_v1",
+      "sha256": "e65592c45a8a38a08f8d8104b64774bfc1b58cf34f04d96deef8d771293fe0d7",
+      "sql_bytes": 7164
+    },
+    {
+      "version": "20260926155600",
+      "name": "queuego_cash_checkout_delivery_status_fix",
+      "sha256": "bf1f3d68cdaebe3b1b30967d33e6ceff95539594fb85a07c4c756c3596bc91e3",
+      "sql_bytes": 7164
+    },
+    {
+      "version": "20260926155953",
+      "name": "queuego_merchant_cash_receipt_values_fix",
+      "sha256": "2fef14ef6649db2ffdb4f68eec23fb7574be1868a6b63a590741adc764dc7df2",
+      "sql_bytes": 1093
+    },
+    {
+      "version": "20260927013946",
+      "name": "queuego_cash_order_financial_lock_v1",
+      "sha256": "e15d66518525816e2859481f7ad8c0d876b9c27c159c5cd33f9a157c4439f2b3",
+      "sql_bytes": 7141
+    },
+    {
+      "version": "20260927013955",
+      "name": "queuego_cash_checkout_locked_v2",
+      "sha256": "e662c5100b7a0addaf7acfa5cbf10f5dbf64bdf67be9b46d151a189cae34435f",
+      "sql_bytes": 7256
+    },
+    {
+      "version": "20260927014004",
+      "name": "queuego_cash_completion_payment_v1",
+      "sha256": "7e1a35fd0ef0517a5b1f34533e9573a2b0d8812447bd7e48c94b1c51894df75f",
+      "sql_bytes": 3323
+    },
+    {
+      "version": "20260927014257",
+      "name": "queuego_cash_checkout_shop_notification_v3",
+      "sha256": "2c839c028f72c226407cc05ff7414f88a575d06ec074b96a210feade650dccde",
+      "sql_bytes": 7508
+    },
+    {
+      "version": "20260927022440",
+      "name": "queuego_admin_cash_report_v1",
+      "sha256": "ea985af6c4846872bcbf978769fdfceb232e52aef357b584b22ae9a1ee602c30",
+      "sql_bytes": 2113
+    },
+    {
+      "version": "20260927023652",
+      "name": "queuego_cash_cancel_dependents_v2",
+      "sha256": "caf300b3ec024ed8c076595131d5fa6bd7c0f822b89b50dd2bd718a7f90d71c3",
+      "sql_bytes": 8367
+    },
+    {
+      "version": "20260927023806",
+      "name": "queuego_cash_checkout_shop_open_v4",
+      "sha256": "56208e84d7aa9daaa746e9b2eb9374904cd577ab99dfcf705ff3d85fe67ae46a",
+      "sql_bytes": 7708
+    },
+    {
+      "version": "20260927023959",
+      "name": "queuego_admin_atomic_cash_delete_v1",
+      "sha256": "4676ad473aa8bdef77e7489fdf3f68e1844f7a762a5823302b531c094ff19a90",
+      "sql_bytes": 2291
+    },
+    {
+      "version": "20260927064826",
+      "name": "queuego_v22_support_proof_cash_trace",
+      "sha256": "bb142932e3e159592f58199bf01f3bf9eb9073cb01bca49d7622e801f05bebc3",
+      "sql_bytes": 17374
+    },
+    {
+      "version": "20260927065001",
+      "name": "queuego_v22_account_guard_admin_audit",
+      "sha256": "7cf9dded6d90b6421cbff10ce5dfc075406b587a9a3cb330f9edb4c443f91df0",
+      "sql_bytes": 3700
+    },
+    {
+      "version": "20260927065401",
+      "name": "queuego_v22_archive_proof_ticket",
+      "sha256": "ee5eb68e25a12e8caaaf27fc8f27582a18cf0633729562cb9be5bc6b23ec28f8",
+      "sql_bytes": 2973
+    },
+    {
+      "version": "20260927065707",
+      "name": "queuego_v22_pin_crypto_schema",
+      "sha256": "ac29f7fdde3f5ba1ff057edad047ba83e0882a1e2d933cb724e3c7e0762e5b97",
+      "sql_bytes": 718
+    },
+    {
+      "version": "20260927065930",
+      "name": "queuego_v22_real_reviews",
+      "sha256": "15c7645af42fa176a81ea587702b3d6b06a8f314524ffa3a940d73a756077bab",
+      "sql_bytes": 1870
+    },
+    {
+      "version": "20260927070054",
+      "name": "queuego_v22_rider_presence_summary",
+      "sha256": "cb1d47b103c3ae77385476348638d1c530f1ccecd06602e02aa7caa72ce56d7b",
+      "sql_bytes": 3318
+    },
+    {
+      "version": "20260927070206",
+      "name": "queuego_v22_merchant_analytics",
+      "sha256": "42a17f3cf6df61ccb2679d667f646d9cc5c853ced913fa26cb75276fcc75260a",
+      "sql_bytes": 2469
+    },
+    {
+      "version": "20260927070417",
+      "name": "queuego_v22_customer_favorites",
+      "sha256": "e604c7dfebc13378e50c5339c69ad5bee5e32a41561ed4daa001d006691b8ccc",
+      "sql_bytes": 1362
+    },
+    {
+      "version": "20260927070940",
+      "name": "queuego_v22_server_only_order_transitions",
+      "sha256": "79b592a53f93d7aa59aedfa047cd439f160e152afa54438f5ee1e0d3d2b4f1bf",
+      "sql_bytes": 10403
+    },
+    {
+      "version": "20260927071227",
+      "name": "queuego_v22_require_merchant_receipt_on_delivery",
+      "sha256": "1736a6c6087d9fd974571a0dc3e12905a7d8068c8f0fb2c772b6b2c5af5d1141",
+      "sql_bytes": 2181
+    },
+    {
+      "version": "20260927071530",
+      "name": "queuego_v22_exact_admin_live_counts",
+      "sha256": "56d197b69de6553d1a9dc20705b325d729c8c269e83d507806365364131d87e6",
+      "sql_bytes": 1312
+    },
+    {
+      "version": "20260927071633",
+      "name": "queuego_v22_restrictive_suspension_rls",
+      "sha256": "6774db3c395c1c3c92a1aa0daf3b51a6f174b7c4a22fae7af2443fce78649f95",
+      "sql_bytes": 1348
+    },
+    {
+      "version": "20260928044315",
+      "name": "queuego_pos_workflow_roles_cash",
+      "sha256": "fc6a569d1626632824f9236107d6b154cbccd2358362f9d2ef0e364bd5d0010b",
+      "sql_bytes": 9302
+    },
+    {
+      "version": "20260928064603",
+      "name": "queuego_pos_kitchen_line_states",
+      "sha256": "7166c277308630645e98a5d935770685b51aabe46dd380e679e53b25758e27a1",
+      "sql_bytes": 2978
+    },
+    {
+      "version": "20260928064803",
+      "name": "queuego_pos_kitchen_batch_groups",
+      "sha256": "47276e70b68736438d810f630a33baaf2582b325ad12c26a80265414c709f5f2",
+      "sql_bytes": 3045
+    },
+    {
+      "version": "20260928065050",
+      "name": "queuego_pos_delivery_opt_in",
+      "sha256": "688c2e6925c05bdbae6c25e2f59f83d869061b0c5b637c08e0776a48b93651c5",
+      "sql_bytes": 4422
+    },
+    {
+      "version": "20260928065710",
+      "name": "queuego_pos_payment_idempotency",
+      "sha256": "ea5dcd4b7714d071e4f54fb063bda26c3eae2e051c080d374a1c366715b3ca89",
+      "sql_bytes": 2115
+    },
+    {
+      "version": "20260928073026",
+      "name": "queuego_pos_mvp_integration_20260928",
+      "sha256": "423678db34131e8696ea298b2529104b6dd5449761dd994c3d831eaef1112de5",
+      "sql_bytes": 6220
+    },
+    {
+      "version": "20260928074554",
+      "name": "queuego_pos_tables_same_shop_20260928",
+      "sha256": "52d72e0c119293d3145605081f6c803ffe468a00ea1b66fb47e246d43d0db0fb",
+      "sql_bytes": 320
+    },
+    {
+      "version": "20260928080121",
+      "name": "queuego_market_base_20260928",
+      "sha256": "4b6b532eeb8d5ebee4da6e071b558aac088eedd83a378d9b3023df5bf2586941",
+      "sql_bytes": 12967
+    },
+    {
+      "version": "20260928080131",
+      "name": "queuego_market_checkout_marker_20260928",
+      "sha256": "a8b32d8bb23e93ace8db2b35d47add1ac95ffc8de1e0164a1fcbddef34d2b9e3",
+      "sql_bytes": 8104
+    },
+    {
+      "version": "20260928080533",
+      "name": "queuego_market_vehicle_20260928",
+      "sha256": "4a9201ad8e9de3fc9f20c42ec03db92738f2d567821d5f70705a16d50df9c4f9",
+      "sql_bytes": 15043
+    },
+    {
+      "version": "20260928081325",
+      "name": "queuego_market_vehicle_audit_weight_20260928",
+      "sha256": "9a131caa763d0e15fa9d1c84ad92bf31535d51890be88cd77ad8900a80b0f1d7",
+      "sql_bytes": 2684
+    },
+    {
+      "version": "20260928121810",
+      "name": "queuego_guest_storefront_column_grants_20260928",
+      "sha256": "c9d047f468d2be73b1c0d408eba188c07465bdc842357f5e5f7c415bed7f6eff",
+      "sql_bytes": 346
+    },
+    {
+      "version": "20260928145956",
+      "name": "queuego_table_qr_v1",
+      "sha256": "31e4ff8b29191c5da28333b277bb592ab4028172b4fb9d0eccbdf10e6efde71d",
+      "sql_bytes": 13650
+    },
+    {
+      "version": "20260928161159",
+      "name": "table_qr_use_delivery_catalog_without_gp",
+      "sha256": "3cc1b2a3a0372d742700bd1e83c306edd3b85478bf760a04eac003a017f3fc4b",
+      "sql_bytes": 7149
+    },
+    {
+      "version": "20260928163030",
+      "name": "reuse_existing_table_on_duplicate_label",
+      "sha256": "3458f04cd0e1ec6586cfe20159367ccd618e665b1b89a0795bc873d70f886e2e",
+      "sql_bytes": 1576
+    },
+    {
+      "version": "20260928163135",
+      "name": "thai_table_management_messages",
+      "sha256": "12a31fe325350daacbe0530b9418712ee1bfed9976b686ae93f626882ecd8582",
+      "sql_bytes": 1833
+    },
+    {
+      "version": "20260929040126",
+      "name": "add_safe_pos_delete_table",
+      "sha256": "99d846647ed65762dc652a940be66b5efb563ec0343c9e6ac6753189acf50964",
+      "sql_bytes": 1144
+    },
+    {
+      "version": "20260929040212",
+      "name": "restrict_table_qr_rotation_to_authenticated",
+      "sha256": "c9d0e35339540ea2bc7e7c3b06e68e32e1d05c1891372d2e4306ba85009b0915",
+      "sql_bytes": 145
+    },
+    {
+      "version": "20260930143447",
+      "name": "queuego_rider_first_order_flow_rc",
+      "sha256": "a04dd3fcfa05ac442671a8bdcd663a2e8ad50600175355bc66239676ab9f89b0",
+      "sql_bytes": 14646
+    },
+    {
+      "version": "20260930143503",
+      "name": "queuego_rider_first_pool",
+      "sha256": "bd1ea667e50e86a40c8ea0b7c094a737f53e192346b2f2bdf27e2873846b4f96",
+      "sql_bytes": 1394
+    },
+    {
+      "version": "20260930143649",
+      "name": "queuego_rider_first_rpc_permissions",
+      "sha256": "641e6e484839e5ff4d929269c0b2bb05de3e17f1eb5071e8b60655c86faf5c2d",
+      "sql_bytes": 779
+    },
+    {
+      "version": "20261001024830",
+      "name": "queuego_pre_apk_active_order_rider_first_guard",
+      "sha256": "6107edde4ea22eba61c55efdbc1d55f7c1a01b5864ba104e583df15c1d277c70",
+      "sql_bytes": 7581
+    },
+    {
+      "version": "20261001032211",
+      "name": "queuego_pin_state_alignment",
+      "sha256": "4011d8966c7bcac37b57d926d395c6748e04c392cc3182a2f01d1f7d3efc33d7",
+      "sql_bytes": 579
+    },
+    {
+      "version": "20261001032225",
+      "name": "queuego_customer_pin_state_alignment",
+      "sha256": "fa4d6d23dda67bd0ef80fbf8bdb816b78b6d03059a5803bca0c0dcaa3be81d48",
+      "sql_bytes": 668
+    },
+    {
+      "version": "20261001035700",
+      "name": "queuego_cash_guard_rider_first_alignment",
+      "sha256": "406ec74c81725ba4761e97a325a7cc2d6be9e168176fabf675aa38d209a70031",
+      "sql_bytes": 2854
+    },
+    {
+      "version": "20261001035755",
+      "name": "queuego_cash_delivery_rider_first_alignment",
+      "sha256": "6d6e1dfa2701862a50c5d3bd7cdd8ba1e73e708ff3e1dbec99c7052c5b759b9d",
+      "sql_bytes": 2095
+    },
+    {
+      "version": "20261001040220",
+      "name": "queuego_checkout_strict_cart_wrapper",
+      "sha256": "50d8121e29d9859fa733796002758b42327acd57e98465a36deb0938ad0dbbe9",
+      "sql_bytes": 1722
+    },
+    {
+      "version": "20261001093823",
+      "name": "fix_laundry_event_rider_ownership",
+      "sha256": "05cc0d1e19205da4e14e3dd5332f023cf27cae00e9655212506170c14ce3aec2",
+      "sql_bytes": 508
+    },
+    {
+      "version": "20261001094227",
+      "name": "require_verified_proof_before_rider_completion",
+      "sha256": "5e7be5691e4db107cce548f28a5d1e24ecb6c9bbec2a1e19792f9ae12c29e71d",
+      "sql_bytes": 4632
+    },
+    {
+      "version": "20261002055133",
+      "name": "queuego_shop_readiness_gate",
+      "sha256": "2816c04cf75151db8283228e096c25dc6fa4fa31e27524c50b3e572830813d27",
+      "sql_bytes": 1642
+    },
+    {
+      "version": "20261002055219",
+      "name": "merchant_cancel_delivery_atomic",
+      "sha256": "e08d7f6e45d8efbf3e30f0321664e3ff902427d75adf9a7cff78b4061f2e1230",
+      "sql_bytes": 4631
+    },
+    {
+      "version": "20261002055542",
+      "name": "remove_permissive_legacy_rls_bypass",
+      "sha256": "31538774b669c48db88c41c50add42ae9e3bfc40daa3027852e9f9c4bb0aeeba",
+      "sql_bytes": 1469
+    },
+    {
+      "version": "20261002055732",
+      "name": "force_customer_orders_through_atomic_rpc",
+      "sha256": "980caac1aef0c68e56fd1be8bea278b4017f285206b788679423b17d61f120d8",
+      "sql_bytes": 287
+    },
+    {
+      "version": "20261002061413",
+      "name": "market_catalog_only_ready_shops",
+      "sha256": "dce64af63262d893158d534b4f797e8011facb79cb70a626c8a595085aa22719",
+      "sql_bytes": 1326
+    },
+    {
+      "version": "20261002071241",
+      "name": "market_public_shops_shop_first",
+      "sha256": "fdc3759d6c4737da0a7b73a99c0905e281483e1d80c67cbedc05e8810fe122f7",
+      "sql_bytes": 726
+    },
+    {
+      "version": "20261002073924",
+      "name": "allow_anon_read_active_shop_profiles_for_market",
+      "sha256": "09aaa2f9453999327253b9a1e6800f5076c66b05915f16e10979ed5193d2c995",
+      "sql_bytes": 171
+    },
+    {
+      "version": "20261002074027",
+      "name": "allow_anon_active_shop_user_rows_for_public_storefront",
+      "sha256": "3878cbe628094c6ed220dba6d4f0810aac01c22f8318fdf96e78ea22a0b18cdc",
+      "sql_bytes": 211
+    },
+    {
+      "version": "20261002074632",
+      "name": "market_public_shops_rich_storefront_fields",
+      "sha256": "fedd42331e8c6d8ee2808688299f3fe78cc5a3cffc76ccdbde4e46d88e28e1ef",
+      "sql_bytes": 1106
+    },
+    {
+      "version": "20261002115117",
+      "name": "market_multi_shop_delivery_model",
+      "sha256": "e1a00bffd82d1a69b1fad886b845de45d225d74237a970e3152761b2ba5d8109",
+      "sql_bytes": 1920
+    },
+    {
+      "version": "20261002115809",
+      "name": "seed_buriram_markets_and_nearest_market_assignment",
+      "sha256": "e613ea4759df74c2e9a5743d891bd3f1b1b5d275305360791287a0d906bc80c4",
+      "sql_bytes": 7883
+    },
+    {
+      "version": "20261002120358",
+      "name": "market_pickup_cash_amounts",
+      "sha256": "ed348ce6f1df9448e502e3935b8e466d151fba11e7359a8bb4ebb72ffb2fa3b7",
+      "sql_bytes": 2596
+    },
+    {
+      "version": "20261002121437",
+      "name": "market_multi_shop_security_sync_v2",
+      "sha256": "868ddb1dd7b9524fd75007db7ebe52cd66d0c2c820517ac51ba79cd52e451af1",
+      "sql_bytes": 4891
+    },
+    {
+      "version": "20261002121729",
+      "name": "market_atomic_checkout_v1",
+      "sha256": "d680d06d4c33038272692c0f205e63ded2e1c812d96a301c00642b62e7c26d78",
+      "sql_bytes": 9396
+    },
+    {
+      "version": "20261002121838",
+      "name": "market_partial_cancel_recalculate_v1",
+      "sha256": "55f7147401c4f8baa6ddb757e20862835c71ac0e27d497af1d4e133810554513",
+      "sql_bytes": 4710
+    },
+    {
+      "version": "20261002124137",
+      "name": "market_rider_group_lifecycle_v1",
+      "sha256": "5691d8f5c8a099209064438f81b9f22fb53c916a0ca3e5f448eed6ca5e698428",
+      "sql_bytes": 8577
+    },
+    {
+      "version": "20261002124257",
+      "name": "market_rider_pool_grouping_v1",
+      "sha256": "402506e43558c77309d66735188604badf1835110fa8895ff807a4edaa243469",
+      "sql_bytes": 2908
+    },
+    {
+      "version": "20261002124314",
+      "name": "market_pickup_ready_guard_v1",
+      "sha256": "b0ca05697fe307dceca3ab9b9e6b08610e2ec0e9cde98ca362c6daa94e8ee3b8",
+      "sql_bytes": 686
+    },
+    {
+      "version": "20261002124442",
+      "name": "market_recalc_financial_guard_v1",
+      "sha256": "f6d20a57fe86706bbf9abab808816049da59e26f22666e44d728815338461ec6",
+      "sql_bytes": 3703
+    },
+    {
+      "version": "20261002124911",
+      "name": "market_security_hardening_v1",
+      "sha256": "283914c615f186be893a8927c53dd93cdafff23bb0868409133883299990ff80",
+      "sql_bytes": 3258
+    },
+    {
+      "version": "20261002124943",
+      "name": "market_parent_status_sync_v1",
+      "sha256": "a896e703a016af23075848c13afcae6f632505dac3c11325128cdac18f40c838",
+      "sql_bytes": 1265
+    },
+    {
+      "version": "20261002130515",
+      "name": "auto_assign_shop_market_trigger_v1",
+      "sha256": "7749310ee7071fe29ca02ed2a69b998d2b44899e450af89a353b1b496289f47e",
+      "sql_bytes": 1370
+    },
+    {
+      "version": "20261002131305",
+      "name": "market_e2e_test_fixture_v1",
+      "sha256": "5e124883d19a54e61aef7b5f62d1fab0bf2c0ecc072ad36834cc6a37fb87100c",
+      "sql_bytes": 4051
+    },
+    {
+      "version": "20261002131700",
+      "name": "market_group_claim_concurrency_order_number_v2",
+      "sha256": "b34100a9339e7f96fc1f497504a19f6961d7ff45e15a0fb079f846b595976010",
+      "sql_bytes": 3440
+    },
+    {
+      "version": "20261002133252",
+      "name": "market_group_claim_error_clarity_v3",
+      "sha256": "fec2bac125ea5920f7d9ae2a4411fe5cacc35f17ab97a1e275a1f36e22fb5239",
+      "sql_bytes": 2895
+    },
+    {
+      "version": "20261002133630",
+      "name": "market_pickup_strict_ready_v2",
+      "sha256": "3ce1c2fc2d3cb7a98dabc9449b3793491ece0b958585711a217fd51821f6f065",
+      "sql_bytes": 2536
+    },
+    {
+      "version": "20261002141005",
+      "name": "market_pickup_delivery_timestamp_fix_v3",
+      "sha256": "f8443e322a8c549a262d909f570152a1d5c6c4491398cf61016a29996fbd320c",
+      "sql_bytes": 2554
+    },
+    {
+      "version": "20261002141059",
+      "name": "market_group_delivery_sync_v1",
+      "sha256": "e3a04e649e6df633f2ef608ccd58324f7a7d067d2e492e4c875a8af696eaf66f",
+      "sql_bytes": 2179
+    },
+    {
+      "version": "20261002141513",
+      "name": "market_completion_atomic_security_v2",
+      "sha256": "45eee6c928d4a4462b754d814c5dfa962631a09094aea4545c2a0de1ee8aaf84",
+      "sql_bytes": 3545
+    },
+    {
+      "version": "20261002142129",
+      "name": "market_nearest_assignment_rpc_lockdown_v1",
+      "sha256": "cd87575fcf9f47862ab130f1e3a248e162eb1d1c3daaa26638e337c8a54082dd",
+      "sql_bytes": 114
+    },
+    {
+      "version": "20261002143256",
+      "name": "market_pickup_summary_authorization_v1",
+      "sha256": "55476f9477f1c51b09f6afb8da88228ad1bbd3f2748479412019db423648c22e",
+      "sql_bytes": 1545
+    },
+    {
+      "version": "20261002143809",
+      "name": "market_rider_job_weights_state_fix_v1",
+      "sha256": "dc2701964bd9fc83304e0ce8a318f3020fe6ee1434761b28a7bf72103121f28b",
+      "sql_bytes": 1053
+    },
+    {
+      "version": "20261002143833",
+      "name": "market_orders_participant_rls_fix_v1",
+      "sha256": "8aca135604a50d3a7aae177d2b0ceba824bf2162c508f193783db00012ba39e7",
+      "sql_bytes": 568
+    },
+    {
+      "version": "20261003174753",
+      "name": "rider_completion_without_merchant_acknowledgement",
+      "sha256": "0cd24717f84e7e9aac7ea7c454ca01cd923a454f679d5793dfd74ada218be634",
+      "sql_bytes": 10688
+    },
+    {
+      "version": "20261004000119",
+      "name": "rider_claim_profile_serialization",
+      "sha256": "bb04c91b5dc64f7e5747e3bb766e40abb0eeacb44dfc01c84f4fb9666d883869",
+      "sql_bytes": 6169
+    },
+    {
+      "version": "20261004004030",
+      "name": "unified_delivery_kitchen",
+      "sha256": "4c8903aa0a6aefc8bd6fc056e9114f535fac0267ba7b349da645e87f6b3ceeaa",
+      "sql_bytes": 6691
+    },
+    {
+      "version": "20261004011501",
+      "name": "qr_pos_availability_chat_participants",
+      "sha256": "6ba18ae4c34ce14b11c4257a936a22f9468cef733aff4deda95e633d3f4e7ddc",
+      "sql_bytes": 7730
+    },
+    {
+      "version": "20261004133453",
+      "name": "pre_android_profile_rls_hardening",
+      "sha256": "0300dbcd3b3fd663e4e7dcafa7a2546ec4f3ffa875a9964b2ad499b7eed32ccc",
+      "sql_bytes": 479
+    },
+    {
+      "version": "20261004163928",
+      "name": "queuego_platform_controls_market_laundry_foundation",
+      "sha256": "3a71f1b68f1985e8a6b5b26e64aebbdb9d7fc694a680a924ca8ee500089b9cfb",
+      "sql_bytes": 11703
+    },
+    {
+      "version": "20261004164142",
+      "name": "queuego_platform_feature_pricing_controls",
+      "sha256": "894ac21fcb14e8fb21000f8457bb6d1e40a168aa4c34de8aec4f7082374e577c",
+      "sql_bytes": 25999
+    },
+    {
+      "version": "20261004164313",
+      "name": "queuego_remove_duplicate_market_fee_wrapper",
+      "sha256": "7a4749c6e75185abcdbcdc83d6d155e626dfad0ce35a45a12b4c0e0da4c5847f",
+      "sql_bytes": 70
+    },
+    {
+      "version": "20261004164914",
+      "name": "queuego_consolidate_platform_controls_source_of_truth",
+      "sha256": "d55b7bbf1306adda58ec616bb8b5043116c9411e5322d2c4970723596e26594a",
+      "sql_bytes": 2671
+    },
+    {
+      "version": "20261004165249",
+      "name": "queuego_market_registration_membership",
+      "sha256": "4397f3520e0472dadf538020fbadfc1a6bd0bb5814e48b92abfa0e86a410976a",
+      "sql_bytes": 23274
+    },
+    {
+      "version": "20261004165446",
+      "name": "queuego_market_membership_insert_guard_fix",
+      "sha256": "f4a538066a7287fe085848a0dcae7269bb4e22806ea0432d69f5b4a82db1d844",
+      "sql_bytes": 2146
+    },
+    {
+      "version": "20261004165920",
+      "name": "queuego_market_registration_radius_fix",
+      "sha256": "71e8b39b3946fff59051399f12d8cb8815296330978f2684669a4ed008db272c",
+      "sql_bytes": 864
+    },
+    {
+      "version": "20261004170255",
+      "name": "queuego_market_admin_review_flow",
+      "sha256": "0ad957daec4a8d683f55ea778dd9e103c5306c562c2043adbf76864a6fbef097",
+      "sql_bytes": 6095
+    },
+    {
+      "version": "20261004170715",
+      "name": "queuego_market_trip_add_shops",
+      "sha256": "02f7e302700b9f048c8ccab729b890d436210dcf29c472e1d9820916510bb09c",
+      "sql_bytes": 16153
+    },
+    {
+      "version": "20261004171204",
+      "name": "queuego_market_rider_route_summary",
+      "sha256": "cbf6a29d6f423b2958e72219a885211cc016407593f02577a1797db812fc22ab",
+      "sql_bytes": 1842
+    },
+    {
+      "version": "20261004171334",
+      "name": "queuego_route_bundle_v1",
+      "sha256": "49ce6d4f49a31844fc6d272b5599918aee0f3581187a0170032a60ac66c36527",
+      "sql_bytes": 32644
+    },
+    {
+      "version": "20261004171602",
+      "name": "queuego_route_bundle_v1",
+      "sha256": "49ce6d4f49a31844fc6d272b5599918aee0f3581187a0170032a60ac66c36527",
+      "sql_bytes": 32644
+    },
+    {
+      "version": "20261004172019",
+      "name": "queuego_route_bundle_v2",
+      "sha256": "5a5d5e6b2a51e608d6c8b0f799b1f886e26ab0048ce80d0ab51e7c457b521a0f",
+      "sql_bytes": 9807
+    },
+    {
+      "version": "20261004172530",
+      "name": "queuego_laundry_v1",
+      "sha256": "1cac2c5503f6c7902fe5b78c4d236c40ed15088977651ba7f371c5c684e51b09",
+      "sql_bytes": 25357
+    },
+    {
+      "version": "20261004172534",
+      "name": "queuego_laundry_v1",
+      "sha256": "1cac2c5503f6c7902fe5b78c4d236c40ed15088977651ba7f371c5c684e51b09",
+      "sql_bytes": 25357
+    },
+    {
+      "version": "20261004172953",
+      "name": "queuego_laundry_merchant_controls",
+      "sha256": "99d7e86d1a5aaa77e78af86247c146e46541bdd48ac35db1ad2f8c1da40253fb",
+      "sql_bytes": 15961
+    },
+    {
+      "version": "20261004173103",
+      "name": "queuego_laundry_v2_schema",
+      "sha256": "17eb4a02281c77ed16404cf3a75543fe74aea0e5ffa57fcc6f5d50992b1abe14",
+      "sql_bytes": 2540
+    },
+    {
+      "version": "20261004173119",
+      "name": "queuego_laundry_v2_merchant",
+      "sha256": "1cb06efd3f47bfe3695b0b06c1c4eaf068929bcf653d6d56228e8ca36bc79ef2",
+      "sql_bytes": 8951
+    },
+    {
+      "version": "20261004173133",
+      "name": "queuego_laundry_v2_rider_invites",
+      "sha256": "75462821ff08c3656012c64acbadb6dc33135d6866c243aae44d81b2fa0de963",
+      "sql_bytes": 4624
+    },
+    {
+      "version": "20261004173149",
+      "name": "queuego_laundry_v2_checkout",
+      "sha256": "a90b17fa37f7702dbe3a20cf36aa8324e6bcc18602a5fd9bad9534d745ebb28f",
+      "sql_bytes": 6218
+    },
+    {
+      "version": "20261004173200",
+      "name": "queuego_laundry_v2_actions_pool",
+      "sha256": "e90ed542f6fdf5cd6d1f04cf875d33872112f1eea6b7394920977cb1b5655d2b",
+      "sql_bytes": 7975
+    },
+    {
+      "version": "20261004173305",
+      "name": "queuego_laundry_remove_duplicate_control_overload",
+      "sha256": "393bda88056dd5e5f1cb82a89d28364a069253e22fad56ef41f70136623f3b36",
+      "sql_bytes": 177
+    },
+    {
+      "version": "20261004173556",
+      "name": "queuego_laundry_rider_state",
+      "sha256": "3b88dd6d915169c6182b871f6285ca41163cafb839a717140d0413c81f2a3dc8",
+      "sql_bytes": 3217
+    },
+    {
+      "version": "20261004173639",
+      "name": "queuego_laundry_customer_catalog",
+      "sha256": "6647f935971fdd1ae1e5c1ce36e999c233ac50ecf362473ed39ccbe9bb9c7d88",
+      "sql_bytes": 2861
+    },
+    {
+      "version": "20261004173845",
+      "name": "queuego_laundry_rider_active_job",
+      "sha256": "fc22c1afff4551873c6ae0bb85ac0963871ac2ed958b95a4d1ea63f0ef3b5353",
+      "sql_bytes": 2722
+    },
+    {
+      "version": "20261004174301",
+      "name": "queuego_laundry_legacy_reconcile",
+      "sha256": "d4400b2933a65d7f9054772db5635b2e9083f9b296544b188dd40f19ec639507",
+      "sql_bytes": 3976
+    },
+    {
+      "version": "20261004174616",
+      "name": "queuego_laundry_security_hardening",
+      "sha256": "164834bf8d91935a596a7b55fa26350172df315d9c2efbf572931c6d9b5b75e9",
+      "sql_bytes": 1668
+    },
+    {
+      "version": "20261004175103",
+      "name": "queuego_market_direct_write_hardening",
+      "sha256": "9449bab6b0e017064a6c29945d26092aee3a6ee73ecc50ecbf25d16c1bdcea71",
+      "sql_bytes": 673
+    },
+    {
+      "version": "20261004184603",
+      "name": "queuego_laundry_rls_finalize",
+      "sha256": "0cd5a0aaeafeb9882481f85659383f3842086a513fe2c6560470e5763f5432c5",
+      "sql_bytes": 3124
+    },
+    {
+      "version": "20261004190322",
+      "name": "queuego_route_bundle_fair_savings",
+      "sha256": "27480ddd95edf644911bd642fc6ad5e46aa6640ed09e7419da67e96f2dd15d89",
+      "sql_bytes": 17873
+    },
+    {
+      "version": "20261005034119",
+      "name": "queuego_rider_slide_completion_v1",
+      "sha256": "fed3a09e45e05b4bc53f55b3a8c81b59c78f6d124c47a26fdb77ff039da1080e",
+      "sql_bytes": 4438
+    },
+    {
+      "version": "20261005045839",
+      "name": "rider_shop_arrival_notifications",
+      "sha256": "ef135319ad5b9107e4161e098de330510e390316df004bddfd7f69c1a5e2c141",
+      "sql_bytes": 13138
+    },
+    {
+      "version": "20261005053430",
+      "name": "rider_reliability_push",
+      "sha256": "977eab33875d7c03d46a743a2e833820da1d27da6bc7836304346989411358dc",
+      "sql_bytes": 9064
+    },
+    {
+      "version": "20261005053957",
+      "name": "rider_bundle_recovery",
+      "sha256": "7cacd0e112c2e41126df2546d5b36fe553d919edda1efbaebde9f2c617c0c044",
+      "sql_bytes": 2065
+    },
+    {
+      "version": "20261005094515",
+      "name": "product_delivery_gp_lock",
+      "sha256": "6c3679228a76d382ad136b229d9160fa786f6d9fdcf3278bd8d223cbd1f94ce0",
+      "sql_bytes": 4943
+    },
+    {
+      "version": "20261005094837",
+      "name": "delivery_gp_markup_accounting",
+      "sha256": "eb8fd0cd20f7a99ca356acb55d15e7ea0c93e519073462b062ac222a2c7545f8",
+      "sql_bytes": 1644
+    },
+    {
+      "version": "20261005111525",
+      "name": "merchant_order_action_reliability",
+      "sha256": "14a0daf8c4e6dd0491c5228321789a8b4bbed8af239ab0781dd034ee830cc8cb",
+      "sql_bytes": 2996
+    },
+    {
+      "version": "20261005112726",
+      "name": "customer_market_directory",
+      "sha256": "5d595537aedc9e4a36772c70b070a3451519dc6b1b991737adb1e2369ed101f8",
+      "sql_bytes": 1938
+    },
+    {
+      "version": "20261005134729",
+      "name": "merchant_order_action_repeat_safe",
+      "sha256": "4ff4ac53fea08098507c644676c78c61408021da388ab42739fdeac52f4fcd6f",
+      "sql_bytes": 1748
+    },
+    {
+      "version": "20261005140543",
+      "name": "rider_legacy_action_repeat_safe",
+      "sha256": "11715a24b71b6f27449214273e8e9cd299433a7362c34f84af7311b48c57b624",
+      "sql_bytes": 10696
+    },
+    {
+      "version": "20261005142429",
+      "name": "rider_laundry_action_receipts",
+      "sha256": "c69b90a4791ed06f177d81f935474631db996bfb5a8e831bf772552874291a5f",
+      "sql_bytes": 3371
+    },
+    {
+      "version": "20261005143635",
+      "name": "restricted_delivery_policy",
+      "sha256": "bf63761dded59c99b5270ad40308f6b4b3ab2b662acbfcf054975e3ce5707357",
+      "sql_bytes": 3416
+    },
+    {
+      "version": "20261005143646",
+      "name": "restricted_delivery_policy",
+      "sha256": "bf63761dded59c99b5270ad40308f6b4b3ab2b662acbfcf054975e3ce5707357",
+      "sql_bytes": 3416
+    },
+    {
+      "version": "20261005144234",
+      "name": "realtime_publication_alignment",
+      "sha256": "bead6af7fe4f7882596b48e54ae6e4d83d326d3d405b55436b1a51b355922d02",
+      "sql_bytes": 987
+    },
+    {
+      "version": "20261006013117",
+      "name": "product_delete_archive",
+      "sha256": "15a889f84de41ec74e08787432d2a9bf1c676e9fcf68b31e5a881acb1234f2bb",
+      "sql_bytes": 1727
+    },
+    {
+      "version": "20261006041649",
+      "name": "randomize_four_digit_order_numbers",
+      "sha256": "8989d0ee8c7959b737f880bb92751fc358d819d1547fbd6e469afdfe921f1936",
+      "sql_bytes": 4696
+    },
+    {
+      "version": "20261006042315",
+      "name": "allow_merchant_profile_save_after_market_review",
+      "sha256": "21d124f18065fcf949012298d10d9b058632bec1eae1903573fea3639f6ce3f5",
+      "sql_bytes": 2925
+    },
+    {
+      "version": "20261006043003",
+      "name": "fix_merchant_profile_edit_preserve_market_review",
+      "sha256": "535043561b5dd3f4fb1f8dfea1c088e044e3bca949724ee8717dc6ea616ad71f",
+      "sql_bytes": 3610
+    },
+    {
+      "version": "20261006053904",
+      "name": "chat_retention_30min",
+      "sha256": "dd63db4b9f952b9113a5351f81084abccd20ad611895f34e7dcc0b3bea1c9e56",
+      "sql_bytes": 6163
+    },
+    {
+      "version": "20261006054514",
+      "name": "chat_helper_permissions",
+      "sha256": "a7ed0fb997c1c3c5c5b3daeb4bd57a8a778ac214d776843371b933ca0099fe9a",
+      "sql_bytes": 586
+    },
+    {
+      "version": "20261006065222",
+      "name": "rider_authoritative_active_flow",
+      "sha256": "28587f766058c415f95a706120ff870d0cf5e87949e92dc8173e9d5d204944e2",
+      "sql_bytes": 11258
+    },
+    {
+      "version": "20261006073247",
+      "name": "rider_delivery_proof_pin_flow",
+      "sha256": "a63ec56c1e571fa871b35213d10e8a6e32b02b5a349227a76cd06ce60eb88a53",
+      "sql_bytes": 9850
+    },
+    {
+      "version": "20261006074414",
+      "name": "market_proof_completion_audit",
+      "sha256": "800063e3fff826ff9d22cfad1c0aa859f95f8a51329735503527d669c7861117",
+      "sql_bytes": 6767
+    },
+    {
+      "version": "20261006074820",
+      "name": "order_item_image_snapshot",
+      "sha256": "25b18109c0c24737eba820273e34fa78d9ef8f1edcd71f650c58aff8156d03e6",
+      "sql_bytes": 1022
+    },
+    {
+      "version": "20261006081224",
+      "name": "rider_photo_only_flow",
+      "sha256": "15d4cc8e3b87346c45119702fdd1f15b89d15b595fea2dc333b85c7ab3328425",
+      "sql_bytes": 15036
+    },
+    {
+      "version": "20261006082624",
+      "name": "retire_delivery_pin_generation",
+      "sha256": "d0d865a72d0123a8156e85a1c76469c0613d8df83df7e5dfe5b693c11cc895e0",
+      "sql_bytes": 512
+    },
+    {
+      "version": "20261006082818",
+      "name": "rider_photo_only_cleanup",
+      "sha256": "d094390e5822ea38bcbf701354b9cd1eee170f0dd931b536741f65171f894eb6",
+      "sql_bytes": 5499
+    },
+    {
+      "version": "20261006121155",
+      "name": "rider_arrival_customer_and_warning_flow",
+      "sha256": "3bf706b59e8585eabaeeb8dcac72841671c8749dd55c49f251d0242e03c850bc",
+      "sql_bytes": 4321
+    },
+    {
+      "version": "20261006143738",
+      "name": "sequential_rider_offer_dispatch_30s_v2",
+      "sha256": "22768a831ad273c99654061a85dfd7dc2a57bc04a2b71aa8a657773dc84fa57f",
+      "sql_bytes": 14128
+    },
+    {
+      "version": "20261006143919",
+      "name": "sequential_rider_offer_rls_lock",
+      "sha256": "03da350afa509d1903ab0391ea1999f8d1b8dfdef2166fabe926facae356e6b3",
+      "sql_bytes": 958
+    },
+    {
+      "version": "20261006144615",
+      "name": "fix_rider_offer_read_no_dispatch_exec",
+      "sha256": "6af51c7ee2bf1fe1cc85347df88b99afb3f895c1ffb71f7ab89a47ab1cd0ca5e",
+      "sql_bytes": 2516
+    },
+    {
+      "version": "20261006144936",
+      "name": "fix_rider_pool_numeric_return_types",
+      "sha256": "46cd77f17392829b59917650e0dfebc1a91b7e186e150b3be3e3322268f053c5",
+      "sql_bytes": 1691
+    },
+    {
+      "version": "20261006152636",
+      "name": "queuego_pilot_account_deletion_privacy",
+      "sha256": "6c3691ff42cbe540652863f16ffd9b251863f0a904b47f2a17bb9b857a29de72",
+      "sql_bytes": 16036
+    },
+    {
+      "version": "20261006152944",
+      "name": "fix_account_deletion_market_order_not_null",
+      "sha256": "3a0b0df3b015b07559e0831d6b080209e1018a76029d7c57486b3e0018a33105",
+      "sql_bytes": 6339
+    },
+    {
+      "version": "20261006155035",
+      "name": "queuego_pilot_service_area_gate",
+      "sha256": "24872296d460f87980b7e7742f64997c08edf24cb3df2d3221b73e59827831f9",
+      "sql_bytes": 26847
+    },
+    {
+      "version": "20261006155601",
+      "name": "queuego_pilot_security_surface_hardening",
+      "sha256": "61afa3d043f7c7abf8208c0501f8d448721b4536db43c669bd3c7b24a673897d",
+      "sql_bytes": 1983
+    },
+    {
+      "version": "20261006155707",
+      "name": "queuego_pilot_security_rls_explicit_deny",
+      "sha256": "e759594f22ae9fdd9d5dfc04ee235cb142fbcf164c4aa470107ec642cb07f119",
+      "sql_bytes": 1002
+    },
+    {
+      "version": "20261006170833",
+      "name": "queuego_background_push_unified",
+      "sha256": "1e5addf3b84ab589f8336a97fb205dbf074fc9c777ede39faf408e83a0be786e",
+      "sql_bytes": 12713
+    },
+    {
+      "version": "20261006173656",
+      "name": "queuego_native_push_transport",
+      "sha256": "4e142bb52c9cd282971f38fbe369c48083a1ac70337085737dbbc1b39066e38b",
+      "sql_bytes": 10168
+    },
+    {
+      "version": "20261007003943",
+      "name": "optimize_rls_auth_initplan",
+      "sha256": "8d609cb96191e39a5384acec0ccc6161070351bab02dad251b2819f27223af9d",
+      "sql_bytes": 4640
+    },
+    {
+      "version": "20261007004045",
+      "name": "pilot_fk_index_coverage",
+      "sha256": "0366b822141c332322cf8373615b2671fa2b7b419dc534b474c8ecd676aad370",
+      "sql_bytes": 1808
+    },
+    {
+      "version": "20261007005147",
+      "name": "pilot_fk_index_coverage_phase2",
+      "sha256": "bf4bb7df68c69cfdd1990922abb7db74004151ea6b9194c8931191776328ecd6",
+      "sql_bytes": 1944
+    },
+    {
+      "version": "20261007005927",
+      "name": "queuego_ugc_chat_moderation",
+      "sha256": "7d1779e9a198f1c4f0d358b7e50a1be1d2225b5080dffbc11a9a0e4e93926b95",
+      "sql_bytes": 14003
+    },
+    {
+      "version": "20261007010457",
+      "name": "fix_ugc_chat_policy_helper_execute",
+      "sha256": "cd7bd8b259d87b369ddfcf78108ed13469466e2fe63b4101a7a8a07f49cf187d",
+      "sql_bytes": 93
+    },
+    {
+      "version": "20261007010534",
+      "name": "account_deletion_ugc_cleanup",
+      "sha256": "5ac60a8c34c95ce7badef59166efa2f793fd6f7a84c9b29483dc74f01f5c898f",
+      "sql_bytes": 7080
+    },
+    {
+      "version": "20261007010709",
+      "name": "ugc_report_content_snapshot",
+      "sha256": "67095994362d940cdad437af61701db1e54cb0dc00c0fa6309451bb69e4aeec7",
+      "sql_bytes": 2164
+    },
+    {
+      "version": "20261007014511",
+      "name": "ugc_report_fk_indexes",
+      "sha256": "3bfb9f318e538975d4eb275d35138e1f7145feefd76fe63ed41c29411ab7def5",
+      "sql_bytes": 380
+    },
+    {
+      "version": "20261007014905",
+      "name": "move_ugc_policy_helper_private",
+      "sha256": "2ff842803b85c09768521be31554f5dba281dea40a74e16e41d4221f0a3d619b",
+      "sql_bytes": 2071
+    },
+    {
+      "version": "20261007015540",
+      "name": "account_deletion_ugc_snapshot_cleanup",
+      "sha256": "ad01eefc070472a472679987c85c4f8156cc4d0da6808fa9e6639a629621d172",
+      "sql_bytes": 7210
+    },
+    {
+      "version": "20261007021020",
+      "name": "reduce_anon_security_definer_surface",
+      "sha256": "f017dd71cefa9ec3f02901ae4e31b794768fbff97afda6e4f8e1b1ba30884a66",
+      "sql_bytes": 325
+    },
+    {
+      "version": "20261007021517",
+      "name": "security_scope_authenticated_definer_helpers",
+      "sha256": "9d817a088f08b86eb7a87b92edc9339cdaec1205866692fc8ddd5a2f1edbb404",
+      "sql_bytes": 1457
+    },
+    {
+      "version": "20261007021827",
+      "name": "account_deletion_ugc_snapshot_cleanup",
+      "sha256": "ad01eefc070472a472679987c85c4f8156cc4d0da6808fa9e6639a629621d172",
+      "sql_bytes": 7210
+    },
+    {
+      "version": "20261007023348",
+      "name": "ugc_chat_revoke_anon_table_privileges",
+      "sha256": "5226a7c7d415136a499df261a325a0b317c94b8372d348bc7f909509716b8190",
+      "sql_bytes": 527
+    },
+    {
+      "version": "20261007031513",
+      "name": "cover_remaining_foreign_keys",
+      "sha256": "96b50d09117dc5be3af1972fb599e1f1889c54c86fbe418ec5e9cd6bcef792cc",
+      "sql_bytes": 826
+    },
+    {
+      "version": "20261007034201",
+      "name": "switch_push_retry_cron_to_unified_worker",
+      "sha256": "c763037e1848e0497af07d12cb56185ebd47133bf288229d1df386dff916f88f",
+      "sql_bytes": 895
+    },
+    {
+      "version": "20261007041346",
+      "name": "enforce_active_visible_order_code_uniqueness",
+      "sha256": "87192576a308b21934e980a12b2acf3eaa56b569a046bb99a07fda65862b88dd",
+      "sql_bytes": 1512
+    },
+    {
+      "version": "20261007043258",
+      "name": "retire_legacy_rider_push_rpc_surface",
+      "sha256": "00591822ff8325e806e369f9664edca0a289278a12fde69539bc41e909674485",
+      "sql_bytes": 814
+    },
+    {
+      "version": "20261007043952",
+      "name": "unify_laundry_visible_order_codes",
+      "sha256": "a6d04f6a0614514f427796f4c41f520731e65809cb5dac81d9e18f7f4912108d",
+      "sql_bytes": 1695
+    },
+    {
+      "version": "20261007045146",
+      "name": "unify_pos_qr_order_codes",
+      "sha256": "e9c83ec369735eb497c57cdc0aee1edc83cf0059c432ddf31ff3a5ea06ab7ad0",
+      "sql_bytes": 10741
+    },
+    {
+      "version": "20261007045535",
+      "name": "remove_duplicate_notifications_update_policy",
+      "sha256": "116f8aff62c692f8b5bc3355114a98db6159b6dd3376c07840d54979949eb193",
+      "sql_bytes": 83
+    },
+    {
+      "version": "20261007142413",
+      "name": "rider_first_before_merchant",
+      "sha256": "73ac9535eb6aadd3b1da023df236be8a2b2adb054c88106e9bcad3947be2cf4d",
+      "sql_bytes": 10119
+    },
+    {
+      "version": "20261007152746",
+      "name": "rider_offer_notify_and_retry_expired",
+      "sha256": "2b2233e887513552def7f066a05b046d40d96a567864185d1807612977f33be8",
+      "sql_bytes": 4869
+    },
+    {
+      "version": "20261008002520",
+      "name": "merchant_order_item_substitution",
+      "sha256": "2de324f6789abf1696c0998cf75457df3f20ad930ffa522d797065eb09c662c6",
+      "sql_bytes": 21662
+    },
+    {
+      "version": "20261008030941",
+      "name": "store_readiness_safe_archive_v1",
+      "sha256": "cf97459c80ea6521c66dc5060ba5979a70959a6a7f1e169a1b8172539eced50d",
+      "sql_bytes": 9432
+    },
+    {
+      "version": "20261008031227",
+      "name": "store_reapplication_after_archive_v1",
+      "sha256": "4c341fa8782e26025ca004b2648f04f64e893ec2f583fa9130587915091fb968",
+      "sql_bytes": 1792
+    },
+    {
+      "version": "20261008031350",
+      "name": "store_readiness_rpc_permissions_v1",
+      "sha256": "d4ed4ac35c8406574b5de5e8ce8ce44b2bc11ef83280d1ee3ac84713a83cbe66",
+      "sql_bytes": 1157
+    },
+    {
+      "version": "20261008031539",
+      "name": "store_public_visibility_rls_v1",
+      "sha256": "a1cce22b95bbf1b802e15737b2bfa509d6e78f8f87b3af660be31f6eae6841a5",
+      "sql_bytes": 809
+    },
+    {
+      "version": "20261008031549",
+      "name": "store_public_market_visibility_v1",
+      "sha256": "7451f7348523f56de3ce2145fdd67538183b004ea82fdcb0a1e16366158868b9",
+      "sql_bytes": 2248
+    },
+    {
+      "version": "20261008031644",
+      "name": "store_archive_reapply_entry_v1",
+      "sha256": "e7afa2615d090106cdbfd4fbd50d2dc2bce714ac700503aac8ca1912930be5d8",
+      "sql_bytes": 1695
+    },
+    {
+      "version": "20261008031652",
+      "name": "store_lifecycle_backup_20261008",
+      "sha256": "d81c0459ae50abd69daaa91847e4311852840b5b4e9b4609163de0486f1eba80",
+      "sql_bytes": 1103
+    },
+    {
+      "version": "20261008032050",
+      "name": "store_readiness_review_hardening_v2",
+      "sha256": "a83fee0375c743f40386dac005cc7b3df56ee18c627cb9c70e82eb4b180543dc",
+      "sql_bytes": 22557
+    },
+    {
+      "version": "20261008032631",
+      "name": "store_readiness_rls_hardening_v3",
+      "sha256": "32121f5afbe23b79472ad920549750f2d29437f62ecace24698fee2aae04515a",
+      "sql_bytes": 4353
+    },
+    {
+      "version": "20261008033600",
+      "name": "store_admin_readiness_overview_v4",
+      "sha256": "23e71b750bd4692af4dbc6b394873303ebeb3f41ca381e3d1e67dc42c51c33ca",
+      "sql_bytes": 934
+    },
+    {
+      "version": "20261008034157",
+      "name": "store_readiness_legacy_reconcile_v4",
+      "sha256": "9ee7e85d09665a186b3e1d869540a1d2deba7eb176a6b64284dc6ab873d9601b",
+      "sql_bytes": 5698
+    },
+    {
+      "version": "20261008035002",
+      "name": "store_reapplication_generated_columns_fix_v5",
+      "sha256": "684645262605301b94daedcc5c098612e4d64026ab5df716d17608c9a8f6e120",
+      "sql_bytes": 1305
+    },
+    {
+      "version": "20261008035409",
+      "name": "store_reapplication_role_guard_v6",
+      "sha256": "ad7bc63396a796f480f65e5fd6159e95e5ae8a721bcda1b00084c28205db4795",
+      "sql_bytes": 1435
+    },
+    {
+      "version": "20261008040547",
+      "name": "store_status_cascade_backup_20261008",
+      "sha256": "57a07c20195281909e62341256aab77e8821f90fb959f234d4e573a3b7a03827",
+      "sql_bytes": 1174
+    },
+    {
+      "version": "20261008040628",
+      "name": "store_lifecycle_status_cascade_hardening_v7",
+      "sha256": "9c63d3288f42e53a5ef46bcc9bcfc1d5a21b29d56453f29ff60b129a8e7a7b1f",
+      "sql_bytes": 3411
+    },
+    {
+      "version": "20261008041244",
+      "name": "unopened_shop_users_backup_20261008",
+      "sha256": "d40dd8c07c355a175eca07cb98ecd1bd3c36503ec87bc279f8ae67c2237a8432",
+      "sql_bytes": 831
+    },
+    {
+      "version": "20261008041312",
+      "name": "unopened_shop_cleanup_v8",
+      "sha256": "0af3f735cbfde9e082ed6069db98611dd3be85a0cc035e22bac70877ab2abacc",
+      "sql_bytes": 3316
+    },
+    {
+      "version": "20261008041501",
+      "name": "empty_shop_account_backup_20261008",
+      "sha256": "77f8769edb12e6953f1834437e23eb6b71ea53835b05e82219db8d2ac8d03e11",
+      "sql_bytes": 753
+    },
+    {
+      "version": "20261008041532",
+      "name": "empty_shop_account_safe_delete_v8",
+      "sha256": "767ddb6cf56ca310f95a0fdb4588bc52daff9852b81ebc70a9d9fa7283d89c87",
+      "sql_bytes": 2941
+    },
+    {
+      "version": "20261008041646",
+      "name": "empty_shop_duplicate_rpc_cleanup_v9",
+      "sha256": "13126fec764bd7098a5026899a91980d56771e401787916197922eccfa7197ca",
+      "sql_bytes": 198
+    },
+    {
+      "version": "20261008050646",
+      "name": "home_banner_carousel_storage_v1",
+      "sha256": "eac5c5d9c352bcf31445917019f4b4984824e8176a990118f0204e637f83fcab",
+      "sql_bytes": 3530
+    },
+    {
+      "version": "20261008051127",
+      "name": "shopping_categories_and_service_banners_v1",
+      "sha256": "945cbcaca7f7beedf74ad939d24640370d24b8f2594a1b90ae1d5da66dcdb4eb",
+      "sql_bytes": 3712
+    },
+    {
+      "version": "20261008052801",
+      "name": "shopping_reapplication_category_v1",
+      "sha256": "27976704efca2797d4190ad45ca4d3d6354ed4f57943585c212315c4c96409a3",
+      "sql_bytes": 1879
+    },
+    {
+      "version": "20261008061533",
+      "name": "shopping_fashion_toys_home_v2",
+      "sha256": "d949c573ae6b8c45294492aca7e298951e2ea1e952d8220889045a814b1e68a8",
+      "sql_bytes": 2873
+    },
+    {
+      "version": "20261009044435",
+      "name": "rider_dispatch_excludes_active_laundry",
+      "sha256": "1ab92476be92fdbe3934685654691d6c76ff78b4474851ee6fbe2720be40953c",
+      "sql_bytes": 5217
+    },
+    {
+      "version": "20261009052132",
+      "name": "rider_laundry_preferences_realtime",
+      "sha256": "45c48dc3e8c5e4d382ebbc69183432a1c57fae765a0e4300ad1f21a4edc15e19",
+      "sql_bytes": 264
+    },
+    {
+      "version": "20261009061634",
+      "name": "rider_order_contact",
+      "sha256": "05b5a65e59f1dd4f50cd3a2c130205eb690dfc060a19991834f465776a486cd7",
+      "sql_bytes": 2456
+    },
+    {
+      "version": "20261009145324",
+      "name": "guard_rider_profile_approval_status_and_ownership",
+      "sha256": "c054620052ea164bae72bea933fb734f2db556df804568f5afa0f5692f629ffa",
+      "sql_bytes": 772
+    },
+    {
+      "version": "20261009145528",
+      "name": "require_active_rider_profile_for_order_claim",
+      "sha256": "c8ca93a00f72cc550d95686c0c27307c827e2012668059944b4aec2aaf42833c",
+      "sql_bytes": 3558
+    },
+    {
+      "version": "20261009150558",
+      "name": "guard_rider_profile_insert_approval",
+      "sha256": "213ae504edb0eebe1e317b7da28c9737afd53566b1a91a636a0631ab51a8afd6",
+      "sql_bytes": 1259
+    },
+    {
+      "version": "20261010045116",
+      "name": "pos_edit_bill_idempotency",
+      "sha256": "7180371475280d5ba02a475fd315d0451f2d59f1642abcb1ba6e81ba00bfc142",
+      "sql_bytes": 4664
+    },
+    {
+      "version": "20261010073956",
+      "name": "native_voice_call_backend_v1",
+      "sha256": "1612fc7856f54639273d8a0c71033e97581cc2bca312893ed10b9467d95cad38",
+      "sql_bytes": 22289
+    },
+    {
+      "version": "20261010074009",
+      "name": "native_push_session_binding_v1",
+      "sha256": "9e34381ca39ddb8aabcc1b8f34b2dfcfcc9fefcd43c943764ea4aa08bbfaabea",
+      "sql_bytes": 2315
+    },
+    {
+      "version": "20261010074125",
+      "name": "native_voice_call_backend_v1",
+      "sha256": "1612fc7856f54639273d8a0c71033e97581cc2bca312893ed10b9467d95cad38",
+      "sql_bytes": 22289
+    },
+    {
+      "version": "20261010074132",
+      "name": "native_push_session_binding_v1",
+      "sha256": "9e34381ca39ddb8aabcc1b8f34b2dfcfcc9fefcd43c943764ea4aa08bbfaabea",
+      "sql_bytes": 2315
+    },
+    {
+      "version": "20261011000755",
+      "name": "merchant_current_shop_order_resolution",
+      "sha256": "968401fdd8933507f736c55457c518a1de492ca788628e88bd01bb330545db0b",
+      "sql_bytes": 5577
+    },
+    {
+      "version": "20261011005038",
+      "name": "cover_order_item_adjustment_foreign_keys",
+      "sha256": "a04a722d98232901568d57ab5307108ee715477eda2a4460c7ec52dac96bd5ba",
+      "sql_bytes": 380
+    },
+    {
+      "version": "20261011013312",
+      "name": "native_voice_call_metadata_retention",
+      "sha256": "f7f355334806cf7395278c98a4544d23d50ef28bcae6ef359e5a2ad17b809ab0",
+      "sql_bytes": 1758
+    },
+    {
+      "version": "20261011020746",
+      "name": "account_deletion_voice_metadata_cleanup",
+      "sha256": "922c771ff51eebeda7a6058ffdee7cba86afaaaef860f1ea34bfbda51a22dffa",
+      "sql_bytes": 4805
+    },
+    {
+      "version": "20261011020758",
+      "name": "account_deletion_voice_metadata_cleanup",
+      "sha256": "922c771ff51eebeda7a6058ffdee7cba86afaaaef860f1ea34bfbda51a22dffa",
+      "sql_bytes": 4805
+    },
+    {
+      "version": "20261012124318",
+      "name": "native_voice_block_revocation",
+      "sha256": "b8dcc4fb26ddf1c35829547d2ef022c4b34ff9a7ea3e22b943731acc66ba1de2",
+      "sql_bytes": 15654
+    },
+    {
+      "version": "20261012180702",
+      "name": "rider_claim_server_classification",
+      "sha256": "6b47dcd1b99046f5a79dbadd512f7f163f94cb812cde910257bb3b0bce8cd8dc",
+      "sql_bytes": 4333
+    },
+    {
+      "version": "20261013015514",
+      "name": "grocery_master_catalog",
+      "sha256": "9b00d67893d96f41fca1a02922393b062a3b5573f3cdfed6b3f6af5489200a01",
+      "sql_bytes": 34649
+    },
+    {
+      "version": "20261013021100",
+      "name": "grocery_catalog_fk_indexes",
+      "sha256": "1b632c6e54a6a9df3d184adc69cc0b053d096a04f2b44c42423a437df52aa4fd",
+      "sql_bytes": 324
+    },
+    {
+      "version": "20261013023547",
+      "name": "grocery_cash_checkout_lock_order",
+      "sha256": "6fa791bd5d473e5e6a75c03f4953db8d2d896ab7e227d941a3167bf0b7821db1",
+      "sql_bytes": 7793
+    },
+    {
+      "version": "20261014054747",
+      "name": "rider_identity_rating_context_v1",
+      "sha256": "087ddd5879101f5b6c1b88d0250d79e4d76049c7c8bea9992fa3dbd591f74e91",
+      "sql_bytes": 5639
+    },
+    {
+      "version": "20261014055901",
+      "name": "rider_demand_heatmap_v1",
+      "sha256": "6dab032e9526fa6cf875329f53b05a7ee9e923901f95a0ba3ccc2fcedb4958d1",
+      "sql_bytes": 2689
+    },
+    {
+      "version": "20261014061234",
+      "name": "rider_compliments_v1",
+      "sha256": "02de7cca9ad7e72cb945346141bec926a37868f62d7827d50a42e5a2dd68f1fc",
+      "sql_bytes": 9428
+    },
+    {
+      "version": "20261014062708",
+      "name": "rider_public_profile_photo_v1",
+      "sha256": "42c668c0c23a9e633e9d3382c61032461671a813cf671ea6d1a0ae2c63847f59",
+      "sql_bytes": 4168
+    },
+    {
+      "version": "20261014062750",
+      "name": "rider_reverification_v1",
+      "sha256": "12279d7585947facb22d20429da0f77f91e75a3970a113c94a5661ed442654a9",
+      "sql_bytes": 9028
+    },
+    {
+      "version": "20261014063649",
+      "name": "admin_rider_reverification_queue_v1",
+      "sha256": "be090ce0919a34398b319887bfd750a3d8090cc03a4a69879d54b51764cf784d",
+      "sql_bytes": 1732
+    },
+    {
+      "version": "20261014063832",
+      "name": "rider_reverification_online_gate_v1",
+      "sha256": "fdb3a28821f5d17f84c6330c20c238ef16b3fd8bcaac5005ae48b2e010c1a9a0",
+      "sql_bytes": 1302
+    },
+    {
+      "version": "20261014064554",
+      "name": "rider_reverification_reason_required_v1",
+      "sha256": "0ef6edc7c769bbe1edfedc1a63af2f4d611e2251e551f1b9d72e34179776509d",
+      "sql_bytes": 1848
+    },
+    {
+      "version": "20261014064750",
+      "name": "rider_missions_v1",
+      "sha256": "6a369c8d8048935d8d44199c5bcd5187de2cfd8bc102fba58953a82c623cc339",
+      "sql_bytes": 9964
+    },
+    {
+      "version": "20261014065058",
+      "name": "rider_emergency_contact_v1",
+      "sha256": "d18c7cec6412ed39285ae35f088650e640543fc8347ccdae74e43befc28df71a",
+      "sql_bytes": 4637
+    },
+    {
+      "version": "20261014070308",
+      "name": "rider_emergency_contact_phone_regex_fix_v2",
+      "sha256": "b6a7058a1313e0ff4dc1bbc1ce49605c27c154cf3edcc03a10412e147d6d13c0",
+      "sql_bytes": 2326
+    },
+    {
+      "version": "20261014071245",
+      "name": "rider_offer_performance_v1",
+      "sha256": "df1514ecc9a8ea07ddbc19251e39a583e5e23755787337eb0917a5d902e86c1a",
+      "sql_bytes": 3242
+    },
+    {
+      "version": "20261014071752",
+      "name": "rider_my_destination_soft_dispatch_v1",
+      "sha256": "45db667856a1e1501928022e813ec3b813c6783b0b4b1d7336e1ff84f2613942",
+      "sql_bytes": 11886
+    },
+    {
+      "version": "20261014073631",
+      "name": "rider_fatigue_status_v1",
+      "sha256": "a21d0659c71b7cd1e0ca33c36e2c524dbee302ab77c1293b7c0be4e2f30093ac",
+      "sql_bytes": 3316
+    },
+    {
+      "version": "20261014074523",
+      "name": "rider_map_feedback_v1",
+      "sha256": "561cb3ae6d74e0d8b228e7f9482b05d7302c487aa03caff96786f5a4f3a786eb",
+      "sql_bytes": 8867
+    },
+    {
+      "version": "20261014075257",
+      "name": "rider_supply_planning_v1",
+      "sha256": "f2c48fe9305226e24667b23b4cfd351385552c4369128376c3c599fe3a5a3116",
+      "sql_bytes": 3204
+    },
+    {
+      "version": "20261014080810",
+      "name": "rider_vehicle_inspection_v1",
+      "sha256": "60589e59d9a8fa552bc55ebdb183f06f442122ac364bbceb49987000d47d5f0d",
+      "sql_bytes": 12358
+    },
+    {
+      "version": "20261014081405",
+      "name": "rider_vehicle_inspection_offline_request_v2",
+      "sha256": "f08a578a7632a48d8d6c95307bdde0d30f978d57c7584ebdcd902be602bb05f8",
+      "sql_bytes": 2068
+    },
+    {
+      "version": "20261014081916",
+      "name": "rider_multiple_vehicles_v1",
+      "sha256": "76f7bfbfe3e314c2c48e374fbac1d7baf88caca2e56e5f1e0f427ee066cccdb6",
+      "sql_bytes": 15776
+    },
+    {
+      "version": "20261014082029",
+      "name": "rider_multiple_vehicles_legacy_compat_v2",
+      "sha256": "66667ef14bb3a2c094731f50788cc9d1bc4274d40d2fd9281fbe0c1c31b7a858",
+      "sql_bytes": 5962
+    },
+    {
+      "version": "20261014082657",
+      "name": "rider_multiple_vehicles_selected_legacy_guard_v3",
+      "sha256": "d72a4715567e97e52a1080854c35cee8764b658b055adacb81f810302c0a3d81",
+      "sql_bytes": 3372
+    },
+    {
+      "version": "20261014084324",
+      "name": "rider_document_readiness_v1",
+      "sha256": "16a5f37e1950be120a67479a77364a2f4171ed55fdb86081eaa48ac50c4b72bd",
+      "sql_bytes": 11907
+    },
+    {
+      "version": "20261014085155",
+      "name": "merchant_pickup_guidance_v1",
+      "sha256": "1278a1e67b5f3474808b5dba398987d04b675ae6d3cc794dce5dac3eb213b535",
+      "sql_bytes": 3695
+    },
+    {
+      "version": "20261014085820",
+      "name": "rider_insurance_center_v1",
+      "sha256": "16d62107ba5e1eefb6d358166f05d733f2210fe8c565f43714875c4a9b7e2359",
+      "sql_bytes": 11229
+    },
+    {
+      "version": "20261014085832",
+      "name": "rider_order_load_summary_v1",
+      "sha256": "ed447e6074124ab3baac9292605845920c4a4bf2ea36f252d10315240b437dcf",
+      "sql_bytes": 2583
+    },
+    {
+      "version": "20261014093530",
+      "name": "rider_partner_benefits_v1",
+      "sha256": "a31da3645682c12d9da250c4bfb3357f6a1bb947181dd8909647b938ec16e253",
+      "sql_bytes": 10404
+    },
+    {
+      "version": "20261014093948",
+      "name": "rider_partner_benefits_toggle_v2",
+      "sha256": "c03057f424a263e564c7ae3122206baabc757fdc92546f1143dba1697b47df09",
+      "sql_bytes": 1338
+    },
+    {
+      "version": "20261014101105",
+      "name": "rider_delivery_return_to_sender_v1",
+      "sha256": "b3ef6efaa22c74886fa2cb263520b28a0581218af0421945566cc82f44bac355",
+      "sql_bytes": 27363
+    },
+    {
+      "version": "20261014101131",
+      "name": "rider_delivery_return_to_sender_runtime_fix_v2",
+      "sha256": "20e175278d1149d77b6b88fd61148154800591fbaa6c9927036bae3c2cbe9e1a",
+      "sql_bytes": 4927
+    },
+    {
+      "version": "20261014101155",
+      "name": "rider_delivery_return_to_sender_hardening_v3",
+      "sha256": "b2d86578095f71b39a2b233bca2a9c2972267fd4fbe897d967029def54296324",
+      "sql_bytes": 768
+    },
+    {
+      "version": "20261014102925",
+      "name": "rider_delivery_return_multi_stop_v4",
+      "sha256": "4ddec5381102126ff0bd0762fb5b2093eae741b24abaeef65f09ddaa6c4fb359",
+      "sql_bytes": 32192
+    },
+    {
+      "version": "20261014110355",
+      "name": "rider_road_alerts_v1",
+      "sha256": "307bd790ab23c6b6731d9c0a6e372af24dac14c6413afb234780696928debc86",
+      "sql_bytes": 11376
+    },
+    {
+      "version": "20261014110429",
+      "name": "rider_road_alerts_fk_index_v2",
+      "sha256": "cc413727603e4736771f19cf74a28915c012c0eccaad72b3501cae16a9af0f78",
+      "sql_bytes": 115
+    },
+    {
+      "version": "20261015140410",
+      "name": "grocery_photo_first_paging",
+      "sha256": "440a9b0bf872cdd5ac0edee21df6f2499989fc87c358ce95f35749aa93678ebd",
+      "sql_bytes": 2177
+    },
+    {
+      "version": "20261015150055",
+      "name": "grocery_catalog_sales_channels",
+      "sha256": "219a442e0abb3f6ec0f34e4ef47496ac9a385d8b77a26de0c68fd8e885e0ee0e",
+      "sql_bytes": 9366
+    },
+    {
+      "version": "20261015160251",
+      "name": "grocery_merchant_image_previews",
+      "sha256": "70c3c27fe2791c439293e95535769cf928f5dac088ed74185f50cc36f2abe782",
+      "sql_bytes": 2658
+    },
+    {
+      "version": "20261015161347",
+      "name": "prioritize_grocery_minimart_core",
+      "sha256": "38dafe59455e5725a6aa696caf37caa1f00c4faf9e9bfa03a0bde2ba362c698a",
+      "sql_bytes": 2829
+    },
+    {
+      "version": "20261015234338",
+      "name": "makro_grocery_source_catalog",
+      "sha256": "a5b86d977a507e6e2423b4b0f0955a6d368a2d74904b84f618897372e7a70505",
+      "sql_bytes": 16435
+    },
+    {
+      "version": "20261016000720",
+      "name": "grocery_merchant_page_projection_fix",
+      "sha256": "dd64d54e76a1ce55c9c9d379cb6478be4e5ae7cd7798a0fb1555fcacb92c98ea",
+      "sql_bytes": 2939
+    },
+    {
+      "version": "20261016000724",
+      "name": "grocery_source_cold_exclusion",
+      "sha256": "51dba1d85b14ef4b646eaea1abc926b9ee7d94f9a9d91fafa111505f4aa01c9c",
+      "sql_bytes": 1130
+    },
+    {
+      "version": "20261016003244",
+      "name": "grocery_source_categories_filter",
+      "sha256": "fec049ed15e47f9074f911d0e64595948d749adb67a3984349b81fe5f86769e7",
+      "sql_bytes": 8061
+    },
+    {
+      "version": "20261017044050",
+      "name": "passenger_ride_production_enable",
+      "sha256": "c46f427d205afb447c075d209d2cdfed3097e2cd6b9cf53f28725e4ab144d64b",
+      "sql_bytes": 53439
+    },
+    {
+      "version": "20261017050022",
+      "name": "customer_ride_supply_clusters",
+      "sha256": "397b5c6b2ecf0d345e74a548f29f147005b86bac2638dee13bd5cd116135edda",
+      "sql_bytes": 3856
+    },
+    {
+      "version": "20261019051041",
+      "name": "grocery_public_products_category_grant",
+      "sha256": "cf3c3261bea52f5f2214f4d2f0a1dffc6ce81a82e7f8918a0517edfe9c710829",
+      "sql_bytes": 57
+    },
+    {
+      "version": "20261019100954",
+      "name": "market_catalog_verified_release_20261019",
+      "sha256": "a87689812c7c1d7db5d800c4490ae9cd70ff7ec21d507d0f432e9a5e276020d8",
+      "sql_bytes": 244015
+    },
+    {
+      "version": "20261019105830",
+      "name": "market_open_license_images_batch18_verified_20261019",
+      "sha256": "ad4940f3f56228344ef7169495a824b66482275bc311092861fa1f91d10e5405",
+      "sql_bytes": 1325
+    },
+    {
+      "version": "20261019110341",
+      "name": "market_open_license_images_batch19_verified_20261019",
+      "sha256": "c7b77f6294deae881456fe7028087ae42a53c8a046469c31e52b8583e3445968",
+      "sql_bytes": 1484
+    },
+    {
+      "version": "20261019114500",
+      "name": "market_master_catalog",
+      "sha256": "5edfe1aa79cdedbca73d8e2b3ea2a2a764a4ee5f99b40be70fc0983faf994b05",
+      "sql_bytes": 20215
+    },
+    {
+      "version": "20261019115340",
+      "name": "market_open_license_images_batch20_verified_20261019",
+      "sha256": "d05681dda0b611941d59fdff32cb48b5b70c1e145fc2ef6185262fb8d80ca49b",
+      "sql_bytes": 2222
+    },
+    {
+      "version": "20261019122500",
+      "name": "market_fresh_makro_lotus_expansion",
+      "sha256": "955b716a4e92ec4c40fca8eb22dca83592fb8468c457f179e3bc3c36ba90cadc",
+      "sql_bytes": 15013
+    },
+    {
+      "version": "20261019125641",
+      "name": "market_master_fresh_category_guard",
+      "sha256": "276828c939dee8e81bf2a5d778e2a7f20acda8ad622fee0202928b078dc961c2",
+      "sql_bytes": 868
+    },
+    {
+      "version": "20261019132000",
+      "name": "market_image_source_review",
+      "sha256": "a687e8d1e86cb9cc21b34964f40f980f3c4ceaf0ccf9aee36bb9684c6ee9cb39",
+      "sql_bytes": 10068
+    },
+    {
+      "version": "20261019132214",
+      "name": "market_makro_catalog_previews",
+      "sha256": "229769cbcebd192fa6459307685e478eac7e3171c9f4a75819528286342b6501",
+      "sql_bytes": 13322
+    },
+    {
+      "version": "20261019132220",
+      "name": "market_makro_catalog_previews_batch2",
+      "sha256": "3170ce5da824db4817e58eeee926d8215e93b0f3a496f88111af77eca93f4ac5",
+      "sql_bytes": 5161
+    },
+    {
+      "version": "20261019132226",
+      "name": "market_makro_catalog_preview_gapfill",
+      "sha256": "181fbdb169a89a4cf07d8d6381cc0c6174e387b28f3cb8442e9ad76e8c97eb8e",
+      "sql_bytes": 9054
+    },
+    {
+      "version": "20261019133051",
+      "name": "market_makro_exact_source_previews",
+      "sha256": "e6fd04fdb44198a2f685a72e4998786cad7cb432fcecc0851f3b20bd6f133892",
+      "sql_bytes": 6518
+    },
+    {
+      "version": "20261019140000",
+      "name": "market_seafood_fruit_veg_expansion",
+      "sha256": "d643bd6107bc277b7bf1a8ec69691418f2352732bab04f19fc92c1666343d598",
+      "sql_bytes": 24465
+    },
+    {
+      "version": "20261019140923",
+      "name": "market_catalog_preview_complete",
+      "sha256": "d2de3ab08db572c37472d1a67ae4be8d03d90c51a79bf6f6eda185bc778566aa",
+      "sql_bytes": 7718
+    },
+    {
+      "version": "20261019142455",
+      "name": "market_catalog_preview_quality_pass",
+      "sha256": "c1cc88fea1791640969b32de1af4013b3d5fabe380b02150a15f98bf00a4c74e",
+      "sql_bytes": 1711
+    },
+    {
+      "version": "20261019143000",
+      "name": "market_phase2_gap_fill",
+      "sha256": "9038cdd11a95126255dbbfb8fbad1732a7fdf0ebf73dc7efbf5df16f59fdaa1e",
+      "sql_bytes": 4577
+    },
+    {
+      "version": "20261019150000",
+      "name": "market_phase2_chaebow_mudcrab",
+      "sha256": "5d4efc6b0569df7b6b8e4702ddd7d5b56b6fbdeb8cda08082d21d3cdd6028e04",
+      "sql_bytes": 3039
+    },
+    {
+      "version": "20261019151500",
+      "name": "market_image_source_gapfill",
+      "sha256": "36e78410333dc0915ae66745439a714eeaa30707e2d18edaf98286139d0108a5",
+      "sql_bytes": 992
+    },
+    {
+      "version": "20261019154500",
+      "name": "market_open_license_images",
+      "sha256": "369fbe416538f60a284bc326806fe4975928cd7e17a5a97a4c85c9c34e08b091",
+      "sql_bytes": 6035
+    },
+    {
+      "version": "20261019160000",
+      "name": "market_open_license_images_batch2",
+      "sha256": "a3a64482b31c6a18a2d54a0f8ef904ba645f825ab394b297cce82ae9e176368d",
+      "sql_bytes": 1462
+    },
+    {
+      "version": "20261019161500",
+      "name": "market_open_license_images_batch3",
+      "sha256": "c3905fcf7db6af33af64e3d6287c9b620789975ddf967c0fca47db4919953e90",
+      "sql_bytes": 1095
+    },
+    {
+      "version": "20261019163000",
+      "name": "market_open_license_images_batch4",
+      "sha256": "3912595cb9e4b1e95a6dbea84c0d5e563331d596b29b6f7c1e9c8ebf14e76ef0",
+      "sql_bytes": 1164
+    },
+    {
+      "version": "20261019164500",
+      "name": "market_open_license_images_batch5",
+      "sha256": "af2a72df3a11fc2462210b034f46549a532135ce8233a7829968567470f0706a",
+      "sql_bytes": 1061
+    },
+    {
+      "version": "20261019170000",
+      "name": "market_open_license_images_batch6",
+      "sha256": "5ab1968dfcc6b8f8761768914246f4f35eca6e489a358646a48bbc9785bce282",
+      "sql_bytes": 1312
+    },
+    {
+      "version": "20261019171500",
+      "name": "market_open_license_images_batch7",
+      "sha256": "52506cddde9b23f3ed8f3c85d8b7cf8963c939355dab8db2d7d656dcf406261a",
+      "sql_bytes": 1399
+    },
+    {
+      "version": "20261019173000",
+      "name": "market_open_license_images_batch8",
+      "sha256": "339694984e5cb0110a7b32e627d442be49977ac4972a29d1bd86d27cde04a07f",
+      "sql_bytes": 1524
+    },
+    {
+      "version": "20261019174500",
+      "name": "market_open_license_images_batch9",
+      "sha256": "b7dd78144bcdb3c0efe536ad0671c5aaa92f1c1e36dac643a380386dd8af09d9",
+      "sql_bytes": 3319
+    },
+    {
+      "version": "20261019180000",
+      "name": "market_open_license_images_batch10",
+      "sha256": "d3243b84446d2f7e7497674c57491c024a45773e108b5dd153cfa4725baf4f2f",
+      "sql_bytes": 2184
+    },
+    {
+      "version": "20261019181500",
+      "name": "market_open_license_images_batch11",
+      "sha256": "467c880cd736778432edbf7d67584969f7f1d916d3241d39972796cc567b113d",
+      "sql_bytes": 1485
+    },
+    {
+      "version": "20261019183000",
+      "name": "market_open_license_images_batch12",
+      "sha256": "ecca23aa9873ef095a145edaff5171d8bf48ca6a3cffcc03e4c58c4d7d0dccda",
+      "sql_bytes": 1642
+    },
+    {
+      "version": "20261019184500",
+      "name": "market_open_license_images_batch13",
+      "sha256": "78832e6cafaa2ad1358d69af2d2472057b7c65a6bd589b127f07873b17fa6e22",
+      "sql_bytes": 1149
+    },
+    {
+      "version": "20261019190000",
+      "name": "market_open_license_images_batch14",
+      "sha256": "e51347101c55df14137bf82a9d7b678d610fa00f978f5c44b1fa4512f691eb19",
+      "sql_bytes": 2300
+    },
+    {
+      "version": "20261019191500",
+      "name": "market_open_license_images_batch15",
+      "sha256": "cb97a7679177af0353e7dc4206707317647c6829925affb8a36798211041ae18",
+      "sql_bytes": 1886
+    },
+    {
+      "version": "20261019193000",
+      "name": "market_open_license_images_batch16",
+      "sha256": "f0b10fe5d24742d69aa28558f4483caac070a84caf8051026796226bb221fff2",
+      "sql_bytes": 1146
+    },
+    {
+      "version": "20261019194500",
+      "name": "market_open_license_images_batch17",
+      "sha256": "175059ed7adaaf9c4821b0287fd633b4e0332f8badb26a45fbf09cfe80f4d2cc",
+      "sql_bytes": 1348
+    },
+    {
+      "version": "20261019200000",
+      "name": "market_pending_owner_catalog_preparation",
+      "sha256": "ab69614ee8e519c996d14a0150ea48d13aa5fc37e151035d7ae79a4c7a9c3727",
+      "sql_bytes": 10670
+    },
+    {
+      "version": "20261019201500",
+      "name": "market_open_license_images_batch18",
+      "sha256": "1baab5eafcc7b77d510e8e86ef05cae89fafd94ed61333593932f6a507452f59",
+      "sql_bytes": 480
+    },
+    {
+      "version": "20261019203000",
+      "name": "market_open_license_images_batch19",
+      "sha256": "f62586811766b0a0daf1584baffb1dbfa7ac2a2bc2a5cc3b7cb6b5bb40f37918",
+      "sql_bytes": 472
+    },
+    {
+      "version": "20261019204500",
+      "name": "market_open_license_images_batch20",
+      "sha256": "eaa5c5e862f85b849fb022d20394127a9e8755b7456ac2e8e42056f325381286",
+      "sql_bytes": 841
+    },
+    {
+      "version": "20261020010500",
+      "name": "admin_scoped_operational_readers",
+      "sha256": "46a6ac21218f56fc9233454207b3904efe904bba88fecdc26a3b71902c02852f",
+      "sql_bytes": 5960
+    },
+    {
+      "version": "20261020021801",
+      "name": "admin_rider_review_pagination",
+      "sha256": "4f27427621eb8e2f284290c9787fc21680d79f4fd755b8c50061b48bad9f2528",
+      "sql_bytes": 8447
+    },
+    {
+      "version": "20261020022140",
+      "name": "admin_directory_search_trgm_indexes",
+      "sha256": "7c957d63b0dfad6fe7732a58c3553d84a1d7871e4ec42beda85ed15df04148cd",
+      "sql_bytes": 600
+    },
+    {
+      "version": "20261020022520",
+      "name": "admin_audit_notification_paging_indexes",
+      "sha256": "e1b8838bf8de81ad325665648a0e7389970c37431ed92e8d0c6c6f367852b5cb",
+      "sql_bytes": 220
+    },
+    {
+      "version": "20261020023357",
+      "name": "admin_shop_category_editor",
+      "sha256": "7c6d2e66e31afa211d8376aecb3a472b99f7711d168d041d9dbe7e13d4c8b917",
+      "sql_bytes": 2958
+    },
+    {
+      "version": "20261020023435",
+      "name": "admin_shop_category_invoker_hardening",
+      "sha256": "5a63e41b699950d9e4a9e9c083f1884523b23a1fadad87b0e8cf92e776789479",
+      "sql_bytes": 310
+    },
+    {
+      "version": "20261020030951",
+      "name": "admin_rider_program_audit",
+      "sha256": "360e27642fe9a3c601297e1b1ed86c9aa31539710f176f693348ac4160605cd0",
+      "sql_bytes": 5242
+    },
+    {
+      "version": "20261020041534",
+      "name": "admin_support_inbox_paging_index",
+      "sha256": "1494dca4f36418be47f4920b998b37027f1d05e9d5e62acec81d4c63363d64e4",
+      "sql_bytes": 121
+    },
+    {
+      "version": "20261020042804",
+      "name": "admin_ticket_paging_index",
+      "sha256": "791b36b11f7f9ee34498387f7a8b82972f07522dd2d0f7a3044a76bfe14ede94",
+      "sql_bytes": 330
+    },
+    {
+      "version": "20261020044510",
+      "name": "admin_ugc_report_paging",
+      "sha256": "77c0e84218baa7f8ea406d30496e0fd75ccfa4f13c82c672ceed8398ac9a5dd9",
+      "sql_bytes": 2719
+    },
+    {
+      "version": "20261020234050",
+      "name": "restore_credit_backend_admin_merchant_promo_20261021",
+      "sha256": "5c87e22dda17701958f6b6a8d53aad471b09bdeafc0d5dfdf690d5e6f6805d68",
+      "sql_bytes": 30966
+    },
+    {
+      "version": "20261021004122",
+      "name": "credit_admin_rider_grant",
+      "sha256": "e315c63b93d366562bb25fcca522a12a67555f56397b91e503f60ce40bebaf24",
+      "sql_bytes": 3800
+    },
+    {
+      "version": "20261021025101",
+      "name": "merchant_credit_gp_report_20261021",
+      "sha256": "43e99cbf978e69f3d9935d8511e6c1a124c5faaf8d878a2114c216847e92af65",
+      "sql_bytes": 3145
+    },
+    {
+      "version": "20261021025104",
+      "name": "merchant_credit_gp_report",
+      "sha256": "43e99cbf978e69f3d9935d8511e6c1a124c5faaf8d878a2114c216847e92af65",
+      "sql_bytes": 3145
+    },
+    {
+      "version": "20261021094532",
+      "name": "admin_ride_policy_controls",
+      "sha256": "da3fe0ccd116c0667573794e3bcb2b94e06dc3da5b529749707632bde722b6f4",
+      "sql_bytes": 3139
+    },
+    {
+      "version": "20261021125213",
+      "name": "pos_cash_register_shifts",
+      "sha256": "7e09531f9a876929e8f0f05e06522dc2b2f877c62d8918bfe3fe1d6de1b1358d",
+      "sql_bytes": 13371
+    },
+    {
+      "version": "20261021130147",
+      "name": "pos_cash_shifts_acl_indexes",
+      "sha256": "0f7a960a3d8405fb9d07938db7d5bb4e009caeeb48c5070be88804836887a763",
+      "sql_bytes": 747
+    },
+    {
+      "version": "20261021133330",
+      "name": "pos_owner_item_sales_report",
+      "sha256": "91f0f6da3cb3e82a0cd67f01e4f54a6c181d12fbc14ab6559763587527902cf8",
+      "sql_bytes": 2080
+    },
+    {
+      "version": "20261022005520",
+      "name": "admin_rider_credit_target_identity",
+      "sha256": "dff498f64e1367c049d87b05c09ce932560480032ad463bac51e3e14a96d0af5",
+      "sql_bytes": 1601
+    },
+    {
+      "version": "20261022073639",
+      "name": "pos_shop_type_kitchen_rules",
+      "sha256": "73709e828cea4d974ed722d3f66c2b877cbf66c13dece5fe33a36079ed59c7ac",
+      "sql_bytes": 5763
+    },
+    {
+      "version": "20261022073650",
+      "name": "pos_report_context_separation",
+      "sha256": "e3a0fbd63f85804b6da6b88bfbc39bfc730bb0632e4af4965a7f3b91f4181155",
+      "sql_bytes": 998
+    },
+    {
+      "version": "20261022073806",
+      "name": "merchant_cancel_before_preparation",
+      "sha256": "434f42a66257b72085eb3e1e3422c06d021cfc171d3d9cf81a9a0037e4a22188",
+      "sql_bytes": 2435
+    },
+    {
+      "version": "20261022080039",
+      "name": "pos_menu_option_pricing",
+      "sha256": "d7dc6566bc98c22f7e582df2f5775e6fc6e519b38a358b3cfa2668eadbb11c31",
+      "sql_bytes": 10552
+    },
+    {
+      "version": "20261022080048",
+      "name": "pos_offline_draft_submission",
+      "sha256": "3c46637b0c06480310ab293a1bc9dbcc4bb29e2602cfcfd0fe38b270cc49d698",
+      "sql_bytes": 4533
+    },
+    {
+      "version": "20261022084145",
+      "name": "separate_pos_delivery_markup_from_gp",
+      "sha256": "e599189c76501da16cbf408c93a5be32707cf7a13b0fe26f703a8bf6041209c1",
+      "sql_bytes": 2836
+    },
+    {
+      "version": "20261022085105",
+      "name": "restore_shop_delivery_markup_default_10",
+      "sha256": "bc234aeb9282c2cfb13d197bd69d9be343286ce9627162bc5fbc67a06aa58002",
+      "sql_bytes": 3496
+    },
+    {
+      "version": "20261022105255",
+      "name": "pos_kitchen_staff_capability_guard",
+      "sha256": "719e8951a193f6bced29d14ecb7dccc14ccd6d1d1fdd861d09b7b803b84928b5",
+      "sql_bytes": 5116
+    },
+    {
+      "version": "20261022105630",
+      "name": "pos_cash_register_movements",
+      "sha256": "b587e05ae80e8caec4f84fc169648b670fcab8701ebb3f44c248dce8cc6205c5",
+      "sql_bytes": 6517
+    },
+    {
+      "version": "20261022113556",
+      "name": "pos_product_code_registry",
+      "sha256": "c48183c13504f15279531c8ac7e0b2cc6cacbcedf5b4112843b19e7b6ebadef1",
+      "sql_bytes": 7539
+    },
+    {
+      "version": "20261022114328",
+      "name": "pos_product_code_fk_indexes",
+      "sha256": "7ffef38fd86773b528c032140c5fdb935b363dbdbd2934a2644fafa8f6157059",
+      "sql_bytes": 298
+    },
+    {
+      "version": "20261022141101",
+      "name": "pos_generic_inventory_reservations",
+      "sha256": "b5dc0b2dfdffe546eb02d4ba251e78980c16d4969f418430a5f389cf3c56cee5",
+      "sql_bytes": 7930
+    },
+    {
+      "version": "20261022141117",
+      "name": "pos_inventory_adjustments",
+      "sha256": "535e232fc9e3928fbe2c97fc66b1bd751d1778436bab64a072ddfd1bdced1ee4",
+      "sql_bytes": 16365
+    },
+    {
+      "version": "20261022144627",
+      "name": "pos_inventory_tracking_manager_guard",
+      "sha256": "1a36fa9925a284fef76d63d733a2a53b855837c8cd9f85868bc546b3a4c0b155",
+      "sql_bytes": 1419
+    },
+    {
+      "version": "20261022145405",
+      "name": "pos_market_inventory_owner_guard",
+      "sha256": "fa511a85b3fbb38262fef2e0872b22917b17ffaed32f9d82eaf44a6a04231333",
+      "sql_bytes": 9536
+    },
+    {
+      "version": "20261022150721",
+      "name": "rider_transition_gps_audit",
+      "sha256": "746c1f9e9901777313b163d3aed55209d14e78c004834946ab28529cece8a9d1",
+      "sql_bytes": 2588
+    },
+    {
+      "version": "20261022151911",
+      "name": "rider_transition_semantics_hardening",
+      "sha256": "aab0d8f8c87a7d0c711ecccc3afc25a7edf303345c6e2bda3585b9a201dfe85e",
+      "sql_bytes": 3629
+    },
+    {
+      "version": "20261022152243",
+      "name": "pos_owner_dashboard_metrics",
+      "sha256": "7f1a447c29ccfd9a602b6fca59468f8fb1bbe9082027ed5afcc0352e5c2aef28",
+      "sql_bytes": 3630
+    },
+    {
+      "version": "20261023081308",
+      "name": "rider_web_work_preferences",
+      "sha256": "957c9c5471158c74697a1d09a1b3b81cacbc507115aa6af92bd29f8683f131e3",
+      "sql_bytes": 7192
+    },
+    {
+      "version": "20261023091502",
+      "name": "ride_whole_baht_and_unrestricted_completion",
+      "sha256": "836e613a9156185159532363dfabb7521a7d00cc510eabc2d561e4e8d070950e",
+      "sql_bytes": 4714
+    },
+    {
+      "version": "20261023092028",
+      "name": "ride_unrestricted_completion_guard",
+      "sha256": "e78c1de7e9d735f6664e5867d2fea732eeca9341b9e695dedc8d73fd499d202d",
+      "sql_bytes": 1575
+    },
+    {
+      "version": "20261023092213",
+      "name": "ride_integer_fare_and_completion",
+      "sha256": "d4e324b7bebfacfad9e77f3f7011dfb060afc7bb9e8a01b6c77949d84b6e9110",
+      "sql_bytes": 5075
+    },
+    {
+      "version": "20261023092358",
+      "name": "ride_normalize_active_whole_baht",
+      "sha256": "c083fae050f1530019dc009878e4a685610e07c01704069df975761987daeb98",
+      "sql_bytes": 11795
+    },
+    {
+      "version": "20261023092711",
+      "name": "ride_completion_guard_whole_baht_reconcile",
+      "sha256": "e272b5b477de20433b13d5d7044f4b0da67e927012b2b183903d44db8a8a5b49",
+      "sql_bytes": 12261
+    },
+    {
+      "version": "20261023094043",
+      "name": "ride_active_whole_baht_normalization_source_sync",
+      "sha256": "3be89e39787a2eca8fb8a7cfab0eff291d9c931dae20a0b1e6525a699c343ba6",
+      "sql_bytes": 12146
+    },
+    {
+      "version": "20261023102258",
+      "name": "ride_complete_cash_after_order",
+      "sha256": "2c14251b841fbfcf04b22a7b9a77ed210a815b2b13153c4f155ae27764c0fb34",
+      "sql_bytes": 4091
+    },
+    {
+      "version": "20261023102428",
+      "name": "ride_complete_cash_after_order",
+      "sha256": "2c14251b841fbfcf04b22a7b9a77ed210a815b2b13153c4f155ae27764c0fb34",
+      "sql_bytes": 4091
+    },
+    {
+      "version": "20261023120711",
+      "name": "customer_laundry_registered_shop_directory",
+      "sha256": "9c5ba0e3cba4fd5a372d02de93c4636c8ce956a6603f0e6d6075d2dfce00c7f1",
+      "sql_bytes": 3740
+    },
+    {
+      "version": "20261025055828",
+      "name": "queuego_places_search_foundation",
+      "sha256": "639ef27a72f372b218b39884b0f0aa3ed5051a367a1e417aff26ddf67f50946a",
+      "sql_bytes": 14035
+    },
+    {
+      "version": "20261025055837",
+      "name": "queuego_th_admin_source_registry",
+      "sha256": "17f862a9524b926d17a1e33d80f8592eb4dda2a523b1aeaaad0d28d2141fead7",
+      "sql_bytes": 3742
+    },
+    {
+      "version": "20261025060418",
+      "name": "queuego_places_admin_exact_rank",
+      "sha256": "aa014ac79758fbbbdd48a354f864d009077d50d7c12aa8e135328479b8c3224c",
+      "sql_bytes": 6459
+    },
+    {
+      "version": "20261025060759",
+      "name": "queuego_nationwide_order_service_area_v2",
+      "sha256": "ccbc1266ee2ba4753e9c7608e1762062ae4299913b470cd6a4333398b5346475",
+      "sql_bytes": 158417
+    },
+    {
+      "version": "20261025060847",
+      "name": "queuego_nationwide_service_area_cutover",
+      "sha256": "5dd2581dfeda7c531f47518acb43663823435b83d2e2184880bbd1e833f4025b",
+      "sql_bytes": 1185
+    },
+    {
+      "version": "20261025060946",
+      "name": "queuego_operational_places_runtime_sync",
+      "sha256": "2b6e4a406955d2908801900fb70d0f4f595c285d913389ce2697bf9fe27e02b7",
+      "sql_bytes": 11838
+    },
+    {
+      "version": "20261025061310",
+      "name": "queuego_public_read_rpc_hardening",
+      "sha256": "e093a6c6d4d921d62d550d3be57b4d4bf668427fe266847612ec22d076f311c5",
+      "sql_bytes": 13690
+    },
+    {
+      "version": "20261025061411",
+      "name": "queuego_places_source_fk_indexes",
+      "sha256": "dc3c76f2c9f6f76591be1c818caa57b17773fc58159c8de1ef8d34f5e9653fa2",
+      "sql_bytes": 267
+    },
+    {
+      "version": "20261025074754",
+      "name": "queuego_boundary_release_payload_stage",
+      "sha256": "ccb6969779d0e315efa64d00ace4dadf6c7bf4c911c025509dba125802e98651",
+      "sql_bytes": 361
+    },
+    {
+      "version": "20261025074942",
+      "name": "queuego_detailed_thailand_service_boundary",
+      "sha256": "d12d03888bf33e60b51ed7bc5595a612a16b0644b8bbae5481b64a8560ffa62d",
+      "sql_bytes": 7150
+    },
+    {
+      "version": "20261031083737",
+      "name": "native_rider_owned_proof_recovery_reader",
+      "sha256": "9fecb7beb9c2943fb63d56aa63aa54c8e483e9c9f87b19e926d6553d0511b40c",
+      "sql_bytes": 1741
+    },
+    {
+      "version": "20261031083915",
+      "name": "native_rider_dispatch_readiness_rpc",
+      "sha256": "7ac2360aa1f846ef583dcb7f5a189885a62bc98f36c51f1cdad113411b5a6d23",
+      "sql_bytes": 1291
+    },
+    {
+      "version": "20261031084323",
+      "name": "native_laundry_owned_shop_contacts",
+      "sha256": "f9447dfcf3d1f6ce1c99c7b18a892956f62f30c7921b0956298301146fbc3f94",
+      "sql_bytes": 830
+    },
+    {
+      "version": "20261031111727",
+      "name": "laundry_request_intent_replay_guard",
+      "sha256": "594b173b33724d9c71bc6e98a3613d7e9c3435f27517702eb0a011b7c5b16e43",
+      "sql_bytes": 7834
+    },
+    {
+      "version": "20261111111354",
+      "name": "revoke_anon_ride_config_execute",
+      "sha256": "1fcce23b71590e4f990506a25ddec7c9aaeb84eca0ac65a5ee46a3c82b9cd27e",
+      "sql_bytes": 161
+    }
+  ]
+}
