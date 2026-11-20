@@ -97,9 +97,14 @@ def validated_entries(artifact_dir):
     return source_sha, version, cert, validated
 
 
-def export(artifact_dir, output_dir):
+def export(artifact_dir, output_dir, expected_source_sha=None):
     artifact_dir = artifact_dir.resolve(strict=True)
     source_sha, version, cert, entries = validated_entries(artifact_dir)
+    if expected_source_sha is not None:
+        require(re.fullmatch(r"[0-9a-fA-F]{40}", expected_source_sha) is not None,
+                "Expected source SHA must be a full 40-character commit SHA")
+        require(source_sha.lower() == expected_source_sha.lower(),
+                "Certified artifact source SHA does not match requested exact HEAD")
     require(not output_dir.is_symlink(), "Output must not be a symlink")
     output_dir = output_dir.resolve()
     require(output_dir != artifact_dir and artifact_dir not in output_dir.parents,
@@ -126,9 +131,11 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--artifact-dir", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--expected-source-sha", required=True,
+                        help="Exact 40-character Git commit SHA being certified for Play upload")
     args = parser.parse_args()
     try:
-        report = export(args.artifact_dir, args.output_dir)
+        report = export(args.artifact_dir, args.output_dir, args.expected_source_sha)
     except (OSError, ValueError, KeyError, json.JSONDecodeError, zipfile.BadZipFile,
             subprocess.CalledProcessError, FileNotFoundError) as exc:
         print(f"PLAY AAB EXPORT BLOCKED: {exc}", file=sys.stderr)
