@@ -265,6 +265,20 @@ class RiderNavigationLocationService : Service() {
 
         val started = runCatching {
             fusedClient.requestLocationUpdates(request, nextCallback, Looper.getMainLooper())
+                .addOnSuccessListener {
+                    Log.i("QueueGoNavLocation", "fused_subscription_registered")
+                }
+                .addOnFailureListener { error ->
+                    // The registration Task is asynchronous: a successful method call
+                    // does not mean the provider accepted the subscription.
+                    // Never leave a foreground navigation service advertising live
+                    // tracking after the actual provider registration failed.
+                    Log.e("QueueGoNavLocation", "fused_subscription_rejected", error)
+                    if (callback === nextCallback) {
+                        RiderNavigationLocationStore.clear()
+                        stopSelf()
+                    }
+                }
             fusedClient.lastLocation.addOnSuccessListener { location ->
                 if (!locationUpdatesStarted || location == null) return@addOnSuccessListener
                 // Cached, current-location and streaming callbacks share the same
