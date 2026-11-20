@@ -44,16 +44,19 @@ SELECT count(*) AS searching_orders,
        count(*) FILTER (WHERE payment_requires_reconciliation) AS with_payment_requiring_reconciliation,
        count(*) FILTER (WHERE payment_status IS DISTINCT FROM 'unpaid') AS payment_needs_review,
        count(*) FILTER (WHERE payment_status IS NULL) AS unknown_payment_status,
+       count(*) FILTER (WHERE payment_method IS NULL OR btrim(payment_method) = '') AS unknown_payment_method,
        count(*) FILTER (WHERE paid_at IS NOT NULL) AS with_paid_at,
        count(*) FILTER (WHERE rider_assigned_at IS NOT NULL) AS previously_assigned,
        count(*) FILTER (WHERE cancelled_at IS NOT NULL) AS contradictory_cancelled_timestamp,
        count(*) FILTER (WHERE market_order_id IS NOT NULL) AS market_group_needs_review,
        count(*) FILTER (WHERE live_offer_row_exists) AS with_offer_row,
-       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_ledger_exists OR merchant_cash_receipt_exists OR rider_cash_advance_exists OR rider_cash_refund_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR paid_at IS NOT NULL OR rider_assigned_at IS NOT NULL OR cancelled_at IS NOT NULL OR live_offer_row_exists OR active_market_siblings>0)) AS overdue_blocked_for_manual_review,
+       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_ledger_exists OR merchant_cash_receipt_exists OR rider_cash_advance_exists OR rider_cash_refund_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR payment_method IS NULL OR btrim(payment_method) = '' OR paid_at IS NOT NULL OR rider_assigned_at IS NOT NULL OR cancelled_at IS NOT NULL OR live_offer_row_exists OR active_market_siblings>0)) AS overdue_blocked_for_manual_review,
        coalesce(max(offer_history_count),0) AS max_offer_history,
        count(*) FILTER (WHERE active_market_siblings>0) AS with_active_siblings
 FROM facts;
 COMMIT;
 -- This is an aggregate-only snapshot, NOT proof that a cancellation is safe.
+-- A NULL/blank payment_method is always manual-review: Production legacy rows
+-- do not reliably populate it, so unpaid status alone cannot prove cash safety.
 -- Stock reservation, payment processor captures/refunds, merchant notification
 -- and settlement ledgers must be separately reconciled before any write.
