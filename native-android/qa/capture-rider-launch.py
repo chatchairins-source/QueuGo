@@ -1186,7 +1186,20 @@ def verify_navigation_location_foreground_runtime():
                        "com.queuego.rider.RiderNavigationLocationServiceRuntimeTest", runner],
                  capture_output=True, text=True, timeout=120)
     (output / "navigation-location-foreground-runtime.txt").write_text(result.stdout + result.stderr)
-    assert "OK (1 test)" in result.stdout, "Navigation location foreground service lifecycle failed"
+    if "OK (1 test)" not in result.stdout:
+        # Preserve the actual failing instrumentation output and platform state.
+        # Never replace an unsuccessful service test with synthetic GPS evidence.
+        for label, args in {
+            "navigation-location-failure-logcat.txt": ["logcat", "-d", "-t", "500", "-s", "QueueGoNavLocation:V", "AndroidRuntime:E", "*:S"],
+            "navigation-location-failure-services.txt": ["shell", "dumpsys", "activity", "services", "com.queuego.rider"],
+            "navigation-location-failure-provider.txt": ["shell", "dumpsys", "location"],
+        }.items():
+            try:
+                diagnostic = run(adb + args, capture_output=True, text=True, timeout=25)
+                (output / label).write_text("exit=" + str(diagnostic.returncode) + "\\n" + diagnostic.stdout + diagnostic.stderr)
+            except (OSError, subprocess.SubprocessError) as error:
+                (output / label).write_text("diagnostic_unavailable=" + type(error).__name__ + "\\n")
+        raise AssertionError("Navigation location foreground service lifecycle failed: " + result.stdout[-1500:])
     logcat = run(adb + ["logcat", "-d", "-s", "QueueGoNavLocation:I"],
                  capture_output=True, text=True).stdout
     (output / "navigation-location-logcat.txt").write_text(logcat)
