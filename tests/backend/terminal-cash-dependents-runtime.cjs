@@ -20,8 +20,8 @@ async function main() {
  try {
   await db.exec(`CREATE ROLE service_role;
    CREATE TABLE orders(id integer PRIMARY KEY,status text,rider_id integer,rider_assigned_at timestamptz,market_order_id integer,paid_at timestamptz,total_amount numeric);
-   CREATE TABLE payments(order_id integer,status text,payment_method text,paid_at timestamptz,transaction_reference text,amount numeric,updated_at timestamptz);
-   CREATE TABLE deliveries(order_id integer,status text,updated_at timestamptz);
+   CREATE TABLE payments(order_id integer REFERENCES orders(id),status text,payment_method text,paid_at timestamptz,transaction_reference text,amount numeric,updated_at timestamptz);
+   CREATE TABLE deliveries(order_id integer REFERENCES orders(id),status text,updated_at timestamptz);
    CREATE TABLE queuego_cash_order_locks(order_id integer PRIMARY KEY);
    CREATE TABLE merchant_cash_receipts(order_id integer);
    CREATE TABLE rider_cash_advances(order_id integer);
@@ -105,6 +105,23 @@ async function main() {
     equal(await status(concurrent,'orders'),'searching_rider');
     equal(await status(concurrent,'payments'),'paid');
     equal(await status(concurrent,'deliveries'),'pending');
+    // Match Production's immediate order FK. An in-flight second ledger insert
+    // must finish before the helper validates the one-ledger invariant.
+    const phantom=await seed();await peer.query('BEGIN');
+    await peer.query("INSERT INTO payments VALUES($1,'pending','cash',NULL,NULL,100,NULL)",[phantom]);
+    const inserting=transition(phantom).then(value=>({value}),error=>({error}));
+    let insertBlocked=false;
+    for(let attempt=0;attempt<100;attempt++) {
+     const blockers=(await peer.query('SELECT pg_blocking_pids($1) AS pids',[mainPid])).rows[0].pids;
+     if(blockers.includes(peerPid)){insertBlocked=true;break;}
+     await new Promise(resolve=>setTimeout(resolve,10));
+    }
+    assert.ok(insertBlocked,'parent FOR UPDATE must wait for in-flight ledger FK writer');checks++;
+    await peer.query('COMMIT');
+    assert.match(String((await inserting).error),/financial lifecycle review/);checks++;
+    equal(await status(phantom,'orders'),'searching_rider');
+    equal(Number((await db.query('SELECT count(*) AS n FROM payments WHERE order_id=$1',[phantom])).rows[0].n),2);
+
    } finally {await peer.query('ROLLBACK');await peer.end();}
   }
   // Simulate downstream failure: status and cash cleanup roll back together.

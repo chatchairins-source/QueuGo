@@ -27,8 +27,11 @@ BEGIN
   END IF;
 
   IF NEW.status='no_rider_available' THEN
-    -- Lock dependent rows before checking their financial state. Full phantom
-    -- insertion/ledger-writer concurrency still requires the integration gate.
+    -- Upgrade the parent lock before reading children. Live payments have an
+    -- immediate order FK: concurrent ledger inserts hold KEY SHARE on this row.
+    -- FOR UPDATE waits for those writers before we count/validate their rows.
+    PERFORM 1 FROM public.orders WHERE id=NEW.id FOR UPDATE;
+    -- Existing child rows must also be locked against concurrent capture.
     PERFORM 1 FROM public.payments WHERE order_id=NEW.id FOR UPDATE;
     PERFORM 1 FROM public.deliveries WHERE order_id=NEW.id FOR UPDATE;
     -- A deadline scheduler must independently own/lock/authorize the transition.
