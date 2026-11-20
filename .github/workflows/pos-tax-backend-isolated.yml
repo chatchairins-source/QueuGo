@@ -1,0 +1,35 @@
+name: QueueGo POS Tax Backend Isolated
+on:
+  pull_request:
+    branches:
+      - 'work-native-**'
+    paths:
+      - 'QueueGo-POS-Tax-Foundation-Migration.sql'
+      - 'QueueGo-POS-Tax-Checkout-Integration-Migration.sql'
+      - 'tests/pos-tax-backend-isolated.cjs'
+      - '.github/workflows/pos-tax-backend-isolated.yml'
+  push:
+    branches:
+      - 'test/pos-tax-backend-isolated-20261120'
+      - 'work-native-reconcile-main-20261114'
+    paths:
+      - 'QueueGo-POS-Tax-Foundation-Migration.sql'
+      - 'QueueGo-POS-Tax-Checkout-Integration-Migration.sql'
+      - 'tests/pos-tax-backend-isolated.cjs'
+      - '.github/workflows/pos-tax-backend-isolated.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-pos-tax:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install exact locked PostgreSQL test dependency
+        run: npm ci --no-audit --no-fund
+      - name: Verify isolated VAT financial calculations and immutable snapshots
+        run: node tests/pos-tax-backend-isolated.cjs
