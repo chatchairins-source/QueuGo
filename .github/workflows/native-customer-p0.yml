@@ -6,6 +6,7 @@ on:
       - 'native-android/customer/**'
       - 'native-android/shared/**'
       - 'native-android/qa/run-customer-p0.py'
+      - 'tests/native-customer-p0-maven-recovery.cjs'
       - '.github/workflows/native-customer-p0.yml'
       - '.github/workflows/build-native-rider-pilot.yml'
   pull_request:
@@ -13,6 +14,7 @@ on:
       - 'native-android/customer/**'
       - 'native-android/shared/**'
       - 'native-android/qa/run-customer-p0.py'
+      - 'tests/native-customer-p0-maven-recovery.cjs'
       - '.github/workflows/native-customer-p0.yml'
   workflow_dispatch:
 permissions:
@@ -76,11 +78,24 @@ jobs:
               echo "::error::Customer P0 build failed for a non-retryable reason"
               exit 1
             fi
-            metadata="https://repo.maven.apache.org/maven2/org/jetbrains/kotlinx/kotlinx-coroutines-test/1.10.2/kotlinx-coroutines-test-1.10.2.pom"
-            curl --fail --show-error --silent --location --retry 2 --connect-timeout 15 --max-time 90 "$metadata" -o "$RUNNER_TEMP/customer-coroutines-test-1.10.2.pom"
-            test -s "$RUNNER_TEMP/customer-coroutines-test-1.10.2.pom"
-            grep -Fq '<artifactId>kotlinx-coroutines-test</artifactId>' "$RUNNER_TEMP/customer-coroutines-test-1.10.2.pom"
-            echo "::warning::Retrying exact Customer P0 Gradle tasks once after verified Maven Central metadata"
+            # The first miss may be Hamcrest, JavaWriter, jsr305 or Kotlinx;
+            # never fetch an unrelated fixed POM or retry unknown dependencies.
+            mapfile -t missing < <(grep -Eo 'Could not find (org\.jetbrains\.kotlinx:kotlinx-coroutines-test:1\.10\.2|com\.squareup:javawriter:2\.1\.1|org\.hamcrest:hamcrest-(library|integration):1\.3|com\.google\.code\.findbugs:jsr305:2\.0\.2)' "$first_log" | sed 's/^Could not find //' | sort -u)
+            test "${#missing[@]}" -gt 0
+            for coordinate in "${missing[@]}"; do
+              case "$coordinate" in
+                org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2|com.squareup:javawriter:2.1.1|org.hamcrest:hamcrest-library:1.3|org.hamcrest:hamcrest-integration:1.3|com.google.code.findbugs:jsr305:2.0.2) ;;
+                *) echo "::error::Unexpected dependency $coordinate"; exit 1 ;;
+              esac
+              IFS=: read -r group artifact version <<< "$coordinate"
+              group_path="$(printf '%s' "$group" | tr '.' '/')"
+              metadata="https://repo.maven.apache.org/maven2/${group_path}/${artifact}/${version}/${artifact}-${version}.pom"
+              pom="$RUNNER_TEMP/customer-${artifact}-${version}.pom"
+              curl --fail --show-error --silent --location --retry 2 --connect-timeout 15 --max-time 90 "$metadata" -o "$pom"
+              test -s "$pom"
+              grep -Fq "<artifactId>${artifact}</artifactId>" "$pom"
+            done
+            echo "::warning::Retrying exact Customer P0 Gradle tasks once after verified version-pinned missing metadata"
             sleep 5
             "${command[@]}" --refresh-dependencies
           fi
