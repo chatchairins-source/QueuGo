@@ -108,6 +108,34 @@ async function main() {
   await equal(await insertAttempt(120), 1, 'attempt 120 remains valid inside deadline');
   await equal(await counts(10), [1, 0], 'rejected attempts must not create offers or notifications');
 
+  // PostgreSQL LEAST(NULL, deadline) is NOT NULL. A missing offer expiry
+  // must be rejected before any default/deadline clamping occurs.
+  await seed(11, 'searching_rider', null, '1 minute');
+  const noExpiry = await db.query(
+    'INSERT INTO public.qg_rider_order_offers(order_id,rider_id,offered_at,expires_at,attempt) VALUES($1,$2,now(),NULL,1) ON CONFLICT(order_id) DO NOTHING RETURNING attempt',
+    [id(11), id(101)]
+  );
+  await equal(noExpiry.rows.length, 0, 'null offer expiry is suppressed, not converted to search deadline');
+  await equal(await counts(11), [0, 0], 'null expiry cannot create an offer or Rider notification');
+
+  await seed(12, 'searching_rider', null, '1 minute');
+  const oversized = await db.query(
+    "INSERT INTO public.qg_rider_order_offers(order_id,rider_id,offered_at,expires_at,attempt) VALUES($1,$2,now(),now()+interval '10 minutes',1) ON CONFLICT(order_id) DO NOTHING RETURNING attempt",
+    [id(12), id(101)]
+  );
+  await equal(oversized.rows.length, 1, 'oversized upstream TTL remains a valid bounded offer');
+  const actualTTL = (await db.query(
+    'SELECT EXTRACT(epoch FROM (expires_at - offered_at)) AS ttl FROM public.qg_rider_order_offers WHERE order_id=$1', [id(12)]
+  )).rows[0].ttl;
+  assert(Number(actualTTL) > 0 && Number(actualTTL) <= 30.01, 'upstream 10-minute offer must be clamped to 30 seconds'); checks++;
+
+  await seed(13, 'searching_rider', null, '1 minute');
+  const alreadyExpired = await db.query(
+    "INSERT INTO public.qg_rider_order_offers(order_id,rider_id,offered_at,expires_at,attempt) VALUES($1,$2,now()-interval '2 minutes',now()+interval '30 seconds',1) ON CONFLICT(order_id) DO NOTHING RETURNING attempt",
+    [id(13), id(101)]
+  );
+  await equal(alreadyExpired.rows.length, 0, 'delayed offer past its original 30-second TTL cannot be inserted');
+  await equal(await counts(13), [0, 0], 'delayed expiry cannot cause notification amplification');
   const priv = (await db.query(
     "SELECT has_function_privilege('anon','qg_private.guard_rider_offer_deadline()','EXECUTE') anon, has_function_privilege('authenticated','qg_private.guard_rider_offer_deadline()','EXECUTE') authenticated"
   )).rows[0];
@@ -115,7 +143,9 @@ async function main() {
   assert(!/\bUPDATE\s+public\.orders\b/i.test(guardSql), 'containment may not modify real order states'); checks++;
   assert(!/\b(INSERT|UPDATE|DELETE)\s+(?:FROM\s+)?public\.(payments|settlements|merchant_cash_receipts|rider_cash_advances)\b/i.test(guardSql), 'containment must not touch money'); checks++;
   assert(guardSql.includes('SECURITY INVOKER') && guardSql.includes("SET search_path TO ''"), 'trigger must not introduce definer bypass'); checks++;
-  assert(guardSql.includes('LEAST(NEW.expires_at, v_deadline)'), 'offer expiry must be clamped to overall deadline'); checks++;
+  assert(guardSql.includes("NEW.offered_at + interval '30 seconds'"), 'each individual offer is capped at 30 seconds'); checks++;
+  assert(guardSql.includes('NEW.expires_at <= now()'), 'already expired offer cannot trigger Rider notification'); checks++;
+  assert(guardSql.includes('NEW.offered_at IS NULL OR NEW.expires_at IS NULL'), 'malformed timestamp must fail closed before LEAST'); checks++;
   await db.close();
   console.log(JSON.stringify({checks, failures:0, scope:'isolated PGlite bounded Rider offer insertion/notification guard; source-only, not deployed'}));
 }

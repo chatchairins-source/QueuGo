@@ -60,10 +60,20 @@ BEGIN
     RETURN NULL;
   END IF;
 
-  -- A 30-second offer initiated at the end of the total search window must
-  -- not remain claimable after the authoritative order deadline.
-  NEW.expires_at := LEAST(NEW.expires_at, v_deadline);
-  IF NEW.expires_at IS NULL OR NEW.expires_at <= NEW.offered_at THEN
+  -- PostgreSQL LEAST ignores NULL arguments: reject missing inputs BEFORE
+  -- clamping, so NULL never silently becomes the full order search deadline.
+  IF NEW.offered_at IS NULL OR NEW.expires_at IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  -- Keep every Rider offer <= 30 seconds even with a malformed upstream TTL,
+  -- and never notify about a queued offer already expired at server time.
+  NEW.expires_at := LEAST(
+    NEW.expires_at,
+    NEW.offered_at + interval '30 seconds',
+    v_deadline
+  );
+  IF NEW.expires_at <= NEW.offered_at OR NEW.expires_at <= now() THEN
     RETURN NULL;
   END IF;
   RETURN NEW;
