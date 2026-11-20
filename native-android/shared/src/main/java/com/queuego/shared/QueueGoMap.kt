@@ -1,6 +1,7 @@
 package com.queuego.shared
 
 import android.content.Context
+import android.os.Build
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -48,6 +49,7 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.android.maps.MapLibreMapOptions
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
@@ -85,6 +87,16 @@ private const val QUEUEGO_TRACKING_SOURCE = "queuego-tracking"
 private const val QUEUEGO_TRACKING_LAYER = "queuego-tracking-points"
 private const val QUEUEGO_LOCATION_PICKER_SOURCE = "queuego-location-picker"
 private const val QUEUEGO_LOCATION_PICKER_LAYER = "queuego-location-picker-point"
+
+internal fun queueGoOnlineMapOptions(context: Context): MapLibreMapOptions =
+    MapLibreMapOptions.createFromAttributes(context)
+        // Legacy SurfaceView can race RenderThread.positionLost with its
+        // released SurfaceControl during repeated Compose picker disposal.
+        // Reproduced SIGSEGV in nativeSetFlags on API30 run 44695889504;
+        // API26 run 44697222895 also lost geographic pixels after EGL_BAD_MATCH.
+        // TextureView renders in the normal view tree without that separate
+        // SurfaceControl. Android12+ retains the default surface mode.
+        .textureMode(Build.VERSION.SDK_INT <= Build.VERSION_CODES.R)
 
 fun queueGoMapServiceBaseUrl(context: Context): String? = runCatching {
     context.packageManager
@@ -392,7 +404,7 @@ fun QgTrackingMap(
             modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             MapLibre.getInstance(ctx.applicationContext)
-            MapView(ctx).also { view ->
+            MapView(ctx, queueGoOnlineMapOptions(ctx)).also { view ->
                 holder.view = view
                 view.onCreate(null)
                 view.getMapAsync { map ->
@@ -577,7 +589,7 @@ fun QgLocationPickerMap(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
                     MapLibre.getInstance(ctx.applicationContext)
-                    MapView(ctx).also { view ->
+                    MapView(ctx, queueGoOnlineMapOptions(ctx)).also { view ->
                         holder.view = view
                         view.onCreate(null)
                         // A loaded style can still show only a background or ancestor tiles.

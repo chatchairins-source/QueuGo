@@ -33,6 +33,32 @@ import androidx.compose.ui.test.click
 class CustomerLocationP0RuntimeTest {
     @get:Rule val compose = createAndroidComposeRule<ComponentActivity>()
 
+    @Test fun onlineMapUsesTextureOnLegacyAndroidAndDefaultSurfaceOnAndroid12Plus() {
+        val ready = AtomicBoolean(false)
+        compose.setContent {
+            com.queuego.shared.QgLocationPickerMap(
+                initialPoint = null, recenterPoint = null, recenterToken = 0,
+                modifier = Modifier.fillMaxSize(),
+                onPointSelected = {}, onReady = { ready.set(it) })
+        }
+        compose.waitUntil(30_000) { ready.get() }
+        fun contains(view: android.view.View, kind: Class<*>): Boolean {
+            if (kind.isInstance(view)) return true
+            if (view is android.view.ViewGroup) for (index in 0 until view.childCount) {
+                if (contains(view.getChildAt(index), kind)) return true
+            }
+            return false
+        }
+        compose.activityRule.scenario.onActivity { activity ->
+            val root = activity.window.decorView
+            val legacyAndroid = android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.R
+            assertEquals("Actual online map TextureView mode must match legacy Android workaround",
+                legacyAndroid, contains(root, android.view.TextureView::class.java))
+            assertEquals("Legacy Android must not retain a map SurfaceView",
+                !legacyAndroid, contains(root, android.view.SurfaceView::class.java))
+        }
+    }
+
     @Test fun currentNativeMapAndPlatformLocationRuntimeClassesArePackaged() {
         listOf(
             "org.maplibre.android.MapLibre",

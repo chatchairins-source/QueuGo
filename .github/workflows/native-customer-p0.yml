@@ -91,7 +91,10 @@ jobs:
               group_path="$(printf '%s' "$group" | tr '.' '/')"
               metadata="https://repo.maven.apache.org/maven2/${group_path}/${artifact}/${version}/${artifact}-${version}.pom"
               pom="$RUNNER_TEMP/customer-${artifact}-${version}.pom"
-              curl --fail --show-error --silent --location --retry 2 --connect-timeout 15 --max-time 90 "$metadata" -o "$pom"
+              # Maven Central can briefly return a cached 404 for an existing,
+              # pinned module (API35 run 44689261223). curl's default retry
+              # policy excludes 404; retry retrieval, never a failing test.
+              curl --fail --show-error --silent --location --retry 2 --retry-all-errors --retry-max-time 45 --connect-timeout 15 --max-time 20 "$metadata" -o "$pom"
               test -s "$pom"
               grep -Fq "<artifactId>${artifact}</artifactId>" "$pom"
             done
