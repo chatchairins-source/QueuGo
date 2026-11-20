@@ -321,6 +321,8 @@ jobs:
         run: node tests/native-launcher-assets.cjs
       - name: Verify Production category banner assets
         run: node tests/native-category-assets.cjs
+      - name: Verify certified Play AAB exporter fail-closed regressions
+        run: python3 -m unittest discover -s tests -p 'test-play-certified-export.py' -v
       - name: Verify fail-closed Native pilot APK artifact publication
         run: node tests/native-apk-artifact-policy.cjs
       - name: Build and bundle pinned nationwide offline map
