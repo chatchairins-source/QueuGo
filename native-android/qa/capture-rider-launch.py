@@ -36,7 +36,7 @@ os.environ["ANDROID_AVD_HOME"] = str(avd_registry)
 install_android_sdk_packages(manager / "sdkmanager", run)
 name = "queuego_rider_capture_" + os.environ["GITHUB_RUN_ID"] + "_" + os.environ.get("GITHUB_RUN_ATTEMPT", "1")
 avd_path = Path(os.environ["RUNNER_TEMP"]) / name
-run([str(manager / "avdmanager"), "create", "avd", "-n", name, "-k", "system-images;android-30;default;x86_64", "-p", str(avd_path), "-d", "pixel_4"], input="no\n", text=True)
+run([str(manager / "avdmanager"), "create", "avd", "-n", name, "-k", "system-images;android-30;google_apis;x86_64", "-p", str(avd_path), "-d", "pixel_4"], input="no\n", text=True)
 assert (avd_registry / (name + ".ini")).is_file(), "AVD registry was not created in the shared emulator search path"
 emulator_bin = str(sdk / "emulator/emulator")
 run([emulator_bin, "-accel-check"])
@@ -1181,6 +1181,22 @@ def verify_voice_foreground_runtime():
 
 
 def verify_navigation_location_foreground_runtime():
+    # The Rider FusedLocationProvider is a Google Play Services API, absent on
+    # the plain AOSP "default" emulator. An earlier hosted CI app log actually
+    # returned SERVICE_INVALID with com.google.android.gms not installed.
+    # Require the genuine package before instrumenting, never fake location
+    # or accept a failed foreground GPS subscription as a PASS.
+    play_services = run(
+        adb + ["shell", "pm", "path", "com.google.android.gms"],
+        capture_output=True, text=True, timeout=15,
+    )
+    (output / "navigation-location-play-services-preflight.txt").write_text(
+        play_services.stdout + play_services.stderr
+    )
+    assert "package:" in play_services.stdout, (
+        "Google Play Services is missing on the Android test emulator; "
+        "install system-images;android-30;google_apis;x86_64"
+    )
     runner = "com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner"
     result = run(adb + ["shell", "am", "instrument", "-w", "-r", "-e", "class",
                        "com.queuego.rider.RiderNavigationLocationServiceRuntimeTest", runner],
