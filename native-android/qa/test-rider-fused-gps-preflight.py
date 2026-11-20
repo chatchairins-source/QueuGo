@@ -93,6 +93,13 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             extracted_preflight(fake_adb)()
         self.assertEqual(sum(x[-1] == "is-location-enabled" for x in calls), 1)
+    def test_real_fused_failure_requires_retained_platform_evidence(self):
+        self.assertIn("capture_fused_failure_evidence(label)", SOURCE)
+        self.assertIn('"location-provider": ["shell", "dumpsys", "location"]', SOURCE)
+        self.assertIn('"fused-logcat": ["logcat", "-d", "-t", "300", "-s"', SOURCE)
+        self.assertIn("raise AssertionError(\"Real Fused GPS test failed:", SOURCE)
+        self.assertIn('"allowDebugStoreInjection", "false"', SOURCE)
+
     def test_preflight_required_before_real_instrumentation(self):
         self.assertIn("ensure_emulator_location_enabled()\n                run_case(label, longitude, latitude)", SOURCE)
         self.assertIn('"allowDebugStoreInjection", "false"', SOURCE)

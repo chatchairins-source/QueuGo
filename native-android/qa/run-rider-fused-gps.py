@@ -78,6 +78,25 @@ def ensure_emulator_location_enabled():
         return
     raise RuntimeError("Unable to verify Google APIs emulator master Location switch")
 
+def capture_fused_failure_evidence(label):
+    # Keep genuine platform/provider evidence when GPS never arrives. No fake
+    # locations, relaxation of assertions, or secrets from entire device logs.
+    diagnostics = {
+        "location-provider": ["shell", "dumpsys", "location"],
+        "navigation-service": ["shell", "dumpsys", "activity", "services", PACKAGE],
+        "fused-logcat": ["logcat", "-d", "-t", "300", "-s",
+                         "QueueGoNavLocation:I", "QueueGoMapRuntime:I", "*:S"],
+    }
+    for name, arguments in diagnostics.items():
+        try:
+            result = subprocess.run([*ADB_TARGET, *arguments], capture_output=True,
+                                    text=True, timeout=25)
+            detail = "exit=" + str(result.returncode) + "\\n" + result.stdout + result.stderr
+        except (subprocess.SubprocessError, OSError) as error:
+            detail = "diagnostic_unavailable: " + type(error).__name__ + "\\n"
+        (OUT / (label + "-" + name + ".txt")).write_text(detail)
+
+
 def run_case(label, longitude, latitude):
     # Run the identical instrumented test twice in separate target processes.
     adb("shell", "am", "force-stop", PACKAGE)
@@ -103,8 +122,9 @@ def run_case(label, longitude, latitude):
             raise RuntimeError("Fused GPS instrumentation timed out")
         output = process.communicate(timeout=15)[0]
         (OUT / (label + "-instrumentation.txt")).write_text(output)
-        assert process.returncode == 0 and "OK (1 test)" in output, (
-            "Real Fused GPS test failed: " + output[-2500:])
+        if process.returncode != 0 or "OK (1 test)" not in output:
+            capture_fused_failure_evidence(label)
+            raise AssertionError("Real Fused GPS test failed: " + output[-2500:])
         # ADB screenshot transport can close transiently after instrumented
         # lifecycle recreation. Retry transport only; never retry a failed GPS
         # assertion or manufacture a screenshot.

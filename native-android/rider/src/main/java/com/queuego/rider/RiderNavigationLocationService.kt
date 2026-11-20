@@ -265,6 +265,18 @@ class RiderNavigationLocationService : Service() {
 
         val started = runCatching {
             fusedClient.requestLocationUpdates(request, nextCallback, Looper.getMainLooper())
+                .addOnSuccessListener {
+                    Log.i("QueueGoNavLocation", "foreground_fused_subscription_confirmed")
+                }
+                .addOnFailureListener { error ->
+                    // Play Services can reject an asynchronous registration after the
+                    // Java API call returns. Never keep a false 'GPS active' lease.
+                    Log.e("QueueGoNavLocation", "foreground_fused_subscription_failed", error)
+                    if (callback === nextCallback && locationUpdatesStarted) {
+                        RiderNavigationLocationStore.clear()
+                        stopSelf()
+                    }
+                }
             fusedClient.lastLocation.addOnSuccessListener { location ->
                 if (!locationUpdatesStarted || location == null) return@addOnSuccessListener
                 // Cached, current-location and streaming callbacks share the same
