@@ -2,6 +2,8 @@
 -- Run only as a read-only transaction, with an authorized incident operator.
 -- Never use this output alone to cancel a real order.
 BEGIN READ ONLY;
+-- Keep the entire snapshot consistent while concurrent dispatch is running.
+SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SET LOCAL statement_timeout = '10s';
 WITH overdue AS (
  SELECT o.id, o.market_order_id, o.status, o.payment_status, o.payment_method,
@@ -19,10 +21,14 @@ WITH overdue AS (
 )
 SELECT count(*) AS searching_orders,
        count(*) FILTER (WHERE search_start < now()-interval '30 minutes') AS overdue_at_30m,
+       count(*) FILTER (WHERE search_start IS NULL) AS unknown_search_start,
+       count(*) FILTER (WHERE search_start > now()) AS future_search_start,
        count(*) FILTER (WHERE cash_lock_exists) AS with_cash_lock,
        count(*) FILTER (WHERE payment_status IS DISTINCT FROM 'unpaid') AS payment_needs_review,
+       count(*) FILTER (WHERE payment_status IS NULL) AS unknown_payment_status,
        count(*) FILTER (WHERE market_order_id IS NOT NULL) AS market_group_needs_review,
        count(*) FILTER (WHERE live_offer_row_exists) AS with_offer_row,
+       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_status IS DISTINCT FROM 'unpaid' OR live_offer_row_exists OR active_market_siblings>0)) AS overdue_blocked_for_manual_review,
        coalesce(max(offer_history_count),0) AS max_offer_history,
        count(*) FILTER (WHERE active_market_siblings>0) AS with_active_siblings
 FROM facts;
