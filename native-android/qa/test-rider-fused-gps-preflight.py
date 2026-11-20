@@ -133,6 +133,16 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
         cached = service.split("fusedClient.lastLocation.addOnSuccessListener", 1)[1].split("accept(location)", 1)[0]
         self.assertIn("callback !== nextCallback", cached)
 
+    def test_rejected_fused_fix_diagnostic_preserves_privacy_and_gate(self):
+        # This is a source contract, not evidence that the emulator delivered a fix.
+        service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
+        section = service.split("private fun accept(location: Location)", 1)[1].split("val previous = lastAccepted", 1)[0]
+        self.assertIn("riderNavigationFixEligible(", section)
+        self.assertIn('Log.d("QueueGoNavLocation", "fused_fix_rejected_freshness_or_accuracy")', section)
+        self.assertIn("return", section.split("fused_fix_rejected_freshness_or_accuracy", 1)[1])
+        self.assertNotIn("location.latitude}", section)
+        self.assertNotIn("location.longitude}", section)
+
     def test_preflight_required_before_real_instrumentation(self):
         self.assertIn("ensure_emulator_location_enabled()\n                run_case(label, longitude, latitude)", SOURCE)
         self.assertIn('"allowDebugStoreInjection", "false"', SOURCE)
