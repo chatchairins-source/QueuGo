@@ -258,6 +258,9 @@ class RiderNavigationLocationService : Service() {
 
         val nextCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
+                // A queued callback from a stopped subscription must not publish
+                // into a newly started navigation session.
+                if (callback !== this || !locationUpdatesStarted) return
                 result.locations.forEach(::accept)
             }
         }
@@ -286,7 +289,7 @@ class RiderNavigationLocationService : Service() {
                     }
                 }
             fusedClient.lastLocation.addOnSuccessListener { location ->
-                if (!locationUpdatesStarted || location == null) return@addOnSuccessListener
+                if (callback !== nextCallback || !locationUpdatesStarted || location == null) return@addOnSuccessListener
                 // Cached, current-location and streaming callbacks share the same
                 // freshness check inside accept(). No callback bypasses it.
                 accept(location)
