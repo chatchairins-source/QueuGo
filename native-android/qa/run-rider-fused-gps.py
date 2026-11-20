@@ -180,6 +180,11 @@ def main():
             emulator = subprocess.Popen([EMULATOR, "-avd", name, "-port", "5556",
                 "-wipe-data", "-no-window", "-no-snapshot", "-no-audio",
                 "-gpu", "swiftshader", "-memory", "2048", "-cores", "2",
+                # API30 guest GNSS HAL expects the legacy transport clock.
+                # Failed run44758924005 reported GPS elapsed time ~20777 days
+                # while guest uptime was ~2 minutes. Preserve app freshness
+                # rejection; test the supported legacy GNSS pipe instead.
+                "-feature", "-GnssGrpcV1",
                 "-accel", "on"], stdout=log, stderr=subprocess.STDOUT, env=env)
             try:
                 wait_boot(emulator)
@@ -204,6 +209,7 @@ def main():
         "apk_sha256": expected, "system_image": "android-30;google_apis;x86_64",
         "debug_store_injection": False, "incomplete_tiles_allowed": False,
         "fresh_wiped_emulator_per_region": True,
+        "gnss_transport": "legacy_pipe_GnssGrpcV1_disabled",
         "cases": ["bangkok", "buriram"], "physical_road_test": False
     }, indent=2) + "\n")
     print("QUEUEGO_REAL_FUSED_GPS_PASS")

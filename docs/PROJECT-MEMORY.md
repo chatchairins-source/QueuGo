@@ -1,3 +1,9 @@
+## 2026-11-20 API30 Fused GPS clock-domain compatibility investigation
+
+- Exact reconciled #1304 HEAD4a75ad42 failed routing44758924005 at the REAL Fused fix assertion; offline route/restart/rendering passed. Rider review44758923973 then correctly refused the uncertified candidate. This is not merely waiting for CI and not yet resolved.
+- Retained artifact14640353025 shows guest uptime+2m15s, GPS last fix elapsed time+20777d15h12m29s. That is a different clock domain; app correctly rejects future fixes. No app timestamps/freshness/accuracy checks are to be normalized or weakened.
+- Source CI candidate selects Android emulator's supported legacy GNSS pipe with -feature -GnssGrpcV1 for the fixed API30 Google APIs guest. Official AOSP advancedFeatures.ini documents GnssGrpcV1 as the gRPC GNSS transport switch. Exact installed APK, real Fused callback path, false debug-store injection, tile assertions and both fresh regional emulators remain mandatory. Result metadata discloses transport. This is a hypothesis-driven harness compatibility fix; latest hosted gate must prove it before merge; no pass is claimed yet.
+
 ## 2026-11-20 Reproduced Customer Android11 SurfaceView native crash
 
 - PR #1314 at `44a1b6a5` passed Customer API26/33/35. API30 run `44695889504` job `136152416974` crashed in the unchanged thirty-picker-cycle test: native `RefBase::incStrong` / `SurfaceControl.nativeSetFlags` / `SurfaceView.positionLost` on RenderThread after repeated disposal. This is an actual app-process SIGSEGV, not a test to retry away.
