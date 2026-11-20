@@ -105,6 +105,10 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
         service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
         failure = service.split('.addOnFailureListener { error ->', 1)[1].split('fusedClient.lastLocation', 1)[0]
         self.assertIn('foreground_fused_subscription_failed', failure)
+        # A synchronous/early failure callback must not be skipped while the
+        # subscription-start flag is still provisional.
+        self.assertIn('if (callback === nextCallback) {', failure)
+        self.assertNotIn('if (callback === nextCallback && locationUpdatesStarted)', failure)
         self.assertIn('locationUpdatesStarted = false', failure)
         self.assertIn('RiderNavigationLocationStore.clear()', failure)
         self.assertIn('stopSelf()', failure)
