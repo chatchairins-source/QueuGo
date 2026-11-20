@@ -84,7 +84,9 @@ end $$;
 
 drop trigger if exists pos_apply_tax_snapshot on public.orders;
 create trigger pos_apply_tax_snapshot
-before insert or update of subtotal,discount_amount,sales_channel,pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot
+-- Recalculate when derived columns are targeted too: an UPDATE OF trigger
+-- otherwise misses a forged tax split/total that leaves line inputs untouched.
+before insert or update of subtotal,discount_amount,total_amount,pos_taxable_base,pos_tax_amount,sales_channel,pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot
 on public.orders for each row execute function public.pos_apply_tax_snapshot();
 
 -- POS's original integrity check assumed every bill total excluded tax.

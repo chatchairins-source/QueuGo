@@ -1006,3 +1006,10 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 
 - Added tests/rider-offer-deadline-postgres.cjs and an isolated pinned PostgreSQL17.6 CI service alongside existing PGlite gates. Local real PostgreSQL17.6 passed 30 checks using three sessions: simultaneous cron, claim/terminal lock commit and rollback, no resurrection/spam/attempt121, role ACLs and transactional DDL rollback. Added migration-file workflow path filters. See docs/P0-DISPATCH-POSTGRES-20261120.md.
 - Scope is synthetic dispatch/locking proof; live financial terminalization, backup/restore and Production deployment remain incomplete. No Production writes or readiness-percentage certification.
+
+
+## 2026-11-20 POS tax derived-total update guard
+
+- Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. Reproduced isolated source defect: UPDATE of only pos_tax_amount=50,total_amount=150 on a 100+7 exclusive-tax fixture was accepted because the column-specific tax trigger did not fire. Existing integrity CHECK accepted the forged pair. This does not establish live client privileges or a Production exploit.
+- Extend existing tax snapshot trigger UPDATE columns to total_amount,pos_taxable_base,pos_tax_amount so the server recomputes derived tax/base/total from immutable bill snapshots and line net. Preserve existing RPC, RLS/ACL, legacy bill handling, Delivery rules and tax settings.
+- Added isolated runtime negative tests for forged exclusive total and inclusive tax split, plus base-only update; initial regression failed 150 != 107, then full tax fixture passed after correction. No Production writes or migrations applied. Exact-head CI, independent current Production schema/trigger compatibility, authorized rollout, receipt/refund/settlement acceptance remain required.

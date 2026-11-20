@@ -38,6 +38,18 @@ async function main(){
   row=await insert(104,100);
   assert.equal(Number(row.total_amount),107);assert.equal(Number(row.pos_tax_amount),7);checks+=2;
   await assert.rejects(db.query('UPDATE orders SET pos_tax_rate_snapshot=8 WHERE id=$1',[uuid(104)]),/immutable/i);checks++;
+  // Derived tax fields cannot be forged by updating only the derived columns.
+  await db.query('UPDATE orders SET pos_tax_amount=50,total_amount=150 WHERE id=$1',[uuid(104)]);
+  row=(await db.query('SELECT total_amount,pos_taxable_base,pos_tax_amount FROM orders WHERE id=$1',[uuid(104)])).rows[0];
+  assert.equal(Number(row.total_amount),107);assert.equal(Number(row.pos_tax_amount),7);checks+=2;
+  await db.query('UPDATE orders SET pos_taxable_base=1 WHERE id=$1',[uuid(104)]);
+  row=(await db.query('SELECT pos_taxable_base FROM orders WHERE id=$1',[uuid(104)])).rows[0];
+  assert.equal(Number(row.pos_taxable_base),100);checks++;
+  // Inclusive totals also remain tied to the line net, never a supplied tax split.
+  await db.query('UPDATE orders SET pos_tax_amount=40,pos_taxable_base=67 WHERE id=$1',[uuid(103)]);
+  row=(await db.query('SELECT total_amount,pos_taxable_base,pos_tax_amount FROM orders WHERE id=$1',[uuid(103)])).rows[0];
+  assert.equal(Number(row.total_amount),107);assert.equal(Number(row.pos_taxable_base),100);assert.equal(Number(row.pos_tax_amount),7);checks+=3;
+
   await db.query('UPDATE orders SET subtotal=200 WHERE id=$1',[uuid(104)]);
   row=(await db.query('SELECT total_amount,pos_tax_rate_snapshot FROM orders WHERE id=$1',[uuid(104)])).rows[0];
   assert.equal(Number(row.total_amount),214);assert.equal(Number(row.pos_tax_rate_snapshot),7);checks+=2;
