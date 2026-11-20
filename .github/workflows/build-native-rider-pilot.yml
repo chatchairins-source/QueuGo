@@ -337,8 +337,16 @@ jobs:
           mkdir -p "$QG_MAP_DATA_DIR"
           source_pbf="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf"
           source_md5="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf.md5"
-          curl --fail --location --retry 6 --retry-delay 5 --retry-connrefused --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
-          curl --fail --location --retry 6 --retry-delay 5 --retry-connrefused --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
+          # Prefer the canonical HTTPS endpoint; retry IPv4 only for transport failures.
+          # Never substitute a different snapshot or bypass the official MD5 check.
+          if ! curl --fail --location --retry 3 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"; then
+            rm -f "$source_pbf"
+            curl --ipv4 --fail --location --retry 3 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
+          fi
+          if ! curl --fail --location --retry 3 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"; then
+            rm -f "$source_md5"
+            curl --ipv4 --fail --location --retry 3 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
+          fi
           python3 - "$source_md5" > "$QG_MAP_DATA_DIR/source-check.md5" <<'PY'
           import re, sys
           text=open(sys.argv[1], encoding="ascii").read().strip()
