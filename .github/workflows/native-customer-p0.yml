@@ -1,0 +1,119 @@
+name: Customer P0 Android runtime matrix
+on:
+  push:
+    branches: [work-native-credit-live-enablement-20261016, work-native-customer-longdo-location-runtime-fix-20261016, fix-rider-invalid-step-metrics-20261106]
+    paths:
+      - 'native-android/customer/**'
+      - 'native-android/shared/**'
+      - 'native-android/qa/run-customer-p0.py'
+      - 'tests/native-customer-p0-maven-recovery.cjs'
+      - '.github/workflows/native-customer-p0.yml'
+      - '.github/workflows/build-native-rider-pilot.yml'
+  pull_request:
+    paths:
+      - 'native-android/customer/**'
+      - 'native-android/shared/**'
+      - 'native-android/qa/run-customer-p0.py'
+      - 'tests/native-customer-p0-maven-recovery.cjs'
+      - '.github/workflows/native-customer-p0.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: customer-p0-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  picker-runtime:
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [26, 30, 33, 35]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "$ANDROID_HOME/platforms/android-36/android.jar" ] &&
+             [ -x "$ANDROID_HOME/build-tools/36.0.0/aapt2" ]; then
+            echo "Android 36 platform and build tools are already installed"
+            exit 0
+          fi
+          for attempt in 1 2; do
+            if timeout --signal=TERM --kill-after=10s 180s bash -c \
+              'yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null'; then
+              test -f "$ANDROID_HOME/platforms/android-36/android.jar"
+              test -x "$ANDROID_HOME/build-tools/36.0.0/aapt2"
+              exit 0
+            fi
+            echo "::warning::Android SDK installation attempt $attempt timed out or failed"
+          done
+          echo "::error::Android SDK installation failed after two bounded attempts"
+          exit 1
+      - name: Fail-closed Customer Android Maven recovery regression
+        run: node tests/native-customer-p0-maven-recovery.cjs
+      - name: Customer JVM and real UI harness builds
+        shell: bash
+        run: |
+          set -euo pipefail
+          command=(gradle -p native-android :customer:testDebugUnitTest :customer:assembleDebug :customer:assembleDebugAndroidTest --no-daemon --stacktrace)
+          first_log="$RUNNER_TEMP/customer-p0-gradle-first.log"
+          if "${command[@]}" 2>&1 | tee "$first_log"; then
+            echo "Customer Android P0 unit, APK and instrumentation builds passed first attempt"
+          else
+            # Only retry the known, version-pinned remote metadata misses.
+            # Real Kotlin compile errors and failing test assertions remain fatal.
+            if ! grep -Eq 'Could not find (org\.jetbrains\.kotlinx:kotlinx-coroutines-test:1\.10\.2|com\.squareup:javawriter:2\.1\.1|org\.hamcrest:hamcrest-(library|integration):1\.3|com\.google\.code\.findbugs:jsr305:2\.0\.2)' "$first_log"; then
+              echo "::error::Customer P0 build failed for a non-retryable reason"
+              exit 1
+            fi
+            # The first miss may be Hamcrest, JavaWriter, jsr305 or Kotlinx;
+            # never fetch an unrelated fixed POM or retry unknown dependencies.
+            mapfile -t missing < <(grep -Eo 'Could not find (org\.jetbrains\.kotlinx:kotlinx-coroutines-test:1\.10\.2|com\.squareup:javawriter:2\.1\.1|org\.hamcrest:hamcrest-(library|integration):1\.3|com\.google\.code\.findbugs:jsr305:2\.0\.2)' "$first_log" | sed 's/^Could not find //' | sort -u)
+            test "${#missing[@]}" -gt 0
+            for coordinate in "${missing[@]}"; do
+              case "$coordinate" in
+                org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2|com.squareup:javawriter:2.1.1|org.hamcrest:hamcrest-library:1.3|org.hamcrest:hamcrest-integration:1.3|com.google.code.findbugs:jsr305:2.0.2) ;;
+                *) echo "::error::Unexpected dependency $coordinate"; exit 1 ;;
+              esac
+              IFS=: read -r group artifact version <<< "$coordinate"
+              group_path="$(printf '%s' "$group" | tr '.' '/')"
+              metadata="https://repo.maven.apache.org/maven2/${group_path}/${artifact}/${version}/${artifact}-${version}.pom"
+              pom="$RUNNER_TEMP/customer-${artifact}-${version}.pom"
+              curl --fail --show-error --silent --location --retry 2 --connect-timeout 15 --max-time 90 "$metadata" -o "$pom"
+              test -s "$pom"
+              grep -Fq "<artifactId>${artifact}</artifactId>" "$pom"
+            done
+            echo "::warning::Retrying exact Customer P0 Gradle tasks once after verified version-pinned missing metadata"
+            sleep 5
+            "${command[@]}" --refresh-dependencies
+          fi
+      - name: Android acceleration
+        run: |
+          test -c /dev/kvm
+          sudo chown "$(id -u):$(id -g)" /dev/kvm
+      - name: Thirty actual picker cycles and early GL background
+        env:
+          QG_P0_API: ${{ matrix.api }}
+        run: python3 native-android/qa/run-customer-p0.py
+      - name: Preserve failures and runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: customer-p0-api-${{ matrix.api }}
+          path: |
+            artifacts/customer-p0/
+            native-android/customer/build/reports/tests/
+            native-android/customer/build/outputs/androidTest-results/
+          if-no-files-found: warn

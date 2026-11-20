@@ -1,7 +1,7 @@
 # QueueGo — Google Play Closed Beta Readiness
 
-Last reviewed: 2026-10-07  
-Scope: Android Customer, Merchant, Rider apps.
+Last reviewed: 2026-10-11  
+Scope: Native Android Customer, Merchant, Rider apps. Legacy Capacitor/Web build notes are historical context only and do not certify the Native release.
 
 ## Current release gate
 
@@ -10,15 +10,22 @@ Closed Beta release remains **BLOCKED** until every hard gate below passes:
 - Account deletion + privacy: PASS
 - Service area: PASS
 - Security code gate: PASS
-- Core production E2E: PASS
+- Core production backend/Web E2E: PASS
+- Native full physical E2E / Blueprint parity: BLOCKED — device evidence is incomplete
 - UGC / chat safety implementation: PASS
 - Android target API 36 static gate: PASS
-- Backup/Restore drill: BLOCKED — GitHub backup secrets not configured
+- Native microphone foreground-service source + accelerated Android lifecycle: PASS — physical two-device audio/TURN remains BLOCKED
+- Backup/Restore drill: BLOCKED — run 38039279454 failed because QG_SUPABASE_DB_URL, QG_SUPABASE_SERVICE_ROLE_KEY and QG_BACKUP_PASSPHRASE were absent
 - Supabase Auth: PASS WITH FREE-PLAN CONTROLS — 12-character upper/lower/number/symbol signup policy is shared across all roles; leaked-password protection remains a Pro-only deferred hardening item
-- Native Firebase background notification physical test: BLOCKED — credentials/device test missing
-- Android release signing: BLOCKED — release signing secrets missing
+- Native Firebase push source/transport + system notification tap routing: PASS — Production `queuego-push` v20 is ACTIVE and source-identical to GitHub, Android uses audible `queuego_orders_v2`, and Customer/Merchant/Rider cold/warm notification tap routing passes Native Pilot; physical background receipt remains BLOCKED because Firebase credentials and a real registered Android token/device test are still missing
+- Play Data Safety + foreground-service declarations: BLOCKED — Play Console certification/evidence not completed
+- Android developer verification + package registration: BLOCKED — Play Console evidence must confirm developer identity verification and registration of all three QueueGo package names
+- Android release signing: BLOCKED — run 38039197325 confirmed QG_ANDROID_KEYSTORE_B64, QG_ANDROID_STORE_PASSWORD, QG_ANDROID_KEY_ALIAS and QG_ANDROID_KEY_PASSWORD absent; the same run also confirmed QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 absent
+- Native release certification intake: BLOCKED — Production private bucket `queuego-native-release-evidence` now exists on project `pkypiqhlrmzocysgeqew` and is ZIP-only with no client Storage policy; Actions evidence-storage credentials/readiness are still not configured and no physical evidence bundle is certified
 
-The release workflow is intentionally configured to fail while hard gates are not certified.
+Current Production push evidence (2026-10-13): `queuego-push` version 24 is ACTIVE with `verify_jwt=false` under the reviewed worker-token/authenticated-user custom boundary; both deployed `index.ts` and `rider-offer-message.mjs` match the Rider working branch byte-for-byte. Production currently has two enabled Rider Native token rows, both carrying a session id, but only one is tied to a live non-revoked active session under the same server-side session check used by dispatch. In the preceding 24-hour review window the Native Rider outbox recorded 32 order deliveries and 3 `push_test` deliveries with FCM HTTP 200. These facts prove Production transport/session wiring only; they do **not** certify foreground/background/screen-off receipt, sound, vibration or notification-tap behavior on a physical Android device.
+
+The final Native release workflow is manual-only and fail-closed. It cannot package signed APK/AAB outputs until a trusted exact-HEAD certification artifact, complete Firebase/signing secrets, observed Play versionCode history, Backup/Restore certification, physical push/voice/lifecycle evidence, Blueprint parity, Play declarations and P0/P1=0 are all certified. The trusted producer is `.github/workflows/native-release-certification.yml`; it accepts only a SHA-256-pinned bundle from private Supabase Storage, validates every gate, and binds release metadata before `.github/workflows/build-native-release.yml` can package. Source readiness does not make Closed Beta unblocked.
 
 ### Supabase Auth / password hardening
 
@@ -44,47 +51,91 @@ Google Play's User Data policy requires appropriate security measures for person
 
 ## Google Play policy checkpoints
 
+### Android developer verification / package registration
+
+Effective 2026-09-30 in Thailand, Google Play developers must have a verified developer identity and Play package names must be registered for Android developer verification. Google may auto-register eligible Play apps, but QueueGo release evidence must confirm the actual Play Console state rather than infer it.
+
+The `play_store_preflight` evidence envelope must explicitly certify all four checks:
+- `developer_identity_verified`
+- `customer_package_registered` for `com.queuego.customer`
+- `merchant_package_registered` for `com.queuego.merchant`
+- `rider_package_registered` for `com.queuego.rider`
+
+It must also bind `registered_packages` to exactly:
+`["com.queuego.customer","com.queuego.merchant","com.queuego.rider"]`.
+The evidence artifact should be a current Play Console export or screenshot set that shows the verified developer/account state and the package registration state; the envelope must keep the exact release `version_name`, release versionCodes, observed Play maximum versionCodes, UTC observation timestamp, and SHA-256-hashed artifact references required by the canonical release gate.
+
+Official references:
+- https://support.google.com/googleplay/android-developer/answer/16984799
+- https://developer.android.com/developer-verification
+
+
 ### Target API
 
 For phone/tablet apps submitted after 2026-08-31, Google Play requires new apps and updates to target Android 16 / API 36 or newer.
 
-QueueGo uses Capacitor Android 8.x, whose supported target SDK is API 36. Both the Pilot APK and Closed Beta workflows verify the generated Android project has:
+The Native Android Customer, Merchant and Rider modules each use:
 
-- compileSdkVersion = 36
-- targetSdkVersion = 36
+- compileSdk = 36
+- targetSdk = 36
 
-Builds fail if the generated project is not API 36.
+The Native release gate and CI are the certification source. Earlier Capacitor-generated Android checks remain historical only and must not be used to certify the Native apps.
 
 Policy sources:
 - https://support.google.com/googleplay/android-developer/answer/11926878
-- https://next.capacitorjs.com/docs/next/android/setting-target-sdk
 
 ### Android permissions
 
-QueueGo release builds are limited to the permissions required by the active feature set:
+QueueGo Native release builds are limited to permissions required by the active feature set.
 
-Expected:
+Expected across the Native apps as applicable:
 - INTERNET
 - ACCESS_NETWORK_STATE
 - ACCESS_COARSE_LOCATION
 - ACCESS_FINE_LOCATION
-- VIBRATE
-- POST_NOTIFICATIONS (native push plugin)
+- POST_NOTIFICATIONS
+- RECORD_AUDIO for optional order-scoped audio calls
+- FOREGROUND_SERVICE and FOREGROUND_SERVICE_MICROPHONE for an active user-started voice call
 
-Explicitly forbidden by the release workflow:
+Rider additionally uses SYSTEM_ALERT_WINDOW and FOREGROUND_SERVICE_SPECIAL_USE for the approved Floating Q / active Rider return-control flow.
+
+Still forbidden unless a future reviewed feature explicitly requires them:
 - CAMERA
-- RECORD_AUDIO
 - READ_EXTERNAL_STORAGE
 - WRITE_EXTERNAL_STORAGE
 - READ_MEDIA_IMAGES
 - ACCESS_BACKGROUND_LOCATION
 
-Image selection uses the Android system picker / WebView file chooser instead of broad media-library permission.
+Image selection/upload uses the system picker or scoped file chooser rather than broad media-library access. QueueGo does not request background location.
 
-QueueGo does not request background location. Location is used only for foreground service functionality such as customer delivery location, shop coordinates, Rider location while using the work flow, service-area checks, distance calculations and navigation.
+The microphone foreground service is started only from visible outgoing/answer user actions before media creation. Incoming FCM does not start microphone access in the background. The service keeps an already-started call eligible through background lifecycle and stops on call/session termination. Physical two-device/background audio certification and the Play foreground-service declaration remain OPEN.
 
-Policy source:
-- https://support.google.com/googleplay/android-developer/answer/16558241
+#### Play Console foreground-service declaration draft
+
+Google Play requires Android 14+ apps to declare each foreground-service type used in Play Console, describe the feature and user impact if it is deferred/interrupted, and provide a demo video showing how the user triggers the feature. Source readiness below does not complete the external Console declaration.
+
+**Customer / Merchant / Rider — `microphone`**
+- Functionality: order-scoped in-app WebRTC voice call between authorized QueueGo order participants.
+- User initiation/perception: starts only after the user taps the visible call/answer action; an ongoing QueueGo call notification remains visible and provides a hang-up action.
+- Why immediate: deferring or interrupting the service would stop microphone capture and break the active real-time call the user explicitly started or answered.
+- Stop boundary: service ends with call/session termination; incoming FCM alone never starts microphone capture.
+- Demo video evidence required: show the visible call/answer action, Android microphone permission where applicable, active-call UI, foreground notification, backgrounding the app while the already-started call remains active, and user hang-up returning the service to stopped state.
+
+**Rider only — `specialUse`**
+- Manifest subtype: `Active QueueGo Rider navigation return control`.
+- Functionality: while an authenticated Rider account is active and the Rider leaves QueueGo for navigation/work context, `RiderReturnService` keeps a visible notification and optional Floating Q overlay that returns the Rider to the active QueueGo work screen.
+- User perception: persistent notification provides the return action; Floating Q is shown only when overlay permission is granted.
+- Why immediate: interruption while the Rider is actively navigating/working removes the user-visible return control to the live job.
+- Stop boundary: the service is `START_NOT_STICKY`, refuses pending/suspended/inactive Rider sessions, stops if the cached Rider is not active, and removes its overlay on destroy.
+- Demo video evidence required: show active Rider state, user-triggered navigation/work handoff, foreground notification, optional Floating Q when permission is granted, tap-to-return behavior, then the service/overlay stopping outside the active-work boundary.
+
+Play Console declaration status remains **BLOCKED** until real-device videos and final Console entries exist.
+
+Policy sources:
+- https://support.google.com/googleplay/android-developer/answer/13392821
+- https://support.google.com/googleplay/android-developer/answer/16559646
+- https://developer.android.com/about/versions/14/changes/fgs-types-required
+- https://developer.android.com/develop/background-work/services/fgs/service-types
 
 ### Account deletion
 
@@ -153,9 +204,9 @@ Policy source:
 
 ## Data Safety draft
 
-Google Play treats data transmitted off-device from an app-controlled WebView as app collection. QueueGo must therefore declare data collected by the web application running inside Capacitor.
+QueueGo Closed Beta certification scope is the three Native Android apps. Native CI rejects WebView, so Data Safety answers must describe data collected or transmitted by the Native Customer, Merchant and Rider clients together with the QueueGo backend and active infrastructure providers. Legacy Capacitor/WebView behavior is not release evidence and must not be used to answer the Native Play Console questionnaire.
 
-Google Play also states that transfers to qualifying service providers, legal-purpose transfers, and some user-initiated transfers are not necessarily declared as "sharing." QueueTech must confirm the contractual role of infrastructure/map providers before final submission.
+Google Play states that transfers to qualifying service providers, legal-purpose transfers, and some user-initiated transfers are not necessarily declared as "sharing." QueueTech must confirm the contractual role of infrastructure/map providers before final submission.
 
 Policy source:
 - https://support.google.com/googleplay/android-developer/answer/10787469
@@ -173,6 +224,7 @@ Policy source:
 | Precise location | Delivery point, service-area and distance checks | App functionality | Required when using location-assisted delivery |
 | Purchase history | Orders and transaction history | App functionality, fraud prevention, accounting | Required when ordering |
 | Other in-app messages | Customer ↔ Rider order chat | App functionality, safety | Optional |
+| Voice or sound recordings | Order-scoped peer-to-peer WebRTC call media | App functionality | **Not declared as collected while the Google Play E2EE exception remains satisfied**; re-review if any intermediary can read media, or if recording/transcription/SFU/server media processing is introduced |
 | Photos | Chat images, delivery/support evidence | App functionality, safety/support | Optional |
 | Other user-generated content | Reviews, notes, support descriptions | App functionality, safety/support | Optional |
 | Device or other IDs | Push token, session/device identifiers | Notifications, security/fraud prevention | Optional/functional |
@@ -190,6 +242,7 @@ Policy source:
 | Purchase history | Orders/merchant transactions | App functionality, accounting | Required |
 | Other financial info | GP, cash settlement/receipt state where applicable | Accounting, app functionality | Functional |
 | Other in-app messages | Merchant ↔ Admin support | App functionality/support | Optional |
+| Voice or sound recordings | Order-scoped peer-to-peer WebRTC call media | App functionality | **Not declared as collected while the Google Play E2EE exception remains satisfied**; re-review if any intermediary can read media, or if recording/transcription/SFU/server media processing is introduced |
 | Photos | Shop media, evidence, GP slip where used | App functionality/accounting/support | Optional |
 | Device or other IDs | Push/session identifiers | Notifications, security | Optional/functional |
 
@@ -205,12 +258,13 @@ Policy source:
 | Approximate / Precise location | Availability, assignment, route and delivery workflow | App functionality | Required while using Rider work flow |
 | Other financial info | Rider earnings/cash advance/accounting records where applicable | App functionality/accounting | Functional |
 | Other in-app messages | Customer ↔ Rider order chat | App functionality, safety | Optional |
+| Voice or sound recordings | Order-scoped peer-to-peer WebRTC call media | App functionality | **Not declared as collected while the Google Play E2EE exception remains satisfied**; re-review if any intermediary can read media, or if recording/transcription/SFU/server media processing is introduced |
 | Photos | Pickup/delivery proof and chat/evidence images | App functionality, safety | Required for proof steps / optional for chat |
 | Device or other IDs | Push token, session/device identifiers | Notifications, security | Optional/functional |
 
 ### Provider sharing classification — conservative submission decision (2026-10-07)
 
-Google Play defines "sharing" as transferring user data to a third party, including transfers from an app-controlled WebView. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing.
+Google Play defines "sharing" as transferring user data to a third party. A transfer to a qualifying service provider that processes data on the developer's behalf and instructions does not have to be declared as sharing. QueueGo applies this definition to the Native Android data flows below.
 
 Current QueueGo decision:
 
@@ -218,20 +272,26 @@ Current QueueGo decision:
 |---|---|---|---|
 | Supabase | Auth, database, Storage, Realtime, account/order/location/chat/support data | Supabase DPA states Supabase acts as processor/service provider and processes Covered Data on behalf of and under Customer instructions | **Collected: Yes. Shared: service-provider exception may be used** for Supabase processing under the applicable Supabase agreement/DPA |
 | Firebase Cloud Messaging / Google | Native push transport; FCM/Installations SDK metadata, installation ID/token and app version as applicable | Firebase Data Processing and Security Terms govern Customer Data; Firebase privacy guidance states Google generally operates as processor/service provider for Firebase customer data | **Collected: Yes** for applicable FCM/Installations data. **Shared: service-provider exception may be used** for Firebase processing covered by those terms |
-| Longdo Map / Metamedia Technology | Customer reverse geocoding, map rendering, merchant/shop pins, Rider route calculation; exact origin/destination coordinates are sent to Longdo endpoints | Public Longdo API terms point to Longdo privacy policy. The public privacy policy says Longdo may collect IP/usage/location data, but the public terms reviewed do not establish that all API personal-data processing is solely on QueueTech's behalf/instructions | **Conservative answer: Shared = Yes for location, purpose App functionality.** Do not claim the service-provider exception unless a QueueTech–Longdo commercial agreement/DPA explicitly supports it |
-| External navigation app opened by the user | Explicit "navigate" action where the user chooses to open an external navigation service | Google Play has a user-initiated-transfer exception when the user reasonably expects the transfer | Can rely on the user-initiated exception for that explicit navigation handoff, but this does **not** remove the Longdo sharing declaration above |
+| Cloudflare Realtime TURN | TURN fallback for Native WebRTC voice calls. Cloudflare documents that WebRTC media is encrypted end-to-end between peers before reaching the TURN relay, so Cloudflare relays encrypted packets and cannot inspect media content; it still processes relay metadata such as client IPs, ports and session timing. | Cloudflare Realtime TURN FAQ documents the media-encryption and relay-metadata boundary | **Voice media:** use the Google Play E2EE collection exception only while this peer-only architecture remains unchanged. **Relay metadata:** include in the applicable device/network metadata assessment and complete final Play/contractual classification before submission. |
+| Longdo Map / Metamedia Technology | Customer reverse geocoding and map rendering; Merchant shop-location/pin workflows; Rider map rendering plus current/job/stop pin display only. Rider Native does not use Longdo route calculation, ETA, rerouting or turn instructions. | Public Longdo API terms point to Longdo privacy policy. The Rider app passes map camera/current/job coordinates into Longdo SDK display APIs, so the conservative assessment still treats location-aware map rendering as location sharing unless a QueueTech–Longdo agreement/DPA and final network review support a narrower classification. | **Conservative answer: Shared = Yes for location, purpose App functionality.** Do not claim the service-provider exception unless the contractual and runtime evidence supports it. |
+| Google Maps app opened by the user | Explicit Rider "นำทาง" action hands the destination to the installed `com.google.android.apps.maps` package; no browser/web fallback is allowed | Google Play has a user-initiated-transfer exception when the user reasonably expects the transfer | Assess that explicit Google Maps handoff under the user-initiated-transfer exception; this does **not** remove the separate Longdo map-rendering assessment above |
 
 Code evidence:
 - Customer loads Longdo Map and sends selected latitude/longitude to Longdo reverse-geocoding.
-- Rider loads Longdo Map and sends current Rider coordinates plus destination coordinates to Longdo RouteService.
+- Rider loads Longdo Map for display, current-position centering and current/job/market-stop pins. Current Native source contains no Longdo `RouteService`, Rider route calculation, ETA, reroute, polyline navigation or turn instruction; navigation is handed to the installed Google Maps app only.
 - Merchant loads Longdo Map for shop location/pin workflows.
-- `android-build/package.json` includes Capacitor Push Notifications 8.0.0 and does not declare Firebase Analytics or Crashlytics.
+- Customer, Merchant and Rider declare RECORD_AUDIO and use the shared NativeVoicePeer WebRTC audio path.
+- NativeVoicePeer creates an audio-only peer connection and obtains authorized STUN/TURN ICE servers from queuego-turn; no recording, transcription or server-side media processing exists in the reviewed Native source.
+- Production call metadata retention is now enforced: `qg_call_sessions` rows and `notifications.type='voice_call'` rows older than 30 days are purged automatically every day by the active `queuego-voice-call-retention` pg_cron job. The purge function is `SECURITY INVOKER`; app roles cannot execute it directly. This closes the backend retention-policy gap only; final Play Console Data Safety entry remains BLOCKED until the external questionnaire/evidence is completed.
+- Cloudflare Realtime TURN documents that WebRTC media remains end-to-end encrypted between call peers and that the relay cannot inspect media content.
+- Native Android release CI rejects WebView and validates the three production package IDs; FCM configuration remains a hard release gate and Firebase Analytics/Crashlytics are not used as certification evidence.
 
 Current public-policy sources reviewed:
 - Google Play Data Safety: https://support.google.com/googleplay/android-developer/answer/10787469
 - Supabase DPA: https://supabase.com/legal/customer-resources/data-processing-addendum
 - Firebase Data Processing terms: https://firebase.google.com/terms/data-processing-terms
 - Firebase Play Data disclosure: https://firebase.google.com/docs/android/play-data-disclosure
+- Cloudflare Realtime TURN FAQ: https://developers.cloudflare.com/realtime/turn/faq/
 - Longdo API terms: https://map.longdo.com/api/terms/
 - Longdo privacy policy: https://www.longdo.com/en/privacy
 
@@ -239,9 +299,9 @@ Current public-policy sources reviewed:
 
 - **Customer:** declare Approximate/Precise location as shared with Longdo for App functionality where applicable.
 - **Merchant:** conservatively declare location/shop-coordinate transfer as shared with Longdo for App functionality because a shop location may be linked to an individual/sole proprietor.
-- **Rider:** declare Approximate/Precise location as shared with Longdo for App functionality because route requests transmit the Rider origin and delivery destination.
+- **Rider:** conservatively declare Approximate/Precise location as shared with Longdo for App functionality because the SDK renders a location-aware map and receives current/job/stop coordinates through its display APIs. Do **not** describe this as Longdo navigation or route calculation; all Rider navigation is an explicit Google Maps app handoff.
 - Supabase/Firebase transfers still count as **collection** where applicable even when the service-provider sharing exception is used.
-- Recheck the Firebase Play Data disclosure page whenever the native SDK/plugin version changes.
+- Recheck the Firebase Play Data disclosure page whenever the Native Firebase SDK version or enabled Firebase product set changes.
 
 ## Encryption and deletion answers
 

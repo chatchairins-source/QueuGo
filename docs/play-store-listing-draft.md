@@ -1,6 +1,6 @@
 # QueueGo — Google Play Store Listing Draft
 
-Last reviewed: 2026-10-07
+Last reviewed: 2026-10-10
 
 Google Play limits used here:
 - App name: max 30 characters
@@ -74,7 +74,7 @@ Package: `com.queuego.merchant`
 
 ### App name
 
-**QueueGo Merchant**
+**QueueMarket**
 
 ### Short description
 
@@ -82,7 +82,7 @@ Package: `com.queuego.merchant`
 
 ### Full description
 
-QueueGo Merchant คือแอปสำหรับร้านค้าที่เข้าร่วมระบบ QueueGo ใช้รับและจัดการออเดอร์จากลูกค้า จัดการข้อมูลร้าน สินค้า และสถานะการเตรียมสินค้า
+QueueMarket คือแอปสำหรับร้านค้าที่เข้าร่วมระบบ QueueGo ใช้รับและจัดการออเดอร์จากลูกค้า จัดการข้อมูลร้าน สินค้า และสถานะการเตรียมสินค้า
 
 ฟังก์ชันหลัก
 - รับหรือปฏิเสธออเดอร์จากลูกค้า
@@ -95,16 +95,16 @@ QueueGo Merchant คือแอปสำหรับร้านค้าที
 - ติดต่อฝ่ายช่วยเหลือ QueueGo
 - จัดการบัญชี ความเป็นส่วนตัว และลบบัญชีเมื่อไม่มีงานค้าง
 
-QueueGo Merchant ใช้ตำแหน่งร้านเพื่อการค้นหาร้าน การคำนวณบริการ การรับสินค้า และการจัดส่งตามฟังก์ชันที่เปิดใช้งาน แอปไม่ขอสิทธิ์ตำแหน่งเบื้องหลังและไม่ขอสิทธิ์เข้าถึงคลังรูปทั้งหมด
+QueueMarket ใช้ตำแหน่งร้านเพื่อการค้นหาร้าน การคำนวณบริการ การรับสินค้า และการจัดส่งตามฟังก์ชันที่เปิดใช้งาน แอปไม่ขอสิทธิ์ตำแหน่งเบื้องหลังและไม่ขอสิทธิ์เข้าถึงคลังรูปทั้งหมด
 
 ### Closed Beta release notes
 
-**Closed Beta รุ่นทดสอบ QueueGo Merchant**
+**Closed Beta รุ่นทดสอบ QueueMarket**
 - ปรับการรับออเดอร์ให้ตอบสนองครั้งเดียว
 - ปรับ KDS และสถานะเตรียม/พร้อมรับ
 - เพิ่ม Account Deletion และ Privacy
 - เพิ่ม Background Notification foundation
-- ปรับ Android bundle และ session persistence
+- ปรับ Native Android session persistence และการแจ้งเตือน
 - ปรับ server idempotency และ order routing
 
 ### Tester focus
@@ -113,7 +113,7 @@ QueueGo Merchant ใช้ตำแหน่งร้านเพื่อกา
 2. รับออเดอร์ด้วยการกดครั้งเดียว
 3. ปฏิเสธออเดอร์และตรวจสถานะฝั่ง Customer
 4. เปลี่ยน Preparing → Ready และตรวจ realtime
-5. ทดสอบเสียง/notification
+5. ทดสอบการแจ้งเตือนออเดอร์และสถานะสำคัญ
 6. ตรวจสินค้า ราคา สต๊อก และสถานะเปิดปิด
 7. ทดสอบ offline → reconnect
 8. ลอง logout/login และตรวจ session isolation
@@ -126,7 +126,7 @@ Package: `com.queuego.rider`
 
 ### App name
 
-**QueueGo Rider**
+**Queue Rider**
 
 ### Short description
 
@@ -134,7 +134,7 @@ Package: `com.queuego.rider`
 
 ### Full description
 
-QueueGo Rider คือแอปสำหรับ Rider ที่ผ่านขั้นตอนการอนุมัติของ QueueGo ใช้รับงานจัดส่ง ดูข้อมูลจุดรับและจุดส่ง นำทาง และอัปเดตขั้นตอนการส่งมอบ
+Queue Rider คือแอปสำหรับ Rider ที่ผ่านขั้นตอนการอนุมัติของ QueueGo ใช้รับงานจัดส่ง ดูข้อมูลจุดรับและจุดส่ง นำทาง และอัปเดตขั้นตอนการส่งมอบ
 
 ฟังก์ชันหลัก
 - ออนไลน์และรับข้อเสนองานที่ server ส่งให้บัญชี Rider
@@ -149,11 +149,11 @@ QueueGo Rider คือแอปสำหรับ Rider ที่ผ่าน�
 - รับ Background Notification สำหรับงานและสถานะสำคัญ
 - จัดการบัญชี ความเป็นส่วนตัว และลบบัญชีเมื่อไม่มีงานค้าง
 
-QueueGo Rider ใช้ตำแหน่งขณะใช้ workflow งานเพื่อการเลือกงาน ระยะทาง นำทาง และส่งมอบ แอปไม่ขอสิทธิ์ตำแหน่งเบื้องหลังใน Android manifest ปัจจุบัน
+Queue Rider ใช้ตำแหน่งขณะใช้ workflow งานเพื่อการเลือกงาน ระยะทาง นำทาง และส่งมอบ แอปไม่ขอสิทธิ์ตำแหน่งเบื้องหลังใน Android manifest ปัจจุบัน
 
 ### Closed Beta release notes
 
-**Closed Beta รุ่นทดสอบ QueueGo Rider**
+**Closed Beta รุ่นทดสอบ Queue Rider**
 - ใช้ Sequential Rider Offer: หนึ่งงานเสนอให้ Rider หนึ่งคนในแต่ละช่วงเวลา
 - ปรับรับงานและ action ให้ idempotent
 - เพิ่มรูปหลักฐานรับสินค้าและส่งมอบ
@@ -181,7 +181,7 @@ QueueGo Rider ใช้ตำแหน่งขณะใช้ workflow งา�
 For each app:
 - 512×512 Play Store icon, PNG, no ranking/price/download badges
 - At least 2 representative phone screenshots
-- Screenshots must be from the actual current app, not mock UI
+- Screenshots must be captured from the actual current Native Android app, not mock UI or the legacy Web/Capacitor build
 - Feature graphic if required by the selected listing setup
 - Privacy policy URL
 - Account deletion URL where applicable

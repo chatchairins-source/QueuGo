@@ -1,3 +1,9 @@
+## 2026-11-14 Release reconciliation candidate
+
+- Reconcile Web main `369e4b49` with Native candidate `b37405ea` on an isolated integration branch. Keep main's Web/POS implementations and browser CI. Use the Native release and certification workflows with the existing main-only attestation rules.
+- Keep both regression lists in package.json. The prior Native standalone candidate passed hosted Pilot; the integrated tree requires its own build and release evidence.
+- Production restore secrets, a hosted order-to-settlement run and signed APKs remain pending.
+
 ## 2026-11-13 Merchant POS responsive redesign
 
 - The owner supplied the red-and-white QueueGo POS reference. Merchant Web uses the current counter route, with a left navigation at desktop widths, a side-by-side catalog and bill in landscape, and an expandable bill with a bottom checkout action in portrait and on phones.

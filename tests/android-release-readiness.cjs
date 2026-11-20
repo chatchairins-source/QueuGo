@@ -1,83 +1,74 @@
-const fs=require('fs');
-const assert=require('assert');
-
+'use strict';
+// QueueGo ships three Kotlin/Jetpack Compose Android apps, not Capacitor WebViews.
+// Keep this legacy-named test as an independent Native release-readiness gate.
+const fs=require('node:fs'),assert=require('node:assert/strict');
 const read=p=>fs.readFileSync(p,'utf8');
-const workflow=read('.github/workflows/build-queuego-apks.yml');
-const customer=read('index.html');
-const merchant=read('merchant/index.html');
-const rider=read('rider/index.html');
-const printer=read('merchant/printer-v1.js');
-const rls=read('QueueGo-Pre-Android-Security-Hardening.sql');
-const all=[customer,merchant,rider,printer,read('admin/index.html'),read('role-realtime.js'),read('table-order.js')].join('\n');
+let checks=0;
+const ok=(condition,description)=>{assert.ok(condition,description);checks++};
+for(const old of [
+  '.github/workflows/build-queuego-apks.yml',
+  '.github/workflows/build-queuego-pilot-apks.yml',
+  '.github/workflows/publish-approved-icon-rc.yml',
+  '.github/workflows/publish-approved-apks.yml'
+]) ok(!fs.existsSync(old),'retired Capacitor or legacy APK publication workflow must stay absent: '+old);
 
-const checks=[];
-const ok=(name,value)=>{checks.push([name,Boolean(value)]);assert.ok(value,name)};
+const release=read('.github/workflows/build-native-release.yml');
+const certification=read('.github/workflows/native-release-certification.yml');
+const pilot=read('.github/workflows/build-native-rider-pilot.yml');
+const evidence=read('native-android/qa/verify-native-release-artifacts.py');
+const gate=read('native-android/qa/verify-native-release-gate.py');
 
-ok('legacy ungated icon RC workflow removed',!fs.existsSync('.github/workflows/publish-approved-icon-rc.yml'));
-ok('legacy stale APK republisher removed',!fs.existsSync('.github/workflows/publish-approved-apks.yml'));
-ok('Play target API 36',/targetSdkVersion.*36/.test(workflow));
-ok('compile API 36',/compileSdkVersion.*36/.test(workflow));
-ok('release builds AAB',/bundleRelease/.test(workflow)&&/\.aab/.test(workflow));
-ok('release builds APK',/assembleRelease/.test(workflow)&&/\.apk/.test(workflow));
-ok('release signing enforced',/QG_ANDROID_KEYSTORE_B64/.test(workflow)&&/signingConfig signingConfigs\.release/.test(workflow));
-ok('release keystore validated before Gradle',/keytool -list/.test(workflow)&&/keytool -importkeystore/.test(workflow));
-ok('release signing secrets use Gradle environment properties',/ORG_GRADLE_PROJECT_QG_STORE_PASSWORD/.test(workflow)&&/ORG_GRADLE_PROJECT_QG_KEY_PASSWORD/.test(workflow));
-ok('release signing secrets are not written to gradle.properties',!/QG_STORE_PASSWORD=\$QG_STORE_PASSWORD/.test(workflow)&&!/QG_KEY_PASSWORD=\$QG_KEY_PASSWORD/.test(workflow));
-ok('release versionCode is monotonic per workflow dispatch',/QG_VERSION_CODE:\s*\$\{\{ github\.run_number \}\}/.test(workflow)&&/versionCode\\s\+/.test(workflow));
-ok('release versionName is deterministic beta label',/QG_VERSION_NAME:\s*1\.0\.0-beta\.\$\{\{ github\.run_number \}\}/.test(workflow)&&/versionName/.test(workflow));
-ok('release APK package and version are verified after build',/aapt["']? dump badging|AAPT.*dump badging/s.test(workflow)&&/QG_APP_ID/.test(workflow)&&/QG_VERSION_CODE/.test(workflow)&&/QG_VERSION_NAME/.test(workflow));
-ok('release APK must be non-debuggable',/application-debuggable/.test(workflow)&&/Release APK must not be debuggable/.test(workflow));
-ok('release APK signature is verified',/apksigner["']? verify|APKSIGNER.*verify/s.test(workflow));
-ok('release signer certificate fingerprint is retained',/--print-certs/.test(workflow)&&/Signer #1 certificate SHA-256 digest/.test(workflow)&&/signer_certificate_sha256/.test(workflow));
-ok('release evidence links artifact to exact source commit',/QG_GIT_SHA:\s*\$\{\{ github\.sha \}\}/.test(workflow)&&/git_sha=\$QG_GIT_SHA/.test(workflow));
-ok('release evidence retains GitHub run id',/QG_RUN_ID:\s*\$\{\{ github\.run_id \}\}/.test(workflow)&&/github_run_id=\$QG_RUN_ID/.test(workflow));
-ok('release evidence artifact is uploaded',/release-evidence\.txt/.test(workflow));
-ok('release AAB signature is verified',/jarsigner -verify -strict/.test(workflow));
-ok('Closed Beta requires certified restore drill',/restore_drill_certified/.test(workflow)&&/Do not build Closed Beta/.test(workflow));
-ok('Closed Beta requires native push plugin',/@capacitor\/push-notifications/.test(workflow)&&/Native Android background push/.test(workflow));
-ok('Closed Beta requires Firebase config secret',/QG_FIREBASE_GOOGLE_SERVICES_JSON_B64/.test(workflow)&&/google-services\.json secret is missing/.test(workflow));
-ok('Closed Beta requires reviewed security audit certification',workflow.includes("'security_audit'"));
-ok('Closed Beta requires platform Auth security certification',/security_platform_auth/.test(workflow)&&/PASS_FREE_PLAN_CONTROLS/.test(workflow)&&/Free-plan Auth compensating controls are not fully certified/.test(workflow));
-ok('Closed Beta requires physical notification certification',/physical_background_notification_certified/.test(workflow)&&/Physical Android background notification is not certified/.test(workflow));
-ok('Closed Beta requires UGC chat safety certification',/ugc_chat_safety/.test(workflow));
-ok('approved QueueGo icon source exists',fs.existsSync('android-build/branding/queuego-approved-icon.webp'));
-ok('approved QueueGo icon source is used',/branding\/queuego-approved-icon\.webp/.test(workflow));
-ok('Play Store 512 icon is exported',/play-icon-512\.png/.test(workflow)&&/resize\(\(512,512\)/.test(workflow));
-ok('synthetic launcher drawing removed',!/ImageDraw/.test(workflow));
-ok('adaptive icon resources generated',/mipmap-anydpi-v26/.test(workflow)&&/ic_launcher_foreground/.test(workflow));
-ok('native Android back handler',/OnBackPressedCallback/.test(workflow)&&/getWebView\(\)\.goBack\(\)/.test(workflow));
-ok('shared Customer runtime bundled',/customer-features\.js[\s\S]*customer-laundry\.js[\s\S]*account-deletion\.js[\s\S]*queuego-push\.js[\s\S]*queuego-push-sw\.js/.test(workflow));
-ok('privacy documents bundled',/docs\/privacy\.html[\s\S]*docs\/account-deletion\.html/.test(workflow));
-const releaseCopyLines=workflow.split('\n').filter(line=>line.trim().startsWith('cp '));
-const releaseMerchantCopy=releaseCopyLines.find(line=>line.includes('../role-realtime.js'))||'';
-const releaseRiderCopy=releaseCopyLines.find(line=>line.includes('../queuego-native-push.js')&&!line.includes('../role-realtime.js')&&!line.includes('../customer-features.js'))||'';
-for(const asset of ['../queuego-password-policy.js','../account-deletion.js','../queuego-ugc.js','../queuego-native-push.js']){
-  ok('Merchant nested bundle copies '+asset,releaseMerchantCopy.includes(asset));
-  ok('Rider nested bundle copies '+asset,releaseRiderCopy.includes(asset));
+ok(release.includes('workflow_dispatch:'),'certified Native release must be manually dispatched');
+ok(!/^\s+push:/m.test(release),'certified Native release must not run automatically from push');
+ok(release.includes('refs/heads/main'),'release is restricted to reviewed main');
+ok(release.includes('certification_run_id'),'release requires independent certification evidence');
+ok(release.includes('QG_NATIVE_CERTIFICATION_RUN_ID'),'release binds the certification run');
+ok(release.includes('QG_CERTIFIED_NATIVE_PILOT_RUN_ID'),'release binds successful exact-HEAD Native Pilot CI');
+ok(release.includes('QG_CERTIFIED_BACKUP_RESTORE_RUN_ID'),'release requires an independently verified restore drill');
+ok(release.includes('QG_ANDROID_SIGNING_CERT_SHA256'),'release requires expected signer certificate fingerprint');
+ok(release.includes('QG_ANDROID_KEYSTORE_B64'),'release requires the real keystore secret');
+ok(release.includes('QG_ANDROID_STORE_PASSWORD')&&release.includes('QG_ANDROID_KEY_PASSWORD'),'release requires private signing credentials');
+ok(release.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64'),'release requires Firebase application configuration');
+ok(release.includes('release versionCode must exceed observed Play maximum'),'release rejects stale Play Store version codes');
+ok(release.includes('map_service_base_url must be an HTTPS QueueGo Map base URL'),'release validates its production map-service URL');
+ok(release.includes('Reject WebView before release packaging')&&release.includes('android\\.webkit\\.WebView'),'Native release rejects WebViews rather than bundling a website');
+ok(release.includes('verify-native-release-gate.py'),'release runs hard certification gate before packaging');
+ok(release.includes('verify-native-release-artifacts.py'),'release verifies the built signed artifacts');
+ok(release.includes('verify-16kb-page-size.py'),'release checks Android 16 KB packaging');
+ok(release.includes('bundletool-all-1.18.3.jar')&&release.includes('sha256sum -c -'),'release pins and hashes bundletool');
+ok(release.includes('node tests/native-launcher-assets.cjs')&&release.includes('node tests/native-category-assets.cjs'),'release verifies branded assets');
+ok(pilot.includes('Full QueueGo regression')&&pilot.includes('npm test'),'Native Pilot retains full integration regression');
+ok(pilot.includes('testDebugUnitTest')&&pilot.includes('assembleDebug'),'Native Pilot compiles and tests the actual Android roles');
+
+for(const [role,applicationId] of [
+  ['customer','com.queuego.customer'],
+  ['merchant','com.queuego.merchant'],
+  ['rider','com.queuego.rider']
+]){
+  const gradle=read('native-android/'+role+'/build.gradle.kts');
+  const manifest=read('native-android/'+role+'/src/main/AndroidManifest.xml');
+  ok(gradle.includes('namespace = "'+applicationId+'"')&&gradle.includes('applicationId = "'+applicationId+'"'),role+' has canonical package identity');
+  ok(gradle.includes('compileSdk = 36')&&gradle.includes('targetSdk = 36'),role+' compiles and targets Android API 36');
+  ok(gradle.includes('org.jetbrains.kotlin.plugin.compose'),role+' uses Native Compose rather than Capacitor');
+  ok(gradle.includes('QG_'+role.toUpperCase()+'_VERSION_CODE')&&gradle.includes('QG_NATIVE_VERSION_NAME'),role+' reads approved version metadata');
+  ok(release.includes(':'+role+':assembleRelease')&&release.includes(':'+role+':bundleRelease'),role+' builds real release APK and AAB');
+  ok(manifest.includes('android:allowBackup="false"')&&manifest.includes('android:usesCleartextTraffic="false"'),role+' disables unsafe backup and cleartext traffic');
+  ok(manifest.includes('android.permission.ACCESS_FINE_LOCATION')&&manifest.includes('android.permission.ACCESS_COARSE_LOCATION'),role+' declares explicit GPS permissions');
+  ok(manifest.includes('android.permission.POST_NOTIFICATIONS'),role+' declares notification permission');
+  ok(!manifest.includes('android.permission.ACCESS_BACKGROUND_LOCATION'),role+' does not silently request always-on background location');
+  ok(manifest.includes('queuego.map.service.base_url'),role+' uses configured map service origin');
+  ok(manifest.includes('android:name=".MainActivity"'),role+' uses a native launcher activity');
 }
-ok('nested role shared paths rewritten',/replace\('\.\.\/queuego-password-policy\.js','queuego-password-policy\.js'\)/.test(workflow)&&/replace\('\.\.\/account-deletion\.js','account-deletion\.js'\)/.test(workflow)&&/replace\('\.\.\/queuego-ugc\.js','queuego-ugc\.js'\)/.test(workflow)&&/replace\('\.\.\/queuego-native-push\.js','queuego-native-push\.js'\)/.test(workflow)&&/replace\('\.\.\/queuego-push\.js','queuego-push\.js'\)/.test(workflow));
-const declared=(workflow.match(/perms=\[([\s\S]*?)\n\s*\]/)||[])[1]||'';
-ok('no camera permission',!/android\.permission\.CAMERA/.test(declared));
-ok('no background location permission',!/android\.permission\.ACCESS_BACKGROUND_LOCATION/.test(declared));
-ok('no broad storage permission',!/android\.permission\.(READ_EXTERNAL_STORAGE|WRITE_EXTERNAL_STORAGE|READ_MEDIA_IMAGES)/.test(declared));
-ok('fine/coarse location declared',/ACCESS_FINE_LOCATION/.test(workflow)&&/ACCESS_COARSE_LOCATION/.test(workflow));
-ok('notification permission verified',/POST_NOTIFICATIONS/.test(workflow));
-ok('generated Android project checked for API 36',/Generated Android project is not targetSdk 36/.test(workflow)&&/Generated Android project is not compileSdk 36/.test(workflow));
-ok('Android cleartext disabled',/Cleartext Android traffic must stay disabled/.test(workflow)&&!/usesCleartextTraffic=\"true\"',1/.test(workflow));
-ok('customer persists session',/localStorage/.test(customer));
-ok('merchant persists session',/localStorage/.test(merchant));
-ok('rider persists session',/localStorage/.test(rider));
-ok('customer geolocation',/navigator\.geolocation/.test(customer));
-ok('merchant geolocation',/navigator\.geolocation/.test(merchant));
-ok('rider geolocation',/navigator\.geolocation/.test(rider));
-ok('merchant file chooser present',/type=["']file["']/.test(merchant));
-ok('rider file chooser present',/type=["']file["']/.test(rider));
-ok('Android printer avoids unsupported Web Bluetooth USB',/nativeAndroid\(\)&&m!=='bridge'/.test(printer));
-ok('print bridge URL restricted',/HTTPS/.test(printer)&&/192\.168\./.test(printer));
-ok('network timeout protection exists',/AbortSignal\.timeout/.test(all));
-ok('offline handling exists',/navigator\.onLine|addEventListener\(['"]offline/.test(all));
-ok('no service role secret in client',!/service_role|sb_secret_/i.test(all));
-ok('Rider profile read is scoped',/alter policy rider_profile_select[\s\S]*user_id = public\.get_my_user_id\(\)[\s\S]*get_my_role\(\) = 'admin'/.test(rls));
-ok('Shop profile read excludes inactive public profiles',/alter policy shop_profiles_authenticated_select[\s\S]*status = 'active'/.test(rls));
+const riderManifest=read('native-android/rider/src/main/AndroidManifest.xml');
+ok(riderManifest.includes('android.permission.FOREGROUND_SERVICE_LOCATION')&&riderManifest.includes('android:foregroundServiceType="location"'),'Rider navigation has explicit location foreground-service contract');
 
-console.log(JSON.stringify({checks:checks.length,failures:0,scope:'static Android release readiness; physical device/printer and Play upload remain external certification'},null,2));
+ok(certification.includes('Require successful exact-HEAD Native Pilot CI'),'certification requires successful real Native CI');
+ok(certification.includes('Require successful exact-HEAD Backup Restore Drill'),'certification requires verified backup recovery');
+ok(certification.includes('Require reconciled Production migration ledger'),'certification checks Production migration consistency');
+ok(certification.includes('queuego-native-release-evidence'),'certification uses private role-bound evidence');
+ok(gate.includes('PHYSICAL_GATE_REQUIRED_ROLES')&&gate.includes('physical gate must be explicitly operator-certified'),'release demands explicit physical-device certification');
+ok(gate.includes('requires two distinct devices')&&gate.includes('requires two distinct networks'),'voice release needs two real devices on separate networks');
+ok(evidence.includes('application-debuggable')&&evidence.includes('--print-certs'),'post-build verifier rejects debug builds and checks signing certificates');
+ok(evidence.includes('apk_aab_signer_match')&&evidence.includes('QG_ANDROID_SIGNING_CERT_SHA256'),'APK/AAB signer must match certified signing identity');
+ok(evidence.includes('github_run_id')&&evidence.includes('aab_sha256')&&evidence.includes('apk_sha256'),'release evidence preserves source run and artifact hashes');
+console.log(JSON.stringify({checks,failures:0,scope:'Native Kotlin/Compose Android release readiness; no Capacitor fallback or Production writes'}));

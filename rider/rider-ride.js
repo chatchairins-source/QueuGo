@@ -47,9 +47,13 @@
 
   function qgOpenRideCompleteConfirm(o){
     document.getElementById('qg-ride-complete-confirm')?.remove();
+    const cash=Number(o?.total_amount);
+    if(o?.total_amount==null||String(o.total_amount).trim()===''||!Number.isFinite(cash)||cash<0){
+      toast('ค่าโดยสารไม่ถูกต้อง กรุณาโหลดเที่ยวใหม่');
+      return false;
+    }
     const meters=qgRideDropoffDistanceMeters(o);
     if(!Number.isFinite(meters)||meters<=100)return qgCompleteRideNow(o);
-    const cash=Number(o?.total_amount||0);
     const overlay=document.createElement('section');
     overlay.id='qg-ride-complete-confirm';
     overlay.className='qg-confirm-overlay';
@@ -103,7 +107,7 @@
       '<div class="qg-flow-card"><div class="qg-pickup-row"><span>'+QTICON.user+'</span><div><small>ผู้โดยสาร</small><b>'+esc(cust.name||'ผู้โดยสาร')+'</b></div></div>'+
       '<div class="qg-pickup-row"><span>'+QTICON.loc+'</span><div><small>จุดรับ</small><b>'+esc(o.pickup_address||'จุดรับผู้โดยสาร')+'</b></div></div>'+
       '<div class="qg-pickup-row"><span>'+QTICON.loc+'</span><div><small>จุดหมาย</small><b>'+esc(o.delivery_address||'จุดหมาย')+'</b></div></div></div>'+
-      (st==='in_progress'?'<div class="qg-flow-cash"><small>เก็บเงินสดค่าโดยสาร</small><b>฿'+cash.toLocaleString('th-TH')+'</b><span>กดจบเที่ยวแล้วระบบจะถามยืนยันอีกครั้ง</span></div>':'')+
+      (st==='in_progress'?'<div class="qg-flow-cash"><small>เก็บเงินสดค่าโดยสาร</small><b>฿'+cash.toLocaleString('th-TH')+'</b><span>ตรวจยอดเงินสดก่อนกดจบเที่ยว</span></div>':'')+
       '<div class="qg-job-tools"><button class="qg-job-tool" id="chat-'+esc(o.id)+'">'+QTICON.chat+'<span>ติดต่อผู้โดยสาร</span></button></div>'+
       '<button class="qg-btn qg-btn-primary qg-main-action" id="primary-action-'+esc(o.id)+'" '+(disabled?'disabled':'')+'>'+QTICON.loc+'<span>'+esc(label)+'</span></button></article>';
   }

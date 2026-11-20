@@ -1,0 +1,748 @@
+package com.queuego.rider
+
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.key
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.queuego.shared.QgCard
+import com.queuego.shared.QgMuted
+import com.queuego.shared.QgRed
+import com.queuego.shared.QgSectionTitle
+import com.queuego.shared.QueueGoNativeApi
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.UUID
+
+data class RiderChatModeration(
+    val accepted: Boolean,
+    val blockedByMe: Boolean,
+    val blockedMe: Boolean
+)
+
+private const val RIDER_CHAT_HISTORY_MAX_ROWS = 1_000
+
+data class RiderChatMessage(
+    val id: String,
+    val senderId: String,
+    val message: String,
+    val createdAt: String?
+)
+
+internal fun riderChatTimeLabel(raw: String?, zoneId: ZoneId = ZoneId.systemDefault()): String {
+    if (raw.isNullOrBlank()) return ""
+    return runCatching {
+        DateTimeFormatter.ofPattern("HH:mm", Locale("th", "TH"))
+            .withZone(zoneId)
+            .format(Instant.parse(raw))
+    }.getOrDefault("")
+}
+
+class RiderChatApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
+    private fun obj(raw: Any): JSONObject = when (raw) {
+        is JSONObject -> raw
+        is JSONArray -> raw.optJSONObject(0) ?: JSONObject()
+        else -> JSONObject()
+    }
+
+    internal suspend fun customerName(auth: QueueGoAuth, orderId: String): String? {
+        val row = obj(http.rpc("qg_rider_order_contact", auth.session.accessToken, JSONObject().put("p_order_id", orderId)))
+        return row.optString("name").takeIf { it.isNotBlank() && it != "null" }
+    }
+
+    internal suspend fun window(auth: QueueGoAuth, orderId: String): RiderChatWindow {
+        val rows = http.array(http.get(
+            "orders?select=status,updated_at&id=eq." + http.enc(orderId) + "&limit=1",
+            auth.session.accessToken
+        ))
+        val order = rows.optJSONObject(0) ?: return RiderChatWindow("cancelled", null)
+        val status = order.optString("status")
+        val deliveredAt = if (status == "completed") {
+            http.array(http.get(
+                "deliveries?select=delivered_at&order_id=eq." + http.enc(orderId) + "&limit=1",
+                auth.session.accessToken
+            )).optJSONObject(0)?.optString("delivered_at")
+        } else null
+        return riderChatWindow(status, deliveredAt, order.optString("updated_at"))
+    }
+
+    suspend fun moderation(auth: QueueGoAuth, orderId: String): RiderChatModeration {
+        val o = obj(
+            http.rpc(
+                "qg_chat_moderation_state",
+                auth.session.accessToken,
+                JSONObject().put("p_order_id", orderId)
+            )
+        )
+        return RiderChatModeration(
+            accepted = o.optBoolean("accepted", false),
+            blockedByMe = o.optBoolean("blockedByMe", o.optBoolean("blocked_by_me", false)),
+            blockedMe = o.optBoolean("blockedMe", o.optBoolean("blocked_me", false))
+        )
+    }
+
+    suspend fun acceptTerms(auth: QueueGoAuth) {
+        http.rpc(
+            "qg_accept_ugc_terms",
+            auth.session.accessToken,
+            JSONObject().put("p_version", 1)
+        )
+    }
+
+    suspend fun block(auth: QueueGoAuth, orderId: String) {
+        http.rpc(
+            "qg_block_chat_counterpart",
+            auth.session.accessToken,
+            JSONObject().put("p_order_id", orderId)
+        )
+    }
+
+    suspend fun unblock(auth: QueueGoAuth, orderId: String) {
+        http.rpc(
+            "qg_unblock_chat_counterpart",
+            auth.session.accessToken,
+            JSONObject().put("p_order_id", orderId)
+        )
+    }
+
+    suspend fun report(
+        auth: QueueGoAuth,
+        orderId: String,
+        evidence: String,
+        details: String?,
+        reason: String = "other"
+    ) {
+        require(reason in riderChatReportReasons.keys) { "เหตุผลไม่ถูกต้อง" }
+        http.rpc(
+                "qg_report_chat_with_evidence",
+            auth.session.accessToken,
+            JSONObject()
+                .put("p_order_id", orderId)
+                .put("p_evidence_data", riderReportEvidence(evidence))
+                .put("p_reason", reason)
+                .put("p_details", details?.trim()?.takeIf { it.isNotBlank() } ?: JSONObject.NULL)
+        )
+    }
+
+    suspend fun messages(auth: QueueGoAuth, orderId: String): List<RiderChatMessage> {
+        val rows = http.array(
+            http.get(
+                "order_chat_messages?select=id,sender_id,message,created_at" +
+                    "&order_id=eq." + http.enc(orderId) +
+                    // Keep the newest bounded window if project-level Data API max rows changes.
+                    "&order=created_at.desc&limit=" + RIDER_CHAT_HISTORY_MAX_ROWS,
+                auth.session.accessToken
+            )
+        )
+        return buildList {
+            for (i in rows.length() - 1 downTo 0) {
+                val r = rows.optJSONObject(i) ?: continue
+                add(
+                    RiderChatMessage(
+                        id = r.optString("id"),
+                        senderId = r.optString("sender_id"),
+                        message = r.optString("message"),
+                        createdAt = r.optString("created_at").takeIf { it.isNotBlank() && it != "null" }
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun send(
+        auth: QueueGoAuth,
+        orderId: String,
+        text: String,
+        requestId: String = UUID.randomUUID().toString()
+    ) {
+        val clean = validateRiderChatPayload(text)
+        val path = "order_chat_messages?select=id&id=eq." + http.enc(requestId) +
+            "&order_id=eq." + http.enc(orderId) + "&sender_id=eq." + http.enc(auth.user.id)
+        sendRiderChatOnce(
+            exists = { http.array(http.get(path, auth.session.accessToken)).length() > 0 },
+            insert = {
+                val response = http.post("order_chat_messages", auth.session.accessToken,
+                    JSONObject().put("id", requestId).put("order_id", orderId)
+                        .put("sender_id", auth.user.id).put("message", clean))
+                val rows = http.array(response)
+                (0 until rows.length()).any { rows.optJSONObject(it)?.optString("id") == requestId }
+            }
+        )
+    }
+}
+
+@Composable
+fun RiderChatScreen(
+    auth: QueueGoAuth,
+    job: RiderJob,
+    onBack: () -> Unit,
+    onCallCustomer: () -> Unit,
+    modifier: Modifier = Modifier,
+    contactLabel: String? = null
+) {
+    key(auth.user.id, auth.session.sessionId, job.id) {
+        RiderChatRoom(auth, job, onBack, onCallCustomer, modifier, contactLabel)
+    }
+}
+
+@Composable
+private fun RiderChatRoom(
+    auth: QueueGoAuth,
+    job: RiderJob,
+    onBack: () -> Unit,
+    onCallCustomer: () -> Unit,
+    modifier: Modifier,
+    contactLabel: String?
+) {
+    val api = remember { RiderChatApi() }
+    val scope = rememberCoroutineScope()
+    var moderation by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<RiderChatModeration?>(null) }
+    var messages by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<List<RiderChatMessage>>(emptyList()) }
+    var input by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf("") }
+    var busy by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf(false) }
+    var message by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
+    var readError by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<String?>(null) }
+    var showReport by remember { mutableStateOf(false) }
+    var reportEvidence by remember { mutableStateOf<String?>(null) }
+    var reportError by remember { mutableStateOf<String?>(null) }
+    var reportDetails by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf("") }
+
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val back by rememberUpdatedState(onBack)
+    var window by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf<RiderChatWindow?>(null) }
+    var closed by remember(auth.user.id, auth.session.sessionId, job.id) { mutableStateOf(false) }
+
+    fun closeExpired() {
+        if (!closed) { closed = true; back() }
+    }
+
+    suspend fun refresh() {
+        val nextWindow = api.window(auth, job.id)
+        currentCoroutineContext().ensureActive()
+        window = nextWindow
+        if (!nextWindow.isOpen(System.currentTimeMillis())) { closeExpired(); return }
+        val mod = api.moderation(auth, job.id)
+        val nextMessages = if (mod.accepted && !mod.blockedByMe && !mod.blockedMe) {
+            api.messages(auth, job.id)
+        } else emptyList()
+        currentCoroutineContext().ensureActive()
+        if (!nextWindow.isOpen(System.currentTimeMillis())) { closeExpired(); return }
+        moderation = mod
+        messages = nextMessages
+        readError = null
+    }
+
+    suspend fun refreshAfterConfirmedAction() {
+        try { refresh() }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (failure: Exception) {
+            currentCoroutineContext().ensureActive()
+            readError = failure.message ?: "โหลดแชทไม่สำเร็จ"
+        }
+    }
+
+    LaunchedEffect(auth.user.id, auth.session.sessionId, auth.session.accessToken, job.id, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (!closed) {
+                try { refresh() }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) {
+                    currentCoroutineContext().ensureActive()
+                    readError = failure.message ?: "โหลดแชทไม่สำเร็จ"
+                }
+                delay(4_000)
+            }
+        }
+    }
+
+    LaunchedEffect(window, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            window?.deadline?.let { deadline ->
+                delay((deadline - System.currentTimeMillis()).coerceAtLeast(0L))
+                closeExpired()
+            }
+        }
+    }
+
+    val context = LocalContext.current
+    val outbox = remember { RiderChatOutbox() }
+    val quickStore = remember(auth.user.id) { RiderQuickMessageStore(context, auth.user.id) }
+    var quickMessages by remember(auth.user.id) { mutableStateOf<List<String>>(emptyList()) }
+    var quickMessagesReady by remember(auth.user.id) { mutableStateOf(false) }
+    LaunchedEffect(quickStore) {
+        quickMessages = withContext(Dispatchers.IO) { quickStore.load() }
+        quickMessagesReady = true
+    }
+    var editQuickMessages by remember { mutableStateOf(false) }
+    var showSafety by remember { mutableStateOf(false) }
+    var confirmBlock by remember { mutableStateOf(false) }
+    var customerName by remember { mutableStateOf<String?>(null) }
+    var reportReason by remember { mutableStateOf("harassment") }
+    var reasonMenu by remember { mutableStateOf(false) }
+    BackHandler { if (!busy) back() }
+
+    fun openCommunityGuidelines() {
+        runCatching {
+            context.startActivity(
+                Intent(
+                    Intent.ACTION_VIEW,
+                    Uri.parse("https://chatchairins-source.github.io/QueuGo/docs/community-guidelines.html")
+                )
+            )
+        }.onFailure {
+            message = "เปิดกติกาชุมชนไม่สำเร็จ"
+        }
+    }
+
+    LaunchedEffect(auth.session.accessToken, window?.status, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            if (window?.isOpen(System.currentTimeMillis()) == true) {
+                try {
+                    val name = api.customerName(auth, job.id)
+                    currentCoroutineContext().ensureActive()
+                    customerName = name
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) { message = failure.message ?: "โหลดข้อมูลลูกค้าไม่สำเร็จ" }
+            }
+        }
+    }
+
+    suspend fun deliver(payload: String, clearInput: Boolean) {
+        val liveWindow = api.window(auth, job.id)
+        currentCoroutineContext().ensureActive()
+        window = liveWindow
+        if (!liveWindow.isOpen(System.currentTimeMillis())) { closeExpired(); return }
+        api.send(auth, job.id, payload, outbox.requestId(payload))
+        currentCoroutineContext().ensureActive()
+        outbox.confirmed(payload)
+        if (clearInput && input.trim() == payload.trim()) input = ""
+        message = null
+        // Delivery is already confirmed. A read failure must not become a send failure.
+        refreshAfterConfirmedAction()
+    }
+
+    fun sendInput() {
+        if (busy || closed || input.isBlank() || window?.isOpen(System.currentTimeMillis()) != true) return
+        val text = input
+        busy = true
+        scope.launch {
+            try { deliver(text, true) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (failure: Exception) { message = failure.message ?: "ส่งข้อความไม่สำเร็จ" }
+            finally { busy = false }
+        }
+    }
+
+    val photoPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null && !busy && !closed) {
+            busy = true
+            scope.launch {
+                try {
+                    val payload = prepareRiderChatImage(context.contentResolver, uri)
+                    currentCoroutineContext().ensureActive()
+                    deliver(payload, false)
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) { message = failure.message ?: "ส่งรูปไม่สำเร็จ" }
+                finally { busy = false }
+            }
+        }
+    }
+
+    val reportPicker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        if (uri != null && !busy && showReport) {
+            busy = true
+            scope.launch {
+                try {
+                    val prepared = com.queuego.shared.prepareNativeChatImage(context.contentResolver, uri,
+                        setOf("image/jpeg", "image/png", "image/webp"), maxInputBytes = 8 * 1024 * 1024)
+                    currentCoroutineContext().ensureActive()
+                    reportEvidence = riderReportEvidence(prepared)
+                    reportError = null
+                } catch (cancelled: CancellationException) { throw cancelled }
+                catch (failure: Exception) { reportError = failure.message ?: "อ่านภาพหลักฐานไม่สำเร็จ" }
+                finally { busy = false }
+            }
+        }
+    }
+
+    Column(modifier.fillMaxSize().background(Color(0xFFF8F7F8)).imePadding()) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 64.dp).background(Color.White)
+            .padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { if (!busy) back() }, modifier = Modifier.size(44.dp)
+                .clip(RoundedCornerShape(22.dp)).background(Color(0xFFFFF0F3))) {
+                Icon(painterResource(R.drawable.qg_rider_flow_back), "ย้อนกลับ", Modifier.size(23.dp), tint = QgRed)
+            }
+            Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(when {
+                    moderation?.blockedByMe == true || moderation?.blockedMe == true -> "แชตถูกจำกัด"
+                    moderation?.accepted == false -> "กติกาการแชต"
+                    else -> contactLabel ?: customerName ?: "ลูกค้า"
+                }, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(job.numberLabel, color = Color(0xFF8A8387), fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
+            }
+            if (riderChatCanCall(job.status, window?.status)) {
+                IconButton(
+                    onClick = onCallCustomer,
+                    enabled = !busy,
+                    modifier = Modifier.size(44.dp)
+                        .semantics { contentDescription = if (contactLabel != null) "โทรหาร้านผ่าน QueueGo" else "โทรหาลูกค้าผ่าน QueueGo" }
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(Color(0xFFFFF0F3))
+                ) {
+                    Icon(
+                        painterResource(R.drawable.qg_rider_flow_phone),
+                        if (contactLabel != null) "โทรหาร้านผ่าน QueueGo" else "โทรหาลูกค้าผ่าน QueueGo",
+                        Modifier.size(21.dp),
+                        tint = QgRed
+                    )
+                }
+            }
+            IconButton(onClick = { showSafety = true }, enabled = moderation?.accepted == true,
+                modifier = Modifier.size(44.dp).semantics { contentDescription = "ความปลอดภัยแชต" }
+                    .clip(RoundedCornerShape(22.dp)).background(Color(0xFFFFF0F3))) {
+                Text("⋯", color = QgRed, fontSize = 23.sp)
+            }
+        }
+        if (window?.status == "completed") {
+            val minutes = ((window!!.deadline!! - System.currentTimeMillis()).coerceAtLeast(0L) + 59_999) / 60_000
+            Text("หลังจบงานแชทจะปิดและถูกลบอัตโนมัติ · เหลือประมาณ $minutes นาที",
+                fontSize = 10.sp, color = Color(0xFF8A8387),
+                modifier = Modifier.fillMaxWidth().background(Color(0xFFFFF8F9)).padding(horizontal = 12.dp, vertical = 7.dp))
+        }
+        val visibleMessage = readError ?: message
+        if (!visibleMessage.isNullOrBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(visibleMessage, color = QgRed)
+        }
+        Spacer(Modifier.height(10.dp))
+
+        val mod = moderation
+        when {
+            mod == null -> Unit
+            !mod.accepted -> QgCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("กติกาการแชท QueueGo", fontWeight = FontWeight.Black)
+                    Text(
+                        "ใช้แชทเพื่อประสานงานออเดอร์ ห้ามคุกคาม สแปม หลอกลวง หรือส่งเนื้อหาไม่เหมาะสม",
+                        color = QgMuted
+                    )
+                    TextButton(onClick = { openCommunityGuidelines() }) {
+                        Text("อ่านกติกาชุมชน QueueGo")
+                    }
+                    Spacer(Modifier.height(10.dp))
+                    Button(
+                        onClick = {
+                            if (busy) return@Button
+                            busy = true
+                            scope.launch {
+                                runCatching {
+                                    api.acceptTerms(auth)
+                                    refreshAfterConfirmedAction()
+                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ยอมรับกติกาไม่สำเร็จ" }
+                                busy = false
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy
+                    ) { Text("ยอมรับกติกาและเปิดแชท") }
+                }
+            }
+            mod.blockedMe -> QgCard(Modifier.fillMaxWidth()) {
+                Text("คู่สนทนาได้จำกัดการแชทไว้ การบล็อกไม่ยกเลิกออเดอร์", color = QgMuted)
+            }
+            mod.blockedByMe -> QgCard(Modifier.fillMaxWidth()) {
+                Column {
+                    Text("คุณบล็อกลูกค้าคนนี้ไว้", fontWeight = FontWeight.ExtraBold)
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            busy = true
+                            scope.launch {
+                                runCatching {
+                                    api.unblock(auth, job.id)
+                                    refreshAfterConfirmedAction()
+                                }.onFailure { if (it is CancellationException) throw it; message = it.message ?: "ปลดบล็อกไม่สำเร็จ" }
+                                busy = false
+                            }
+                        },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("ปลดบล็อกและเปิดแชท") }
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.weight(1f).fillMaxWidth(),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(7.dp)
+                ) {
+                    if (messages.isEmpty()) {
+                        item {
+                            Box(
+                                Modifier.fillMaxWidth().padding(top = 34.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    "ยังไม่มีข้อความ · เริ่มแชตกับลูกค้าได้เลย",
+                                    color = Color(0xFF9B9498),
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    } else {
+                        items(messages, key = { it.id }) { chat ->
+                            val mine = chat.senderId == auth.user.id
+                            val shape = if (mine) {
+                                RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = 5.dp, bottomStart = 18.dp)
+                            } else {
+                                RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomEnd = 18.dp, bottomStart = 5.dp)
+                            }
+                            val bubbleModifier = Modifier
+                                .fillMaxWidth(0.78f)
+                                .clip(shape)
+                                .background(if (mine) Color(0xFFFFE8EE) else Color.White)
+                                .then(
+                                    if (mine) Modifier
+                                    else Modifier.border(1.dp, Color(0xFFEEE6E8), shape)
+                                )
+                                .padding(horizontal = 12.dp, vertical = 10.dp)
+
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                horizontalArrangement = if (mine) Arrangement.End else Arrangement.Start
+                            ) {
+                                Column(bubbleModifier) {
+                                    if (chat.message.startsWith("__IMG__")) {
+                                        RiderChatImage(chat.message.removePrefix("__IMG__"))
+                                    } else {
+                                        Text(
+                                            chat.message,
+                                            color = Color(0xFF211E20),
+                                            fontSize = 14.sp,
+                                            lineHeight = 19.sp
+                                        )
+                                    }
+                                    val timeLabel = riderChatTimeLabel(chat.createdAt)
+                                    if (timeLabel.isNotBlank()) {
+                                        Row(
+                                            Modifier.fillMaxWidth().padding(top = 5.dp),
+                                            horizontalArrangement = Arrangement.End,
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            if (timeLabel.isNotBlank()) {
+                                                Text(timeLabel, color = Color(0xFF9A9296), fontSize = 9.sp)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (showSafety) {
+                    AlertDialog(onDismissRequest = { showSafety = false }, title = { Text("ความปลอดภัยแชต") },
+                        text = { Column {
+                            TextButton(onClick = { showSafety = false; showReport = true; reportEvidence = null; reportError = null; reportDetails = ""; reportReason = "harassment" }) { Text("รายงานคู่สนทนา") }
+                            TextButton(onClick = { showSafety = false; confirmBlock = true }, enabled = !busy) { Text("บล็อกลูกค้า") }
+                            TextButton(onClick = { openCommunityGuidelines() }) { Text("อ่านกติกาชุมชน QueueGo") }
+                        } }, confirmButton = { TextButton(onClick = { showSafety = false }) { Text("ปิด") } })
+                }
+                if (confirmBlock) {
+                    AlertDialog(onDismissRequest = { if (!busy) confirmBlock = false },
+                        title = { Text("บล็อกลูกค้า") }, text = { Text("บล็อกลูกค้าคนนี้จากการส่งข้อความใหม่? การบล็อกไม่ยกเลิกออเดอร์") },
+                        dismissButton = { TextButton(onClick = { confirmBlock = false }, enabled = !busy) { Text("ยกเลิก") } },
+                        confirmButton = { TextButton(onClick = {
+                            busy = true
+                            scope.launch {
+                                try { api.block(auth, job.id); refreshAfterConfirmedAction(); confirmBlock = false }
+                                catch (cancelled: CancellationException) { throw cancelled }
+                                catch (failure: Exception) { message = failure.message ?: "บล็อกไม่สำเร็จ" }
+                                finally { busy = false }
+                            }
+                        }, enabled = !busy) { Text("บล็อกลูกค้า") } })
+                }
+                if (showReport) {
+                    AlertDialog(onDismissRequest = { if (!busy) showReport = false },
+                        title = { Text("รายงานแชต") },
+                        text = { Column(Modifier.verticalScroll(rememberScrollState())) {
+                            Text("แคปหน้าจอส่วนของแชตที่ต้องการรายงาน แล้วแนบภาพด้านล่าง")
+                            OutlinedButton(onClick = { reportPicker.launch("image/*") }, enabled = !busy) {
+                                Text("เลือกภาพแคปหน้าจอ")
+                            }
+                            Text(if (reportEvidence == null) "ยังไม่ได้เลือกภาพ" else "แนบภาพแคปหน้าจอแล้ว")
+                            reportEvidence?.let { RiderChatImage(it) }
+                            reportError?.let { Text(it, color = QgRed) }
+                            Text("เหตุผล")
+                            androidx.compose.foundation.layout.Box {
+                                OutlinedButton(onClick = { reasonMenu = true }, enabled = !busy) { Text(riderChatReportReasons.getValue(reportReason)) }
+                                DropdownMenu(expanded = reasonMenu, onDismissRequest = { reasonMenu = false }) {
+                                    riderChatReportReasons.forEach { (value, label) ->
+                                        DropdownMenuItem(text = { Text(label) }, onClick = { reportReason = value; reasonMenu = false })
+                                    }
+                                }
+                            }
+                            OutlinedTextField(value = reportDetails,
+                                onValueChange = { if (it.length <= 1000) reportDetails = it },
+                                placeholder = { Text("อธิบายเพิ่มเติม (ไม่บังคับ)") },
+                                label = { Text("รายละเอียด") }, minLines = 4, maxLines = 4,
+                                modifier = Modifier.fillMaxWidth(), enabled = !busy)
+                        } },
+                        dismissButton = { TextButton(onClick = { showReport = false }, enabled = !busy) { Text("ปิด") } },
+                        confirmButton = { TextButton(onClick = {
+                            if (busy) return@TextButton
+                            val evidence = reportEvidence
+                            if (evidence == null) {
+                                reportError = "กรุณาแนบภาพแคปหน้าจอแชตก่อนส่งรายงาน"
+                                return@TextButton
+                            }
+                            busy = true
+                            scope.launch {
+                                try {
+                                    api.report(auth, job.id, evidence, reportDetails, reportReason)
+                                    currentCoroutineContext().ensureActive()
+                                    message = "ส่งรายงานพร้อมภาพหลักฐานแล้ว"
+                                    showReport = false
+                                    reportEvidence = null
+                                } catch (cancelled: CancellationException) { throw cancelled }
+                                catch (failure: Exception) { reportError = failure.message ?: "ส่งรายงานไม่สำเร็จ" }
+                                finally { busy = false }
+                            }
+                        }, enabled = !busy) { Text("ส่งรายงาน") } })
+                }
+
+                if (quickMessagesReady) {
+                    RiderQuickMessageShelf(quickMessages, enabled = !busy && !closed,
+                        onPick = { input = it }, onEdit = { editQuickMessages = true })
+                }
+                if (editQuickMessages && quickMessagesReady) {
+                    RiderQuickMessageEditor(quickMessages,
+                        onSave = { next ->
+                            quickMessages = next
+                            scope.launch { withContext(Dispatchers.IO) { quickStore.save(next) } }
+                        },
+                        onClose = { editQuickMessages = false })
+                }
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFEEE6E8)))
+                Row(Modifier.fillMaxWidth().background(Color.White).padding(horizontal = 10.dp, vertical = 9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(7.dp), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(
+                        onClick = { photoPicker.launch("image/*") },
+                        modifier = Modifier.width(44.dp).height(46.dp),
+                        shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.textButtonColors(containerColor = Color(0xFFFFF0F3), contentColor = QgRed),
+                        enabled = !busy && !closed && window?.isOpen(System.currentTimeMillis()) == true
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.qg_rider_chat_photo),
+                            contentDescription = "ส่งรูป",
+                            modifier = Modifier.size(21.dp),
+                            tint = QgRed
+                        )
+                    }
+                    BasicTextField(
+                        value = input, onValueChange = { if (it.length <= 500) input = it },
+                        modifier = Modifier.weight(1f).height(46.dp)
+                            .border(1.dp, Color(0xFFE6DDE0), RoundedCornerShape(14.dp)).padding(horizontal = 12.dp),
+                        textStyle = TextStyle(fontSize = 16.sp, color = Color(0xFF17171B)),
+                        singleLine = true, enabled = !closed,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                        keyboardActions = KeyboardActions(onSend = { sendInput() }),
+                        decorationBox = { field ->
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterStart) {
+                                if (input.isEmpty()) Text("พิมพ์ข้อความ...", fontSize = 16.sp, color = Color(0xFF8A8387))
+                                field()
+                            }
+                        }
+                    )
+                    TextButton(
+                        onClick = { sendInput() }, modifier = Modifier.width(48.dp).height(46.dp)
+                            .semantics { contentDescription = "ส่ง" },
+                        shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(0.dp),
+                        colors = ButtonDefaults.textButtonColors(containerColor = Color(0xFFFFF0F3), contentColor = QgRed),
+                        enabled = !busy && input.isNotBlank() && !closed && window?.isOpen(System.currentTimeMillis()) == true
+                    ) {
+                        Icon(
+                            painterResource(R.drawable.qg_rider_chat_send),
+                            contentDescription = "ส่ง",
+                            modifier = Modifier.size(22.dp),
+                            tint = QgRed
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

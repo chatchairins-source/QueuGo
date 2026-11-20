@@ -23,5 +23,9 @@ for (const required of [
 ]) {
   assert.ok(job.includes(required), 'RC browser/evidence gate must remain enabled: ' + required);
 }
-console.log(JSON.stringify({checks: 11, failures: 0,
-  scope: 'RC supported WebKit runner, full browser gates and failure evidence retained'}));
+assert.match(job, /for attempt in 1 2; do/, 'bounded installer retries must remain enabled');
+assert.match(job, /timeout 600s npx playwright-core install --with-deps webkit/, 'retry must call original installer');
+assert.match(job, /echo "::error::WebKit installer failed twice; browser gates remain blocking"\s*\n\s*exit 1/, 'terminal WebKit failure must fail RC');
+assert.doesNotMatch(job, /continue-on-error:\s*true/, 'browser tests must never be bypassed');
+console.log(JSON.stringify({checks: 15, failures: 0,
+  scope: 'RC supported WebKit runner, bounded installer retries and fail-closed browser gates'}));
