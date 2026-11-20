@@ -191,6 +191,32 @@ jobs:
           unzip -t "$apk" >/dev/null
           python3 native-android/qa/verify-16kb-page-size.py "$apk"
           sha256sum "$apk" > "$RUNNER_TEMP/${{ matrix.role }}-sha256.txt"
+      # Publish verified role-smoke APKs independently of the nationwide-map gate.
+      # These are DEBUG-only diagnostic builds, NOT country-certified field-test APKs
+      # and never substitutes for the native-pilot bundled-map/installed-device gates.
+      - name: Package exact-head debug smoke APK with per-file provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          role="${{ matrix.role }}"
+          apk="native-android/$role/build/outputs/apk/debug/$role-debug.apk"
+          out="artifacts/parallel-role-smoke/$role"
+          mkdir -p "$out"
+          cp "$apk" "$out/$role-debug.apk"
+          (
+            cd "$out"
+            sha256sum "$role-debug.apk" > SHA256SUMS
+            sha256sum --check SHA256SUMS
+            printf 'source_sha=%s\nworkflow_run=%s\nworkflow_attempt=%s\nrole=%s\nartifact_type=DEBUG_SMOKE_NOT_COUNTRY_CERTIFIED_NOT_PRODUCTION\n' \
+              "$(git rev-parse HEAD)" "${{ github.run_id }}" "${{ github.run_attempt }}" "$role" > PROVENANCE.txt
+          )
+      - name: Upload independently verified debug smoke APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-${{ matrix.role }}-debug-smoke-exact-head
+          path: artifacts/parallel-role-smoke/${{ matrix.role }}/
+          if-no-files-found: error
+          retention-days: 14
       - name: Retain role-specific results even on failure
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
