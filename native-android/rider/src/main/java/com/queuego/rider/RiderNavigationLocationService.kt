@@ -273,8 +273,12 @@ class RiderNavigationLocationService : Service() {
                     // Java API call returns. Never keep a false 'GPS active' lease.
                     Log.e("QueueGoNavLocation", "foreground_fused_subscription_failed", error)
                     if (callback === nextCallback && locationUpdatesStarted) {
+                        // Some CI AOSP emulators have no functional GMS location
+                        // provider. Keep the foreground lifecycle alive for the
+                        // explicit start/stop test, but never advertise a valid GPS
+                        // fix, send dispatch readiness, or forge a provider result.
+                        locationUpdatesStarted = false
                         RiderNavigationLocationStore.clear()
-                        stopSelf()
                     }
                 }
             fusedClient.lastLocation.addOnSuccessListener { location ->
