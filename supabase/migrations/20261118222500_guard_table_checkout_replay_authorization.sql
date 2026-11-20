@@ -63,6 +63,9 @@ begin
       raise exception 'รหัสคำขอถูกใช้กับรายการอาหารอื่น';
     end if;
     select o.order_number into v_order_number from public.orders o where o.id=v_old.order_id;
+    if v_order_number is null then
+      raise exception 'ไม่พบออเดอร์เดิมสำหรับรหัสคำขอนี้';
+    end if;
     return jsonb_build_object(
       'order_id',v_old.order_id,
       'order_number',v_order_number,
@@ -100,6 +103,9 @@ begin
     values(v.id,p_request,v_hash,v_old.order_id);
 
     select o.order_number into v_order_number from public.orders o where o.id=v_old.order_id;
+    if v_order_number is null then
+      raise exception 'ไม่พบออเดอร์เดิมสำหรับรหัสคำขอนี้';
+    end if;
     return jsonb_build_object(
       'order_id',v_old.order_id,
       'order_number',v_order_number,
