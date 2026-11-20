@@ -113,6 +113,18 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
         self.assertIn('RiderNavigationLocationStore.clear()', failure)
         self.assertIn('stopSelf()', failure)
 
+    def test_synchronous_provider_failure_cannot_reenable_subscription(self):
+        # Source regression: Play Services may complete a listener before
+        # requestLocationUpdates returns. Emulator evidence remains mandatory.
+        service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
+        start = service.split("private fun startLocationUpdates()", 1)[1].split("private fun stopLocationUpdates()", 1)[0]
+        provisional = start.index("locationUpdatesStarted = true")
+        request = start.index("fusedClient.requestLocationUpdates(request, nextCallback")
+        self.assertLess(provisional, request)
+        self.assertEqual(start.count("locationUpdatesStarted = true"), 1)
+        self.assertIn("if (started && callback === nextCallback && locationUpdatesStarted)", start)
+        self.assertIn("locationUpdatesStarted = false", start.split("} else {", 1)[-1])
+
     def test_stale_fused_callback_cannot_publish_after_restart(self):
         # Contract guard only: installed emulator GPS evidence is still required.
         service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
