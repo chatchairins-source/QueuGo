@@ -265,6 +265,9 @@ class RiderNavigationLocationService : Service() {
             }
         }
         callback = nextCallback
+        // Mark the provisional subscription before invoking Play Services: a task
+        // listener may complete synchronously and must not be overwritten later.
+        locationUpdatesStarted = true
 
         val started = runCatching {
             fusedClient.requestLocationUpdates(request, nextCallback, Looper.getMainLooper())
@@ -298,15 +301,18 @@ class RiderNavigationLocationService : Service() {
             Log.w("QueueGoNavLocation", "location_updates_failed", it)
         }.isSuccess
 
-        if (started) {
-            locationUpdatesStarted = true
+        if (started && callback === nextCallback && locationUpdatesStarted) {
             Log.i(
                 "QueueGoNavLocation",
                 "foreground_updates_started interval=${NAVIGATION_LOCATION_INTERVAL_MS}ms min=${NAVIGATION_LOCATION_MIN_INTERVAL_MS}ms"
             )
         } else {
-            callback = null
-            stopSelf()
+            if (callback === nextCallback) {
+                locationUpdatesStarted = false
+                callback = null
+                RiderNavigationLocationStore.clear()
+                stopSelf()
+            }
         }
     }
 
