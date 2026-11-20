@@ -22,6 +22,42 @@ def node(text, bounds="[0,0][300,300]"):
 
 
 class RiderTabVisualGateTest(unittest.TestCase):
+    def bottom_nav(self):
+        ns = []
+        for x, label in enumerate(("หน้าแรก", "ข้อความ", "รายได้", "โปรไฟล์")):
+            ns.append(node(label, f"[{x*100},900][{x*100+80},920]"))
+            ns.append({"clickable": "true", "bounds": f"[{x*100},850][{x*100+99},950]"})
+        return ns
+
+    def test_profile_heading_does_not_mask_real_bottom_navigation(self):
+        ns = [node("โปรไฟล์", "[100,40][300,90]")] + self.bottom_nav()
+        self.assertEqual(review.rider_bottom_navigation_top(ns), 850)
+        # Reproduces the old min(matching-label tops) = 40 failure: a visible
+        # target at y=500 can never be above y=16, regardless of scrolling.
+        ns.append(node("ตรวจสอบระบบ Rider", "[20,500][300,550]"))
+        with patch.object(review, "nodes", return_value=ns), patch.object(review, "swipe_vertical") as swipe:
+            self.assertIs(review.scroll_to_text("ตรวจสอบระบบ Rider"), ns)
+        swipe.assert_not_called()
+
+    def test_profile_target_behind_navigation_icons_requires_scroll(self):
+        nav = self.bottom_nav()
+        blocked = nav + [node("ตรวจสอบระบบ Rider", "[20,840][300,870]")]
+        visible = nav + [node("ตรวจสอบระบบ Rider", "[20,700][300,730]")]
+        with (patch.object(review, "nodes", side_effect=[blocked, visible]),
+              patch.object(review, "swipe_vertical") as swipe,
+              patch.object(review.time, "sleep")):
+            self.assertIs(review.scroll_to_text("ตรวจสอบระบบ Rider"), visible)
+        swipe.assert_called_once_with("up")
+
+    def test_page_labels_without_actual_four_tab_row_fail_closed(self):
+        with self.assertRaisesRegex(AssertionError, "four-tab"):
+            review.rider_bottom_navigation_top([node("โปรไฟล์", "[100,40][300,90]")])
+
+    def test_missing_navigation_label_cannot_authorize_target_tap(self):
+        ns = [n for n in self.bottom_nav() if n.get("text") != "ข้อความ"]
+        with self.assertRaisesRegex(AssertionError, "four-tab"):
+            review.rider_bottom_navigation_top(ns)
+
     def test_bottom_navigation_alone_cannot_pass(self):
         nav = [node(x) for x in ("หน้าแรก", "ข้อความ", "รายได้", "โปรไฟล์")]
         for label in ("ข้อความ", "รายได้", "โปรไฟล์"):

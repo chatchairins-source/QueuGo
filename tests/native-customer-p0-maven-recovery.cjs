@@ -35,4 +35,44 @@ assert.ok(step.includes('"${command[@]}" --refresh-dependencies'), 'retry must r
 assert.ok(step.includes('non-retryable reason') && step.includes('exit 1'), 'real source/test errors must fail closed');
 assert.ok(!step.includes('--offline') && !step.includes('--continue'), 'do not bypass missing dependencies or test failures');
 assert.ok(workflow.includes('python3 native-android/qa/run-customer-p0.py'), 'real picker/GL Android instrumentation must remain');
-console.log('Customer P0 bounded Maven dependency recovery regression passed');
+// Exercise the actual curl flags against a disposable HTTP server. Default
+// curl --retry does not retry 404, which reproduced API35's metadata failure.
+async function verifyMetadataRetrieval() {
+  const http = require('node:http');
+  const os = require('node:os');
+  const { execFile } = require('node:child_process');
+  const execute = require('node:util').promisify(execFile);
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'qg-maven-retry-'));
+  const calls = {recover: 0, missing: 0};
+  const server = http.createServer((req, res) => {
+    const kind = req.url === '/recover' ? 'recover' : 'missing';
+    calls[kind]++;
+    if (kind === 'recover' && calls[kind] > 1) {
+      res.writeHead(200, {'Content-Type': 'application/xml'});
+      res.end('<project><artifactId>jsr305</artifactId></project>');
+    } else {
+      res.writeHead(404); res.end('temporary metadata miss');
+    }
+  });
+  try {
+    await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+    const line = step.split('\n').find(line => line.trim().startsWith('curl '));
+    const flags = line.trim().split(/\s+/).slice(1);
+    const args = flags.slice(0, flags.indexOf('"$metadata"'));
+    assert.ok(args.includes('--retry-all-errors'), 'transient 404 metadata must be retried');
+    assert.ok(args.includes('--retry-max-time'), 'remote retrieval retries need a total time bound');
+    const url = `http://127.0.0.1:${server.address().port}`;
+    const pom = path.join(directory, 'module.pom');
+    await execute('curl', [...args, url + '/recover', '-o', pom]);
+    assert.equal(calls.recover, 2, 'existing pinned module recovers from one 404');
+    assert.ok(fs.readFileSync(pom, 'utf8').includes('<artifactId>jsr305</artifactId>'));
+    await assert.rejects(execute('curl', [...args, url + '/missing', '-o', pom]),
+      error => error.code === 22, 'persistent 404 remains a hard build failure');
+    assert.equal(calls.missing, 3, 'persistent metadata failure stops after initial request plus two retries');
+  } finally {
+    await new Promise(resolve => server.close(resolve));
+    fs.rmSync(directory, {recursive: true, force: true});
+  }
+  console.log('Customer P0 bounded Maven dependency recovery regression passed (real HTTP 404 recovery and exhaustion)');
+}
+verifyMetadataRetrieval().catch(error => { console.error(error); process.exitCode = 1; });
