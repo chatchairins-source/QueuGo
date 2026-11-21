@@ -261,7 +261,7 @@ jobs:
 
   publish-verified-field-apk:
     # Publish only the byte-identical APK from the successful installed offline gate.
-    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'fix-rider-invalid-step-metrics-20261106' }}
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && (github.event.pull_request.head.ref == 'fix-rider-invalid-step-metrics-20261106' || (github.event.pull_request.number == 1072 && github.event.pull_request.head.ref == 'work-native-reconcile-main-20261114')) }}
     needs: [offline-routing]
     runs-on: ubuntu-latest
     timeout-minutes: 25
