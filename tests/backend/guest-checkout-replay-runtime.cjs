@@ -37,6 +37,7 @@ const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
    CREATE TABLE laundry_orders(order_number text,status text);
    CREATE TABLE qg_table_requests(session_id uuid,request_id uuid,payload_hash text,order_id uuid,created_at timestamptz DEFAULT now(),PRIMARY KEY(session_id,request_id));
    REVOKE ALL ON qg_table_sessions,qg_table_requests,orders FROM PUBLIC,anon;`);
+  await db.exec(fs.readFileSync('tests/backend/guest-session-access-prod-snapshot-20261121.sql','utf8'));
   await db.exec(fs.readFileSync('tests/backend/guest-checkout-dependencies-prod-snapshot-20261121.sql','utf8'));
   await db.query("INSERT INTO pos_tables VALUES($1,$2,true,'SYNTHETIC TABLE')",[uuid(6),uuid(7)]);
   await db.query("INSERT INTO shop_profiles VALUES($1,'active',13.75,100.5)",[uuid(7)]);
@@ -90,6 +91,30 @@ const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
    }
   } finally {await db.exec('RESET ROLE');}
   equal(Number((await db.query('SELECT count(*) AS n FROM orders')).rows[0].n),1);
+  for(const role of ['anon','authenticated']) {
+   equal((await db.query("SELECT has_schema_privilege($1,'public','CREATE') AS allowed",[role])).rows[0].allowed,false);
+   await db.exec('SET ROLE '+role);
+   try {
+    for(const table of ['qg_table_sessions','qg_table_requests']) {
+     await assert.rejects(db.query('SELECT * FROM '+table),/permission denied/);checks++;
+    }
+   } finally {await db.exec('RESET ROLE');}
+   // Even accidental future client table grants must not defeat the captured
+   // deny-all policies. Grant only inside a rollback-only disposable transaction.
+   await db.exec('BEGIN');
+   try {
+    await db.exec('GRANT SELECT,UPDATE,DELETE,INSERT ON qg_table_sessions,qg_table_requests TO '+role);
+    await db.exec('SET LOCAL ROLE '+role);
+    equal(Number((await db.query('SELECT count(*) AS n FROM qg_table_sessions')).rows[0].n),0);
+    equal(Number((await db.query('SELECT count(*) AS n FROM qg_table_requests')).rows[0].n),0);
+    equal((await db.query('UPDATE qg_table_sessions SET revoked_at=NULL RETURNING id')).rows.length,0);
+    equal((await db.query('DELETE FROM qg_table_requests RETURNING request_id')).rows.length,0);
+    await db.exec('SAVEPOINT denied_insert');
+    await assert.rejects(db.query('INSERT INTO qg_table_requests(session_id,request_id,payload_hash,order_id) VALUES($1,$2,$3,$4)',[uuid(1),uuid(99),'forged',uuid(4)]),/row-level security/);checks++;
+    await db.exec('ROLLBACK TO SAVEPOINT denied_insert');
+   } finally {await db.exec('ROLLBACK');}
+  }
+  equal(Number((await db.query('SELECT count(*) AS n FROM qg_table_requests')).rows[0].n),1);
   await seed(); await db.exec('DELETE FROM qg_table_requests');
   const created = await replay(uuid(2),items,uuid(8));
   equal(created.duplicate,false); equal(Number(created.total),100);
@@ -164,6 +189,6 @@ const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
     await holder.end();await waiter.end();
    }
   }
-  console.log(JSON.stringify({checks,failures:0,engine:testUrl?'real PostgreSQL':'PGlite',scope:'actual source/candidate replay as anon; synthetic schema, existing-replay, committed-revocation and first-checkout races on real PostgreSQL; NOT full Production triggers/RLS/settlement proof'}));
+  console.log(JSON.stringify({checks,failures:0,engine:testUrl?'real PostgreSQL':'PGlite',scope:'actual source/candidate replay as anon; synthetic schema, existing-replay, committed-revocation and first-checkout races on real PostgreSQL; actual session-table ACL/RLS only; NOT full Production order triggers/RLS/settlement proof'}));
  } finally {await db.close();}
 })().catch(error => {console.error(error); process.exitCode=1;});

@@ -1,3 +1,8 @@
+## 2026-11-21 Guest session ACL/RLS observed and exercised
+
+- Read-only live metadata confirms both qg_table_sessions/qg_table_requests have RLS enabled, owner/service_role grants only and qg_server_only_no_client_access policies ALL TO anon/authenticated USING false WITH CHECK false; neither role has CREATE on public. Captured this limited access surface into disposable tests, no Production policy changes.
+- Tests now execute ordinary owner-definer checkout and concurrency with those actual session policies enabled. Both client roles must be denied direct reads; rollback-only temporary client table grants exercise defense in depth: no visible rows, no UPDATE/DELETE and INSERT blocked by RLS. Full order/item trigger/RLS/settlement parity still requires separate evidence; these two session tables do not certify the entire application.
+
 ## 2026-11-21 Guest checkout source reconciled with current Integration
 
 - Forward-merged Integration12f357c5 into #1246, retaining Worker/source history and all merged POS, real Fused GPS and financial preflight work. Retain Integration package/lock files (already pg8.23.1); no dependency downgrade or old-main overwrite. Shared memory conflict retains both current and guest records.

@@ -10,6 +10,7 @@ on:
       - tests/backend/guest-checkout-replay-runtime.cjs
       - tests/backend/guest-checkout-prod-snapshot-20261121.sql
       - tests/backend/guest-checkout-dependencies-prod-snapshot-20261121.sql
+      - tests/backend/guest-session-access-prod-snapshot-20261121.sql
       - .github/workflows/guest-checkout-replay.yml
 permissions:
   contents: read
