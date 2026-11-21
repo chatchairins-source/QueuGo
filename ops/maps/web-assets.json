@@ -1,0 +1,76 @@
+{
+  "files": [
+    {
+      "path": "maplibre-gl.js",
+      "url": "https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.js",
+      "bytes": 940760,
+      "sha256": "aa49ba072cb2d4621c365e501867cbc0ffead0d4a42dd79cb8f182525082451a"
+    },
+    {
+      "path": "maplibre-gl.css",
+      "url": "https://unpkg.com/maplibre-gl@5.7.1/dist/maplibre-gl.css",
+      "bytes": 69430,
+      "sha256": "43c1d886b5fdf0aac4e7135bd6f84b823d9f48283a648012665f9be52c01389f"
+    },
+    {
+      "path": "maplibre-LICENSE.txt",
+      "url": "https://unpkg.com/maplibre-gl@5.7.1/LICENSE.txt",
+      "bytes": 5984,
+      "sha256": "ee5fc05a0677eaf69601d2c7db0d9ecd6cc27c3abc1d0733bc9ed34707cf8ef2"
+    },
+    {
+      "path": "pmtiles.js",
+      "url": "https://unpkg.com/pmtiles@4.3.0/dist/pmtiles.js",
+      "bytes": 19565,
+      "sha256": "afc49d216fd24c0a3c0ff3cd2e0c62d6cdaf062854c3dced778dcab168824f79"
+    },
+    {
+      "path": "pmtiles-LICENSE",
+      "url": "https://raw.githubusercontent.com/protomaps/PMTiles/main/LICENSE",
+      "bytes": 1713,
+      "sha256": "0371c38f338835f7fc13ed71176f3d92144e22c8b736a31cced57adbbeb647b3"
+    },
+    {
+      "path": "fonts-LICENSE.txt",
+      "url": "https://raw.githubusercontent.com/notofonts/noto-fonts/main/LICENSE",
+      "bytes": 4377,
+      "sha256": "0dab92d0544f7b233403f14b84a663bdbfa746982eda629e7f4f9ffe1b036feb"
+    },
+    {
+      "path": "fonts/Noto Sans Regular/0-255.pbf",
+      "url": "https://raw.githubusercontent.com/maplibre/demotiles/gh-pages/font/Noto%20Sans%20Regular/0-255.pbf",
+      "bytes": 76580,
+      "sha256": "ef1f38a3f1978591e846e9eaddf8a54f7047f546fc6aaed7872cc53151a5de78"
+    },
+    {
+      "path": "fonts/Noto Sans Regular/256-511.pbf",
+      "url": "https://raw.githubusercontent.com/maplibre/demotiles/gh-pages/font/Noto%20Sans%20Regular/256-511.pbf",
+      "bytes": 127219,
+      "sha256": "992557f9e2574cfb9a75e16c7b52832578849772b7c9a6e480d6213fb008fe5d"
+    },
+    {
+      "path": "fonts/Noto Sans Regular/3584-3839.pbf",
+      "url": "https://raw.githubusercontent.com/maplibre/demotiles/gh-pages/font/Noto%20Sans%20Regular/3584-3839.pbf",
+      "bytes": 54925,
+      "sha256": "161ede5132456f9f640ad783ca23ac5c5923bb88672da41a49ac336519b4e529"
+    },
+    {
+      "path": "fonts/Noto Sans Regular/8192-8447.pbf",
+      "url": "https://raw.githubusercontent.com/maplibre/demotiles/gh-pages/font/Noto%20Sans%20Regular/8192-8447.pbf",
+      "bytes": 34070,
+      "sha256": "f061e5b4e42e5925228534d8822b423a029569263db09f5ce44573600d45295f"
+    },
+    {
+      "path": "fonts/NotoSansThai.ttf",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansthai/NotoSansThai%5Bwdth,wght%5D.ttf",
+      "bytes": 218652,
+      "sha256": "5a1c559bb539583c8a1fd99d1c5b9491e5e14478c9cd2bd0970d5c3096cc9ef8"
+    },
+    {
+      "path": "NotoSansThai-OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/notosansthai/OFL.txt",
+      "bytes": 4380,
+      "sha256": "2e98fd23a52d253db8612cd5942c8f2ff4111b21d2367050fdca91d8ccc374a0"
+    }
+  ]
+}

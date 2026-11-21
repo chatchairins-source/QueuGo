@@ -1,0 +1,23 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {execFileSync} = require('node:child_process');
+const root = path.resolve(__dirname, '..');
+const workflow = fs.readFileSync(path.join(root,'.github/workflows/native-customer-p0.yml'),'utf8');
+assert(workflow.includes('api: [26, 30, 33, 35]'),'all four real API targets remain');
+assert(workflow.includes('max-parallel: 2'),'bound simultaneous cold Maven consumers');
+assert(workflow.includes('node tests/native-customer-p0-maven-recovery.cjs'),'contract runs in actual workflow');
+const start=workflow.indexOf('      - name: Customer JVM and real UI harness builds');
+const end=workflow.indexOf('      - name: Android acceleration',start);
+assert(start>=0 && end>start);
+const step=workflow.slice(start,end);
+assert(step.includes('python3 native-android/qa/gradle_maven_recovery.py'),'use shared fail-closed runner');
+assert(step.includes('--log artifacts/customer-p0/gradle-first-attempt.log --'),'retain original build evidence');
+for(const task of [':customer:testDebugUnitTest',':customer:assembleDebug',':customer:assembleDebugAndroidTest'])
+  assert(step.includes(task),'preserve actual '+task);
+assert(!step.includes('--offline') && !step.includes('--continue'),'no build/test bypass');
+assert(workflow.includes('python3 native-android/qa/run-customer-p0.py'),'preserve actual picker/GL runtime');
+const sdk=fs.readFileSync(path.join(root,'native-android/qa/run-customer-p0.py'),'utf8');
+assert(sdk.includes('for attempt in (1, 2):') && sdk.includes('if attempt == 2:') && sdk.includes('raise'),'SDK recovery remains bounded/fatal');
+execFileSync('python3',['-m','unittest','discover','-s','native-android/qa','-p','test_gradle_maven_recovery.py'],{cwd:root,stdio:'inherit'});
+console.log('Customer Maven workflow contract + isolated CLI/HTTP regressions PASS; real Android acceptance still required');

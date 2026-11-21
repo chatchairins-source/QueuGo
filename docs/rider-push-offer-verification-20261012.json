@@ -1,0 +1,172 @@
+{
+  "source_head": "984e2dcf4333decd9ed854e6c2e8c4fb76a3843a",
+  "workflow_run": "38215858155",
+  "apk_sha256": "d90796ee178ed0d8a2e837cc41eeb34f97b48da69edc81aa4f49d57a58b35f49",
+  "cases": [
+    {
+      "viewport": "phone-denied",
+      "dimensions": "1080x2280",
+      "density": "440",
+      "location_permission_granted": false,
+      "map_mount_background_recreation": "PASS",
+      "screenshots": [
+        {
+          "state": "initial",
+          "sha256": "bc825660f85aab4c91c3f2d5204cc2868bd650e9face647cee2496fa94f3185f",
+          "file": "phone-denied/initial.png",
+          "actual_sdk_camera": {
+            "longitude": 100.50179999983152,
+            "latitude": 13.756300013517238,
+            "zoom": 13,
+            "first_frame_gray_fraction": 3.654970760233918e-05,
+            "final_gray_fraction": 3.654970760233918e-05,
+            "capture_after_ms": 9237
+          }
+        },
+        {
+          "state": "resumed",
+          "sha256": "6f28840426fa268fbacf84db3480850f84d253dfb6d9f55e88725edb1a54279b",
+          "file": "phone-denied/resumed.png",
+          "actual_sdk_camera": {
+            "longitude": 100.50179999983152,
+            "latitude": 13.756300013517238,
+            "zoom": 13,
+            "first_frame_gray_fraction": 3.654970760233918e-05,
+            "final_gray_fraction": 3.654970760233918e-05,
+            "capture_after_ms": 9053
+          }
+        },
+        {
+          "state": "recreated",
+          "sha256": "6f28840426fa268fbacf84db3480850f84d253dfb6d9f55e88725edb1a54279b",
+          "file": "phone-denied/recreated.png",
+          "actual_sdk_camera": {
+            "longitude": 100.50179999983152,
+            "latitude": 13.756300013517238,
+            "zoom": 13,
+            "first_frame_gray_fraction": 3.654970760233918e-05,
+            "final_gray_fraction": 3.654970760233918e-05,
+            "capture_after_ms": 9048
+          }
+        }
+      ]
+    },
+    {
+      "viewport": "phone-allowed",
+      "dimensions": "1080x2280",
+      "density": "440",
+      "location_permission_granted": true,
+      "map_mount_background_recreation": "PASS",
+      "screenshots": [
+        {
+          "state": "initial",
+          "sha256": "3e5c7c5e1a6ed91eb813ec51efc867b7c97ff9f673f11f8b06c465a12f2815b5",
+          "file": "phone-allowed/initial.png",
+          "actual_sdk_camera": {
+            "longitude": -123.15002788196911,
+            "latitude": 39.23725433370294,
+            "zoom": 15,
+            "first_frame_gray_fraction": 1.827485380116959e-05,
+            "final_gray_fraction": 1.827485380116959e-05,
+            "capture_after_ms": 8547
+          }
+        },
+        {
+          "state": "resumed",
+          "sha256": "cd97e65d5091148c54b5561cf53de90670b6be194e6ff246b726b27d233a3aa7",
+          "file": "phone-allowed/resumed.png",
+          "actual_sdk_camera": {
+            "longitude": -123.15002788196911,
+            "latitude": 39.23725433370294,
+            "zoom": 15,
+            "first_frame_gray_fraction": 1.827485380116959e-05,
+            "final_gray_fraction": 1.827485380116959e-05,
+            "capture_after_ms": 8355
+          }
+        },
+        {
+          "state": "recreated",
+          "sha256": "cd97e65d5091148c54b5561cf53de90670b6be194e6ff246b726b27d233a3aa7",
+          "file": "phone-allowed/recreated.png",
+          "actual_sdk_camera": {
+            "longitude": -123.15002788196911,
+            "latitude": 39.23725433370294,
+            "zoom": 15,
+            "first_frame_gray_fraction": 1.827485380116959e-05,
+            "final_gray_fraction": 1.827485380116959e-05,
+            "capture_after_ms": 8349
+          }
+        }
+      ]
+    },
+    {
+      "viewport": "large-allowed",
+      "dimensions": "1600x2560",
+      "density": "240",
+      "location_permission_granted": true,
+      "map_mount_background_recreation": "PASS",
+      "screenshots": [
+        {
+          "state": "initial",
+          "sha256": "7b30565c55be36dbcc5642479a00ffd0071283ec06deea53240a99d181afa537",
+          "file": "large-allowed/initial.png",
+          "actual_sdk_camera": {
+            "longitude": -123.15002918243408,
+            "latitude": 39.23725445960962,
+            "zoom": 15,
+            "first_frame_gray_fraction": 0,
+            "final_gray_fraction": 0,
+            "capture_after_ms": 8630
+          }
+        },
+        {
+          "state": "resumed",
+          "sha256": "7b30565c55be36dbcc5642479a00ffd0071283ec06deea53240a99d181afa537",
+          "file": "large-allowed/resumed.png",
+          "actual_sdk_camera": {
+            "longitude": -123.15002918243408,
+            "latitude": 39.23725445960962,
+            "zoom": 15,
+            "first_frame_gray_fraction": 0,
+            "final_gray_fraction": 0,
+            "capture_after_ms": 8492
+          }
+        },
+        {
+          "state": "recreated",
+          "sha256": "7b30565c55be36dbcc5642479a00ffd0071283ec06deea53240a99d181afa537",
+          "file": "large-allowed/recreated.png",
+          "actual_sdk_camera": {
+            "longitude": -123.15002918243408,
+            "latitude": 39.23725445960962,
+            "zoom": 15,
+            "first_frame_gray_fraction": 0,
+            "final_gray_fraction": 0,
+            "capture_after_ms": 8501
+          }
+        }
+      ]
+    }
+  ],
+  "physical_device": false,
+  "gps_injected": false,
+  "sample_jobs_created": false,
+  "production_account_or_order_writes": false,
+  "authenticated_home_parity_certified": false,
+  "physical_gps_positioning_certified": false,
+  "visible_tiles_review_required": true,
+  "workflow_conclusion": "success",
+  "native_pilot_conclusion": "success",
+  "map_artifact_id": 11731388744,
+  "manual_review": "All nine final map images inspected: visible roads/labels; stable camera across resume and recreation.",
+  "scope": "Emulator rendering/lifecycle plus software regression/JVM/build; not authenticated E2E or physical GPS/FCM certification.",
+  "release_gate": "OPEN",
+  "remaining": [
+    "Firebase config missing from CI",
+    "No enabled Production native push tokens",
+    "Physical GPS/background notification/two-device voice evidence",
+    "Authenticated push-reference recovery and offer-expiry E2E",
+    "Full authenticated rendered Rider Blueprint parity",
+    "Release signing and Play readiness"
+  ]
+}

@@ -37,8 +37,8 @@ const tableQrHtml=read('table-order.html');
 const tableQr=read('table-order.js');
 const laundryCodeMigration=read('supabase/migrations/20261007043952_unify_laundry_visible_order_codes.sql');
 const posQrCodeMigration=read('supabase/migrations/20261007045146_unify_pos_qr_order_codes.sql');
-const release=read('.github/workflows/build-queuego-apks.yml');
-const pilot=read('.github/workflows/build-queuego-pilot-apks.yml');
+const nativeFormatter=read('native-android/shared/src/main/java/com/queuego/shared/NativeOrderNumber.kt');
+const nativeFormatterTests=read('native-android/shared/src/test/java/com/queuego/shared/NativeOrderNumberTest.kt');
 const activeCodeGuard=read('supabase/migrations/20261007041346_enforce_active_visible_order_code_uniqueness.sql');
 const pushEdge=read('supabase/functions/queuego-push/index.ts');
 
@@ -71,10 +71,20 @@ assert(!rider.includes('#${esc(j.order_number||\'\')}'));
 assert(!rider.includes('<h2>#${esc(code)}</h2>'),'Rider offer/active cards must show QT-XXXX without a hash prefix');
 assert(rider.includes('qgShortOrder({order_number:o.order_number,id:o.order_id})'));
 assert(merchant.includes('escText(displayOrderNumber(o))'));
-for(const workflow of [release,pilot]){
-  assert(workflow.includes('../queuego-order-number.js'));
-  assert(workflow.includes("s=s.replace('../queuego-order-number.js','queuego-order-number.js')"));
-}
+// Kotlin Native apps must preserve the same canonical visible QT-XXXX format.
+assert(nativeFormatter.includes('fun nativeOrderNumber(raw: String?)'),'Native order formatter must exist');
+assert(nativeFormatter.includes('fun nativeOrderNumberInText(value: String?)'),'Native notifications must normalize visible order references');
+assert(nativeFormatter.includes('?: return "QT-----"'),'Malformed/UUID order identity must remain hidden');
+for(const fixture of [
+  '"QT-20261006-2141" to "QT-2141"',
+  '"QT-001" to "QT-0001"',
+  '"LW-20260930-112419-e26b" to "QT-7963"',
+  '"POS-32D8C1AD0747" to "QT-1863"',
+  '"QR-12DBF4E490AE" to "QT-7038"',
+  '"d889d1a6-c10d-4f61-a6c8-31312dd6cbd1" to "QT-----"'
+]) assert(nativeFormatterTests.includes(fixture),'Native formatter must retain parity fixture: '+fixture);
+assert(!fs.existsSync('.github/workflows/build-queuego-apks.yml')&&!fs.existsSync('.github/workflows/build-queuego-pilot-apks.yml'),
+  'Retired Capacitor APK workflows must remain absent');
 for(const source of [customer,merchant,rider,admin]){
   assert(!source.includes('QT-YYYYMMDD-xxxx'));
 }

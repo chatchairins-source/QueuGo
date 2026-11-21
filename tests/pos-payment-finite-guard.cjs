@@ -4,7 +4,7 @@ const source=fs.readFileSync(path.resolve(__dirname,'../merchant/pos-table-v2.js
 const match=source.match(/^\s*window\.qgPosConfirmPay=async\(\)=>\{.+\};\s*$/m);
 assert.ok(match,'the actual POS cash-confirmation handler must remain covered');
 
-async function attempt(rawCash,totalAmount,method='cash'){
+async function attempt(rawCash,totalAmount,method='cash',verified=false){
   const calls=[],messages=[];
   const bill={id:'test-order',total_amount:totalAmount,payment_status:'UNPAID'};
   const button={disabled:false};
@@ -13,7 +13,7 @@ async function attempt(rawCash,totalAmount,method='cash'){
     selected:()=>bill,
     state:{loading:false,orders:[bill]},
     document:{
-      getElementById:id=>id==='qg-pos-method'?{value:method}:id==='qg-pos-cash'?{value:rawCash}:null,
+      getElementById:id=>id==='qg-pos-method'?{value:method}:id==='qg-pos-cash'?{value:rawCash}:id==='qg-pos-external-payment-confirmed'?{checked:verified}:null,
       querySelector:selector=>selector==='.qg-pos-pay-dialog button.confirm'?button:null
     },
     navigator:{onLine:true},
@@ -45,8 +45,11 @@ async function attempt(rawCash,totalAmount,method='cash'){
   const change=await attempt('30',20);
   assert.equal(change.calls.length,1,'larger finite tender is accepted');
   assert.equal(change.calls[0].body.p_cash_received,30);
-  const transfer=await attempt('',20,'bank_transfer');
-  assert.equal(transfer.calls.length,1,'non-cash confirmation remains unchanged');
+  const unverified=await attempt('',20,'bank_transfer');
+  assert.equal(unverified.calls.length,0,'unverified non-cash payment must not call RPC');
+  assert.ok(unverified.messages.length,'unverified non-cash payment must show an error');
+  const transfer=await attempt('',20,'bank_transfer',true);
+  assert.equal(transfer.calls.length,1,'verified non-cash confirmation may call RPC');
   assert.equal(transfer.calls[0].body.p_cash_received,null);
   console.log('POS finite cash guard regression passed');
 })().catch(error=>{console.error(error);process.exitCode=1});

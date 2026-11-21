@@ -1,0 +1,65 @@
+name: Credit live rollout gate
+on:
+  push:
+    branches: [work-native-credit-live-enablement-20261016]
+    paths:
+      - 'supabase/functions/queuego-credit/**'
+      - 'tests/credit*'
+      - '.github/workflows/credit-live-rollout-gate.yml'
+permissions:
+  contents: read
+jobs:
+  credit-races:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres@sha256:2d2b8998d31037bf721cfdf764d76ba74171b4fab3431b7f72c27c56ddbdf9e3
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: isolated-ci-test
+          POSTGRES_DB: queuego_credit_gate
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d queuego_credit_gate"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Ledger Edge admin and complete rollout chain
+        run: |
+          node tests/credit-ledger.cjs
+          node tests/credit-edge.cjs
+          node tests/admin-merchant-credit.cjs
+          node tests/credit-live-rollout-chain.cjs
+      - name: Independent PostgreSQL credit races
+        env:
+          QG_TEST_PG_URL: postgresql://postgres:isolated-ci-test@127.0.0.1:5432/queuego_credit_gate
+        run: node tests/credit-races.cjs
+
+      - name: Read-only deployed payment readiness
+        env:
+          QG_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.QG_SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          python3 - <<'PYCODE'
+          import os,json,urllib.request,urllib.error
+          key=os.environ.get('QG_SUPABASE_SERVICE_ROLE_KEY','')
+          if not key:
+              print(json.dumps({'readiness':'credential_not_available_to_ci'}))
+          else:
+              request=urllib.request.Request('https://pkypiqhlrmzocysgeqew.supabase.co/functions/v1/queuego-credit/readiness',headers={'Authorization':'Bearer '+key,'apikey':key})
+              try:
+                  with urllib.request.urlopen(request,timeout=20) as response:
+                      result=json.load(response)
+                  allowed=('environment_ready','live_key_configured','webhook_signing_configured','live_intake_enabled')
+                  print(json.dumps({k:result.get(k) for k in allowed}))
+              except urllib.error.HTTPError as e:
+                  print(json.dumps({'readiness_http_status':e.code}))
+          PYCODE

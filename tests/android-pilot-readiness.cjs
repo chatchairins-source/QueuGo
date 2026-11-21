@@ -1,36 +1,36 @@
-const fs=require('fs'),path=require('path'),assert=require('assert');
+'use strict';
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'..');
-const workflow=fs.readFileSync(path.join(root,'.github/workflows/build-queuego-pilot-apks.yml'),'utf8');
-let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
-
-ok(/name: QueueGo Android Pilot Test APK/.test(workflow),'Pilot APK workflow must be clearly labeled');
-ok(/npm test/.test(workflow),'Pilot APK build must run the full regression suite');
-ok(/QG_FIREBASE_GOOGLE_SERVICES_JSON_B64/.test(workflow),'Pilot APK must require Firebase config');
-ok(/Firebase config has no Android client/.test(workflow),'Pilot APK must verify Firebase package mapping');
-for(const id of ['com.queuego.customer','com.queuego.merchant','com.queuego.rider']){
-  ok(workflow.includes('appid: '+id),'Pilot APK workflow must include '+id);
+const read=p=>fs.readFileSync(path.join(root,p),'utf8');
+const workflow=read('.github/workflows/build-native-rider-pilot.yml');
+let checks=0;
+const ok=(value,why)=>{assert.ok(value,why);checks++};
+ok(!fs.existsSync(path.join(root,'.github/workflows/build-queuego-pilot-apks.yml')),'obsolete Capacitor pilot APK workflow must remain retired');
+ok(!fs.existsSync(path.join(root,'.github/workflows/build-queuego-apks.yml')),'obsolete Capacitor release workflow must remain retired');
+ok(workflow.includes('name: QueueGo Native Android Pilot'),'Pilot must be identified as Native Android');
+ok(workflow.includes('Full QueueGo regression')&&workflow.includes('npm test'),'Pilot must run complete QueueGo regression');
+ok(workflow.includes('parallel-role-smoke:')&&workflow.includes('role: [customer, merchant, rider]'),'Pilot must test all three Native roles');
+ok(workflow.includes('max-parallel: 2')&&workflow.includes('fail-fast: false'),'All role jobs remain isolated with bounded simultaneous dependency downloads');
+ok(workflow.includes('github.event.pull_request.head.sha || github.sha'),'Pilot must checkout exact candidate SHA');
+ok(workflow.includes(':testDebugUnitTest')&&workflow.includes(':assembleDebug'),'Pilot must run Kotlin/JVM tests and assemble real Debug APKs');
+ok(workflow.includes(':shared:testDebugUnitTest')&&workflow.includes(':rider-navigation-map:testDebugUnitTest'),'Pilot must verify shared and Rider map unit tests');
+ok(workflow.includes('Verify Android 16 KB page-size packaging')&&workflow.includes('verify-16kb-page-size.py'),'Pilot must validate 16 KB APK packaging');
+ok(workflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64'),'Pilot must use real Firebase configuration when available');
+ok(workflow.includes('Firebase config has no com.queuego.rider Android client'),'Pilot must fail closed on mismatched Rider Firebase identity');
+ok(workflow.includes('Native Firebase config:')&&workflow.includes('native-android/rider/google-services.json'),'Pilot must provision role-bound Native Firebase configuration');
+ok(!workflow.includes('QG_ANDROID_KEYSTORE_B64')&&!workflow.includes('QG_ANDROID_STORE_PASSWORD'),'Pilot must not consume release signing secrets');
+ok(!workflow.includes(':customer:bundleRelease')&&!workflow.includes(':merchant:bundleRelease')&&!workflow.includes(':rider:bundleRelease'),'Pilot must not fabricate certified AABs');
+ok(workflow.includes('Reject WebView'),'Pilot must reject embedded WebView paths');
+ok(workflow.includes('Capture native launch, map and voice service lifecycle on Android'),'Pilot must retain installed-APK lifecycle evidence');
+ok(workflow.includes('Test installed country archive and camera without internet'),'Pilot must verify actual offline country map runtime');
+ok(workflow.includes('queuego-parallel-')&&workflow.includes('-jvm-apk-evidence'),'Role-specific test evidence must be retained');
+ok(workflow.includes('queuego-native-pilot-apks'),'Pilot debug APK artifacts must be tagged as test-only');
+for(const [role,appId] of [
+  ['customer','com.queuego.customer'],['merchant','com.queuego.merchant'],['rider','com.queuego.rider']
+]){
+  const gradle=read('native-android/'+role+'/build.gradle.kts');
+  ok(gradle.includes('applicationId = "'+appId+'"'),'Native '+role+' must retain production package identity');
+  ok(gradle.includes('compileSdk = 36')&&gradle.includes('targetSdk = 36'),'Native '+role+' must target Android API 36');
+  ok(workflow.includes("'"+appId+"'"),'Pilot Firebase mapping must explicitly include '+appId);
 }
-ok(/assembleDebug/.test(workflow),'Pilot APK workflow must build debug APKs');
-ok(!/bundleRelease|assembleRelease/.test(workflow),'Pilot APK workflow must never create release AAB/APK');
-ok(!/QG_ANDROID_KEYSTORE_B64|QG_ANDROID_STORE_PASSWORD|QG_ANDROID_KEY_PASSWORD/.test(workflow),'Pilot APK workflow must not consume release signing secrets');
-ok(/pilot-test\.apk/.test(workflow),'Pilot artifact must be unmistakably marked as test-only');
-ok(/aapt["']? dump badging|AAPT.*dump badging/s.test(workflow)&&/QG_APP_ID/.test(workflow),'Pilot APK package id must be verified after build');
-ok(/application-debuggable/.test(workflow)&&/Pilot test APK must remain a debug build/.test(workflow),'Pilot APK must be verified as debuggable/test-only');
-ok(/QG_GIT_SHA:\s*\$\{\{ github\.sha \}\}/.test(workflow)&&/git_sha=\$QG_GIT_SHA/.test(workflow),'Pilot evidence must link artifact to exact source commit');
-ok(/QG_RUN_ID:\s*\$\{\{ github\.run_id \}\}/.test(workflow)&&/github_run_id=\$QG_RUN_ID/.test(workflow),'Pilot evidence must retain GitHub run id');
-ok(/pilot-test-evidence\.txt/.test(workflow),'Pilot evidence artifact must be uploaded');
-ok(/queuego-native-push\.js/.test(workflow),'Pilot bundle must include native push client');
-const pilotCopyLines=workflow.split('\n').filter(line=>line.trim().startsWith('cp '));
-const pilotMerchantCopy=pilotCopyLines.find(line=>line.includes('../role-realtime.js'))||'';
-const pilotRiderCopy=pilotCopyLines.find(line=>line.includes('../queuego-native-push.js')&&!line.includes('../role-realtime.js')&&!line.includes('../customer-features.js'))||'';
-for(const asset of ['../queuego-password-policy.js','../account-deletion.js','../queuego-ugc.js','../queuego-native-push.js']){
-  ok(pilotMerchantCopy.includes(asset),'Pilot Merchant bundle must copy '+asset);
-  ok(pilotRiderCopy.includes(asset),'Pilot Rider bundle must copy '+asset);
-}
-ok(workflow.includes("s=s.replace('../queuego-password-policy.js','queuego-password-policy.js')")&&workflow.includes("s=s.replace('../queuego-ugc.js','queuego-ugc.js')"),'Pilot nested roles must rewrite shared runtime paths');
-ok(/play-icon-512\.png/.test(workflow)&&/resize\(\(512,512\)/.test(workflow),'Pilot artifacts must include approved 512px Play Store icon');
-ok(/@capacitor\/push-notifications/.test(workflow),'Pilot prerequisites must enforce Capacitor push plugin');
-ok(/POST_NOTIFICATIONS/.test(workflow),'Pilot APK must verify Android notification permission');
-ok(/Generated Android project is not targetSdk 36/.test(workflow)&&/Generated Android project is not compileSdk 36/.test(workflow),'Pilot APK must verify generated API 36 project');
-
-console.log(JSON.stringify({checks,failures:0,scope:'Physical-device Pilot APK build remains debug-only, regression-gated and Firebase-aware'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Native Pilot Kotlin/JVM Debug APKs, Firebase identity, offline/launch and signing isolation; physical certification remains separate'}));

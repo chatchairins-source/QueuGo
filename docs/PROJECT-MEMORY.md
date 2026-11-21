@@ -1,3 +1,200 @@
+## 2026-11-21 Recover actual Integration Maven failures without retry storms
+
+- Exact bb450ed8 failed Customer API26 build job136843034162 (pinned coroutines/JavaWriter/Hamcrest/jsr305 metadata misses; the POM probe also exhausted404), navigation-map job136843095880 (Valhalla0.6.4 absent) and map-display job136843095960 (Maven429 for the pinned Kotlin Compose plugin marker disabled repository resolution). No source/test failure was rerun blindly.
+- Gradle setup caches on the long-lived Integration branch were read-only. Permit cache writes only on main/Integration; PRs and other branches remain read-only. Limit the existing Customer and role matrices to two simultaneous jobs while retaining all API/role targets. Sonatype recommends reducing redundant downloads/caching rather than retrying harder: https://central.sonatype.org/faq/429-error/ . Gradle cache policy: https://github.com/gradle/actions/blob/main/docs/setup-gradle.md .
+- Replace duplicated inline Maven recovery with one shared real-Gradle runner for Customer, role builds, map-display and navigation-map instrumentation. A known exact-version metadata failure allows only one identical-task retry after cooldown and validated canonical Central POM identity; no mirror/version substitution, offline mode or assertion bypass. First/retry logs and final failure remain evidence. Unknown dependency, mixed compiler/test failure, invalid POM and403 fail closed; metadata retries are bounded and respect bounded Retry-After.
+- Local CLI/loopback-HTTP regressions are not Android runtime proof. Require exact-head hosted Customer API26/30/33/35, Native Pilot/map jobs and Export acceptance before integration. No Production/financial mutation, main promotion or signed AAB. Existing backup/restore credentials, SQL parity, P0/VAT rollout and physical/Play evidence remain unresolved.
+
+## 2026-11-21 Supersede obsolete Integration/main Pilot pushes
+
+- Observed Integration73f9d572 Native Pilot44899645675 blocked by obsolete614ee22e Pilot44898526781: the per-ref workflow concurrency explicitly kept every running old push alive. This delays exact-current-source acceptance after tested PR integration.
+- Cancel superseded Native Pilot runs when the NEW event updates a PR or pushes Integration/main, retaining the existing per-ref/workflow group. Manual events and other branches keep cancel-in-progress=false. PR updates must also supersede their own obsolete source to avoid waiting for a rejected predecessor. Signed Release Certification/build workflows and authenticated review locks are unchanged. No test is skipped and each surviving SHA must still pass its own complete Pilot.
+- Queue semantics are workflow-only; YAML/expression scope validation is local evidence, not proof that hosted GitHub cancellation has happened. Require exact-head CI before merge; once merged, verify the newest Integration run progresses and only obsolete same-group Pilot runs are cancelled.
+- No Production mutation, main promotion or signed Release AAB. Backup credentials, SQL-body reconciliation and controlled P0 rollout/physical/Play evidence remain unresolved.
+
+## 2026-11-21 Require live SQL-body parity during certification
+
+- Fresh read-only Production export: 392 migrations, each with exactly one stored SQL statement. Byte-exact comparison with current Integration source: 59 matched, 92 differing, 241 Production-only, 108 source-only. Do not repair history or apply old migrations automatically.
+- Certification checked version sets only; wire the existing fail-closed digest verifier to independently hashed live SQL bodies, under read-only PGOPTIONS. Null/multiple bodies yield invalid digests; empty history, differing/missing/additional source and SQL errors must block certification. No SQL body or credential is logged. The temporary hash manifest is cleaned on exit.
+- This prevents a future equal-version/different-body ledger from certifying release. It does not resolve present migration drift, deploy P0, supply backup credentials or certify signed AAB/Play.
+
+## 2026-11-21 Run timeout/claim acceptance on the release Integration
+
+- Merged #1389 at 6e41747d after exact-head Native, Map, Dispatch PostgreSQL/PGlite and evidence checks passed. #1387/#1388 ancestry confirmed.
+- Found no-rider timeout/claim-race CI accepted only PRs into its historical backend branch, so Integration changes did not execute those real PostgreSQL tests. Enable existing isolated timeout and claim workflows on Integration/main pushes and relevant PRs, plus manual dispatch. Retain disposable databases, pinned PostgreSQL and all financial assertions; expand timeout fixture/helper path coverage.
+- Production read-only recheck: 392 migrations; offer guard and cash timeout function both absent. No Production mutation, main merge, signed AAB or Play submission. New workflow HEAD requires hosted success before merge.
+
+## 2026-11-21 Storage backup and restore reject path traversal
+
+- Also reproduced compare-inventory accepting all19 counts as nonnumeric strings (Number() produced NaN and every comparison was false). Require original nonnegative safe integers on both sides. Actual CLI regressions cover every critical key and malformed source/restored values, valid zero/counts and unchanged bounded-drift behavior. No claim that count comparison alone proves complete backup fidelity.
+- Reproduced the real backup CLI accepting a remote-object fixture photos/../../escaped.txt and writing outside its Storage root. No live data or Production credentials used. Restore used the same unchecked path composition.
+- Share strict bucket/object segment validation before normalization, reject empty/dot/parent/absolute/backslash/NUL paths, and preserve valid nested/Unicode/literal-percent names. Backup validates before download or folder recursion; restore preflights all manifest paths before creating its local SDK client or performing any restore.
+- Real CLI subprocess regressions substitute only the SDK boundary and cover invalid paths plus nested backup/restore and hash verification:72 checks pass. Existing local-only restore target19 and backup/release contracts27 also pass. This is isolated regression evidence, not an encrypted Production backup or actual restore acceptance. Credentials, main promotion, P0 deployment and physical/Play certification remain gated.
+- Play asset-pack PR1366 exact d28c4d2e passed Native, Export, actual Debug AAB split-installed offline routing and real Fused GPS on emulator, then merged into Integration54296a9b. Pending provenance PR1381 is included by ancestry and closed. New Integration HEAD requires its own CI; no signed Release AAB is claimed.
+
+## 2026-11-21 Keep package QA independent and cache only verified SDK inputs
+
+- Combined fd243a8e Rider routing44878462078 failed before app build on Maven Central HTTP429 during the audited baseline AAR fetch. Keep official URL/version and fixed hashes, add bounded15-second backoff and a content-keyed immutable-input cache. Always rerun prepare-repository.py validation of ZIP/AAR/POM/source-built ELF on cache hits; cache saves only after that succeeds. Corrupt-cache executable regression rejects before creating a repository. No cached app or old CI acceptance reused.
+- fd243a8e account-free Play QA workflow was cancelled while pending under the shared review-account mutex. Move that unchanged global lock to authenticated capture ONLY; keep cancel-in-progress=false and Production review credentials out of package QA. Package QA uses a per-ref lock and waits for exact-source offline success before restoring the verified SDK input cache. This avoids duplicate Maven fetches and prevents unrelated account jobs cancelling bundle checks.
+- Forward-reconciled Integration67bc9dfd (actual AAB manifest PR1375 merged after exact5371024e Native/Export success). Keep strict recovered-country candidate1381 and current Backend/Customer code. Source500 and cache/provenance/manifest/debug-store/workflow checks pass locally; latest exact-source real Android checks remain mandatory. No Production or main change.
+
+## 2026-11-21 One combined Play release-source candidate
+
+- Combined existing PR1366 with reviewed Integration28a64aaa, strict country-provenance candidate0605222d (#1381) and actual AAB runtime-manifest candidate5371024e (#1375), retaining their Git parents. Only memory conflicts required resolution; keep all records and current Backend/Customer changes. Child PRs remain open until this composition passes and is integrated.
+- Actual1f7df050 QA136759914159 built/validated all3 Debug AABs, generated Gradle-identity-signed splits and passed all split16KB checks. Installation then failed because bundletool --local-testing tried writing the scoped-storage on-demand simulation directory. These packs are install-time only. Generate normal split APKs and require BOTH real installed asset splits plus unchanged offline route/reroute/interrupted-copy/two-cold-process tests; never grant external-storage access or fabricate Play delivery success.
+- Corrected QA debug signing-report path worked on runner: actual store was under .config/.android. Fresh preflight06:55UTC still reports missing QG_SUPABASE_SERVICE_ROLE_KEY/QG_SUPABASE_DB_URL/QG_BACKUP_PASSPHRASE, while Firebase and release-keystore credentials validate. Signed production AAB and physical/Play certification remain blocked.
+- Customer API35 dependency-only first attempt failed; one targeted job rerun on unchanged Integration28a64aaa passed, completing API26/30/33/35. Original failure remains recorded. No Production write or main merge.
+
+## 2026-11-21 Asset-pack candidate local Integration reconciliation
+
+- Forward merge prepared against validated Integration28a64aaa, preserving current Customer map, Rider search-clock guards and verified country-data recovery. Only PROJECT-MEMORY conflicted; retain both records. No backend code reversion or reset/force push.
+- Remote PR1366 HEAD remains1f7df050 while its actual split QA runs; do not publish this reconciliation until that diagnostic run has completed. Export failure on1f7 is the already-fixed old Geofabrik transport path, so the reconciliation carries its existing fix instead of inventing another copy. No Production writes or signed-release claim.
+
+## 2026-11-21 Debug AAB build and real signing-store correction
+
+- Exact eb04b804 actual QA job136752938648 built all three Debug AABs, verified the Rider country pack payload hashes and passed pinned bundletool structural validation for all three. It failed BEFORE split installation because the newly added QA step assumed HOME/.android/debug.keystore, absent on this runner. No signed production release or split-runtime success is claimed.
+- Resolve the exact Rider debug Store/Alias from Gradle :rider:signingReport (as Android signing docs prescribe); require one debug config and a real nonempty store. Use this same identity for bundletool split generation so the freshly built instrumentation signer matches. Do not create an unrelated key or use release credentials. Parser fixtures cover alternate/spaced path, wrong variant/config, duplicate report and missing file; local parser, source contract and all shell blocks pass. Exact-new-head hosted QA remains required.
+- Predecessor eb04b804 Native Pilot44873437531 and nationwide offline routing/renderer/ANGLE/real-Fused44873437488 both succeeded; they are predecessor evidence, not certification of the corrected head.
+- Source country-data recovery PR1373 and actual AAB non-debug/target-SDK verifier PR1375 remain separate Integration candidates. No Production/money/Play write.
+
+## 2026-11-21 Real Play split-package runtime gate, pending CI
+
+- Extended existing authenticated Android QA workflow with an independent account-free Debug AAB job: fetch successful exact-source offline-tested Rider APK, stage verified country bytes, build all three Debug AABs, validate pinned bundletool, verify country payload hashes and 16 KB generated splits, install actual Rider splits, reuse all three offline routing tests twice including interrupted-copy recovery and cold restart. This is Debug packaging QA, never signed release/physical/Play certification. Default original APK runtime path remains intact.
+- Local Play readiness169 + Python10, certified workflow58 and certification72 checks pass; Python/workflow/shell syntax and diff whitespace pass. Hosted job and real installed splits remain unproven until exact-head CI completes.
+- Fresh existing secret preflight rerun42630768316 on 2026-11-21 passed Firebase and upload-keystore/password/alias validation. Missing secret names: QG_SUPABASE_SERVICE_ROLE_KEY, QG_SUPABASE_DB_URL, QG_BACKUP_PASSPHRASE. No credential values read or exposed. This preflight is credential presence/validation, not current-source certification.
+- Production read-only05:56:41UTC:392 migrations, offer guard and timeout terminalizer absent, private release evidence bucket has0 ZIPs. No Production write. Customer map PR1369 merged into Integration6e837fc9 after API26/30/33/35 runtime success at f42774fe; alternate test-only PR1368 closed as superseded. Main remains gated.
+
+## 2026-11-21 Recovered-country provenance packaging acceptance
+
+- Exact Integration28a64aaa Native44875886175 job136760359743 rejected the real Rider APK because recovery adds thailand-shortbread-recovery.json but verify-bundled-thailand-apks.py allowed only2 map entries. Source country PR1373's positive run did not expose this recovered-data branch incompatibility.
+- Reproduced the rejection with the actual CLI and isolated ZIP fixtures. Accept only the one known provenance filename with exact pinned reference run/artifact/ZIP SHA, data_only=true, matching actual rendering source URL and a valid reference APK digest. Keep all unknown/duplicate-file, map hash/length/compression, Customer/Merchant online-only and exact DEX source guards. Actual current APK rendering/install gates remain unchanged.
+- Added executable CLI positive/negative cases and wired into Native before actual APK inspection. Fixtures are not installable APK, runtime or signed-release evidence. Hosted exact-head Native and installed-country gates remain mandatory. No Production or signing changes.
+
+## 2026-11-21 Release verifier forward-reconciled with validated country recovery
+
+- Forward merge Integration28a64aaa into the AAB manifest candidate, retaining both parents and both memory records. Country recovery PR1373 passed exact Native/Installed Country/Export before Integration merge. Old transport PR1329 closed only after confirming its original commits are already ancestors and debug-only fallback publication is superseded. Current combined HEAD needs new CI; no prior result is relabelled.
+
+## 2026-11-21 Verify actual AAB runtime manifest independently
+
+- Post-build verifier checked APK non-debuggability but only AAB package/version/page alignment/signature. It now also parses actual bundletool-dumped AAB XML, requires exactly one application, rejects debuggable true/unknown flags and enforces numeric targetSdk>=36 independently of APK/source assertions. Missing android:debuggable correctly defaults false.
+- Isolated XML regression exercises valid default/false/0, true/1/unknown/reference flags, missing/old/codename target, higher numeric target and invalid/missing/duplicate manifest structures.4 test methods pass; existing workflow58, certification72 and Play169+Python10 pass. These fixtures are NOT signed AAB or physical acceptance.
+- No certified build has run; signing/Firebase preflight passed but backend backup credentials and physical/Play evidence remain missing. Do not weaken any existing main/certification gate.
+
+## 2026-11-21 Native country build transport recovery
+
+- Exact Integration6e837fc9 Native44872874421 failed its country step again after canonical+IPv4 curl7. Add recovery only after both transports exhaust known transport errors; HTTP errors, write errors and checksum failures remain fatal.
+- Reuse the exact immutable full-country DATA and validator already in rider-offline-routing.yml: artifact12965729022 SHAa2a6985556e6ba26ef4509ba3605266ae6aa1d541bc6d772b076eac1f7a0e9b0, actual rendering source thailand-261029, explicit provenance/summary. Never relabel as monthly261101, reuse predecessor application code or reuse old CI acceptance. Current-source APK build, installed offline rendering and runtime gates remain required.
+- Existing real-shell transport regression now checks unavailable reference artifacts and IPv4 HTTP errors;12 checks pass, Native source496 passes, shell/YAML syntax and whitespace pass. Hosted country build still required. No Production/signing/Play write.
+
+## 2026-11-21 Cash-helper dependent guard composition
+
+- Extended isolated fixture to relevant Production UUID/numeric types and installed captured unmodified queuego_guard_cash_payment (MD5 cd73f6eec0a50bb8fd02fa2684ed685d) and queuego_guard_cash_delivery (MD5 034a0abb8a4743ae46325d1923022126), alongside the actual order guard.
+- Verify customer/shop ordinary cancellations remain compatible through all three guards; fixture-admin no_rider transition still composes; late client payment insertion and amount tampering are rejected; downstream failure rolls back order/payment/delivery with all guards present. The actor lookup remains an explicit fixture, not live JWT/RLS evidence.
+- Local PGlite116 checks pass. Previous order-guard-only exact hosted2926ca8b passed PGlite100 and real PostgreSQL109; those results do not certify this expansion. Latest real PostgreSQL and Native CI required. No Production writes, no guard weakening, no parent timeout authority, migration/restore or release certification claim.
+
+## 2026-11-21 Cash-helper integration with actual cash-order guard
+
+- Captured current Production queuego_guard_cash_order() READ ONLY, MD5 faec72ee314f12ef37a2c72005c44bc0. Isolated helper fixture now installs this unmodified BEFORE trigger after unit/race/rollback coverage, with an explicitly simulated actor lookup (not live JWT/RLS certification).
+- Verify no-actor/customer/shop/rider/service-role-text cannot transition the guarded order to no_rider_available and no dependent money/status changes occur. Ordinary customer cancellation remains compatible; fixture-admin transition composes with the helper; even fixture-admin cannot terminalize a captured payment. This confirms cron/backend cannot simply set order status under the current real guard: parent timeout authority remains unresolved and must not be bypassed or impersonated.
+- Local PGlite100 checks pass, including effective empty search_path and public-path negative control. Real PostgreSQL and exact-head Native CI remain required. No Production writes, no new status authority and no change to current guard/helper behavior in this test expansion.
+
+## 2026-11-21 Cash-helper search_path gate correction
+
+- Latest #1343 HEADff6ec509 failed hosted44843603000 before PostgreSQL race tests: strict text check expected search_path= but actual empty path serialization includes quoted empty identifier. Reproduced the failing assertion locally.
+- Keep worker hardening SET search_path TO empty intact. Runtime gate now applies the stored GUC inside a rollback-only transaction and asserts pg_catalog.current_schemas(false) resolves zero user schemas. Negative public-path control must fail. SECURITY DEFINER/ACL and financial rollback checks remain enabled. No Production writes or migration apply; latest exact-head hosted PostgreSQL and Native gates still required.
+
+## 2026-11-20 P0 cash dependent terminal-state candidate — REVIEW ONLY
+
+- Production READ ONLY catalog and aggregate: overdue ledger is pending/cash, no paid_at or processor reference; orders payment fields remain unknown. Cash-order lock table is an order-guard marker (order_id/locked_at), not evidence of a monetary balance or a captured payment. Do not delete it or infer permission to cancel.
+- Captured actual queuego_cancel_cash_dependents() definition MD5 8da535eedbd36995dcd259c3474fd201, owner postgres, ACL postgres/service_role only. Current helper cleans pending cash payments/deliveries for cancelled but not no_rider_available. Reproduced this gap in disposable PGlite.
+- Added ops/p0/terminal-cash-dependents-review-only.sql: preserves ordinary cancellation behavior and existing signature/ACL, covers only unassigned searching->no_rider_available with exactly one matching pending cash payment, no capture/reference, no money change, Market group, stock reservation, merchant receipt, rider advance/refund or progressed delivery. Reject unknown/historical state atomically. Keep guard marker; do not release funds or initiate transitions. Isolated 70 checks include baseline reproduction, old cancellation, NULL status, repeated update, ACL preservation, 18 negative financial states and downstream rollback.
+- NOT a migration/deployment or complete timeout lifecycle. No Production writes. Still requires exact-head CI, real PostgreSQL concurrency with all live triggers, audit/notification/stock lifecycle, migration drift, encrypted backup/actual restore, independent review and separately approved rollout. Do not use this candidate to resolve the live stranded order or claim #1268 closed.
+
+
+
+## 2026-11-21 Guest session ACL/RLS observed and exercised
+
+- Read-only live metadata confirms both qg_table_sessions/qg_table_requests have RLS enabled, owner/service_role grants only and qg_server_only_no_client_access policies ALL TO anon/authenticated USING false WITH CHECK false; neither role has CREATE on public. Captured this limited access surface into disposable tests, no Production policy changes.
+- Tests now execute ordinary owner-definer checkout and concurrency with those actual session policies enabled. Both client roles must be denied direct reads; rollback-only temporary client table grants exercise defense in depth: no visible rows, no UPDATE/DELETE and INSERT blocked by RLS. Full order/item trigger/RLS/settlement parity still requires separate evidence; these two session tables do not certify the entire application.
+
+## 2026-11-21 Guest checkout source reconciled with current Integration
+
+- Forward-merged Integration12f357c5 into #1246, retaining Worker/source history and all merged POS, real Fused GPS and financial preflight work. Retain Integration package/lock files (already pg8.23.1); no dependency downgrade or old-main overwrite. Shared memory conflict retains both current and guest records.
+- Predecessor baaffda7 exact44850977713 passed structural8, PGlite47 + PostgreSQL61: create totals/line, replay, invalid-cart rollback, session revocation race and new-checkout idempotency race. The reconciled final SHA needs fresh exact-head validation; no predecessor result is substituted. Keep DRAFT until complete live-trigger/RLS/settlement/deployment review. Production unchanged.
+
+## 2026-11-21 Guest checkout ordinary create and rollback regression
+
+- Extended the isolated checkout schema enough to run ordinary valid order creation and line totals, subsequent replay and invalid-quantity atomic rollback as anon. Uses captured unmodified Production qg_next_order_number (MD5 d6b34a0303aacce6fbcfd82b7c3c816e) and qg_table_distance_m (6ada408be6f231698e8ff0809d11d2d0), not fake success helpers. Only metadata was read; no live checkout/number generation or data mutation ran.
+- Added a real PostgreSQL first-checkout race: the second same-request caller must visibly wait on the session lock and, after commit, return the first order without a duplicate order/item/request. The schema remains synthetic without full live triggers/RLS/settlement. Do not claim business E2E or deployment approval from these positive function tests. Fresh exact-head PGlite/PostgreSQL results are required after this addition; f0cb8462 predecessor39 PostgreSQL checks are not final certification.
+
+## 2026-11-21 Guest checkout replay executable regression
+
+- Runtime negative testing additionally reproduced SQL NULL cart + NULL legacy payload hash returning a successful replay (SQL three-valued IF logic). Candidate now explicitly rejects p_items IS NULL before hashing/replay. This protects malformed/legacy data; the simplified nullable hash fixture is not evidence that live NOT NULL rows exist. Both source and runtime regression retain the case.
+
+- PR #1246 now includes a self-contained PGlite test using real pgcrypto and the unchanged original checkout function plus candidate migration. It reproduces the revoked-session replay disclosure in the old source, then runs the candidate RPC as anon, checks valid idempotency, revoked/expired/NULL expiry rejection, wrong device, changed/NULL cart hash, missing-order refusal, preserved function ACL and denied direct ledger/session writes. Synthetic fixture scope is explicitly limited: not live RLS/schema parity, new checkout concurrency or settlement certification. Real PostgreSQL additionally checks that a second replay waits on the session row lock and that committed revocation wins before the waiting replay returns; new-checkout and full session/RLS lifecycle remain unproven.
+- Corrected the existing real-PostgreSQL isolated test to assert the actual Thai payload-mismatch error instead of an absent English word. It still needs a dedicated loopback database with the complete fixture; no claim that it ran follows from the new PGlite test.
+- New exact-head workflow runs the 8 structural tests and the 32 shared runtime checks plus real-PostgreSQL existing-replay and committed-revocation row-lock races on PGlite and disposable PostgreSQL17.6. Only the local PGlite pass is known before hosted CI completes; do not treat a queued PostgreSQL step as evidence. Candidate migration is NOT applied to Production. Read-only current Production function comparison is now complete: captured definition MD5 59fdf2ac48864a52f77fbeaaacc8aace, matching committed original body, no application rows. Regression executes that exact definition and preserves observed anon/authenticated/service_role ACL. The live old replay guard is still after the first duplicate return. Keep this older-main-lineage PR draft until full schema/concurrency/E2E and Integration lineage reconciliation are complete. Current Integration is bfa3265a (POS #1342 merged); do not merge this divergent branch wholesale.
+
+## 2026-11-21 Reused Worker Geofabrik transport fix after actual export failure
+
+- Export11802821 run44850349084 job136679987351 failed curl7 connecting to canonical Geofabrik despite six retries. Forward-merged Worker4 commits5409892e/d9c356bf from #1329, preserving attribution/history, without its separate debug-smoke publication commit. Same HTTPS PBF/official MD5 now retry IPv4 only for curl6/7/28/35/52/56, remove partial files, and fail hard for HTTP404 or unknown errors. No snapshot/source/checksum substitution or skipped country tests.
+- Added execution of the actual workflow shell with disposable curl responses: normal fetch, six transport failures, PBF/MD5 HTTP404, unexpected failure and exhausted IPv4 failure. Existing official MD5 and size checks remain. This controlled regression is NOT successful upstream download or country runtime proof; final combined exact-head installed-country/exporter/Map/Native/P0 gates are all required.
+
+## 2026-11-21 Release safety changes converged for final exact-head validation
+
+- #1353 incorporates #1352 by forward merge, retaining its history, on Integration12f357c5. This combines future-clock offer suppression, local-only Storage restore and the actual parallel Rider Maven404 recovery fix. Resolve only the shared memory-document conflict by retaining both records; no Worker reset/force push. Keep #1352 until the converged #1353 actually passes and merges, then close it as superseded.
+- The combined final source must pass P0 Source Gate (real PostgreSQL + PGlite), Map Buriram and Native/full regression on its exact final SHA. Prior component successes do not certify that final combined HEAD. Remain source-only: no Production writes, backups/restores or money movement. #1268 and actual encrypted backup/restore/approved rollout/physical/Play gates remain open.
+
+## 2026-11-21 Parallel Rider pinned Maven metadata retry repaired
+
+- PR #1353 exact223eafec Native44849579802 rider job136677483633 failed on pinned valhalla-mobile0.6.4 POM HTTP404; default curl --retry did not include 404. Added bounded two-retry/45-second budget only for the existing exact Maven Central POM, retaining identity/nonempty validation and one unchanged Gradle refresh. Real compile/test failures remain fatal; no artifact/version substitution or test skipping.
+- Runtime test uses the actual workflow curl flags against a disposable HTTP server, verifies one temporary404 recovers and permanent404 fails after exactly three requests. Updated #1353 final head must pass fresh Native; old compile failure remains recorded, never relabelled successful.
+
+## 2026-11-21 Storage restore target enforced locally
+
+- The restore drill script used upsert writes but trusted QG_RESTORE_SUPABASE_URL without checking its destination. Added strict HTTP(S) loopback-only validation before manifest reads and network-client import, rejecting Production/other remote hosts, URL credentials, nonroot paths, query and fragments. The unchanged drill local API_URL remains supported; no Production restore/deploy was run.
+- Runtime regression invokes the real entrypoint for forbidden endpoints with an intentionally missing manifest and no SDK import, requiring the local-target rejection rather than ENOENT/import/network failure. Positive helper cases cover IPv4/IPv6/localhost. Wired into the existing backup regression/npm test. This guard is not encrypted backup or actual restore proof; full drill and release evidence remain pending.
+
+## 2026-11-21 Rider Fused GPS integrated after exact-source gates
+
+- PR #1304 merged as c43e068b after fe41449f passed Native Pilot44844975972, actual offline routing/cold restart/rendering/ANGLE/real Fused44844976051, country APK export44844976471 and authenticated Rider/Merchant review + background FCM44844975993. API33 guest avoids the reproduced API30 GNSS epoch clock bug; application timestamp/freshness/accuracy gates remain intact. Physical road testing/API30 Fused/signed Play certification are still pending. No Production deployment.
+- Financial preflight branch forward-reconciled with c43e068b and retains both GPS and POS tax changes. Financial preflight #1348 merged as12f357c5 after exact49227edd passed Native44848250793, financial actual-query64/64 and isolated gates. Keep this Integration baseline when continuing; Production is unchanged.
+
+## 2026-11-21 Actual rider-search preflight timestamps reconciled
+
+- Forward-reconciled Worker backend #1347/#1348 with Integration bfa3265a, retaining the merged POS tax fixes. The read-only financial preflight now requires an actual sane rider_search_started_at, not merely a merchant/order fallback; missing creation/search timestamps and invalid chronological ordering remain blocked. Repaired the isolated fixture to include a valid created_at and distinguish reporting fallback from actual search authority.
+- Exact 21beb17a hosted run44847893007 passed actual-query PGlite63 + PostgreSQL63. The final test version also executes the Worker seven-case timestamp SQL truth table on each database engine (64 checks expected); final hosted/Native results remain required. Actual SQL regression covers missing/future/inconsistent search start and missing creation time, with recovery and unchanged financial blockers/read-only enforcement. Added the same actual-query suite to disposable PostgreSQL17.6; hosted exact-head success is required, not inferred from PGlite. This is diagnostic read-only SQL, not a timeout entrypoint or permission to mutate Production. #1268 remains open and backup/restore/approved rollout gates remain.
+## 2026-11-21 Prospective P0 offer guard rejects future clocks
+
+- Reproduced a bug in the NOT deployed offer guard: caller offered_at ten minutes in the future was accepted with an expiry over ten minutes after server time despite the promised 30-second cap. Future rider-search timestamps also extended the search window. Both now fail closed; unchanged server-now dispatcher offers remain accepted. Review-only ops SQL and its existing migration mirror remain synchronized.
+- Added synthetic PGlite regression and actual captured-dispatch PostgreSQL cases including recovery after timestamp correction. Exact hosted source, Native and SQL gates must pass before Integration merge. This is prospective containment source; no live migration/order/payment/cash-lock/stock update, no extra privileges, no replacement of the current dispatcher. #1268 remains OPEN; encrypted backup/restore, full lifecycle and separately approved rollout still required.
+
+## 2026-11-21 Fused GPS guest image correction
+
+- API30 legacy GNSS transport hypothesis failed again at #1304 d4e2d173, routing44828377296. Artifact14675363253 confirms transport disabled yet GPS elapsed time still reports epoch-scale ~20777 days versus guest uptime ~2 minutes. Do not retry that configuration as a fix.
+- Primary AOSP evidence: https://android.googlesource.com/device/generic/goldfish/+/33a10687b382110682cf65c0cdb375df954e5227/gnss/util.cpp uses system_clock time for GNSS elapsed timestamp, matching observed clock-domain error; Android Location API requires elapsedRealtimeNanos since boot. Application monotonic freshness/accuracy/jump guards remain unchanged.
+- Pin real-Fused QA guest to API33 Google APIs; keep exact offline-tested APK, two fresh regional boots, real Fused callback, false debug-store injection, full tiles and lifecycle assertions. Use default GNSS transport; retain privacy-safe DEBUG rejection evidence. Location switch preflight now fails closed if API33 cmd verification fails after bounded transport recovery; never treat an old settings field as success.
+- API30 failure remains recorded and is NOT relabeled passed by an API33 run. This does not certify API30 physical GPS, field roads or Play readiness. Exact latest hosted emulator result required; local13 Fused/5 SDK regression and Python syntax pass only.
+
+## 2026-11-20 Reproduced Customer Android11 SurfaceView native crash
+
+- PR #1314 at `44a1b6a5` passed Customer API26/33/35. API30 run `44695889504` job `136152416974` crashed in the unchanged thirty-picker-cycle test: native `RefBase::incStrong` / `SurfaceControl.nativeSetFlags` / `SurfaceView.positionLost` on RenderThread after repeated disposal. This is an actual app-process SIGSEGV, not a test to retry away.
+- Shared online map factories now request MapLibre TextureView on legacy Android through API30, retaining default surface mode on Android12+ and the existing style, gestures, GPS and lifecycle ownership. Android11 passed the full six-test matrix at 9f608c66; Android8/API26 instead reproduced missing geographic pixels (3 colors) after EGL_BAD_MATCH in the old SurfaceView path, so the workaround includes legacy APIs. Dedicated Rider offline renderer is unchanged. Actual installed-view instrumentation verifies TextureView versus SurfaceView across all four APIs; retain rendered-road detail and thirty picker cycles/early background. Fresh exact-head build/runtime acceptance remains required.
+
+## 2026-11-20 Pilot convergence: exact-source Android review recovery
+
+- Reviewed main `db366228` and Integration #1072 `7e776164`. Exact Integration RC, Native Pilot, Map Buriram, P0 source gate, release-evidence/exporter regressions and installed nationwide routing + real Google APIs Fused GPS passed. Customer API35 metadata retrieval and authenticated Rider Profile review failed; do not replace those failures with older successes.
+- Customer run `44689261223`, job `136130882429`: Gradle could not retrieve pinned Central modules, then curl returned HTTP 404. Existing curl retries excluded 404. Retry only the same allowlisted POM retrieval, with two retries and a 45-second retry budget; validate nonempty artifactId before the existing single Gradle refresh. Actual local HTTP tests reproduce temporary 404 recovery and persistent 404 exhaustion; no test/compile failure bypass.
+- Rider run `44689261539`, job `136131557770`: diagnostics entry did not satisfy scroll visibility. Profile heading and bottom tab share text, while the previous minimum-label calculation could treat the heading as navigation. Identify the actual horizontal four-tab row and clickable tab bounds; keep occluded targets blocked. Preserve a genuine failure viewport and only target/navigation bounds if scrolling still fails. Exact-device acceptance remains pending; this is not a claim that the reproduced emulator failure is fully resolved.
+- Source regression checks cover duplicate Profile labels, navigation-icon overlap and missing tabs. The authenticated workflow runs them before capture. Real screenshots, background Rider FCM and full API matrix require the fresh commit's hosted CI.
+- Production read-only on 2026-11-20: 392 migrations, latest `20261111111354`; bounded-offer function/trigger are absent. P0 #1268 remains open. The timestamped source migration passes 114 isolated PGlite checks (guard/live dispatcher/negative/highwater), but containment/financial-safe terminalization, backup+restore evidence, VAT backend and signed three-role Play releases remain unverified. Do not claim 90% or Production readiness from source CI alone.
+
+## 2026-11-14 Release reconciliation candidate
+
+- Reconcile Web main `369e4b49` with Native candidate `b37405ea` on an isolated integration branch. Keep main's Web/POS implementations and browser CI. Use the Native release and certification workflows with the existing main-only attestation rules.
+- Keep both regression lists in package.json. The prior Native standalone candidate passed hosted Pilot; the integrated tree requires its own build and release evidence.
+- Production restore secrets, a hosted order-to-settlement run and signed APKs remain pending.
+
 ## 2026-11-13 Merchant POS responsive redesign
 
 - The owner supplied the red-and-white QueueGo POS reference. Merchant Web uses the current counter route, with a left navigation at desktop widths, a side-by-side catalog and bill in landscape, and an expandable bill with a bottom checkout action in portrait and on phones.
@@ -981,3 +1178,33 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Post-deploy readback: zero code rows, RLS enabled, no direct anon/authenticated table grants, four SECURITY DEFINER RPCs with fixed search paths and authenticated-only EXECUTE; lookup reads `coalesce(pos_price,price)` and has no GP/Delivery markup reference. Save/remove write audit_logs in the same transaction; no fake product, order or payment was made.
 - Production advisor identified missing child-side product_id/created_by indexes. PR #618 added both indexes with PGlite tests; exact RC `39772099278` passed and merge SHA is `bc8bdc173a8b798e84dee09833b76caf8b546614`. Applied as `20261022114328_pos_product_code_fk_indexes`; readback confirmed both. The remaining unused-index notice is expected while the registry is empty.
 - NEXT: align both migration filenames with Production versions, then proceed through the remaining POS inventory and authenticated cashier/device gates. QueueGo/POS remain NOT DONE.
+
+
+## 2026-11-20 P0 real PostgreSQL concurrency proof
+
+- Added tests/rider-offer-deadline-postgres.cjs and an isolated pinned PostgreSQL17.6 CI service alongside existing PGlite gates. Local real PostgreSQL17.6 passed 30 checks using three sessions: simultaneous cron, claim/terminal lock commit and rollback, no resurrection/spam/attempt121, role ACLs and transactional DDL rollback. Added migration-file workflow path filters. See docs/P0-DISPATCH-POSTGRES-20261120.md.
+- Scope is synthetic dispatch/locking proof; live financial terminalization, backup/restore and Production deployment remain incomplete. No Production writes or readiness-percentage certification.
+
+
+## 2026-11-20 POS tax derived-total update guard
+
+- Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. Reproduced isolated source defect: UPDATE of only pos_tax_amount=50,total_amount=150 on a 100+7 exclusive-tax fixture was accepted because the column-specific tax trigger did not fire. Existing integrity CHECK accepted the forged pair. This does not establish live client privileges or a Production exploit.
+- Extend existing tax snapshot trigger UPDATE columns to total_amount,pos_taxable_base,pos_tax_amount so the server recomputes derived tax/base/total from immutable bill snapshots and line net. Preserve existing RPC, RLS/ACL, legacy bill handling, Delivery rules and tax settings.
+- Added isolated runtime negative tests for forged exclusive total and inclusive tax split, plus base-only update; initial regression failed 150 != 107, then full tax fixture passed after correction. No Production writes or migrations applied. Exact-head CI, independent current Production schema/trigger compatibility, authorized rollout, receipt/refund/settlement acceptance remain required.
+
+
+## 2026-11-20 POS numeric special-value rejection
+
+- Continued on #1342 source after owner requested sustained bug fixing. Reproduced that PostgreSQL numeric NaN could create a synthetic POS bill even though comparison CHECKs passed; negative assertion initially failed with Missing expected rejection. This is source/isolation evidence, not a claim about live privileges or deployment.
+- Existing POS tax trigger now rejects NaN/Infinity/-Infinity in subtotal, discount and incoming total before any tax-disabled/legacy early return or arithmetic. Failed updates roll back; finite VAT calculations remain unchanged. Added actual-SQL nonfinite insert/update cases and rollback total/discount assertions. No Production DDL/DML or funds changed. Exact latest CI required; older PR CI is not certification for this addition.
+## 2026-11-20 Dispatch financial preflight timeout alignment
+
+- Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. The read-only financial preflight hardcoded 30 minutes while dispatcher/highwater honors Admin orderTimeout. Align with finite 1–1440 minute config and 30 minute fallback; report configured_timeout_minutes and overdue_at_configured_timeout. This changes diagnostic output, not cancellation authority. Deadline comparison includes the exact boundary.
+- Added actual-SQL PGlite execution regression (48 checks): configured timeout, invalid config fallback, each financial/stock/offer blocker, unknown identity/status/timestamps and read-only transaction enforcement. CI now watches and executes the operational SQL; previous negative fixture duplicated its predicate and could miss drift.
+- No Production writes, migrations, cancellations, cash unlock, refunds, stock changes or deployment. P0 #1268 stays OPEN/NO-GO. Exact-head CI and review remain required before integration; backup/restore, financial terminalization and authorized stranded-order resolution remain outstanding.
+
+## 2026-11-21 Correct stale Native Play map and signing preparation
+
+- Current Play readiness still described Longdo maps and Google-Maps-only Rider navigation; its source test required the obsolete Longdo sharing answer. Reconcile the technical draft with current shared MapLibre/OSM tiles, Supabase address RPC and Valhalla offline provider, linking exact Integration73f9d572 sources.
+- Keep conservative sharing draft and final AAB/network/provider review pending; do not infer zero collection/sharing from offline capabilities or library presence. Official Play Data Safety guidance still requires actual SDK/app transfer review. No final legal/Console classification or privacy-policy publication is claimed.
+- Update signing/Firebase input status to the observed 2026-11-21 preflight: inputs validate, while the three backup secrets remain missing. Input validation is not a signed artifact or physical push certificate. Keep all Production/P0/restore/physical/Play release gates.

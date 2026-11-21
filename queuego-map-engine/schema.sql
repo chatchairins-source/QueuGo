@@ -1,0 +1,15 @@
+PRAGMA foreign_keys=ON;
+CREATE TABLE metadata(key TEXT PRIMARY KEY,value TEXT NOT NULL);
+CREATE TABLE sources(id TEXT PRIMARY KEY,name TEXT NOT NULL,licence TEXT NOT NULL,attribution TEXT NOT NULL,url TEXT NOT NULL,snapshot_sha256 TEXT NOT NULL,snapshot_time TEXT);
+CREATE TABLE nodes(id INTEGER PRIMARY KEY,longitude REAL NOT NULL,latitude REAL NOT NULL,tags TEXT NOT NULL,traffic_signal INTEGER NOT NULL,barrier TEXT,railway TEXT,source_id TEXT NOT NULL REFERENCES sources(id),source_version INTEGER,source_updated_at TEXT,last_verified TEXT,confidence TEXT NOT NULL);
+CREATE VIRTUAL TABLE node_spatial USING rtree(id,min_lon,max_lon,min_lat,max_lat);
+CREATE TABLE ways(id INTEGER PRIMARY KEY,node_ids TEXT NOT NULL,coordinates TEXT NOT NULL,tags TEXT NOT NULL,source_id TEXT NOT NULL REFERENCES sources(id),source_version INTEGER,source_updated_at TEXT);
+CREATE TABLE segments(rowid INTEGER PRIMARY KEY,id TEXT UNIQUE NOT NULL,way_id INTEGER NOT NULL REFERENCES ways(id),from_node INTEGER NOT NULL REFERENCES nodes(id),to_node INTEGER NOT NULL REFERENCES nodes(id),geometry TEXT NOT NULL,distance_m REAL NOT NULL,road_class TEXT NOT NULL,name TEXT,oneway TEXT NOT NULL,motorcycle_oneway TEXT,access TEXT,vehicle_access TEXT,motor_vehicle_access TEXT,motorcycle_access TEXT,bridge TEXT,tunnel TEXT,layer TEXT,ramp INTEGER NOT NULL,service TEXT,junction TEXT,maxspeed_raw TEXT,speed_kph REAL,speed_source TEXT NOT NULL,construction TEXT,closure TEXT,attributes TEXT NOT NULL,source_id TEXT NOT NULL REFERENCES sources(id),source_version INTEGER,source_updated_at TEXT,last_verified TEXT,confidence TEXT NOT NULL);
+CREATE INDEX segment_way ON segments(way_id);
+CREATE INDEX segment_start ON segments(from_node);
+CREATE INDEX segment_end ON segments(to_node);
+CREATE VIRTUAL TABLE segment_spatial USING rtree(id,min_lon,max_lon,min_lat,max_lat);
+CREATE TABLE turn_restrictions(id INTEGER PRIMARY KEY,from_ways TEXT NOT NULL,to_ways TEXT NOT NULL,via_nodes TEXT NOT NULL,via_ways TEXT NOT NULL,restriction TEXT,conditional TEXT,except_profiles TEXT,members TEXT NOT NULL,tags TEXT NOT NULL,source_id TEXT NOT NULL REFERENCES sources(id),source_version INTEGER,source_updated_at TEXT,last_verified TEXT,confidence TEXT NOT NULL);
+CREATE TABLE places(id INTEGER PRIMARY KEY,osm_type TEXT NOT NULL,osm_id INTEGER NOT NULL,name TEXT NOT NULL,longitude REAL NOT NULL,latitude REAL NOT NULL,category TEXT NOT NULL,tags TEXT NOT NULL,source_id TEXT NOT NULL REFERENCES sources(id),UNIQUE(osm_type,osm_id));
+CREATE VIRTUAL TABLE place_spatial USING rtree(id,min_lon,max_lon,min_lat,max_lat);
+CREATE VIRTUAL TABLE place_search USING fts5(name,content=places,content_rowid=id,tokenize='unicode61');
