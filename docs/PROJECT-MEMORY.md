@@ -1,3 +1,8 @@
+## 2026-11-21 Cash-helper search_path gate correction
+
+- Latest #1343 HEADff6ec509 failed hosted44843603000 before PostgreSQL race tests: strict text check expected search_path= but actual empty path serialization includes quoted empty identifier. Reproduced the failing assertion locally.
+- Keep worker hardening SET search_path TO empty intact. Runtime gate now applies the stored GUC inside a rollback-only transaction and asserts pg_catalog.current_schemas(false) resolves zero user schemas. Negative public-path control must fail. SECURITY DEFINER/ACL and financial rollback checks remain enabled. No Production writes or migration apply; latest exact-head hosted PostgreSQL and Native gates still required.
+
 ## 2026-11-20 P0 cash dependent terminal-state candidate — REVIEW ONLY
 
 - Production READ ONLY catalog and aggregate: overdue ledger is pending/cash, no paid_at or processor reference; orders payment fields remain unknown. Cash-order lock table is an order-guard marker (order_id/locked_at), not evidence of a monetary balance or a captured payment. Do not delete it or infer permission to cancel.

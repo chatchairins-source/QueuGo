@@ -48,8 +48,22 @@ async function main() {
   equal((await db.query("SELECT proacl::text AS acl FROM pg_proc WHERE oid='public.queuego_cancel_cash_dependents()'::regprocedure")).rows[0].acl,acl);
   const definer=(await db.query("SELECT prosecdef, proconfig FROM pg_proc WHERE oid='public.queuego_cancel_cash_dependents()'::regprocedure")).rows[0];
   equal(definer.prosecdef,true);
-  assert.ok(definer.proconfig.includes('search_path='),'SECURITY DEFINER must use empty search_path');checks++;
   equal(definer.proconfig.length,1);
+  async function assertEmptySearchPath(config) {
+   const setting=config.find(value=>value.startsWith('search_path='));
+   assert.ok(setting,'SECURITY DEFINER must explicitly set search_path');
+   await db.exec('BEGIN');
+   try {
+    // PostgreSQL stores SET search_path TO '' as search_path="". Validate
+    // effective schema resolution rather than one serialized spelling.
+    await db.query("SELECT pg_catalog.set_config('search_path',$1,true)",[setting.slice('search_path='.length)]);
+    const schemas=(await db.query('SELECT pg_catalog.current_schemas(false) AS schemas')).rows[0].schemas;
+    assert.deepEqual(schemas,[],'SECURITY DEFINER must resolve no user schemas');
+   } finally {await db.exec('ROLLBACK');}
+  }
+  await assertEmptySearchPath(definer.proconfig);checks++;
+  await assert.rejects(assertEmptySearchPath(['search_path=public']),/must resolve no user schemas/);checks++;
+
   const clean=await seed(); await transition(clean);
   equal(await status(clean,'payments'),'cancelled');equal(await status(clean,'deliveries'),'cancelled');
   const stamp=(await db.query('SELECT updated_at::text AS stamp FROM payments WHERE order_id=$1',[clean])).rows[0].stamp;
