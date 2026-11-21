@@ -14,3 +14,9 @@ native-android/**/__pycache__/
 
 supabase/.temp/
 /map-assets/
+
+# Only generated, SHA-checked Rider Play install-time asset packs. Never commit
+# nationwide routing/map archives or authentication test APK provenance files.
+/native-android/rider_country_map/src/main/assets/
+/native-android/rider_country_routing/src/main/assets/
+/artifacts/rider-authenticated-review/

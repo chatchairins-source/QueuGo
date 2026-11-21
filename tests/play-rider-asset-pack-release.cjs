@@ -8,6 +8,17 @@ const settings=get('native-android/settings.gradle.kts');
 const flow=get('.github/workflows/build-native-release.yml');
 const source=get('native-android/qa/fetch-rider-offline-candidate.py');
 const stage=get('native-android/qa/stage-play-rider-assets.py');
+const ignored=get('.gitignore');
+for(const path of ['/native-android/rider_country_map/src/main/assets/',
+                   '/native-android/rider_country_routing/src/main/assets/',
+                   '/artifacts/rider-authenticated-review/']){
+  assert.ok(ignored.split(/\\r?\\n/).includes(path), 'Generated offline Play asset/provenance path must not make signed release checkout dirty: '+path);
+}
+const pythonAst=require('child_process').spawnSync('python3',['-c',
+  "import ast,pathlib;ast.parse(pathlib.Path('native-android/qa/stage-play-rider-assets.py').read_text());ast.parse(pathlib.Path('native-android/qa/fetch-rider-offline-candidate.py').read_text())"],
+  {encoding:'utf8',timeout:15000});
+assert.equal(pythonAst.status,0,'Rider offline Play packaging Python source must parse: '+pythonAst.stderr);
+
 assert.match(root,/com\.android\.asset-pack.*version "9\.4\.0"/,'asset pack plugin must match AGP');
 for(const name of ['rider_country_map','rider_country_routing']){
   assert.ok(settings.includes(':'+name),'settings must include '+name);
