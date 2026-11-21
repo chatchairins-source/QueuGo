@@ -181,6 +181,23 @@ END $negative$;
 -- A status change attempted without trusted RPC context must be blocked by
 -- the exact live qg_v22 trigger, including when the user is not a Rider.
 SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001401',31);
+-- Prove v22 independently with cash-before-guard disabled ONLY inside an
+-- isolated test transaction. ROLLBACK restores original trigger state.
+BEGIN;
+ALTER TABLE public.orders DISABLE TRIGGER zz_queuego_cash_order_guard;
+DO $v22_independent$
+BEGIN
+ BEGIN
+   UPDATE public.orders SET status='cancelled'
+    WHERE id='00000000-0000-4000-8000-000000001401';
+   RAISE EXCEPTION 'unexpected unguarded direct cancellation';
+ EXCEPTION WHEN OTHERS THEN
+   IF SQLERRM NOT LIKE '%order transition requires server RPC%'
+   THEN RAISE; END IF;
+ END;
+END $v22_independent$;
+ROLLBACK;
+-- With all actual guards enabled, BOTH must prohibit direct lifecycle edits.
 DO $no_rpc$
 BEGIN
  BEGIN
@@ -189,6 +206,7 @@ BEGIN
    RAISE EXCEPTION 'unexpected direct cash order cancellation';
  EXCEPTION WHEN OTHERS THEN
    IF SQLERRM NOT LIKE '%order transition requires server RPC%'
+     AND SQLERRM NOT LIKE '%order status change forbidden%'
    THEN RAISE; END IF;
  END;
  IF (SELECT status FROM public.orders WHERE id='00000000-0000-4000-8000-000000001401')
