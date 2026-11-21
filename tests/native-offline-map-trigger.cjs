@@ -44,4 +44,5 @@ assert.equal(builderDryRun.status, 0, builderDryRun.stderr);
 assert.ok(builderDryRun.stdout.includes('--ocean-path=/data/native-offline-map-trigger.cjs'), 'builder must pass the staged ocean polygons file to Planetiler');
 assert.ok(!builderDryRun.stdout.includes('--download'), 'offline map CI must not ask Planetiler to redownload checked inputs');
 
+require('./native-thailand-snapshot-transport.cjs');
 console.log('Native acceptance selectors: country archive, no-network runtime, gated APK export and Express PR race tests PASS');
