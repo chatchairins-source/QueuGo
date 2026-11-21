@@ -1,3 +1,29 @@
+## 2026-11-21 Cash-helper dependent guard composition
+
+- Extended isolated fixture to relevant Production UUID/numeric types and installed captured unmodified queuego_guard_cash_payment (MD5 cd73f6eec0a50bb8fd02fa2684ed685d) and queuego_guard_cash_delivery (MD5 034a0abb8a4743ae46325d1923022126), alongside the actual order guard.
+- Verify customer/shop ordinary cancellations remain compatible through all three guards; fixture-admin no_rider transition still composes; late client payment insertion and amount tampering are rejected; downstream failure rolls back order/payment/delivery with all guards present. The actor lookup remains an explicit fixture, not live JWT/RLS evidence.
+- Local PGlite116 checks pass. Previous order-guard-only exact hosted2926ca8b passed PGlite100 and real PostgreSQL109; those results do not certify this expansion. Latest real PostgreSQL and Native CI required. No Production writes, no guard weakening, no parent timeout authority, migration/restore or release certification claim.
+
+## 2026-11-21 Cash-helper integration with actual cash-order guard
+
+- Captured current Production queuego_guard_cash_order() READ ONLY, MD5 faec72ee314f12ef37a2c72005c44bc0. Isolated helper fixture now installs this unmodified BEFORE trigger after unit/race/rollback coverage, with an explicitly simulated actor lookup (not live JWT/RLS certification).
+- Verify no-actor/customer/shop/rider/service-role-text cannot transition the guarded order to no_rider_available and no dependent money/status changes occur. Ordinary customer cancellation remains compatible; fixture-admin transition composes with the helper; even fixture-admin cannot terminalize a captured payment. This confirms cron/backend cannot simply set order status under the current real guard: parent timeout authority remains unresolved and must not be bypassed or impersonated.
+- Local PGlite100 checks pass, including effective empty search_path and public-path negative control. Real PostgreSQL and exact-head Native CI remain required. No Production writes, no new status authority and no change to current guard/helper behavior in this test expansion.
+
+## 2026-11-21 Cash-helper search_path gate correction
+
+- Latest #1343 HEADff6ec509 failed hosted44843603000 before PostgreSQL race tests: strict text check expected search_path= but actual empty path serialization includes quoted empty identifier. Reproduced the failing assertion locally.
+- Keep worker hardening SET search_path TO empty intact. Runtime gate now applies the stored GUC inside a rollback-only transaction and asserts pg_catalog.current_schemas(false) resolves zero user schemas. Negative public-path control must fail. SECURITY DEFINER/ACL and financial rollback checks remain enabled. No Production writes or migration apply; latest exact-head hosted PostgreSQL and Native gates still required.
+
+## 2026-11-20 P0 cash dependent terminal-state candidate — REVIEW ONLY
+
+- Production READ ONLY catalog and aggregate: overdue ledger is pending/cash, no paid_at or processor reference; orders payment fields remain unknown. Cash-order lock table is an order-guard marker (order_id/locked_at), not evidence of a monetary balance or a captured payment. Do not delete it or infer permission to cancel.
+- Captured actual queuego_cancel_cash_dependents() definition MD5 8da535eedbd36995dcd259c3474fd201, owner postgres, ACL postgres/service_role only. Current helper cleans pending cash payments/deliveries for cancelled but not no_rider_available. Reproduced this gap in disposable PGlite.
+- Added ops/p0/terminal-cash-dependents-review-only.sql: preserves ordinary cancellation behavior and existing signature/ACL, covers only unassigned searching->no_rider_available with exactly one matching pending cash payment, no capture/reference, no money change, Market group, stock reservation, merchant receipt, rider advance/refund or progressed delivery. Reject unknown/historical state atomically. Keep guard marker; do not release funds or initiate transitions. Isolated 70 checks include baseline reproduction, old cancellation, NULL status, repeated update, ACL preservation, 18 negative financial states and downstream rollback.
+- NOT a migration/deployment or complete timeout lifecycle. No Production writes. Still requires exact-head CI, real PostgreSQL concurrency with all live triggers, audit/notification/stock lifecycle, migration drift, encrypted backup/actual restore, independent review and separately approved rollout. Do not use this candidate to resolve the live stranded order or claim #1268 closed.
+
+
+
 ## 2026-11-21 Guest session ACL/RLS observed and exercised
 
 - Read-only live metadata confirms both qg_table_sessions/qg_table_requests have RLS enabled, owner/service_role grants only and qg_server_only_no_client_access policies ALL TO anon/authenticated USING false WITH CHECK false; neither role has CREATE on public. Captured this limited access surface into disposable tests, no Production policy changes.
