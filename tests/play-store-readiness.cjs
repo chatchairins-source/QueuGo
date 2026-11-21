@@ -72,7 +72,7 @@ ok(/Target Audience decision.*CLOSED BETA/is.test(access),'Target Audience decis
 ok(/QueueGo Customer[\s\S]*Ages 18 and over only/i.test(access)&&/QueueMarket[\s\S]*Ages 18 and over only/i.test(access)&&/Queue Rider[\s\S]*Ages 18 and over only/i.test(access),'All three Play apps must remain 18+ only for Closed Beta');
 ok(manifest?.play?.target_audience?.customer==='18_PLUS_ONLY'&&manifest?.play?.target_audience?.merchant==='18_PLUS_ONLY'&&manifest?.play?.target_audience?.rider==='18_PLUS_ONLY','Target Audience must remain 18+ only for all apps');
 ok(manifest?.play?.restrict_minor_access==='ENABLE_FOR_CLOSED_BETA','Restrict Minor Access must remain enabled for Closed Beta');
-ok(/Longdo[\s\S]*Shared\s*=\s*Yes for location/i.test(readiness),'Data Safety must conservatively declare Longdo location sharing');
+ok(/MapLibre[\s\S]*PENDING_FINAL_NATIVE_NETWORK_REVIEW/i.test(readiness)&&!/Customer loads Longdo Map|all Rider navigation is an explicit Google Maps app handoff/.test(readiness),'Native map disclosure must reflect current SDKs and keep final provider review pending');
 ok(/Data sharing:\s*\*\*Yes \(conservative\)\*\*/i.test(readiness),'Play readiness must keep conservative data-sharing answer');
 
 ok(/Native Android Customer, Merchant, Rider apps/i.test(readiness),'Play readiness must identify Native apps as the certification scope');
