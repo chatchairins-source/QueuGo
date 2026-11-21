@@ -26,6 +26,12 @@ CREATE TABLE public.qg_rider_offer_history(
  rider_id uuid,offered_at timestamptz,resolved_at timestamptz,outcome text,attempt integer);
 CREATE TABLE public.audit_logs(user_id uuid,action text,entity_type text,entity_id uuid,description text,metadata jsonb);
 CREATE TABLE public.notifications(user_id uuid,title text,message text,type text,reference_id uuid);
+-- Install the actual fourth Production order transition BEFORE trigger on the
+-- same disposable PostgreSQL instance as all three captured cash guards.
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS rider_arrived_shop_at timestamptz;
+\ir ../fixtures/order-transition-v22-prod-20261121.sql
+CREATE TRIGGER qg_v22_order_transition_guard BEFORE UPDATE ON public.orders
+ FOR EACH ROW EXECUTE FUNCTION public.qg_v22_order_transition_guard();
 \ir ../../ops/p0/no-rider-timeout-cash-review-only.sql
 -- Use the unauthenticated Cron fixture, not the admin fixture from preceding tests.
 SELECT set_config('qg.test_actor_role','',false);
@@ -172,6 +178,80 @@ BEGIN
                             '00000000-0000-4000-8000-000000001304'))
  THEN RAISE EXCEPTION 'ineligible order generated cancellation notifications'; END IF;
 END $negative$;
+-- A status change attempted without trusted RPC context must be blocked by
+-- the exact live qg_v22 trigger, including when the user is not a Rider.
+-- First prove the null-role gap in the exact captured Production v22
+-- trigger, in a disposable test transaction with other guards temporarily off.
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001401',31);
+BEGIN;
+ALTER TABLE public.orders DISABLE TRIGGER zz_queuego_cash_order_guard;
+ALTER TABLE public.orders DISABLE TRIGGER cash_cancel;
+DO $reproduction$
+BEGIN
+ UPDATE public.orders SET status='cancelled'
+  WHERE id='00000000-0000-4000-8000-000000001401';
+ IF (SELECT status FROM public.orders WHERE id='00000000-0000-4000-8000-000000001401')
+    <> 'cancelled' THEN RAISE EXCEPTION 'expected original NULL-role v22 gap'; END IF;
+END $reproduction$;
+ROLLBACK;
+-- Review-only candidate requires exact captured function checksum, then
+-- switches the one unsafe <> comparison to IS DISTINCT FROM.
+\ir ../../ops/p0/v22-null-role-cash-review-only.sql
+-- Now prove the v22 guard alone rejects NULL-role status changes.
+BEGIN;
+ALTER TABLE public.orders DISABLE TRIGGER zz_queuego_cash_order_guard;
+ALTER TABLE public.orders DISABLE TRIGGER cash_cancel;
+DO $fixed_v22$
+BEGIN
+ BEGIN
+  UPDATE public.orders SET status='cancelled'
+   WHERE id='00000000-0000-4000-8000-000000001401';
+  RAISE EXCEPTION 'untrusted NULL role bypassed patched v22 guard';
+ EXCEPTION WHEN OTHERS THEN
+  IF SQLERRM NOT LIKE '%order transition requires server RPC%' THEN RAISE; END IF;
+ END;
+END $fixed_v22$;
+ROLLBACK;
+-- Both restored original cash guards and patched v22 must leave the money
+-- untouched after a malicious direct order change.
+DO $full_guard$
+BEGIN
+ BEGIN
+  UPDATE public.orders SET status='cancelled'
+    WHERE id='00000000-0000-4000-8000-000000001401';
+  RAISE EXCEPTION 'direct cash order cancellation unexpectedly accepted';
+ EXCEPTION WHEN OTHERS THEN
+  IF SQLERRM NOT LIKE '%order transition requires server RPC%'
+   AND SQLERRM NOT LIKE '%order status change forbidden%'
+  THEN RAISE; END IF;
+ END;
+ IF (SELECT status FROM public.orders WHERE id='00000000-0000-4000-8000-000000001401')<>'searching_rider'
+ OR (SELECT status FROM public.payments WHERE order_id='00000000-0000-4000-8000-000000001401')<>'pending'
+ THEN RAISE EXCEPTION 'untrusted status update affected cash ledger'; END IF;
+END $full_guard$;
+-- Crucial positive check: properly authorized private Cron still terminalizes
+-- an eligible order through both Production guards after null-safe patch.
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001402',31);
+DO $rpc_success$
+DECLARE changed integer;
+BEGIN
+ changed:=qg_private.cancel_rider_timeout_cash(20);
+ -- The previous synthetic 1401 remains a valid, expired search after the
+ -- ROLLBACK-only null-role regression. Cron correctly closes BOTH 1401 + 1402.
+ IF changed<>2
+ OR (SELECT count(*) FROM public.orders WHERE id IN
+       ('00000000-0000-4000-8000-000000001401',
+        '00000000-0000-4000-8000-000000001402') AND status='cancelled')<>2
+ OR (SELECT count(*) FROM public.payments WHERE order_id IN
+       ('00000000-0000-4000-8000-000000001401',
+        '00000000-0000-4000-8000-000000001402') AND status='cancelled')<>2
+ OR (SELECT count(*) FROM public.deliveries WHERE order_id IN
+       ('00000000-0000-4000-8000-000000001401',
+        '00000000-0000-4000-8000-000000001402') AND status='cancelled')<>2
+ THEN RAISE EXCEPTION 'trusted private cron failed after v22 patch: changed %',changed; END IF;
+END $rpc_success$;
+SELECT 'LIVE_V22_NULL_ROLE_GAP_REPRODUCED_AND_PATCHED_PASS' AS evidence;
+
 SELECT 'NO_RIDER_TIMEOUT_EXCLUSIONS_PASS' AS evidence;
 
 SELECT 'NO_RIDER_TIMEOUT_CASH_15_30_ATOMIC_PASS' AS evidence;
