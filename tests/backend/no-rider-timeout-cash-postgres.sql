@@ -26,6 +26,12 @@ CREATE TABLE public.qg_rider_offer_history(
  rider_id uuid,offered_at timestamptz,resolved_at timestamptz,outcome text,attempt integer);
 CREATE TABLE public.audit_logs(user_id uuid,action text,entity_type text,entity_id uuid,description text,metadata jsonb);
 CREATE TABLE public.notifications(user_id uuid,title text,message text,type text,reference_id uuid);
+-- Install the actual fourth Production order transition BEFORE trigger on the
+-- same disposable PostgreSQL instance as all three captured cash guards.
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS rider_arrived_shop_at timestamptz;
+\ir ../fixtures/order-transition-v22-prod-20261121.sql
+CREATE TRIGGER qg_v22_order_transition_guard BEFORE UPDATE ON public.orders
+ FOR EACH ROW EXECUTE FUNCTION public.qg_v22_order_transition_guard();
 \ir ../../ops/p0/no-rider-timeout-cash-review-only.sql
 -- Use the unauthenticated Cron fixture, not the admin fixture from preceding tests.
 SELECT set_config('qg.test_actor_role','',false);
@@ -172,6 +178,27 @@ BEGIN
                             '00000000-0000-4000-8000-000000001304'))
  THEN RAISE EXCEPTION 'ineligible order generated cancellation notifications'; END IF;
 END $negative$;
+-- A status change attempted without trusted RPC context must be blocked by
+-- the exact live qg_v22 trigger, including when the user is not a Rider.
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001401',31);
+DO $no_rpc$
+BEGIN
+ BEGIN
+   UPDATE public.orders SET status='cancelled'
+    WHERE id='00000000-0000-4000-8000-000000001401';
+   RAISE EXCEPTION 'unexpected direct cash order cancellation';
+ EXCEPTION WHEN OTHERS THEN
+   IF SQLERRM NOT LIKE '%order transition requires server RPC%'
+   THEN RAISE; END IF;
+ END;
+ IF (SELECT status FROM public.orders WHERE id='00000000-0000-4000-8000-000000001401')
+     <> 'searching_rider'
+ OR (SELECT status FROM public.payments WHERE order_id='00000000-0000-4000-8000-000000001401')
+     <> 'pending'
+ THEN RAISE EXCEPTION 'direct rejected status update changed order/ledger'; END IF;
+END $no_rpc$;
+SELECT 'LIVE_V22_ORDER_TRANSITION_GUARD_COMPOSES_PASS' AS evidence;
+
 SELECT 'NO_RIDER_TIMEOUT_EXCLUSIONS_PASS' AS evidence;
 
 SELECT 'NO_RIDER_TIMEOUT_CASH_15_30_ATOMIC_PASS' AS evidence;
