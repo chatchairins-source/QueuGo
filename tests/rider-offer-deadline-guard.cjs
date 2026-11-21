@@ -136,6 +136,15 @@ async function main() {
   );
   await equal(alreadyExpired.rows.length, 0, 'delayed offer past its original 30-second TTL cannot be inserted');
   await equal(await counts(13), [0, 0], 'delayed expiry cannot cause notification amplification');
+  await seed(14, 'searching_rider', null, '1 minute');
+  const futureOffer = await db.query(
+    "INSERT INTO public.qg_rider_order_offers(order_id,rider_id,offered_at,expires_at,attempt) VALUES($1,$2,now()+interval '10 minutes',now()+interval '11 minutes',1) RETURNING attempt",
+    [id(14),id(101)]);
+  await equal(futureOffer.rows.length,0,'future offered_at cannot extend an offer beyond 30 seconds of server time');
+  await equal(await counts(14),[0,0],'future offer cannot create targeted work');
+  await seed(15,'searching_rider',null,'-10 minutes');
+  await equal(await offer(15),false,'future search clock must not extend the dispatch window');
+  await equal(await counts(15),[0,0],'future search start produces no offer or notification');
   const priv = (await db.query(
     "SELECT has_function_privilege('anon','qg_private.guard_rider_offer_deadline()','EXECUTE') anon, has_function_privilege('authenticated','qg_private.guard_rider_offer_deadline()','EXECUTE') authenticated"
   )).rows[0];

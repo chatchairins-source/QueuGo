@@ -1,3 +1,8 @@
+## 2026-11-21 Release safety changes converged for final exact-head validation
+
+- #1353 incorporates #1352 by forward merge, retaining its history, on Integration12f357c5. This combines future-clock offer suppression, local-only Storage restore and the actual parallel Rider Maven404 recovery fix. Resolve only the shared memory-document conflict by retaining both records; no Worker reset/force push. Keep #1352 until the converged #1353 actually passes and merges, then close it as superseded.
+- The combined final source must pass P0 Source Gate (real PostgreSQL + PGlite), Map Buriram and Native/full regression on its exact final SHA. Prior component successes do not certify that final combined HEAD. Remain source-only: no Production writes, backups/restores or money movement. #1268 and actual encrypted backup/restore/approved rollout/physical/Play gates remain open.
+
 ## 2026-11-21 Parallel Rider pinned Maven metadata retry repaired
 
 - PR #1353 exact223eafec Native44849579802 rider job136677483633 failed on pinned valhalla-mobile0.6.4 POM HTTP404; default curl --retry did not include 404. Added bounded two-retry/45-second budget only for the existing exact Maven Central POM, retaining identity/nonempty validation and one unchanged Gradle refresh. Real compile/test failures remain fatal; no artifact/version substitution or test skipping.
@@ -17,6 +22,11 @@
 
 - Forward-reconciled Worker backend #1347/#1348 with Integration bfa3265a, retaining the merged POS tax fixes. The read-only financial preflight now requires an actual sane rider_search_started_at, not merely a merchant/order fallback; missing creation/search timestamps and invalid chronological ordering remain blocked. Repaired the isolated fixture to include a valid created_at and distinguish reporting fallback from actual search authority.
 - Exact 21beb17a hosted run44847893007 passed actual-query PGlite63 + PostgreSQL63. The final test version also executes the Worker seven-case timestamp SQL truth table on each database engine (64 checks expected); final hosted/Native results remain required. Actual SQL regression covers missing/future/inconsistent search start and missing creation time, with recovery and unchanged financial blockers/read-only enforcement. Added the same actual-query suite to disposable PostgreSQL17.6; hosted exact-head success is required, not inferred from PGlite. This is diagnostic read-only SQL, not a timeout entrypoint or permission to mutate Production. #1268 remains open and backup/restore/approved rollout gates remain.
+## 2026-11-21 Prospective P0 offer guard rejects future clocks
+
+- Reproduced a bug in the NOT deployed offer guard: caller offered_at ten minutes in the future was accepted with an expiry over ten minutes after server time despite the promised 30-second cap. Future rider-search timestamps also extended the search window. Both now fail closed; unchanged server-now dispatcher offers remain accepted. Review-only ops SQL and its existing migration mirror remain synchronized.
+- Added synthetic PGlite regression and actual captured-dispatch PostgreSQL cases including recovery after timestamp correction. Exact hosted source, Native and SQL gates must pass before Integration merge. This is prospective containment source; no live migration/order/payment/cash-lock/stock update, no extra privileges, no replacement of the current dispatcher. #1268 remains OPEN; encrypted backup/restore, full lifecycle and separately approved rollout still required.
+
 ## 2026-11-21 Fused GPS guest image correction
 
 - API30 legacy GNSS transport hypothesis failed again at #1304 d4e2d173, routing44828377296. Artifact14675363253 confirms transport disabled yet GPS elapsed time still reports epoch-scale ~20777 days versus guest uptime ~2 minutes. Do not retry that configuration as a fix.
