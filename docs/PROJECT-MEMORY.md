@@ -1,3 +1,8 @@
+## 2026-11-21 Prospective P0 offer guard rejects future clocks
+
+- Reproduced a bug in the NOT deployed offer guard: caller offered_at ten minutes in the future was accepted with an expiry over ten minutes after server time despite the promised 30-second cap. Future rider-search timestamps also extended the search window. Both now fail closed; unchanged server-now dispatcher offers remain accepted. Review-only ops SQL and its existing migration mirror remain synchronized.
+- Added synthetic PGlite regression and actual captured-dispatch PostgreSQL cases including recovery after timestamp correction. Exact hosted source, Native and SQL gates must pass before Integration merge. This is prospective containment source; no live migration/order/payment/cash-lock/stock update, no extra privileges, no replacement of the current dispatcher. #1268 remains OPEN; encrypted backup/restore, full lifecycle and separately approved rollout still required.
+
 ## 2026-11-21 Fused GPS guest image correction
 
 - API30 legacy GNSS transport hypothesis failed again at #1304 d4e2d173, routing44828377296. Artifact14675363253 confirms transport disabled yet GPS elapsed time still reports epoch-scale ~20777 days versus guest uptime ~2 minutes. Do not retry that configuration as a fix.
