@@ -57,7 +57,7 @@ async function main() {
     // PostgreSQL stores SET search_path TO '' as search_path="". Validate
     // effective schema resolution rather than one serialized spelling.
     await db.query("SELECT pg_catalog.set_config('search_path',$1,true)",[setting.slice('search_path='.length)]);
-    const schemas=(await db.query('SELECT pg_catalog.current_schemas(false) AS schemas')).rows[0].schemas;
+    const schemas=(await db.query('SELECT pg_catalog.array_to_json(pg_catalog.current_schemas(false)) AS schemas')).rows[0].schemas;
     assert.deepEqual(schemas,[],'SECURITY DEFINER must resolve no user schemas');
    } finally {await db.exec('ROLLBACK');}
   }
