@@ -4,6 +4,7 @@ on:
     branches: [fix/p0-terminal-cash-dependents-20261120]
     paths:
       - ops/p0/no-rider-timeout-cash-review-only.sql
+      - tests/backend/no-rider-timeout-cash-races.cjs
       - tests/backend/no-rider-timeout-cash-postgres.sql
       - .github/workflows/p0-no-rider-timeout-cash.yml
 permissions:
@@ -40,3 +41,7 @@ jobs:
         env:
           PGPASSWORD: isolated-cash-helper-only
         run: psql -X -v ON_ERROR_STOP=1 -h 127.0.0.1 -p 55440 -U postgres -d qg_cash_helper_test_ci -f tests/backend/no-rider-timeout-cash-postgres.sql
+      - name: Verify claim-vs-timeout and payment-writer races on disposable PostgreSQL
+        env:
+          QG_CASH_HELPER_TEST_DATABASE_URL: postgres://postgres:isolated-cash-helper-only@127.0.0.1:55440/qg_cash_helper_test_ci
+        run: node tests/backend/no-rider-timeout-cash-races.cjs
