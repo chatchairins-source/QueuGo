@@ -16,22 +16,22 @@ async function main(){
   try{
     await db.exec([
       'CREATE TABLE system_settings(key text PRIMARY KEY,value jsonb NOT NULL);',
-      'CREATE TABLE orders(id uuid PRIMARY KEY,status text,rider_id uuid,rider_search_started_at timestamptz,merchant_accepted_at timestamptz,created_at timestamptz);',
+      'CREATE TABLE orders(id uuid PRIMARY KEY,status text,rider_id uuid,rider_search_started_at timestamptz,merchant_accepted_at timestamptz,created_at timestamptz,rider_assigned_at timestamptz);',
       'CREATE TABLE qg_rider_order_offers(order_id uuid,rider_id uuid,offered_at timestamptz,expires_at timestamptz,attempt integer);',
       'CREATE TABLE qg_rider_offer_history(order_id uuid,rider_id uuid,offered_at timestamptz,outcome text,attempt integer);',
       'CREATE TABLE notifications(reference_id uuid,created_at timestamptz);',
       "INSERT INTO system_settings VALUES('app','{\"orderTimeout\":30}');",
     ].join('\n'));
     await db.query(
-      "INSERT INTO orders VALUES ($1,'searching_rider',NULL,now()-interval '55 hours',now()-interval '55 hours',now()-interval '56 hours')",
+      "INSERT INTO orders(id,status,rider_id,rider_search_started_at,merchant_accepted_at,created_at) VALUES ($1,'searching_rider',NULL,now()-interval '55 hours',now()-interval '55 hours',now()-interval '56 hours')",
       [id(1)]
     );
     await db.query(
-      "INSERT INTO orders VALUES ($1,'searching_rider',NULL,now()-interval '2 minutes',now()-interval '4 minutes',now()-interval '5 minutes')",
+      "INSERT INTO orders(id,status,rider_id,rider_search_started_at,merchant_accepted_at,created_at) VALUES ($1,'searching_rider',NULL,now()-interval '2 minutes',now()-interval '4 minutes',now()-interval '5 minutes')",
       [id(2)]
     );
     await db.query(
-      "INSERT INTO orders VALUES ($1,'completed',NULL,now()-interval '1 day',now()-interval '1 day',now()-interval '1 day')",
+      "INSERT INTO orders(id,status,rider_id,rider_search_started_at,merchant_accepted_at,created_at) VALUES ($1,'completed',NULL,now()-interval '1 day',now()-interval '1 day',now()-interval '1 day')",
       [id(3)]
     );
     await db.query(
@@ -56,6 +56,9 @@ async function main(){
     equal(row.configured_timeout_minutes,30,'finite Admin timeout');
     equal(row.searching_orders,2,'two unassigned searching orders');
     equal(row.invalid_search_clocks,0,'valid persisted search clocks');
+    equal(row.invalid_search_assignments,0,'no searching orders with assigned rider');
+    equal(row.searching_live_offers_above_120,0,'no live above-cap offers on searching orders');
+    equal(row.searching_historical_offers_above_120,0,'above-cap old overdue history is separately caught');
     equal(row.overdue_searching_orders,1,'one overdue order');
     equal(row.late_active_offers,1,'overdue active offer');
     equal(row.invalid_status_active_offers,1,'orphaned active offer on terminal order');
@@ -93,6 +96,42 @@ async function main(){
     row=(await db.query(sql)).rows[0];
     assert.equal(row.release_gate,'PASS_DISPATCH_OVERTIME');checks++;
     equal(row.invalid_search_clocks,0,'valid restored search clock passes');
+
+    // A 121st offer is unsafe even when the search started recently and has
+    // NOT yet exceeded its configured timeout. Nothing in this fixture is live.
+    await db.query(
+      "INSERT INTO qg_rider_offer_history VALUES($1,$2,now()-interval '1 minute','expired',121)",
+      [id(2),id(99)]
+    );
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'NO_GO_DISPATCH_P0','searching offer history above hard cap');checks++;
+    equal(row.searching_historical_offers_above_120,1,'detect 121st historic search offer before timeout');
+    await db.query("DELETE FROM qg_rider_offer_history WHERE order_id=$1",[id(2)]);
+
+    await db.query(
+      "INSERT INTO qg_rider_order_offers VALUES($1,$2,now()-interval '5 seconds',now()+interval '10 seconds',121)",
+      [id(2),id(99)]
+    );
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'NO_GO_DISPATCH_P0','searching active offer above hard cap');checks++;
+    equal(row.searching_live_offers_above_120,1,'detect 121st active search offer before timeout');
+    await db.query("DELETE FROM qg_rider_order_offers WHERE order_id=$1",[id(2)]);
+
+    // A stuck order must not be considered healthy just because assigned
+    // searching rows are deliberately excluded from the unassigned CTE.
+    await db.query("UPDATE orders SET rider_id=$2 WHERE id=$1",[id(2),id(98)]);
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'NO_GO_DISPATCH_P0','searching status with assigned Rider');checks++;
+    equal(row.invalid_search_assignments,1,'detect assigned Rider on searching order');
+    await db.query("UPDATE orders SET rider_id=NULL,rider_assigned_at=now() WHERE id=$1",[id(2)]);
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'NO_GO_DISPATCH_P0','searching status with assignment timestamp');checks++;
+    equal(row.invalid_search_assignments,1,'detect assigned timestamp without Rider');
+    await db.query("UPDATE orders SET rider_assigned_at=NULL WHERE id=$1",[id(2)]);
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'PASS_DISPATCH_OVERTIME','restored consistent live search');checks++;
+    equal(row.invalid_search_assignments,0,'restored unassigned searching order');
+
 
     // Missing/broken config never means infinite time.
     await db.exec("UPDATE system_settings SET value='{\"orderTimeout\":\"unlimited\"}';");
