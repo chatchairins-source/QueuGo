@@ -14,6 +14,10 @@ on:
       - 'native-android/qa/capture-merchant-authenticated-review.py'
       - 'native-android/qa/test_merchant_authenticated_review_tabs.py'
       - 'native-android/qa/fetch-rider-offline-candidate.py'
+      - 'native-android/qa/stage-play-rider-assets.py'
+      - 'native-android/qa/run-rider-offline-routing.py'
+      - 'native-android/rider_country_map/**'
+      - 'native-android/rider_country_routing/**'
   push:
     branches:
       - fix-rider-invalid-step-metrics-20261106
@@ -310,5 +314,113 @@ jobs:
             artifacts/rider-authenticated-review/candidate.json
             artifacts/rider-authenticated-review/play-services.json
             artifacts/rider-authenticated-review/background-fcm.txt
+          if-no-files-found: warn
+          retention-days: 7
+
+  play-pack-runtime:
+    # No review-account login, Production writes, signing secrets or Play upload.
+    # Debug AABs prove packaging separately from certified release acceptance.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+      - name: Prepare audited source-built MapLibre component
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          inputs="$RUNNER_TEMP/maplibre-compat-inputs"
+          repository="$RUNNER_TEMP/maplibre-compat-repository"
+          mkdir -p "$inputs"
+          timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13484815852/zip" > "$inputs/x86_64.zip"
+          timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13485115419/zip" > "$inputs/arm64-v8a.zip"
+          base='https://repo.maven.apache.org/maven2/org/maplibre/gl/android-sdk-opengl/13.7.1/android-sdk-opengl-13.7.1'
+          curl --fail --location --retry 2 --max-time 180 "$base.aar" -o "$inputs/baseline.aar"
+          curl --fail --location --retry 2 --max-time 60 "$base.pom" -o "$inputs/baseline.pom"
+          python3 native-android/qa/maplibre-swiftshader/prepare-repository.py prepare \
+            --baseline-aar "$inputs/baseline.aar" --baseline-pom "$inputs/baseline.pom" \
+            --x86-zip "$inputs/x86_64.zip" --arm64-zip "$inputs/arm64-v8a.zip" --repository "$repository"
+          echo "QG_MAPLIBRE_COMPAT_REPOSITORY=$repository" >> "$GITHUB_ENV"
+      - name: Fetch successful exact-source offline-tested Rider APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 native-android/qa/fetch-rider-offline-candidate.py
+      - name: Stage exactly those tested country bytes into install-time packs
+        run: |
+          set -euo pipefail
+          run_id="$(python3 -c 'import json; print(json.load(open("artifacts/rider-authenticated-review/candidate.json"))["offline_run_id"])')"
+          GITHUB_SHA="$(git rev-parse HEAD)" QG_REQUIRED_OFFLINE_RUN_ID="$run_id" python3 native-android/qa/stage-play-rider-assets.py native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          echo "QG_REQUIRED_OFFLINE_RUN_ID=$run_id" >> "$GITHUB_ENV"
+          echo "QG_OFFLINE_MAP_ASSETS=$GITHUB_WORKSPACE/native-android/rider_country_map/src/main/assets" >> "$GITHUB_ENV"
+          echo "QG_OFFLINE_ROUTING_ASSETS=$GITHUB_WORKSPACE/native-android/rider_country_routing/src/main/assets" >> "$GITHUB_ENV"
+      - name: Install Android build and offline runtime tools
+        run: |
+          set -euo pipefail
+          set +o pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-30;default;x86_64'
+      - name: Build three actual debug AABs and matching Rider instrumentation
+        env:
+          QG_RIDER_PLAY_ASSET_PACKS: '1'
+        run: |
+          gradle -p native-android :customer:bundleDebug :merchant:bundleDebug :rider:bundleDebug :rider:assembleDebugAndroidTest --no-daemon --stacktrace
+          GITHUB_SHA="$(git rev-parse HEAD)" python3 native-android/qa/stage-play-rider-assets.py --verify-bundle native-android/rider/build/outputs/bundle/debug/rider-debug.aab
+      - name: Validate all bundles and generate installable Rider split APKs
+        run: |
+          set -euo pipefail
+          jar="$RUNNER_TEMP/bundletool-all-1.18.3.jar"
+          curl -fsSL --retry 2 --max-time 180 https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar -o "$jar"
+          echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  $jar" | sha256sum -c -
+          echo "QG_BUNDLETOOL_JAR=$jar" >> "$GITHUB_ENV"
+          mkdir -p artifacts/play-pack-runtime
+          for role in customer merchant rider; do
+            bundle="native-android/$role/build/outputs/bundle/debug/$role-debug.aab"
+            java -jar "$jar" validate --bundle="$bundle"
+            sha256sum "$bundle" >> artifacts/play-pack-runtime/debug-aab.sha256
+          done
+          java -jar "$jar" build-apks --bundle=native-android/rider/build/outputs/bundle/debug/rider-debug.aab --output="$RUNNER_TEMP/rider-play-debug.apks" --local-testing --ks="$HOME/.android/debug.keystore" --ks-key-alias=androiddebugkey --ks-pass=pass:android --key-pass=pass:android
+          python3 - <<'PYCODE'
+          import os, pathlib, subprocess, zipfile
+          root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'play-split-verification'
+          root.mkdir()
+          with zipfile.ZipFile(pathlib.Path(os.environ['RUNNER_TEMP']) / 'rider-play-debug.apks') as archive:
+              targets = []
+              for index, member in enumerate(archive.infolist()):
+                  if member.filename.endswith('.apk'):
+                      target = root / (str(index) + '.apk')
+                      with archive.open(member) as source, target.open('wb') as output:
+                          import shutil
+                          shutil.copyfileobj(source, output)
+                      targets.append(str(target))
+              assert targets, 'Bundletool generated no APK splits'
+              with open('artifacts/play-pack-runtime/16kb-splits.json', 'w') as report:
+                  subprocess.run(['python3', 'native-android/qa/verify-16kb-page-size.py', *targets], stdout=report, check=True)
+          import shutil
+          shutil.rmtree(root)
+          PYCODE
+          echo "QG_PLAY_BUNDLE_APKS=$RUNNER_TEMP/rider-play-debug.apks" >> "$GITHUB_ENV"
+          git rev-parse HEAD > artifacts/play-pack-runtime/build-commit.txt
+      - name: Run real split-installed offline routes, interrupted copy and cold restart
+        env:
+          QG_ROUTING_OUTPUT: artifacts/play-pack-runtime
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          if [ ! -r /dev/kvm ] || [ ! -w /dev/kvm ]; then sudo chown "$(id -u):$(id -g)" /dev/kvm; fi
+          python3 native-android/qa/run-rider-offline-routing.py
+      - name: Retain actual split-install and routing results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: play-debug-pack-runtime-${{ github.event.pull_request.head.sha || github.sha }}
+          path: artifacts/play-pack-runtime/
           if-no-files-found: warn
           retention-days: 7

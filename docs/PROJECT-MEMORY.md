@@ -1,3 +1,10 @@
+## 2026-11-21 Real Play split-package runtime gate, pending CI
+
+- Extended existing authenticated Android QA workflow with an independent account-free Debug AAB job: fetch successful exact-source offline-tested Rider APK, stage verified country bytes, build all three Debug AABs, validate pinned bundletool, verify country payload hashes and 16 KB generated splits, install actual Rider splits, reuse all three offline routing tests twice including interrupted-copy recovery and cold restart. This is Debug packaging QA, never signed release/physical/Play certification. Default original APK runtime path remains intact.
+- Local Play readiness169 + Python10, certified workflow58 and certification72 checks pass; Python/workflow/shell syntax and diff whitespace pass. Hosted job and real installed splits remain unproven until exact-head CI completes.
+- Fresh existing secret preflight rerun42630768316 on 2026-11-21 passed Firebase and upload-keystore/password/alias validation. Missing secret names: QG_SUPABASE_SERVICE_ROLE_KEY, QG_SUPABASE_DB_URL, QG_BACKUP_PASSPHRASE. No credential values read or exposed. This preflight is credential presence/validation, not current-source certification.
+- Production read-only05:56:41UTC:392 migrations, offer guard and timeout terminalizer absent, private release evidence bucket has0 ZIPs. No Production write. Customer map PR1369 merged into Integration6e837fc9 after API26/30/33/35 runtime success at f42774fe; alternate test-only PR1368 closed as superseded. Main remains gated.
+
 ## 2026-11-21 Cash-helper dependent guard composition
 
 - Extended isolated fixture to relevant Production UUID/numeric types and installed captured unmodified queuego_guard_cash_payment (MD5 cd73f6eec0a50bb8fd02fa2684ed685d) and queuego_guard_cash_delivery (MD5 034a0abb8a4743ae46325d1923022126), alongside the actual order guard.
