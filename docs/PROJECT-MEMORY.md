@@ -1,3 +1,9 @@
+## 2026-11-21 Verify actual AAB runtime manifest independently
+
+- Post-build verifier checked APK non-debuggability but only AAB package/version/page alignment/signature. It now also parses actual bundletool-dumped AAB XML, requires exactly one application, rejects debuggable true/unknown flags and enforces numeric targetSdk>=36 independently of APK/source assertions. Missing android:debuggable correctly defaults false.
+- Isolated XML regression exercises valid default/false/0, true/1/unknown/reference flags, missing/old/codename target, higher numeric target and invalid/missing/duplicate manifest structures.4 test methods pass; existing workflow58, certification72 and Play169+Python10 pass. These fixtures are NOT signed AAB or physical acceptance.
+- No certified build has run; signing/Firebase preflight passed but backend backup credentials and physical/Play evidence remain missing. Do not weaken any existing main/certification gate.
+
 ## 2026-11-21 Cash-helper dependent guard composition
 
 - Extended isolated fixture to relevant Production UUID/numeric types and installed captured unmodified queuego_guard_cash_payment (MD5 cd73f6eec0a50bb8fd02fa2684ed685d) and queuego_guard_cash_delivery (MD5 034a0abb8a4743ae46325d1923022126), alongside the actual order guard.
