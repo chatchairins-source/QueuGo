@@ -27,6 +27,8 @@ CREATE TABLE public.qg_rider_offer_history(
 CREATE TABLE public.audit_logs(user_id uuid,action text,entity_type text,entity_id uuid,description text,metadata jsonb);
 CREATE TABLE public.notifications(user_id uuid,title text,message text,type text,reference_id uuid);
 \ir ../../ops/p0/no-rider-timeout-cash-review-only.sql
+-- Use the unauthenticated Cron fixture, not the admin fixture from preceding tests.
+SELECT set_config('qg.test_actor_role','',false);
 -- A simple future/crash-safe fixture. No app session, no real finances.
 CREATE OR REPLACE FUNCTION public.qg_test_seed_timeout(p_id uuid, p_minutes integer)
 RETURNS void LANGUAGE plpgsql AS $fixture$
