@@ -1,0 +1,28 @@
+name: QueueGo Guest Checkout Replay Authorization
+on:
+  pull_request:
+    branches: [main, work-native-reconcile-main-20261114]
+    paths:
+      - supabase/migrations/20261118222500_guard_table_checkout_replay_authorization.sql
+      - supabase/migrations/20261007045146_unify_pos_qr_order_codes.sql
+      - scripts/test_checkout_replay_authorization.py
+      - scripts/test_checkout_replay_postgres_isolated.py
+      - tests/backend/guest-checkout-replay-runtime.cjs
+      - .github/workflows/guest-checkout-replay.yml
+permissions:
+  contents: read
+jobs:
+  replay-authorization:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check source authorization ordering
+        run: python3 scripts/test_checkout_replay_authorization.py
+      - name: Reproduce old replay bypass and exercise candidate as anon
+        run: node tests/backend/guest-checkout-replay-runtime.cjs

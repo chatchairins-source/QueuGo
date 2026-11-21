@@ -1,3 +1,9 @@
+## 2026-11-21 Guest checkout replay executable regression
+
+- PR #1246 now includes a self-contained PGlite test using real pgcrypto and the unchanged original checkout function plus candidate migration. It reproduces the revoked-session replay disclosure in the old source, then runs the candidate RPC as anon, checks valid idempotency, revoked/expired/NULL expiry rejection, wrong device, changed/NULL cart hash, missing-order refusal, preserved function ACL and denied direct ledger/session writes. Synthetic fixture scope is explicitly limited: not live RLS/schema parity, new checkout, concurrency or settlement certification.
+- Corrected the existing real-PostgreSQL isolated test to assert the actual Thai payload-mismatch error instead of an absent English word. It still needs a dedicated loopback database with the complete fixture; no claim that it ran follows from the new PGlite test.
+- New exact-head workflow runs the 7 structural tests and 29 PGlite checks. Candidate migration is NOT applied to Production. Keep this older-main-lineage PR draft until current Production function comparison, full schema/concurrency/E2E and Integration lineage reconciliation are complete. Current Integration is bfa3265a (POS #1342 merged); do not merge this divergent branch wholesale.
+
 ## 2026-11-13 Merchant POS responsive redesign
 
 - The owner supplied the red-and-white QueueGo POS reference. Merchant Web uses the current counter route, with a left navigation at desktop widths, a side-by-side catalog and bill in landscape, and an expandable bill with a bottom checkout action in portrait and on phones.

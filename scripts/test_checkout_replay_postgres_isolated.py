@@ -688,7 +688,7 @@ class RevokedReplayDatabaseTest(unittest.TestCase):
                             (session, device, request, altered_items, lat, lng))
                     # Fail if rejected only by a later invalid-cart validation:
                     # the idempotency hash mismatch must be checked first.
-                    self.assertIn("request", str(caught.exception).lower())
+                    self.assertIn("รหัสคำขอถูกใช้กับรายการอาหารอื่น", str(caught.exception))
                     cur.execute("rollback to savepoint mismatched_replay")
                     cur.execute("reset role")
                     cur.execute(
