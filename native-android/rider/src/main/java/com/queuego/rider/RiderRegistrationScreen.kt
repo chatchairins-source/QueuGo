@@ -291,9 +291,22 @@ internal fun RiderRegistrationScreen(
         }
     }
     image?.takeIf { !it.isRecycled }?.let { bitmap ->
-        androidx.compose.foundation.Image(bitmap.asImageBitmap(),null,modifier=Modifier.padding(vertical=10.dp)
-            .widthIn(max=280.dp).heightIn(max=220.dp).fillMaxWidth()
-            .aspectRatio(bitmap.width.toFloat()/bitmap.height).clip(RoundedCornerShape(16.dp)),
-            contentScale=androidx.compose.ui.layout.ContentScale.Crop)
+        // Portrait documents must fit within the upload card on narrow Android screens.
+        Box(
+            modifier = Modifier.padding(vertical = 10.dp)
+                .widthIn(max = 280.dp)
+                .fillMaxWidth()
+                .height(200.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color(0xFFF8F5F6)),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.foundation.Image(
+                bitmap = bitmap.asImageBitmap(),
+                contentDescription = "ตัวอย่างเอกสารที่เลือก",
+                modifier = Modifier.fillMaxSize(),
+                contentScale = androidx.compose.ui.layout.ContentScale.Fit
+            )
+        }
     }
 }

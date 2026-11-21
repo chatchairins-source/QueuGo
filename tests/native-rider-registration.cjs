@@ -23,6 +23,17 @@ for(const label of ['ส่วนตัว','รถและพื้นที�
   ok(screen.includes('"'+label+'"'),'Native Rider registration must retain four-step Production flow label: '+label);
 }
 ok(screen.includes('ActivityResultContracts.OpenDocument'),'Native Rider registration must use the system document picker');
+
+const boundedPreview = screen.slice(screen.indexOf('@Composable private fun RegistrationDocumentPreview'));
+ok(boundedPreview.includes('.widthIn(max = 280.dp)') &&
+   boundedPreview.includes('.fillMaxWidth()') && boundedPreview.includes('.height(200.dp)'),
+  'Document preview must fit in responsive upload card at fixed height');
+ok(boundedPreview.includes('Modifier.fillMaxSize()') &&
+   boundedPreview.includes('ContentScale.Fit'),
+  'Portrait ID and driving documents must fit without crop or overflow');
+ok(!boundedPreview.includes('.aspectRatio(') && !boundedPreview.includes('ContentScale.Crop'),
+  'Preview must not stretch tall photos into the next upload card');
+
 ok(screen.includes('loadRegistrationDraft')&&screen.includes('saveRegistrationDraft'),'Native Rider registration must support local draft resume');
 ok(screen.includes('agreement')&&screen.includes('betaAgreement'),'Native Rider registration must require final consent state');
 
