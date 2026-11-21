@@ -1,18 +1,13 @@
--- REVIEW ONLY: Rider claim deadline guard; never execute against Production without
--- reconciled migration history, owner approval and real backup+isolated restore.
--- This changes only rider claim RPC behavior: order cancellation scheduler is SEPARATE.
--- Exact captured Production function checksums prevent replacing a newer definition.
+-- REVIEW ONLY: Rider claim deadline guard; no Production deployment without
+-- migration reconciliation, owner approval and encrypted backup+restore.
+-- This changes claim-side behavior, not the actual cancellation scheduler.
 BEGIN;
 DO $preflight$
 BEGIN
  IF md5(pg_get_functiondef('public.rider_claim_order(uuid)'::regprocedure))
-      <> 'b487a093bfeebf0bac165e87cb080f02' THEN
-   RAISE EXCEPTION 'rider_claim_order production source drift';
- END IF;
+      <> 'b487a093bfeebf0bac165e87cb080f02' THEN RAISE EXCEPTION 'rider_claim_order production source drift'; END IF;
  IF md5(pg_get_functiondef('public.market_rider_claim_group(uuid)'::regprocedure))
-      <> '590c434cc0e3ae9cace06f70cc47360b' THEN
-   RAISE EXCEPTION 'market_rider_claim_group production source drift';
- END IF;
+      <> '590c434cc0e3ae9cace06f70cc47360b' THEN RAISE EXCEPTION 'market_rider_claim_group production source drift'; END IF;
 END $preflight$;
 CREATE OR REPLACE FUNCTION public.market_rider_claim_group(p_order_id uuid)
  RETURNS uuid
@@ -34,20 +29,7 @@ begin
  perform 1 from public.orders where market_order_id=v_group order by id for update;
  -- Every live group member must have a valid, unexpired server search clock.
  select coalesce(
-   (select case when (s.value->>'orderTimeout') ~ '^[0-9]{1,4}
- if not exists(select 1 from public.orders where market_order_id=v_group and status<>'cancelled') then raise exception 'market group unavailable'; end if;
- if exists(select 1 from public.orders where market_order_id=v_group and status not in('searching_rider','cancelled')) then raise exception 'all shops must accept before rider claim'; end if;
- if exists(select 1 from public.orders where market_order_id=v_group and status<>'cancelled' and rider_id is not null) then raise exception 'market group already claimed'; end if;
- select coalesce(sum(public.market_order_weight(id)),0) into v_weight from public.orders where market_order_id=v_group and status<>'cancelled';
- if v_weight<=0 then raise exception 'market group weight unavailable'; end if;
- if not exists(select 1 from public.rider_profiles where id=v_rider and vehicle_type in('motorcycle','car','saleng') and vehicle_status='active' and vehicle_verified_at is not null and vehicle_capacity_kg>=v_weight) then raise exception 'vehicle capacity insufficient for market group'; end if;
- perform set_config('queuego.v22_transition','rpc',true);
- update public.orders set rider_id=v_rider,status='rider_assigned',rider_assigned_at=coalesce(rider_assigned_at,now()),updated_at=now() where market_order_id=v_group and status='searching_rider';
- update public.deliveries d set rider_id=v_rider,status='assigned',updated_at=now() from public.orders o where o.id=d.order_id and o.market_order_id=v_group and d.status='pending';
- insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata) values(v_user,'market_rider_claim','market_order',v_group,'rider assigned to market group',jsonb_build_object('rider_id',v_rider,'weight_kg',v_weight));
- return v_group;
-end $function$
-
+   (select case when (s.value->>'orderTimeout') ~ '^[0-9]{1,4}$'
                  and (s.value->>'orderTimeout')::integer between 1 and 1440
                 then (s.value->>'orderTimeout')::integer end
       from public.system_settings s where s.key='app'),30)
@@ -125,7 +107,6 @@ begin
     raise exception 'order no longer available';
   end if;
 
-  -- Reject a stale, future or contradictory clock before any assignment write.
   if v_order.created_at is null
      or v_order.rider_search_started_at is null
      or v_order.rider_search_started_at > now()
@@ -135,52 +116,7 @@ begin
     raise exception 'rider search clock invalid';
   end if;
   select coalesce(
-    (select case when (s.value->>'orderTimeout') ~ '^[0-9]{1,4}
-
-  if v_order.fulfillment_vertical not in ('food','ride')
-     and not exists(
-       select 1 from public.rider_profiles r
-       where r.id=v_rider
-         and r.status='active'
-         and r.vehicle_type in ('motorcycle','car','saleng')
-         and r.vehicle_status='active'
-         and r.vehicle_verified_at is not null
-         and r.vehicle_capacity_kg>=public.market_order_weight(p_order_id)
-         and public.market_order_weight(p_order_id)>0
-     ) then raise exception 'vehicle capacity or availability insufficient for market order';
-  end if;
-
-  perform set_config('queuego.v22_transition','rpc',true);
-  if v_order.fulfillment_vertical='ride' then perform set_config('queuego.ride_action','rpc',true); end if;
-
-  update public.orders
-  set rider_id=v_rider,status='rider_assigned',
-      rider_assigned_at=coalesce(rider_assigned_at,now()),updated_at=now(),
-      note='__QT_ORDER_STATUS__=rider_assigned'||E'\n'||
-           regexp_replace(coalesce(note,''),'^__QT_ORDER_STATUS__=[^\n]*\n?','','g')
-  where id=p_order_id;
-
-  update public.deliveries
-  set rider_id=v_rider,status='assigned',updated_at=now()
-  where order_id=p_order_id and rider_id is null and status='pending';
-
-  insert into public.audit_logs(user_id,action,entity_type,entity_id,description,metadata)
-  values(v_user,'rider_claim','order',p_order_id,'rider_assigned',
-         jsonb_build_object('from','searching_rider','to','rider_assigned'));
-
-  if v_order.customer_id is not null then
-    insert into public.notifications(user_id,title,message,type,reference_id)
-    values(v_order.customer_id,'พบไรเดอร์แล้ว',case when v_order.fulfillment_vertical='ride' then 'คนขับกำลังไปยังจุดรับผู้โดยสาร' else 'มีไรเดอร์รับออเดอร์แล้ว ร้านค้าจะเริ่มเตรียมสินค้า' end,'order',p_order_id);
-  end if;
-
-  insert into public.notifications(user_id,title,message,type,reference_id)
-  select sp.user_id,'พบไรเดอร์แล้ว','ไรเดอร์รับงานแล้ว สามารถเริ่มเตรียมสินค้าได้','order',p_order_id
-  from public.shop_profiles sp where sp.id=v_order.shop_id;
-
-  return 'rider_assigned';
-end
-$function$
-
+    (select case when (s.value->>'orderTimeout') ~ '^[0-9]{1,4}$'
                   and (s.value->>'orderTimeout')::integer between 1 and 1440
                  then (s.value->>'orderTimeout')::integer end
        from public.system_settings s where s.key='app'),30)
@@ -233,4 +169,3 @@ $function$
 end
 $function$;
 COMMIT;
--- Existing function ACLs/ownership are retained by CREATE OR REPLACE.
