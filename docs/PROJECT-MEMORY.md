@@ -1,8 +1,22 @@
+## 2026-11-21 Parallel Rider pinned Maven metadata retry repaired
+
+- PR #1353 exact223eafec Native44849579802 rider job136677483633 failed on pinned valhalla-mobile0.6.4 POM HTTP404; default curl --retry did not include 404. Added bounded two-retry/45-second budget only for the existing exact Maven Central POM, retaining identity/nonempty validation and one unchanged Gradle refresh. Real compile/test failures remain fatal; no artifact/version substitution or test skipping.
+- Runtime test uses the actual workflow curl flags against a disposable HTTP server, verifies one temporary404 recovers and permanent404 fails after exactly three requests. Updated #1353 final head must pass fresh Native; old compile failure remains recorded, never relabelled successful.
+
 ## 2026-11-21 Storage restore target enforced locally
 
 - The restore drill script used upsert writes but trusted QG_RESTORE_SUPABASE_URL without checking its destination. Added strict HTTP(S) loopback-only validation before manifest reads and network-client import, rejecting Production/other remote hosts, URL credentials, nonroot paths, query and fragments. The unchanged drill local API_URL remains supported; no Production restore/deploy was run.
 - Runtime regression invokes the real entrypoint for forbidden endpoints with an intentionally missing manifest and no SDK import, requiring the local-target rejection rather than ENOENT/import/network failure. Positive helper cases cover IPv4/IPv6/localhost. Wired into the existing backup regression/npm test. This guard is not encrypted backup or actual restore proof; full drill and release evidence remain pending.
 
+## 2026-11-21 Rider Fused GPS integrated after exact-source gates
+
+- PR #1304 merged as c43e068b after fe41449f passed Native Pilot44844975972, actual offline routing/cold restart/rendering/ANGLE/real Fused44844976051, country APK export44844976471 and authenticated Rider/Merchant review + background FCM44844975993. API33 guest avoids the reproduced API30 GNSS epoch clock bug; application timestamp/freshness/accuracy gates remain intact. Physical road testing/API30 Fused/signed Play certification are still pending. No Production deployment.
+- Financial preflight branch forward-reconciled with c43e068b and retains both GPS and POS tax changes. Financial preflight #1348 merged as12f357c5 after exact49227edd passed Native44848250793, financial actual-query64/64 and isolated gates. Keep this Integration baseline when continuing; Production is unchanged.
+
+## 2026-11-21 Actual rider-search preflight timestamps reconciled
+
+- Forward-reconciled Worker backend #1347/#1348 with Integration bfa3265a, retaining the merged POS tax fixes. The read-only financial preflight now requires an actual sane rider_search_started_at, not merely a merchant/order fallback; missing creation/search timestamps and invalid chronological ordering remain blocked. Repaired the isolated fixture to include a valid created_at and distinguish reporting fallback from actual search authority.
+- Exact 21beb17a hosted run44847893007 passed actual-query PGlite63 + PostgreSQL63. The final test version also executes the Worker seven-case timestamp SQL truth table on each database engine (64 checks expected); final hosted/Native results remain required. Actual SQL regression covers missing/future/inconsistent search start and missing creation time, with recovery and unchanged financial blockers/read-only enforcement. Added the same actual-query suite to disposable PostgreSQL17.6; hosted exact-head success is required, not inferred from PGlite. This is diagnostic read-only SQL, not a timeout entrypoint or permission to mutate Production. #1268 remains open and backup/restore/approved rollout gates remain.
 ## 2026-11-21 Fused GPS guest image correction
 
 - API30 legacy GNSS transport hypothesis failed again at #1304 d4e2d173, routing44828377296. Artifact14675363253 confirms transport disabled yet GPS elapsed time still reports epoch-scale ~20777 days versus guest uptime ~2 minutes. Do not retry that configuration as a fix.

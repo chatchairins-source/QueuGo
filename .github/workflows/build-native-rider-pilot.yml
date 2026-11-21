@@ -176,7 +176,7 @@ jobs:
               exit 1
             fi
             artifact="https://repo.maven.apache.org/maven2/io/github/rallista/valhalla-mobile/0.6.4/valhalla-mobile-0.6.4.pom"
-            curl --fail --show-error --silent --location --retry 2 --connect-timeout 15 --max-time 90 "$artifact" -o "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
+            curl --fail --show-error --silent --location --retry 2 --retry-all-errors --retry-max-time 45 --connect-timeout 15 --max-time 20 "$artifact" -o "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
             test -s "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
             grep -Fq '<artifactId>valhalla-mobile</artifactId>' "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
             echo "::warning::Retrying Rider Gradle once after verified Maven Central metadata; no dependency substitution"
