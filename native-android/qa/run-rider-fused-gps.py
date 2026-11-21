@@ -25,6 +25,8 @@ ADB_TARGET = [ADB, "-s", SERIAL]
 PACKAGE = "com.queuego.rider"
 TEST_PACKAGE = PACKAGE + ".test"
 TEST_CLASS = "com.queuego.rider.RiderMapRuntimeTest#homeMapMountsBackgroundsAndRecreatesWithoutMissingSdkClasses"
+# API30 goldfish GNSS reports wall time as elapsed time; never weaken app guards.
+FUSED_SYSTEM_IMAGE = "system-images;android-33;google_apis;x86_64"
 
 def call(command, timeout=180, **kwargs):
     return subprocess.run(command, check=True, timeout=timeout, **kwargs)
@@ -48,7 +50,7 @@ def wait_boot(proc):
 
 def ensure_emulator_location_enabled():
     # Permissions alone do not turn on Android's global Location switch.
-    # AOSP API 30 supports `cmd location`; fail closed if it is unavailable.
+    # The pinned API33 image supports `cmd location`; fail closed if unavailable.
     adb("shell", "cmd", "location", "set-location-enabled", "true", timeout=15)
     # Google APIs emulators can temporarily drop ADB transport during
     # location-provider startup. Retry only ADB transport exit 255, never
@@ -63,20 +65,30 @@ def ensure_emulator_location_enabled():
             if attempt < 2:
                 time.sleep(2)
                 continue
-            # Android 11 (API 30) can lack the newer 'is-location-enabled'
-            # shell subcommand even though 'set-location-enabled' succeeded.
-            # Settings.Secure.LOCATION_MODE is retained on API 30 but
-            # deprecated/removed on newer versions; this gate pins API 30.
-            mode = adb("shell", "settings", "get", "secure", "location_mode",
-                       capture_output=True, text=True, timeout=15).stdout.strip()
-            if mode in ("1", "2", "3"):
-                print("API30 legacy master Location mode verified: " + mode, flush=True)
-                return
-            raise RuntimeError("API30 master Location switch not verified: " + repr(mode))
+            raise RuntimeError("Google APIs master Location switch not verified after transport recovery") from error
         if state != "true":
             raise RuntimeError("Google APIs emulator master Location switch is disabled: " + repr(state))
         return
     raise RuntimeError("Unable to verify Google APIs emulator master Location switch")
+
+def capture_fused_failure_evidence(label):
+    # Keep genuine platform/provider evidence when GPS never arrives. No fake
+    # locations, relaxation of assertions, or secrets from entire device logs.
+    diagnostics = {
+        "location-provider": ["shell", "dumpsys", "location"],
+        "navigation-service": ["shell", "dumpsys", "activity", "services", PACKAGE],
+        "fused-logcat": ["logcat", "-d", "-t", "300", "-s",
+                         "QueueGoNavLocation:D", "QueueGoMapRuntime:I", "*:S"],
+    }
+    for name, arguments in diagnostics.items():
+        try:
+            result = subprocess.run([*ADB_TARGET, *arguments], capture_output=True,
+                                    text=True, timeout=25)
+            detail = "exit=" + str(result.returncode) + "\\n" + result.stdout + result.stderr
+        except (subprocess.SubprocessError, OSError) as error:
+            detail = "diagnostic_unavailable: " + type(error).__name__ + "\\n"
+        (OUT / (label + "-" + name + ".txt")).write_text(detail)
+
 
 def run_case(label, longitude, latitude):
     # Run the identical instrumented test twice in separate target processes.
@@ -103,8 +115,9 @@ def run_case(label, longitude, latitude):
             raise RuntimeError("Fused GPS instrumentation timed out")
         output = process.communicate(timeout=15)[0]
         (OUT / (label + "-instrumentation.txt")).write_text(output)
-        assert process.returncode == 0 and "OK (1 test)" in output, (
-            "Real Fused GPS test failed: " + output[-2500:])
+        if process.returncode != 0 or "OK (1 test)" not in output:
+            capture_fused_failure_evidence(label)
+            raise AssertionError("Real Fused GPS test failed: " + output[-2500:])
         # ADB screenshot transport can close transiently after instrumented
         # lifecycle recreation. Retry transport only; never retry a failed GPS
         # assertion or manufacture a screenshot.
@@ -138,14 +151,14 @@ def main():
     assert APK.is_file() and TEST_APK.is_file(), "Exact Rider and androidTest APK required"
     expected = (ROOT / "artifacts/rider-offline-routing/apk.sha256").read_text().split()[0]
     assert sha(APK) == expected, "Rider APK differs from offline-tested candidate"
-    call([SDKMANAGER, "system-images;android-30;google_apis;x86_64"], timeout=600,
+    call([SDKMANAGER, FUSED_SYSTEM_IMAGE], timeout=600,
          input="y\n" * 100, text=True)
     avd_home = Path(os.environ.get("RUNNER_TEMP", "/tmp")) / "qg-fused-avds"
     avd_home.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, ANDROID_AVD_HOME=str(avd_home))
     name = "qg_fused_" + os.environ.get("GITHUB_RUN_ID", "local")
     call([AVDMANAGER, "create", "avd", "-n", name, "-k",
-          "system-images;android-30;google_apis;x86_64", "-d", "pixel_4"],
+          FUSED_SYSTEM_IMAGE, "-d", "pixel_4"],
          input="no\n", text=True, env=env, timeout=60)
     # A second region in the same emulator can inherit a cached Fused fix from
     # the first region. The Rider correctly rejects an implausible 300+ km
@@ -181,9 +194,10 @@ def main():
                     emulator.kill()
     assert sha(APK) == expected, "APK changed during Fused GPS gate"
     (OUT / "result.json").write_text(json.dumps({
-        "apk_sha256": expected, "system_image": "android-30;google_apis;x86_64",
+        "apk_sha256": expected, "system_image": FUSED_SYSTEM_IMAGE.removeprefix("system-images;"),
         "debug_store_injection": False, "incomplete_tiles_allowed": False,
         "fresh_wiped_emulator_per_region": True,
+        "gnss_transport": "platform_default",
         "cases": ["bangkok", "buriram"], "physical_road_test": False
     }, indent=2) + "\n")
     print("QUEUEGO_REAL_FUSED_GPS_PASS")
