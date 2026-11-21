@@ -7,6 +7,7 @@ on:
       - tests/backend/no-rider-timeout-cash-races.cjs
       - tests/backend/no-rider-timeout-cash-postgres.sql
       - tests/fixtures/order-transition-v22-prod-20261121.sql
+      - ops/p0/v22-null-role-cash-review-only.sql
       - .github/workflows/p0-no-rider-timeout-cash.yml
 permissions:
   contents: read
