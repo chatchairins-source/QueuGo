@@ -120,4 +120,58 @@ BEGIN
  END;
 END $check$;
 RESET ROLE;
+-- Additional fail-closed exclusions: invalid or future search clock, Market sibling,
+-- and an already assigned Rider never qualify as abandoned cash orders.
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001301',31);
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001302',31);
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001303',31);
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001304',31);
+SELECT set_config('qg.test_actor_role','admin',false);
+UPDATE public.orders SET rider_search_started_at=NULL
+ WHERE id='00000000-0000-4000-8000-000000001301';
+UPDATE public.orders SET rider_search_started_at=now()+interval '2 minutes'
+ WHERE id='00000000-0000-4000-8000-000000001302';
+UPDATE public.orders SET market_order_id='00000000-0000-4000-8000-000000001399'
+ WHERE id='00000000-0000-4000-8000-000000001303';
+UPDATE public.orders SET rider_id='00000000-0000-4000-8000-000000001398',
+ status='rider_assigned',rider_assigned_at=now()
+ WHERE id='00000000-0000-4000-8000-000000001304';
+SELECT set_config('qg.test_actor_role','',false);
+DO $negative$
+DECLARE c integer;
+BEGIN
+ c:=qg_private.cancel_rider_timeout_cash(100);
+ IF c<>0 THEN RAISE EXCEPTION 'ineligible orders must not cancel: %',c; END IF;
+ IF EXISTS(SELECT 1 FROM public.orders
+           WHERE id IN ('00000000-0000-4000-8000-000000001301',
+                        '00000000-0000-4000-8000-000000001302',
+                        '00000000-0000-4000-8000-000000001303')
+             AND status <> 'searching_rider')
+ THEN RAISE EXCEPTION 'invalid clock or Market group changed unexpectedly'; END IF;
+ IF (SELECT status FROM public.orders
+     WHERE id='00000000-0000-4000-8000-000000001304') <> 'rider_assigned'
+ THEN RAISE EXCEPTION 'assigned Rider was cancelled'; END IF;
+ IF EXISTS(SELECT 1 FROM public.payments
+     WHERE order_id IN ('00000000-0000-4000-8000-000000001301',
+                        '00000000-0000-4000-8000-000000001302',
+                        '00000000-0000-4000-8000-000000001303',
+                        '00000000-0000-4000-8000-000000001304')
+       AND status <> 'pending')
+ THEN RAISE EXCEPTION 'ineligible payment ledger changed'; END IF;
+ IF EXISTS(SELECT 1 FROM public.deliveries
+     WHERE order_id IN ('00000000-0000-4000-8000-000000001301',
+                        '00000000-0000-4000-8000-000000001302',
+                        '00000000-0000-4000-8000-000000001303',
+                        '00000000-0000-4000-8000-000000001304')
+       AND status <> 'pending')
+ THEN RAISE EXCEPTION 'ineligible delivery changed'; END IF;
+ IF EXISTS(SELECT 1 FROM public.notifications
+     WHERE reference_id IN ('00000000-0000-4000-8000-000000001301',
+                            '00000000-0000-4000-8000-000000001302',
+                            '00000000-0000-4000-8000-000000001303',
+                            '00000000-0000-4000-8000-000000001304'))
+ THEN RAISE EXCEPTION 'ineligible order generated cancellation notifications'; END IF;
+END $negative$;
+SELECT 'NO_RIDER_TIMEOUT_EXCLUSIONS_PASS' AS evidence;
+
 SELECT 'NO_RIDER_TIMEOUT_CASH_15_30_ATOMIC_PASS' AS evidence;
