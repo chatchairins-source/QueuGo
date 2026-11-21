@@ -1,7 +1,7 @@
 ## 2026-11-21 Supersede obsolete Integration/main Pilot pushes
 
 - Observed Integration73f9d572 Native Pilot44899645675 blocked by obsolete614ee22e Pilot44898526781: the per-ref workflow concurrency explicitly kept every running old push alive. This delays exact-current-source acceptance after tested PR integration.
-- Cancel only superseded Native Pilot runs when the NEW event is a push on Integration or main, retaining the existing per-ref/workflow group. PR/manual events and other branches keep cancel-in-progress=false. Signed Release Certification/build workflows and authenticated review locks are unchanged. No test is skipped and each surviving SHA must still pass its own complete Pilot.
+- Cancel superseded Native Pilot runs when the NEW event updates a PR or pushes Integration/main, retaining the existing per-ref/workflow group. Manual events and other branches keep cancel-in-progress=false. PR updates must also supersede their own obsolete source to avoid waiting for a rejected predecessor. Signed Release Certification/build workflows and authenticated review locks are unchanged. No test is skipped and each surviving SHA must still pass its own complete Pilot.
 - Queue semantics are workflow-only; YAML/expression scope validation is local evidence, not proof that hosted GitHub cancellation has happened. Require exact-head CI before merge; once merged, verify the newest Integration run progresses and only obsolete same-group Pilot runs are cancelled.
 - No Production mutation, main promotion or signed Release AAB. Backup credentials, SQL-body reconciliation and controlled P0 rollout/physical/Play evidence remain unresolved.
 

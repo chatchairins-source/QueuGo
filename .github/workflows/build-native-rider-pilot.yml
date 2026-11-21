@@ -123,9 +123,9 @@ permissions:
 
 concurrency:
   group: queuego-native-${{ github.ref }}-${{ github.workflow }}
-  # Only newer Integration/main pushes supersede their own obsolete Pilot run.
-  # PR/manual runs and the separate certified-release workflows keep their locks.
-  cancel-in-progress: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/work-native-reconcile-main-20261114' || github.ref == 'refs/heads/main') }}
+  # Newer commits supersede only their own PR or Integration/main Pilot run.
+  # Manual/other-branch runs and certified-release workflows keep their locks.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/work-native-reconcile-main-20261114' || github.ref == 'refs/heads/main')) }}
 
 # Pilot APKs use the already deployed QueueGo Map endpoint used by the Customer
 # Web map. Production release builds still require an explicit validated URL.
