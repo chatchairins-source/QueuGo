@@ -12,7 +12,7 @@ const ignored=get('.gitignore');
 for(const path of ['/native-android/rider_country_map/src/main/assets/',
                    '/native-android/rider_country_routing/src/main/assets/',
                    '/artifacts/rider-authenticated-review/']){
-  assert.ok(ignored.split(/\\r?\\n/).includes(path), 'Generated offline Play asset/provenance path must not make signed release checkout dirty: '+path);
+  assert.ok(ignored.split(/\r?\n/).includes(path), 'Generated offline Play asset/provenance path must not make signed release checkout dirty: '+path);
 }
 const pythonAst=require('child_process').spawnSync('python3',['-c',
   "import ast,pathlib;ast.parse(pathlib.Path('native-android/qa/stage-play-rider-assets.py').read_text());ast.parse(pathlib.Path('native-android/qa/fetch-rider-offline-candidate.py').read_text())"],
