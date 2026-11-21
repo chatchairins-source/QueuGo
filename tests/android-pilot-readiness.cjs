@@ -10,7 +10,7 @@ ok(!fs.existsSync(path.join(root,'.github/workflows/build-queuego-apks.yml')),'o
 ok(workflow.includes('name: QueueGo Native Android Pilot'),'Pilot must be identified as Native Android');
 ok(workflow.includes('Full QueueGo regression')&&workflow.includes('npm test'),'Pilot must run complete QueueGo regression');
 ok(workflow.includes('parallel-role-smoke:')&&workflow.includes('role: [customer, merchant, rider]'),'Pilot must test all three Native roles');
-ok(workflow.includes('max-parallel: 3')&&workflow.includes('fail-fast: false'),'Role-specific build jobs must be isolated');
+ok(workflow.includes('max-parallel: 2')&&workflow.includes('fail-fast: false'),'All role jobs remain isolated with bounded simultaneous dependency downloads');
 ok(workflow.includes('github.event.pull_request.head.sha || github.sha'),'Pilot must checkout exact candidate SHA');
 ok(workflow.includes(':testDebugUnitTest')&&workflow.includes(':assembleDebug'),'Pilot must run Kotlin/JVM tests and assemble real Debug APKs');
 ok(workflow.includes(':shared:testDebugUnitTest')&&workflow.includes(':rider-navigation-map:testDebugUnitTest'),'Pilot must verify shared and Rider map unit tests');

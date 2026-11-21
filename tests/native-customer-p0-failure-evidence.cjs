@@ -1,9 +1,12 @@
-// Contract: failed Customer P0 Gradle builds retain the original failure evidence.
+// Original Gradle failure evidence must survive rejected metadata recovery.
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const workflow = fs.readFileSync('.github/workflows/native-customer-p0.yml', 'utf8');
-assert.match(workflow, /mkdir -p artifacts\/customer-p0/);
-assert.match(workflow, /trap '[^\n]*cp "\$first_log" artifacts\/customer-p0\/gradle-first-attempt\.log/);
+const helper = fs.readFileSync('native-android/qa/gradle_maven_recovery.py', 'utf8');
+assert(workflow.includes('--log artifacts/customer-p0/gradle-first-attempt.log --'));
+assert(helper.includes('log_path.parent.mkdir(parents=True, exist_ok=True)'));
+assert(helper.includes('first = build(command, log_path)'));
+assert(helper.includes('log_path.with_suffix(".retry.log")'));
 assert.match(workflow, /if: always\(\)/);
-assert.match(workflow, /artifacts\/customer-p0\//);
-console.log('Customer P0 original Gradle failure evidence retention contract PASS');
+assert(workflow.includes('artifacts/customer-p0/'));
+console.log('Customer original/retry Gradle log retention contract PASS; executable CLI/HTTP coverage is in test_gradle_maven_recovery.py');

@@ -1,3 +1,10 @@
+## 2026-11-21 Recover actual Integration Maven failures without retry storms
+
+- Exact bb450ed8 failed Customer API26 build job136843034162 (pinned coroutines/JavaWriter/Hamcrest/jsr305 metadata misses; the POM probe also exhausted404), navigation-map job136843095880 (Valhalla0.6.4 absent) and map-display job136843095960 (Maven429 for the pinned Kotlin Compose plugin marker disabled repository resolution). No source/test failure was rerun blindly.
+- Gradle setup caches on the long-lived Integration branch were read-only. Permit cache writes only on main/Integration; PRs and other branches remain read-only. Limit the existing Customer and role matrices to two simultaneous jobs while retaining all API/role targets. Sonatype recommends reducing redundant downloads/caching rather than retrying harder: https://central.sonatype.org/faq/429-error/ . Gradle cache policy: https://github.com/gradle/actions/blob/main/docs/setup-gradle.md .
+- Replace duplicated inline Maven recovery with one shared real-Gradle runner for Customer, role builds, map-display and navigation-map instrumentation. A known exact-version metadata failure allows only one identical-task retry after cooldown and validated canonical Central POM identity; no mirror/version substitution, offline mode or assertion bypass. First/retry logs and final failure remain evidence. Unknown dependency, mixed compiler/test failure, invalid POM and403 fail closed; metadata retries are bounded and respect bounded Retry-After.
+- Local CLI/loopback-HTTP regressions are not Android runtime proof. Require exact-head hosted Customer API26/30/33/35, Native Pilot/map jobs and Export acceptance before integration. No Production/financial mutation, main promotion or signed AAB. Existing backup/restore credentials, SQL parity, P0/VAT rollout and physical/Play evidence remain unresolved.
+
 ## 2026-11-21 Supersede obsolete Integration/main Pilot pushes
 
 - Observed Integration73f9d572 Native Pilot44899645675 blocked by obsolete614ee22e Pilot44898526781: the per-ref workflow concurrency explicitly kept every running old push alive. This delays exact-current-source acceptance after tested PR integration.
