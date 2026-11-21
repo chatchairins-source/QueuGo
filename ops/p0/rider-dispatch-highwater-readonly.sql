@@ -16,13 +16,21 @@ WITH timeout_config AS (
 ),
 searching AS (
   SELECT o.id,
-         COALESCE(o.rider_search_started_at, o.merchant_accepted_at, o.created_at) AS started_at,
+         o.rider_search_started_at AS started_at,
+         o.created_at,
+         o.merchant_accepted_at,
          c.timeout_minutes,
-         COALESCE(o.rider_search_started_at, o.merchant_accepted_at, o.created_at)
+         o.rider_search_started_at
            + make_interval(mins => c.timeout_minutes) AS deadline
   FROM public.orders o
   CROSS JOIN timeout_config c
   WHERE o.status='searching_rider' AND o.rider_id IS NULL
+),
+invalid_search_clocks AS (
+  SELECT id FROM searching
+  WHERE started_at IS NULL OR started_at > now()
+     OR created_at IS NULL OR started_at < created_at
+     OR (merchant_accepted_at IS NOT NULL AND started_at < merchant_accepted_at)
 ),
 overdue AS (
   SELECT id, started_at, deadline
@@ -33,6 +41,7 @@ stats AS (
   SELECT
     (SELECT timeout_minutes FROM timeout_config) AS configured_timeout_minutes,
     (SELECT count(*) FROM searching)::integer AS searching_orders,
+    (SELECT count(*) FROM invalid_search_clocks)::integer AS invalid_search_clocks,
     (SELECT count(*) FROM overdue)::integer AS overdue_searching_orders,
     (SELECT count(*) FROM public.qg_rider_order_offers x
       JOIN overdue o ON o.id=x.order_id)::integer AS late_active_offers,
@@ -53,7 +62,7 @@ stats AS (
 )
 SELECT *,
   CASE
-    WHEN overdue_searching_orders>0 OR late_active_offers>0 OR invalid_status_active_offers>0
+    WHEN invalid_search_clocks>0 OR overdue_searching_orders>0 OR late_active_offers>0 OR invalid_status_active_offers>0
       OR overdue_offers_last_hour>0 OR overdue_notifications_last_hour>0
       OR overdue_offer_attempts_above_120>0
     THEN 'NO_GO_DISPATCH_P0'

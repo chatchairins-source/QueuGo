@@ -55,6 +55,7 @@ async function main(){
     assert.equal(row.release_gate,'NO_GO_DISPATCH_P0');checks++;
     equal(row.configured_timeout_minutes,30,'finite Admin timeout');
     equal(row.searching_orders,2,'two unassigned searching orders');
+    equal(row.invalid_search_clocks,0,'valid persisted search clocks');
     equal(row.overdue_searching_orders,1,'one overdue order');
     equal(row.late_active_offers,1,'overdue active offer');
     equal(row.invalid_status_active_offers,1,'orphaned active offer on terminal order');
@@ -73,6 +74,25 @@ async function main(){
     equal(row.searching_orders,1,'recent valid search remains visible');
     equal(row.overdue_searching_orders,0,'no overdue search remains');
     equal(row.invalid_status_active_offers,0,'no orphaned active offer');
+
+    // A missing, future, or contradictory persisted Rider search clock must
+    // fail closed even when order creation/merchant acceptance are fresh.
+    await db.query("UPDATE orders SET rider_search_started_at=NULL WHERE id=$1",[id(2)]);
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'NO_GO_DISPATCH_P0');checks++;
+    equal(row.invalid_search_clocks,1,'missing search clock rejected');
+    await db.query("UPDATE orders SET rider_search_started_at=now()+interval '5 minutes' WHERE id=$1",[id(2)]);
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'NO_GO_DISPATCH_P0');checks++;
+    equal(row.invalid_search_clocks,1,'future search clock rejected');
+    await db.query("UPDATE orders SET rider_search_started_at=now()-interval '10 minutes',merchant_accepted_at=now()-interval '5 minutes' WHERE id=$1",[id(2)]);
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'NO_GO_DISPATCH_P0');checks++;
+    equal(row.invalid_search_clocks,1,'pre-merchant search clock rejected');
+    await db.query("UPDATE orders SET rider_search_started_at=now()-interval '2 minutes',merchant_accepted_at=now()-interval '4 minutes' WHERE id=$1",[id(2)]);
+    row=(await db.query(sql)).rows[0];
+    assert.equal(row.release_gate,'PASS_DISPATCH_OVERTIME');checks++;
+    equal(row.invalid_search_clocks,0,'valid restored search clock passes');
 
     // Missing/broken config never means infinite time.
     await db.exec("UPDATE system_settings SET value='{\"orderTimeout\":\"unlimited\"}';");
