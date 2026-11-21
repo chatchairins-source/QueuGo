@@ -1,6 +1,6 @@
 # QueueGo — Google Play Closed Beta Readiness
 
-Technical source reconciliation: 2026-11-21 (Integration `73f9d57212fd8c4029a0e3341fe2d007675ccee9`); final artifact/network/Play review remains pending  
+Technical source reconciliation: 2026-11-21 (Integration `73f9d57212fd8c4029a0e3341fe2d007675ccee9`); final artifact/network/Play review remains pending
 Scope: Native Android Customer, Merchant, Rider apps. Legacy Capacitor/Web build notes are historical context only and do not certify the Native release.
 
 ## Current release gate
