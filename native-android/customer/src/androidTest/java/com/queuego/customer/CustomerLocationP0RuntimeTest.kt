@@ -161,6 +161,13 @@ class CustomerLocationP0RuntimeTest {
      * A gray canvas or a single pin must never pass merely because semantics say ready.
      */
     private fun assertRenderedRoadDetail(index: Int) {
+        // On API30 MapLibre can report idle before actual geographic tile detail
+        // reaches the GL TextureView. Probe real pixels until detail arrives or
+        // fail within a bounded period; never lower color/edge thresholds.
+        var lastColors = 0
+        var lastEdges = 0
+        var lastSamples = 0
+        repeat(8) { attempt ->
         val completed = java.util.concurrent.CountDownLatch(1)
         val rendered = AtomicReference<Bitmap?>()
         fun findMap(view: android.view.View): org.maplibre.android.maps.MapView? {
@@ -196,9 +203,16 @@ class CustomerLocationP0RuntimeTest {
             val directory = File(compose.activity.filesDir, "p0-evidence").apply { mkdirs() }
             File(directory, "road-detail-$index.png").outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }
             File(directory, "road-detail-$index.txt").writeText("colors=${colors.size} edges=$edges samples=$samples")
-            assertTrue("Map has no rendered geographic detail: ${colors.size} colors", colors.size >= 16)
-            assertTrue("Map has insufficient geographic edges: $edges/$samples", edges > samples / 1000)
+            lastColors = colors.size
+            lastEdges = edges
+            lastSamples = samples
+            File(directory, "road-detail-$index.txt").writeText("colors=$lastColors edges=$lastEdges samples=$lastSamples attempts=" + (attempt + 1))
+            if (colors.size >= 16 && samples > 0 && edges > samples / 1000) return
         } finally { bitmap.recycle() }
+        if (attempt < 7) Thread.sleep(700)
+        }
+        assertTrue("Cycle $index: Map has no rendered geographic detail: $lastColors colors across 8 snapshots", lastColors >= 16)
+        assertTrue("Cycle $index: Map has insufficient geographic edges: $lastEdges/$lastSamples", lastSamples > 0 && lastEdges > lastSamples / 1000)
     }
 
     @Test fun selectedDraftSurvivesSavedStateRestore() {
