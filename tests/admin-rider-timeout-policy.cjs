@@ -2,10 +2,12 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const code=fs.readFileSync('admin/index.html','utf8');
-const match=code.match(/<select id="qt-set-orderTimeout"[^>]*>([\\s\\S]*?)<\\/select>/);
-assert.ok(match,'Admin needs bounded Rider timeout selector');
-assert.match(match[1],/<option value="15"/,'15 minute policy required');
-assert.match(match[1],/<option value="30"/,'30 minute policy required');
+const start=code.indexOf('<select id="qt-set-orderTimeout"');
+const end=code.indexOf('</select>',start);
+assert.ok(start>=0 && end>start,'Admin needs bounded Rider timeout selector');
+const selector=code.slice(start,end);
+assert.match(selector,/<option value="15"/,'15 minute policy required');
+assert.match(selector,/<option value="30"/,'30 minute policy required');
 assert.ok(!code.includes("['orderTimeout','Timeout ออเดอร์ (นาที)',1,undefined,1]"),'Unbounded number field must be removed');
 assert.ok(code.includes("if(![15,30].includes(timeout))"),'Admin must fail closed on invalid timeout');
 assert.ok(code.includes("orderTimeout:timeout"),'Admin must persist validated timeout');
