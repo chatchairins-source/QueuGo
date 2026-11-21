@@ -504,6 +504,11 @@ private class QueueGoLocationPickerHolder {
     var selectedPoint: QgMapPoint? = null
     var onPointSelected: (QgMapPoint) -> Unit = {}
     var onReady: (Boolean) -> Unit = {}
+    // Keep exact listener handles to detach on every Compose close. API 26
+    // SwiftShader accumulates GL work across repeated map opens otherwise.
+    var frameListener: MapView.OnDidFinishRenderingFrameListener? = null
+    var idleListener: MapView.OnDidBecomeIdleListener? = null
+    var loadListener: MapView.OnDidFinishLoadingMapListener? = null
 
     /** Do not expose a blank raster canvas as a ready delivery map.
      * This inspects the real MapLibre GL snapshot, not view decorations or markers.
@@ -603,11 +608,24 @@ private class QueueGoLocationPickerHolder {
 
     fun destroy() {
         if (destroyed) return
+        // Deregister native map callbacks before releasing the GL renderer.
+        // Their closures capture this holder; leaving them attached can keep
+        // disposed MapViews reachable during repeated address-picker opens.
         stop()
-        view?.onDestroy()
+        view?.let { active ->
+            frameListener?.let(active::removeOnDidFinishRenderingFrameListener)
+            idleListener?.let(active::removeOnDidBecomeIdleListener)
+            loadListener?.let(active::removeOnDidFinishLoadingMapListener)
+            active.onDestroy()
+        }
+        frameListener = null
+        idleListener = null
+        loadListener = null
         destroyed = true
         snapshotGeneration++
         snapshotPending = false
+        styleReady = false
+        fullyRendered = false
         map = null
         view = null
     }
@@ -649,19 +667,23 @@ fun QgLocationPickerMap(
                         view.onCreate(null)
                         // A loaded style can still show only a background or ancestor tiles.
                         // Readiness requires a fully rendered frame followed by map idle.
-                        view.addOnDidFinishRenderingFrameListener(
-                            MapView.OnDidFinishRenderingFrameListener { fully, _, _ ->
-                                if (!holder.destroyed && holder.styleReady) holder.fullyRendered = fully
-                            }
-                        )
-                        view.addOnDidBecomeIdleListener {
+                        val frameListener = MapView.OnDidFinishRenderingFrameListener { fully, _, _ ->
+                            if (!holder.destroyed && holder.styleReady) holder.fullyRendered = fully
+                        }
+                        val idleListener = MapView.OnDidBecomeIdleListener {
                             holder.checkRenderedMapReady()
                         }
                         // An idle callback can precede network tile arrival; recheck
                         // when the actual map finishes loading rather than exposing a blank GL frame.
-                        view.addOnDidFinishLoadingMapListener {
+                        val loadListener = MapView.OnDidFinishLoadingMapListener {
                             holder.checkRenderedMapReady()
                         }
+                        holder.frameListener = frameListener
+                        holder.idleListener = idleListener
+                        holder.loadListener = loadListener
+                        view.addOnDidFinishRenderingFrameListener(frameListener)
+                        view.addOnDidBecomeIdleListener(idleListener)
+                        view.addOnDidFinishLoadingMapListener(loadListener)
                         view.getMapAsync { map ->
                             if (holder.destroyed) return@getMapAsync
                             holder.map = map
