@@ -1,0 +1,13 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const source = fs.readFileSync(path.join(__dirname, '../merchant/market-catalog.js'), 'utf8');
+const submit = source.slice(source.indexOf('form.onsubmit=async ev=>'));
+assert.ok(submit.includes('const submitShop=state.shop,submitEpoch=state.epoch'), 'submission captures merchant and request epoch');
+assert.ok(submit.includes('pendingKey(submitShop)'), 'pending idempotency record stays bound to original merchant');
+assert.equal((submit.match(/pendingKey\(state\.shop\)/g)||[]).length, 0, 'async completion never uses mutable current merchant for pending record');
+assert.ok(submit.includes('if(!active(submitEpoch,submitShop))return;\n      toast('), 'stale successful completion must not toast or reload another merchant');
+assert.ok(submit.includes('if(!active(submitEpoch,submitShop))return;\n      error(err)'), 'stale failed completion must not alter another merchant UI');
+assert.ok(submit.includes('if(!submitShop||!active(submitEpoch,submitShop))return;'), 'reject submission after session change');
+console.log('Market catalog merchant-switch add completion guards passed');

@@ -5,7 +5,7 @@ const MARKET_SHOPS=new Set(['market','meat','fish','vegetable','fruit']);
 const MARKET_MASTER_CATEGORIES=new Set(['ผักสด','เห็ด','ผลไม้','เนื้อหมู','เนื้อวัว','ไก่ / เป็ด','ปลา','กุ้ง','ปู','หอย','ปลาหมึก','ไข่','เต้าหู้ / เส้นสด / ลูกชิ้น','ของแห้ง']);
 const UNITS=['ชิ้น','กิโลกรัม','ขีด','กรัม','ถุง','แพ็ก','มัด','ลูก','ขวด','กล่อง'];
 const E=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const state={epoch:0,rows:[],categories:[],query:'',category:'',offset:0,hasMore:false,loading:false,shop:null,gpRate:null};
+const state={epoch:0,rows:[],categories:[],query:'',category:'',offset:0,hasMore:false,loading:false,resultsReady:false,shop:null,gpRate:null};
 let searchTimer=null;
 const shop=()=>{const u=currentUser?.();return u?.type==='shop'?u:null};
 const profileId=u=>u&&(u.shopProfileId||QT_SYNC?.profileMaps?.shopByUserId?.get(u.id)||null);
@@ -35,7 +35,10 @@ function deliveryPrice(storePrice){if(state.gpRate==null)return null;const p=Num
 function deliveryNote(storePrice){const d=deliveryPrice(storePrice),r=Number(state.gpRate);return Number.isFinite(d)?`GP ${r.toLocaleString('th-TH',{maximumFractionDigits:2})}% · ราคาเดลิเวอรี่ ${d.toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})} บาท`:'ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก'}
 window.qgMarketCatalogPricePreview=()=>{const input=document.querySelector('#market-catalog-add-form [name="price"]'),out=document.getElementById('market-catalog-delivery-preview');if(out)out.textContent=deliveryNote(input?.value)};
 window.qgMarketCatalogSetKg=kg=>qgMarketSetWeightPreset(document.getElementById('market-catalog-add-form'),kg);
-function active(epoch,shopId){return epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog'}
+function active(epoch,shopId){
+  const currentShop=shop();
+  return !!currentShop&&permitted(currentShop)&&profileId(currentShop)===shopId&&epoch===state.epoch&&shopId===state.shop&&location.hash.replace('#','').split('/')[0]==='market-catalog';
+}
 function productImage(r){
   const src=String(r.catalog_preview_image||'').trim();
   const image=src
@@ -87,7 +90,7 @@ function card(r){
         <label><input data-market-delivery type="checkbox" ${r.available===false?'':'checked'} ${linked?'disabled':''}> เดลิเวอรี่ลูกค้า</label>
       </div>
       <div class="qgg-gp-note">${linked&&Number(r.delivery_price)>0?'ราคาเดลิเวอรี่ '+Number(r.delivery_price).toLocaleString('th-TH',{minimumFractionDigits:2,maximumFractionDigits:2})+' บาท':deliveryNote(storePrice)}</div>
-      <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose('${E(r.id)}')">${linked?'มีในร้านแล้ว':'เพิ่มสินค้าเข้าร้าน'}</button>
+      <button type="button" class="${linked?'qgm-outline':'qgm-primary'}" ${linked?'disabled':''} onclick="qgMarketCatalogChoose(this.closest('[data-market-id]').getAttribute('data-market-id'))">${linked?'มีในร้านแล้ว':'เพิ่มสินค้าเข้าร้าน'}</button>
     </div>
   </article>`;
 }
@@ -109,7 +112,7 @@ function paint(){
 async function recoverPending(shopId,epoch){
   let pending=null;
   try{pending=JSON.parse(localStorage.getItem(pendingKey(shopId))||'null')}catch(_){}
-  if(!pending?.p_request_id||pending.p_master_product_id==null)return;
+  if(!pending?.p_request_id||pending.p_master_product_id==null||!active(epoch,shopId))return;
   try{
     await rpc('qg_market_catalog_add',pending);
     try{localStorage.removeItem(pendingKey(shopId))}catch(_){}
@@ -122,29 +125,94 @@ async function recoverPending(shopId,epoch){
 }
 async function load(){
   const u=shop(),id=profileId(u);
-  if(!u||!id||!permitted(u)){shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
-  const epoch=++state.epoch;state.shop=id;state.loading=true;shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
+  if(!u||!id||!permitted(u)){++state.epoch;state.shop=null;state.loading=false;state.resultsReady=false;state.gpRate=null;state.rows=[];state.categories=[];state.hasMore=false;shell('<p>หน้านี้ใช้กับร้านตลาดสด ร้านเนื้อ ปลา ผัก หรือผลไม้เท่านั้น</p>');return;}
+  const focusedSearch=document.activeElement?.id==='market-catalog-search';
+  const focusedCategory=document.activeElement?.id==='market-catalog-category';
+  const epoch=++state.epoch;state.shop=id;state.loading=true;state.resultsReady=false;
+  // Preserve the search field while filtering; replacing it on every keystroke drops keyboard focus.
+  if(!focusedSearch&&!focusedCategory)shell('<p>กำลังโหลดแคตตาล็อกตลาด...</p>');
   await recoverPending(id,epoch);
+  // Recovery may wait on the network while the merchant signs out or switches accounts.
+  // Never start the subsequent catalog RPCs for a superseded session.
+  if(!active(epoch,id))return;
   try{
     const [cats,page,gp]=await Promise.all([
       rpc('qg_market_master_categories',{}),
       rpc('qg_market_catalog_page',{p_query:state.query,p_category:state.category,p_offset:state.offset}),
       qgMarketReadGpRate(id)
     ]);
-    state.gpRate=gp;
     if(!active(epoch,id))return;
+    // A newer typed query must not publish old rows into shared state: stale
+    // cards can still be selected while the debounce timer is pending.
+    const currentInput=document.getElementById('market-catalog-search');
+    // A search can be typed after this load began even when another control
+    // originally held focus. Never publish rows for the superseded query.
+    if(currentInput&&currentInput.value.trim()!==state.query)return;
+    state.gpRate=gp;
     state.categories=(Array.isArray(cats)?cats:[]).filter(c=>MARKET_MASTER_CATEGORIES.has(String(c?.category||'')));
     const rows=(Array.isArray(page)?page:[]).filter(r=>MARKET_MASTER_CATEGORIES.has(String(r?.category||'')));
-    state.hasMore=rows.length>50;state.rows=rows.slice(0,50);paint();
-  }catch(e){if(active(epoch,id)){shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p>');error(e)}}
+    state.hasMore=rows.length>50;state.rows=rows.slice(0,50);
+    // Preserve keyboard selection while repainting the settled query.
+    const selection=currentInput&&Number.isInteger(currentInput.selectionStart)&&Number.isInteger(currentInput.selectionEnd)
+      ? [currentInput.selectionStart,currentInput.selectionEnd,currentInput.selectionDirection||'none'] : null;
+    paint();
+    state.resultsReady=true;
+    if(focusedSearch){
+      const input=document.getElementById('market-catalog-search');
+      input?.focus({preventScroll:true});
+      if(selection)try{input?.setSelectionRange(...selection)}catch(_){}
+    }else if(focusedCategory){
+      // Repainting after a keyboard category change replaces the select node.
+      // Restore focus so keyboard users can continue navigating the catalog.
+      document.getElementById('market-catalog-category')?.focus({preventScroll:true});
+    }
+  }catch(e){if(active(epoch,id)){
+    // Keep the search control mounted on network failure so the merchant can retry typing.
+    if(focusedSearch||focusedCategory){
+      const status=document.getElementById('market-catalog-status');
+      if(status){
+        status.textContent='โหลดแคตตาล็อกไม่สำเร็จ ';
+        const retry=document.createElement('button');
+        retry.type='button';
+        retry.className='qgm-outline';
+        retry.textContent='ลองโหลดแคตตาล็อกอีกครั้ง';
+        retry.addEventListener('click',()=>{
+          // The retry button is removed by a successful repaint. Move focus back
+          // to the filter that initiated this load before replacing the status.
+          document.getElementById(focusedCategory?'market-catalog-category':'market-catalog-search')?.focus({preventScroll:true});
+          qgRenderMarketCatalog();
+        });
+        status.appendChild(retry);
+      }
+    }else shell('<p>โหลดแคตตาล็อกไม่สำเร็จ</p><button type="button" class="qgm-outline" id="market-catalog-initial-retry" onclick="qgMarketCatalogRetryInitial()">ลองโหลดแคตตาล็อกอีกครั้ง</button>');
+    error(e);
+  }}
   finally{if(active(epoch,id))state.loading=false}
 }
+// Initial-load retry replaces its own button; return focus to a stable control
+// after success, or to the replacement retry button after another failure.
+window.qgMarketCatalogRetryInitial=async()=>{
+  await load();
+  if(state.resultsReady){
+    document.getElementById('market-catalog-search')?.focus({preventScroll:true});
+  }else{
+    document.getElementById('market-catalog-initial-retry')?.focus({preventScroll:true});
+  }
+};
 window.qgRenderMarketCatalog=load;
-window.qgMarketCatalogSearch=e=>{e?.preventDefault?.();state.query=String(document.getElementById('market-catalog-search')?.value||'').trim();state.category=String(document.getElementById('market-catalog-category')?.value||'');state.offset=0;load()};
-window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);searchTimer=setTimeout(()=>{if(state.loading)return;state.query=String(value||'').trim();state.offset=0;load()},300)};
-window.qgMarketCatalogSetCategory=category=>{if(state.loading)return;state.category=String(category||'');state.offset=0;load()};
-window.qgMarketCatalogPage=dir=>{if(state.loading)return;const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
+window.qgMarketCatalogSearch=e=>{e?.preventDefault?.();clearTimeout(searchTimer);searchTimer=null;state.query=String(document.getElementById('market-catalog-search')?.value||'').trim();state.category=String(document.getElementById('market-catalog-category')?.value||'');state.offset=0;load()};
+window.qgMarketCatalogQueueSearch=value=>{clearTimeout(searchTimer);const queuedShop=profileId(shop()),queuedEpoch=state.epoch;searchTimer=setTimeout(()=>{searchTimer=null;if(location.hash.replace('#','').split('/')[0]!=='market-catalog'||!queuedShop||!active(queuedEpoch,queuedShop))return;state.query=String(value||'').trim();state.offset=0;load()},300)};
+window.qgMarketCatalogSetCategory=category=>{clearTimeout(searchTimer);searchTimer=null;const input=document.getElementById('market-catalog-search');if(input)state.query=String(input.value||'').trim();state.category=String(category||'');state.offset=0;load()};
+window.qgMarketCatalogPage=dir=>{if(state.loading)return;const input=document.getElementById('market-catalog-search');const typedQuery=input?String(input.value||'').trim():state.query;if(typedQuery!==state.query){clearTimeout(searchTimer);searchTimer=null;state.query=typedQuery;state.offset=0;load();return;}const next=Math.max(0,state.offset+(dir>0?50:-50));if(dir>0&&!state.hasMore)return;state.offset=next;load()};
 window.qgMarketCatalogChoose=id=>{
+  // Rows remain visible while an in-flight search loads; never select an old result.
+  if(state.loading||!state.resultsReady)return;
+  const currentShop=shop();
+  if(!currentShop||!permitted(currentShop)||profileId(currentShop)!==state.shop||location.hash.replace('#','').split('/')[0]!=='market-catalog')return;
+  // A newly typed search is not committed until debounce fires. Do not let a
+  // stale visible card open the add form for a product outside that query.
+  const typedQuery=document.getElementById('market-catalog-search')?.value;
+  if(typedQuery!=null&&String(typedQuery).trim()!==state.query)return;
   const r=state.rows.find(x=>x.id===id);if(!r||r.product_id)return;
   const card=[...document.querySelectorAll('[data-market-id]')].find(x=>x.getAttribute('data-market-id')===String(id));
   const inlinePrice=Number(card?.querySelector('[data-market-price]')?.value),inlineStock=Number(card?.querySelector('[data-market-stock]')?.value);
@@ -155,7 +223,7 @@ window.qgMarketCatalogChoose=id=>{
   shell(`<form id="market-catalog-add-form" class="market-form">
     <button type="button" class="qgm-outline" onclick="qgRenderMarketCatalog()">‹ กลับแคตตาล็อก</button>
     <div class="market-catalog-preview">${productImage(r)}</div>
-    <h2>${E(r.name_th)}</h2><p>${E(r.category)} · ขนาดสินค้า ${E(r.source_unit)}</p>
+    <h2 id="market-catalog-add-heading" tabindex="-1">${E(r.name_th)}</h2><p>${E(r.category)} · ขนาดสินค้า ${E(r.source_unit)}</p>
     <label>ราคาหน้าร้าน / ชุด (บาท)<input name="price" type="number" min="0.01" max="999999" step="0.01" value="${Number.isFinite(inlinePrice)&&inlinePrice>0?E(inlinePrice):''}" required oninput="qgMarketCatalogPricePreview()"></label>
     <small id="market-catalog-delivery-preview">ราคาเดลิเวอรี่คำนวณ GP อัตโนมัติหลังบันทึก</small>
     <label>หน่วยสต๊อก<select name="unit">${UNITS.map(u=>`<option value="${E(u)}" ${u===suggestedUnit?'selected':''}>${E(u)}</option>`).join('')}</select></label>
@@ -168,11 +236,15 @@ window.qgMarketCatalogChoose=id=>{
     <div class="market-actions"><button class="qgm-primary" type="submit">เพิ่มสินค้าเข้าร้าน</button></div>
   </form>`);
   const form=document.getElementById('market-catalog-add-form');
+  // The selected card is replaced by a new form; move keyboard/screen-reader focus
+  // to its heading rather than leaving focus on a detached button.
+  document.getElementById('market-catalog-add-heading')?.focus({preventScroll:true});
   qgMarketAttachWeightPresets(form);
   qgMarketCatalogPricePreview();
+  let pendingSubmission=null;
   form.onsubmit=async ev=>{
     ev.preventDefault();if(state.loading)return;
-    const f=new FormData(form),body={
+    const f=new FormData(form),candidate={
       p_master_product_id:r.id,
       p_price:Number(f.get('price')),
       p_unit:String(f.get('unit')),
@@ -184,16 +256,28 @@ window.qgMarketCatalogChoose=id=>{
       p_available:f.has('available'),
       p_request_id:crypto.randomUUID()
     };
+    // An ambiguous network failure must retry the identical RPC payload and request ID.
+    // Inputs are locked after the first attempt so the displayed values cannot diverge.
+    const body=pendingSubmission||candidate;
     if(!(body.p_price>0&&body.p_pack_size>0&&body.p_weight_kg>0&&body.p_cost>=0&&body.p_initial_stock>=0&&body.p_min_stock>=0))return error(Error('ตรวจราคา หน่วย น้ำหนัก ต้นทุน และสต๊อกอีกครั้ง'));
+    const submitShop=state.shop,submitEpoch=state.epoch;
+    // The form can outlive an auth change before the catalog route is rendered again.
+    if(!submitShop||!active(submitEpoch,submitShop)||profileId(shop())!==submitShop||!permitted(shop()))return;
+    pendingSubmission=body;
+    form.querySelectorAll('input,select').forEach(control=>{control.disabled=true});
     state.loading=true;const submit=ev.submitter;if(submit)submit.disabled=true;
     try{
-      localStorage.setItem(pendingKey(state.shop),JSON.stringify(body));
+      localStorage.setItem(pendingKey(submitShop),JSON.stringify(body));
       await rpc('qg_market_catalog_add',body);
-      localStorage.removeItem(pendingKey(state.shop));
+      localStorage.removeItem(pendingKey(submitShop));
+      if(!active(submitEpoch,submitShop))return;
       toast('เพิ่มสินค้าเข้าร้านแล้ว');
       state.loading=false;
       state.offset=0;await load();
-    }catch(err){error(err);if(submit)submit.disabled=false;state.loading=false}
+    }catch(err){
+      if(!active(submitEpoch,submitShop))return;
+      error(err);if(submit)submit.disabled=false;state.loading=false;
+    }
   };
 };
 })();

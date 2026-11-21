@@ -1,0 +1,81 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const source = fs.readFileSync(require('node:path').join(__dirname, '../merchant/market-catalog.js'), 'utf8');
+const match = source.match(/window\.qgMarketCatalogQueueSearch=value=>\{[^\n]+\};/);
+assert.ok(match, 'catalog search handler must exist');
+const state = { loading: true, query: 'old', offset: 100 };
+const calls = [];
+const timers = [];
+let currentShop = 'merchant-a';
+const context = {
+  window: {}, state, searchTimer: null, location: { hash: '#market-catalog' },
+  shop: () => ({ shopProfileId: currentShop }), profileId: u => u?.shopProfileId,
+  clearTimeout: id => { if (id) id.cancelled = true; },
+  setTimeout: (fn, delay) => { const t = { fn, delay, cancelled: false }; timers.push(t); return t; },
+  load: () => calls.push({ query: state.query, offset: state.offset, loading: state.loading })
+};
+vm.runInNewContext(match[0], context);
+context.window.qgMarketCatalogQueueSearch('first');
+context.window.qgMarketCatalogQueueSearch('  fresh product  ');
+assert.equal(timers[0].cancelled, true, 'debounce must cancel obsolete searches');
+assert.equal(timers[1].delay, 300, 'search remains debounced');
+timers[1].fn();
+assert.equal(state.query, 'fresh product', 'new query must be normalized');
+assert.equal(state.offset, 0, 'search must reset pagination');
+assert.equal(calls.length, 1, 'new search must load even while previous request is pending');
+assert.equal(calls[0].loading, true, 'regression must exercise in-flight request');
+assert.equal(calls[0].query, 'fresh product');
+
+const categoryMatch = source.match(/window\.qgMarketCatalogSetCategory=category=>\{[^\n]+\};/);
+assert.ok(categoryMatch, 'catalog category handler must exist');
+vm.runInNewContext(categoryMatch[0], context);
+state.loading = true;
+state.offset = 100;
+context.window.qgMarketCatalogQueueSearch('outdated query');
+const pendingTimer = timers[timers.length - 1];
+context.window.qgMarketCatalogSetCategory('ผักสด');
+assert.equal(pendingTimer.cancelled, true, 'category change must cancel pending search debounce');
+assert.equal(state.category, 'ผักสด', 'category change must apply while loading');
+assert.equal(state.offset, 0, 'category change resets pagination');
+assert.equal(calls.length, 2, 'category change must request fresh data while previous load is pending');
+assert.equal(context.searchTimer, null, 'stale debounce reference must be cleared');
+
+// A queued search must not redraw the catalog after the user navigates away.
+const beforeNavigation = calls.length;
+context.window.qgMarketCatalogQueueSearch('should not load after leaving');
+const routeTimer = timers[timers.length - 1];
+context.location.hash = '#market-stock';
+routeTimer.fn();
+assert.equal(calls.length, beforeNavigation, 'queued search must not load after route exit');
+assert.equal(state.query, 'fresh product', 'queued search must not mutate catalog query after route exit');
+// Debounced text entered by one merchant must not run in a different merchant session.
+context.location.hash = '#market-catalog';
+context.window.qgMarketCatalogQueueSearch('merchant-a secret search');
+const oldMerchantTimer = timers[timers.length - 1];
+currentShop = 'merchant-b';
+oldMerchantTimer.fn();
+assert.equal(calls.length, beforeNavigation, 'old merchant queued search must not load in new merchant session');
+assert.equal(state.query, 'fresh product', 'old merchant queued search must not mutate new merchant query');
+context.window.qgMarketCatalogQueueSearch('merchant-b search');
+timers[timers.length - 1].fn();
+assert.equal(calls.length, beforeNavigation + 1, 'current merchant search must still load');
+assert.equal(state.query, 'merchant-b search');
+
+// An explicit search must supersede a queued input debounce.
+const explicitMatch = source.match(/window\.qgMarketCatalogSearch=e=>\{[^\n]+\};/);
+assert.ok(explicitMatch, 'explicit search handler must exist');
+context.document = { getElementById: id => ({ value: id === 'market-catalog-search' ? 'submitted query' : 'ปลา' }) };
+vm.runInNewContext(explicitMatch[0], context);
+context.window.qgMarketCatalogQueueSearch('stale queued query');
+const queuedBeforeSubmit = timers[timers.length - 1];
+const beforeSubmit = calls.length;
+context.window.qgMarketCatalogSearch({ preventDefault() {} });
+assert.equal(queuedBeforeSubmit.cancelled, true, 'explicit submit cancels queued debounce');
+assert.equal(context.searchTimer, null, 'explicit submit clears timer reference');
+assert.equal(state.query, 'submitted query', 'explicit submit uses current search field');
+assert.equal(state.category, 'ปลา', 'explicit submit preserves selected category');
+assert.equal(calls.length, beforeSubmit + 1, 'explicit submit loads once');
+
+console.log('Market catalog in-flight search, category and merchant debounce regression passed');

@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const source=fs.readFileSync(path.join(__dirname,'../merchant/market-catalog.js'),'utf8');
+const start=source.indexOf('  let pendingSubmission=null;');
+const end=source.indexOf('\n  };',start);
+assert.ok(start>=0&&end>start,'catalog add form must retain a request across submit attempts');
+const handler=source.slice(start,end);
+assert.match(handler,/const body=pendingSubmission\|\|candidate;/,'retry must reuse the original payload, not a new UUID');
+assert.match(handler,/pendingSubmission=body;/,'retain the original request before sending RPC');
+assert.match(handler,/form\.querySelectorAll\('input,select'\)\.forEach\(control=>\{control\.disabled=true\}\)/,'lock editable fields while an ambiguous request may have committed');
+assert.ok(handler.indexOf('pendingSubmission=body;')<handler.indexOf("await rpc('qg_market_catalog_add',body)"),'request identity must be retained before network call');
+assert.match(handler,/if\(submit\)submit\.disabled=false;state\.loading=false;/,'allow retry after failure');
+assert.ok(!handler.includes('pendingSubmission=null;\n    }catch'),'failure must not discard the original request ID');
+console.log('market catalog ambiguous add retry identity regression: passed');

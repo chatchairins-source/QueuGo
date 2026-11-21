@@ -199,7 +199,8 @@ for(const needle of ['qg_market_catalog_page','qg_market_catalog_add','qgMarketR
 }
 assert.ok(catalog.includes('qgMarketAttachWeightPresets(form)'),'catalog must reuse shared weight presets');
 assert.ok(catalog.includes('p_request_id:crypto.randomUUID()'),'Merchant add flow must use a durable request ID');
-assert.ok(catalog.includes("pendingKey(state.shop)"),'Merchant add flow must retain pending request recovery');
+assert.ok(catalog.includes('await recoverPending(id,epoch)')&&catalog.includes('localStorage.getItem(pendingKey(shopId))'),'Merchant add flow must retain pending request recovery');
+assert.ok(catalog.includes('localStorage.setItem(pendingKey(submitShop)')&&catalog.includes('localStorage.removeItem(pendingKey(submitShop)'),'Merchant add flow must retain durable, submitting-shop-scoped pending request cleanup');
 assert.ok(catalog.includes('qgMarketCatalogSetCategory')&&catalog.includes('qgg-controls')&&catalog.includes('qgm-search'),'Merchant Market catalog must reuse Grocery search/category control pattern');
 assert.ok(catalog.includes("const src=String(r.catalog_preview_image||'').trim()"),'Merchant Market catalog must render the dedicated clean catalog image only');
 assert.ok(catalog.includes('referrerpolicy="no-referrer"'),'remote catalog images must not leak the QueueGo page referrer');
