@@ -373,6 +373,14 @@ jobs:
         run: |
           gradle -p native-android :customer:bundleDebug :merchant:bundleDebug :rider:bundleDebug :rider:assembleDebugAndroidTest --no-daemon --stacktrace
           GITHUB_SHA="$(git rev-parse HEAD)" python3 native-android/qa/stage-play-rider-assets.py --verify-bundle native-android/rider/build/outputs/bundle/debug/rider-debug.aab
+      - name: Resolve the actual matching Gradle debug keystore
+        env:
+          QG_RIDER_PLAY_ASSET_PACKS: '1'
+        run: |
+          set -euo pipefail
+          python3 tests/test-debug-signing-report.py
+          gradle -p native-android :rider:signingReport --console=plain --no-daemon > "$RUNNER_TEMP/rider-debug-signing-report.txt"
+          python3 native-android/qa/resolve-debug-signing-store.py "$RUNNER_TEMP/rider-debug-signing-report.txt" >> "$GITHUB_ENV"
       - name: Validate all bundles and generate installable Rider split APKs
         run: |
           set -euo pipefail
@@ -386,7 +394,7 @@ jobs:
             java -jar "$jar" validate --bundle="$bundle"
             sha256sum "$bundle" >> artifacts/play-pack-runtime/debug-aab.sha256
           done
-          java -jar "$jar" build-apks --bundle=native-android/rider/build/outputs/bundle/debug/rider-debug.aab --output="$RUNNER_TEMP/rider-play-debug.apks" --local-testing --ks="$HOME/.android/debug.keystore" --ks-key-alias=androiddebugkey --ks-pass=pass:android --key-pass=pass:android
+          java -jar "$jar" build-apks --bundle=native-android/rider/build/outputs/bundle/debug/rider-debug.aab --output="$RUNNER_TEMP/rider-play-debug.apks" --local-testing --ks="$QG_QA_DEBUG_KEYSTORE" --ks-key-alias="$QG_QA_DEBUG_ALIAS" --ks-pass=pass:android --key-pass=pass:android
           python3 - <<'PYCODE'
           import os, pathlib, subprocess, zipfile
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'play-split-verification'

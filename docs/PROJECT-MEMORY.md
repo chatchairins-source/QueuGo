@@ -1,3 +1,10 @@
+## 2026-11-21 Debug AAB build and real signing-store correction
+
+- Exact eb04b804 actual QA job136752938648 built all three Debug AABs, verified the Rider country pack payload hashes and passed pinned bundletool structural validation for all three. It failed BEFORE split installation because the newly added QA step assumed HOME/.android/debug.keystore, absent on this runner. No signed production release or split-runtime success is claimed.
+- Resolve the exact Rider debug Store/Alias from Gradle :rider:signingReport (as Android signing docs prescribe); require one debug config and a real nonempty store. Use this same identity for bundletool split generation so the freshly built instrumentation signer matches. Do not create an unrelated key or use release credentials. Parser fixtures cover alternate/spaced path, wrong variant/config, duplicate report and missing file; local parser, source contract and all shell blocks pass. Exact-new-head hosted QA remains required.
+- Predecessor eb04b804 Native Pilot44873437531 and nationwide offline routing/renderer/ANGLE/real-Fused44873437488 both succeeded; they are predecessor evidence, not certification of the corrected head.
+- Source country-data recovery PR1373 and actual AAB non-debug/target-SDK verifier PR1375 remain separate Integration candidates. No Production/money/Play write.
+
 ## 2026-11-21 Real Play split-package runtime gate, pending CI
 
 - Extended existing authenticated Android QA workflow with an independent account-free Debug AAB job: fetch successful exact-source offline-tested Rider APK, stage verified country bytes, build all three Debug AABs, validate pinned bundletool, verify country payload hashes and 16 KB generated splits, install actual Rider splits, reuse all three offline routing tests twice including interrupted-copy recovery and cold restart. This is Debug packaging QA, never signed release/physical/Play certification. Default original APK runtime path remains intact.
