@@ -254,4 +254,57 @@ SELECT 'LIVE_V22_NULL_ROLE_GAP_REPRODUCED_AND_PATCHED_PASS' AS evidence;
 
 SELECT 'NO_RIDER_TIMEOUT_EXCLUSIONS_PASS' AS evidence;
 
+-- Simulate a notification insert failure *after* the parent/finance changes.
+-- The nested transaction must roll back ALL changes, including offer withdrawal,
+-- audit, payment, delivery and order status, allowing a safe future retry.
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001501',31);
+INSERT INTO public.qg_rider_order_offers(order_id,rider_id,offered_at,expires_at,attempt)
+VALUES('00000000-0000-4000-8000-000000001501',
+       '00000000-0000-4000-8000-000000001502',
+       now()-interval '1 minute',now()+interval '1 minute',1);
+CREATE FUNCTION public.qg_test_reject_timeout_notification()
+RETURNS trigger LANGUAGE plpgsql AS $fault$
+BEGIN
+ IF NEW.reference_id='00000000-0000-4000-8000-000000001501'::uuid
+ THEN RAISE EXCEPTION 'forced notification insert failure'; END IF;
+ RETURN NEW;
+END $fault$;
+CREATE TRIGGER z_test_timeout_notification_failure BEFORE INSERT ON public.notifications
+ FOR EACH ROW EXECUTE FUNCTION public.qg_test_reject_timeout_notification();
+DO $verify_rollback$
+DECLARE oid uuid:='00000000-0000-4000-8000-000000001501';
+BEGIN
+ IF qg_private.cancel_rider_timeout_cash(20)<>0
+ THEN RAISE EXCEPTION 'failed notification cannot count as cancelled order'; END IF;
+ IF (SELECT status FROM public.orders WHERE id=oid)<>'searching_rider'
+ OR (SELECT status FROM public.payments WHERE order_id=oid)<>'pending'
+ OR (SELECT status FROM public.deliveries WHERE order_id=oid)<>'pending'
+ THEN RAISE EXCEPTION 'notification failure left partial order/finance change'; END IF;
+ IF (SELECT count(*) FROM public.qg_rider_order_offers WHERE order_id=oid)<>1
+ OR (SELECT count(*) FROM public.qg_rider_offer_history WHERE order_id=oid)<>0
+ THEN RAISE EXCEPTION 'notification failure lost live offer/history integrity'; END IF;
+ IF EXISTS(SELECT 1 FROM public.audit_logs WHERE entity_id=oid AND action='no_rider_timeout')
+ OR EXISTS(SELECT 1 FROM public.notifications WHERE reference_id=oid)
+ THEN RAISE EXCEPTION 'notification failure left partial audit or notification rows'; END IF;
+END $verify_rollback$;
+DROP TRIGGER z_test_timeout_notification_failure ON public.notifications;
+DROP FUNCTION public.qg_test_reject_timeout_notification();
+DO $verify_retry$
+DECLARE oid uuid:='00000000-0000-4000-8000-000000001501';
+BEGIN
+ IF qg_private.cancel_rider_timeout_cash(20)<>1
+ THEN RAISE EXCEPTION 'eligible order failed to retry after notification recovery'; END IF;
+ IF (SELECT status FROM public.orders WHERE id=oid)<>'cancelled'
+ OR (SELECT status FROM public.payments WHERE order_id=oid)<>'cancelled'
+ OR (SELECT status FROM public.deliveries WHERE order_id=oid)<>'cancelled'
+ THEN RAISE EXCEPTION 'retry failed to atomically terminalize order/payment/delivery'; END IF;
+ IF (SELECT count(*) FROM public.audit_logs WHERE entity_id=oid AND action='no_rider_timeout')<>1
+ OR (SELECT count(*) FROM public.notifications WHERE reference_id=oid)<>2
+ THEN RAISE EXCEPTION 'retry did not emit exactly one audit and two alerts'; END IF;
+ IF (SELECT count(*) FROM public.qg_rider_order_offers WHERE order_id=oid)<>0
+ OR (SELECT count(*) FROM public.qg_rider_offer_history WHERE order_id=oid)<>1
+ THEN RAISE EXCEPTION 'retry did not preserve offer history'; END IF;
+END $verify_retry$;
+SELECT 'NO_RIDER_TIMEOUT_NOTIFICATION_ATOMIC_ROLLBACK_PASS' AS evidence;
+
 SELECT 'NO_RIDER_TIMEOUT_CASH_15_30_ATOMIC_PASS' AS evidence;
