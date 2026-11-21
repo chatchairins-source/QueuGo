@@ -194,7 +194,9 @@ with (log_dir / "emulator.log").open("w") as log:
         # Reject stale XML from an earlier emulator run or Gradle invocation.
         shutil.rmtree(connected_reports, ignore_errors=True)
         result = subprocess.run(
-            [gradle, "-p", "native-android",
+            [sys.executable, str(repo / "native-android/qa/gradle_maven_recovery.py"),
+             "--log", str(log_dir / "gradle-first-attempt.log"), "--",
+             gradle, "-p", "native-android",
              ":rider-navigation-map:connectedDebugAndroidTest",
              "-Pandroid.testInstrumentationRunnerArguments.offlineRequired=" + ("true" if os.environ.get("QG_NAV_RUNTIME_OFFLINE") == "1" else "false"),
              "--no-build-cache", "--stacktrace"],

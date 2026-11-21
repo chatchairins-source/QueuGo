@@ -37,7 +37,7 @@ const parallelRoleJob=parallelRoleStart >= 0 && parallelRoleEnd > parallelRoleSt
   ? nativePilotWorkflow.slice(parallelRoleStart,parallelRoleEnd) : '';
 ok(
   parallelRoleJob.includes('fail-fast: false') &&
-  parallelRoleJob.includes('max-parallel: 3') &&
+  parallelRoleJob.includes('max-parallel: 2') &&
   parallelRoleJob.includes('role: [customer, merchant, rider]') &&
   parallelRoleJob.includes(':testDebugUnitTest') &&
   parallelRoleJob.includes(':assembleDebug') &&

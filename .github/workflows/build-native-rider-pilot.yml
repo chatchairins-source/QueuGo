@@ -133,7 +133,7 @@ env:
   QG_MAP_SERVICE_BASE_URL: ${{ vars.QG_MAP_SERVICE_BASE_URL || 'https://queuego-map-buriram.onrender.com' }}
 
 jobs:
-  # Independent role jobs start together; a failure in one role must not cancel
+  # Independent role jobs use bounded parallelism; one role must not cancel
   # the other two. This is early feedback, not a replacement for the original
   # full-regression / nationwide-map / installed-device release gates below.
   parallel-role-smoke:
@@ -142,7 +142,7 @@ jobs:
     timeout-minutes: 45
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 2
       matrix:
         role: [customer, merchant, rider]
     steps:
@@ -159,6 +159,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
+          cache-read-only: ${{ github.event_name == 'pull_request' || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/work-native-reconcile-main-20261114') }}
       - name: Guard bounded Rider Maven dependency recovery
         run: node tests/native-parallel-rider-maven-recovery.cjs
       - name: Compile, run real JVM unit tests and assemble role APK
@@ -166,24 +167,9 @@ jobs:
         run: |
           set -euo pipefail
           role="${{ matrix.role }}"
-          command=(gradle -p native-android ":${role}:testDebugUnitTest" ":${role}:assembleDebug" --no-daemon --stacktrace)
-          log="$RUNNER_TEMP/${role}-gradle-first.log"
-          if "${command[@]}" 2>&1 | tee "$log"; then
-            echo "Exact-source ${role} Gradle build passed first attempt"
-          else
-            # Only a missing, version-pinned external Maven package may be retried.
-            # Kotlin compilation, test assertion and Android package errors stay fatal.
-            if [[ "$role" != rider ]] || ! grep -Fq 'Could not find io.github.rallista:valhalla-mobile:0.6.4' "$log"; then
-              echo "::error::${role} build failed for a non-retryable reason"
-              exit 1
-            fi
-            artifact="https://repo.maven.apache.org/maven2/io/github/rallista/valhalla-mobile/0.6.4/valhalla-mobile-0.6.4.pom"
-            curl --fail --show-error --silent --location --retry 2 --retry-all-errors --retry-max-time 45 --connect-timeout 15 --max-time 20 "$artifact" -o "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
-            test -s "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
-            grep -Fq '<artifactId>valhalla-mobile</artifactId>' "$RUNNER_TEMP/valhalla-mobile-0.6.4.pom"
-            echo "::warning::Retrying Rider Gradle once after verified Maven Central metadata; no dependency substitution"
-            "${command[@]}" --refresh-dependencies
-          fi
+          python3 native-android/qa/gradle_maven_recovery.py \
+            --log "artifacts/parallel-${role}/gradle-first-attempt.log" -- \
+            gradle -p native-android ":${role}:testDebugUnitTest" ":${role}:assembleDebug" --no-daemon --stacktrace
       - name: Verify generated role APK integrity and 16 KB packaging
         shell: bash
         run: |
@@ -202,6 +188,7 @@ jobs:
             native-android/${{ matrix.role }}/build/test-results/testDebugUnitTest/
             native-android/${{ matrix.role }}/build/reports/tests/testDebugUnitTest/
             ${{ runner.temp }}/${{ matrix.role }}-sha256.txt
+            artifacts/parallel-${{ matrix.role }}/
           if-no-files-found: warn
           retention-days: 14
 
@@ -226,6 +213,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
         with:
           gradle-version: '9.6.0'
+          cache-read-only: ${{ github.event_name == 'pull_request' || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/work-native-reconcile-main-20261114') }}
       - name: Prepare native Firebase configs
         env:
           QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
@@ -765,10 +753,14 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: '9.6.0'
+          cache-read-only: ${{ github.event_name == 'pull_request' || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/work-native-reconcile-main-20261114') }}
       - name: Install actual Android build platform
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
       - name: Compile actual Rider and instrumentation
-        run: gradle -p native-android :rider:assembleDebug :rider:assembleDebugAndroidTest :customer:assembleDebug :merchant:assembleDebug :merchant:assembleDebugAndroidTest --stacktrace
+        run: |
+          python3 native-android/qa/gradle_maven_recovery.py \
+            --log artifacts/native-rider-launch/gradle-first-attempt.log -- \
+            gradle -p native-android :rider:assembleDebug :rider:assembleDebugAndroidTest :customer:assembleDebug :merchant:assembleDebug :merchant:assembleDebugAndroidTest --stacktrace
       - name: Prepare map screenshot inspection
         run: |
           python3 -m pip install Pillow
@@ -810,6 +802,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: '9.6.0'
+          cache-read-only: ${{ github.event_name == 'pull_request' || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/work-native-reconcile-main-20261114') }}
       - name: Install Android platform for isolated navigation map
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
       - name: Enable Android acceleration
@@ -848,6 +841,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: '9.6.0'
+          cache-read-only: ${{ github.event_name == 'pull_request' || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/work-native-reconcile-main-20261114') }}
       - name: Install Android platform for isolated MapLibre OSM map
         run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
       - name: Enable Android acceleration
