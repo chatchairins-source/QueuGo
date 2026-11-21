@@ -78,6 +78,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text"
 @media(max-width:520px){.qg-laundry-invite{align-items:flex-start;flex-direction:column}.qg-laundry-invite>div:last-child{width:100%}.qg-laundry-invite button{flex:1}}
 
 .qg-setting-section>h2{font-size:14px;margin:20px 8px 10px;color:#6f6f78}.qg-setting-group{border:0;border-radius:20px}.qg-setting{min-height:64px;padding:14px 16px;gap:12px}.qg-setting b{font-size:15px;font-weight:600}.qg-setting small{font-size:12px;line-height:1.5}.qg-setting-icon{background:transparent;width:26px;height:26px}.qg-setting em{font-size:12px}.qg-profile-card{border:0;padding:18px;border-radius:22px}.qg-profile-card p{font-size:13px}.qg-profile-card span{font-size:11px}
+.qg-speed-limit{position:absolute;right:0;top:58px;pointer-events:auto;box-sizing:border-box;width:48px;height:48px;border:5px solid #e6002d;border-radius:50%;background:#fff;color:#161214;box-shadow:0 10px 30px #2a18201c;display:grid;place-items:center;font-size:18px;line-height:1;font-weight:1000;font-variant-numeric:tabular-nums}.qg-speed-limit[hidden]{display:none}
 </style>
 
 <script src="../queuego-order-number.js"></script>
@@ -930,7 +931,13 @@ async function qgRequestRiderRoute(from,to,signal){
       instructions.push({turnCode:Number.isFinite(Number(step?.vendor_type))?Number(step.vendor_type):7,roadName:String(step?.name||'').trim(),distance:Math.max(0,Number(step?.distance)||0),duration:Math.max(0,Number(step?.duration)||0)});
     }
   }
-  return {routes,dist,time,routeId:String(route.route_id||''),instructions};
+  const speedLimits=[];
+  for(const interval of Array.isArray(route.maxspeed_intervals)?route.maxspeed_intervals:[]){
+    const start=Number(interval?.start_geometry_m),end=Number(interval?.end_geometry_m),kph=Number(interval?.maxspeed_kph),raw=String(interval?.maxspeed_raw||'').trim();
+    if(interval?.source!=='osm:maxspeed'||!Number.isFinite(start)||!Number.isFinite(end)||end<=start||start<0||!Number.isFinite(kph)||kph<=0||kph>160||!raw)continue;
+    speedLimits.push({start,end,kph,raw});
+  }
+  return {routes,dist,time,routeId:String(route.route_id||''),instructions,speedLimits};
 }
 const RIDER_ROUTE_OFF_ROUTE_METERS=30;
 const RIDER_ROUTE_REROUTE_SUSTAIN_MS=3000;
@@ -943,6 +950,7 @@ function clearRiderRoute(){
   riderRouteOffRouteSince=0;riderRouteLastRerouteAt=0;
   (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
   const badge=document.getElementById('route-badge');if(badge)badge.style.display='none';
+  updateRiderSpeedLimitUI(null);
 }
 function qgRenderRiderRemainingRoute(position){
   if(!riderRouteCache||riderRouteCache.map!==S.map||!riderRouteGeometry.length)return;
@@ -991,12 +999,13 @@ function qgUpdateManeuverHud(cache,remaining,length){
 }
 function qgUpdateRiderRouteProgress(decision){
   const cache=riderRouteCache,match=decision?.routeMatch;
-  if(!cache||cache.map!==S.map||!match||decision.routeBearingRejected)return false;
+  if(!cache||cache.map!==S.map||!match||decision.routeBearingRejected){updateRiderSpeedLimitUI(null);return false}
   const remaining=qgFiniteOrNull(decision.remainingRouteMeters),length=qgFiniteOrNull(match.geometryDistanceMeters);
   const offRoute=qgFiniteOrNull(match.offRouteMeters),accuracy=qgFiniteOrNull(S.pos?.accuracy);
-  if(remaining===null||length===null||length<=0||offRoute===null||offRoute>RIDER_ROUTE_OFF_ROUTE_METERS||(accuracy!==null&&accuracy>35))return false;
+  if(remaining===null||length===null||length<=0||offRoute===null||offRoute>RIDER_ROUTE_OFF_ROUTE_METERS||(accuracy!==null&&accuracy>35)){updateRiderSpeedLimitUI(null);return false;}
   const totalDistance=qgFiniteOrNull(cache.dist),totalTime=qgFiniteOrNull(cache.time);
-  if(totalDistance===null||totalDistance<=0||!cache.label)return false;
+  if(totalDistance===null||totalDistance<=0||!cache.label){updateRiderSpeedLimitUI(null);return false;}
+  updateRiderSpeedLimitUI(cache.activeWork?qgRiderSpeedLimitAt(cache,match.progressMeters):null);
   const ratio=Math.max(0,Math.min(1,remaining/length)),meters=totalDistance*ratio;
   const txt=document.getElementById('route-text');if(!txt)return false;
   const distance=meters<1000?Math.round(meters/10)*10+' ม.':(meters/1000).toFixed(1)+' กม.';
@@ -1004,6 +1013,19 @@ function qgUpdateRiderRouteProgress(decision){
   txt.textContent=cache.label+' • '+distance+eta;
   qgUpdateManeuverHud(cache,remaining,length);
   return true;
+}
+function qgRiderSpeedLimitAt(cache,progressMeters){
+  const progress=qgFiniteOrNull(progressMeters);
+  if(!cache?.activeWork||progress===null)return null;
+  const interval=(cache.speedLimits||[]).find(item=>progress>=item.start&&progress<item.end);
+  return interval?.kph||null;
+}
+function updateRiderSpeedLimitUI(kph){
+  const sign=document.getElementById('qg-speed-limit');if(!sign)return;
+  const value=qgFiniteOrNull(kph),visible=value!==null&&value>0&&value<=160;
+  sign.hidden=!visible;
+  sign.textContent=visible?String(Math.round(value)):'';
+  sign.setAttribute('aria-label',visible?'จำกัดความเร็ว '+Math.round(value)+' กิโลเมตรต่อชั่วโมง':'');
 }
 function qgRiderMissedTurnNeedsImmediateReroute(decision,speed,accuracy){
   const cache=riderRouteCache,match=decision?.routeMatch;
@@ -1547,7 +1569,7 @@ function qgMarker(loc,html,title){
   return marker;
 }
 function qgStopMarkerHtml(number,kind,done=false){
-  const pickup=kind==='shop',color=done?'#64748b':pickup?'#15803d':'#e6002d';
+  const pickup=kind==='shop',color=done?'#94a3b8':pickup?'#16a34a':'#e6002d';
   const icon=pickup?'<path d="M3 10h18l-2-6H5l-2 6Z"/><path d="M4 10v10h16V10M9 20v-6h6v6M3 10c0 4 5 4 5 0 0 4 4 4 4 0 0 4 4 4 4 0 0 4 5 4 5 0"/>':'<circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>';
   const label='จุด '+number+' · '+(pickup?'รับ':'ส่ง');
   return '<div class="qg-stop-pin" data-stop-number="'+number+'" data-stop-kind="'+kind+'" style="display:flex;flex-direction:column;align-items:center;gap:3px;min-width:72px;pointer-events:none">'
@@ -1602,7 +1624,7 @@ function drawLaundryRoute(){
   const badge=document.getElementById('route-badge'),txt=document.getElementById('route-text');if(badge)badge.style.display='block';if(txt)txt.textContent=label+' • กำลังคำนวณเส้นทาง';
   request.task=(async()=>{
     try{
-      const {routes,dist,time,routeId,instructions}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
+      const {routes,dist,time,routeId,instructions,speedLimits}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lng)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{
@@ -1614,7 +1636,7 @@ function drawLaundryRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions};
+      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions,speedLimits,activeWork:true};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
     }catch(e){if(current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ'}
     finally{clearTimeout(timer);if(riderRouteRequest===request)riderRouteRequest=null}
@@ -1673,7 +1695,7 @@ function drawActiveRoute(){
   if(isOfferPreview&&!riderRouteCache)focusRiderNavigation(map,pos,{lat:Number(lat),lng:Number(lon)});
   request.task=(async()=>{
     try{
-      const {routes,dist,time,routeId,instructions}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
+      const {routes,dist,time,routeId,instructions,speedLimits}=await qgRequestRiderRoute(pos,{lat:Number(lat),lng:Number(lon)},controller.signal);
       if(controller.signal.aborted||riderRouteRequest!==request||!current())return;
       (S.routeOverlays||[]).forEach(qgRemoveOverlay);S.routeOverlays=[];
       routes.forEach((line,i)=>{
@@ -1685,7 +1707,7 @@ function drawActiveRoute(){
       });
       riderRouteGeometry=routes.map(line=>line.slice());
       // Route rendering owns geometry only. GPS Follow is the single camera writer.
-      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions,customerNote};
+      riderRouteOffRouteSince=0;riderRouteCache={scope,map,pos:{...pos},at:Date.now(),routeId,dist,time,label,instructions,speedLimits,activeWork:!isOfferPreview,customerNote};
       if(txt)txt.textContent=label+(dist>0?' • '+(dist/1000).toFixed(1)+' กม.':'')+(time>0?' • '+Math.max(1,Math.ceil(time/60))+' นาที':'');
       if(!isOfferPreview&&S.activeTab==='home')renderHomeDock();
     }catch(e){if(riderRouteRequest===request&&current()&&txt)txt.textContent=label+' • โหลดเส้นทางไม่สำเร็จ แตะเพื่อเปิดนำทาง'}
@@ -1899,6 +1921,7 @@ function qgNavHTML(){
 function renderStage(){
   stopPolling();disposeRiderMap();
   document.getElementById('app').innerHTML=`<div class="stage qg-stage"><div id="map" class="qg-map"></div><header class="qg-topbar">${qgHeaderWordmark('qg-brand-pill')}</header><div class="qg-route-badge" id="route-badge"><div class="qg-route-icon" id="route-turn-icon">${qgTurnSvg(5)}</div><div class="qg-route-copy"><div class="qg-route-main"><strong id="route-maneuver-distance">--</strong></div><span class="qg-route-road" id="route-road">กำลังคำนวณเส้นทาง</span><small class="qg-route-summary" id="route-text">อัปเดตตามตำแหน่งของคุณ</small><div class="qg-route-next" id="route-next"></div><div class="qg-route-customer-note" id="route-customer-note"></div></div></div><div class="qg-map-tools"><div class="qg-speed-pill" aria-label="ความเร็วปัจจุบัน"><b id="qg-speed-value">—</b><span>กม./ชม.</span></div><button class="qg-map-button" id="recenter" aria-label="กลับไปยังตำแหน่งปัจจุบัน">${QTICON.loc}</button><button class="qg-map-button" id="overview" aria-label="ดูเส้นทางทั้งหมด">${QTICON.route}</button><button class="qg-map-button" id="compass" aria-label="หันแผนที่กลับทิศเหนือ"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M15.8 8.2 13.6 13.6 8.2 15.8l2.2-5.4 5.4-2.2Z"/><circle cx="12" cy="12" r="9"/></svg></button></div><main class="qg-home-dock" id="home-dock"></main><section class="qg-panel" id="panel-earn"></section><section class="qg-panel" id="panel-profile"></section>${qgNavHTML()}</div><div class="qg-message" id="qg-message"><i>●</i><div><b>ข้อความใหม่</b><small id="qg-message-text"></small></div></div>`;
+  const speedLimit=document.createElement('div');speedLimit.className='qg-speed-limit';speedLimit.id='qg-speed-limit';speedLimit.setAttribute('role','img');speedLimit.setAttribute('aria-label','');speedLimit.hidden=true;document.querySelector('.qg-topbar')?.appendChild(speedLimit);
   document.getElementById('recenter').onclick=recenterMap;document.getElementById('overview').onclick=overviewRoute;document.getElementById('compass').onclick=resetRiderCompass;document.querySelectorAll('.qg-nav-item').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));initMap();updateStatusUI();updateRiderSpeedUI();renderHomeDock();startGeolocation();refreshData();startPolling();qgStartMessageWatch();qgRiderVoiceActivate();
 }
 function switchTab(tab){
@@ -2839,7 +2862,6 @@ function qgStartMessageWatch(){
 
 </script>
 <script src="reliability.js?v=20261023-laundryfix1"></script>
-<script>boot();</script>
 <script id="qg-rider-order-actions">
 /* Cash order transitions use server transactions so the merchant receipt and COD payment stay consistent. */
 window.statusFromRow=function(row){
@@ -2947,9 +2969,8 @@ window.advanceOrder=async function(o){
 
 
 </script>
-<script src="rider-express.js?v=20261018-web2"></script>
-<script src="rider-ride.js?v=20261023-ridefix1"></script>
-<script>window.qgDeferredBoot?.();</script>
+<script src="rider-express.js?v=20261115-cash-confirm1"></script>
+<script src="rider-ride.js?v=20261115-cash-guard1"></script>
 <script id="qg-rider-inbox">
 (function(){
  const key=()=>S.user?.id?'qg-rider-history:'+S.user.id:null;
@@ -3144,4 +3165,5 @@ window.qgRenderEarnings=function(){
 
 })();
 </script>
+<script>window.qgDeferredBoot?.();</script>
 </body></html>

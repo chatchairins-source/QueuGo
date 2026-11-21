@@ -52,7 +52,16 @@ ok(importer.includes('qg_admin_grocery_source_finalize'),'source importer finali
 ok(merchant.includes("qg_grocery_source_search"),'Merchant add mode searches source catalog');
 ok(merchant.includes("qg_grocery_source_add_to_shop"),'Merchant adds only selected source product');
 ok(merchant.includes('ค้นหาชื่อสินค้า ยี่ห้อ หรือบาร์โค้ด'),'Merchant exposes 10k name/brand/barcode search');
-ok(merchant.includes('image:r.image_url'),'Merchant source search renders Makro preview image');
+ok(merchant.includes('image:merchantReferenceImage(r.image_url)'),'Merchant source search uses the validated Makro preview image');
+const previewStart=merchant.indexOf('const merchantReferenceImage=');
+const previewEnd=merchant.indexOf('\n};',previewStart)+3;
+ok(previewStart>=0&&previewEnd>previewStart,'Merchant image validator must be available');
+const preview=new Function(merchant.slice(previewStart,previewEnd)+';return merchantReferenceImage')();
+const image='https://images.mango-prod.siammakro.cloud/item.webp';
+ok(preview(image)===image,'Merchant must display valid Makro images');
+for(const rejected of ['http://images.mango-prod.siammakro.cloud/item.webp', 'https://images.mango-prod.siammakro.cloud.other.invalid/item.webp','https://user@images.mango-prod.siammakro.cloud/item.webp']){
+ ok(preview(rejected)===null,'Merchant must reject unexpected image origins and credentials');
+}
 
 ok(workflow.includes('sync-makro-dry-branded.cjs'),'CI builds Makro source snapshot');
 ok(workflow.includes('artifacts/makro-catalog/makro-grocery-branded.json'),'CI uploads generated snapshot as artifact');

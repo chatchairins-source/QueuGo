@@ -1,0 +1,11 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <application
+        tools:replace="android:allowBackup,android:fullBackupContent,android:dataExtractionRules"
+        android:allowBackup="false"
+        android:fullBackupContent="@xml/queuego_backup_rules"
+        android:dataExtractionRules="@xml/queuego_data_extraction_rules">
+        <!-- Instrumentation-only: mounts the same native Longdo picker used by Edit shop. -->
+        <activity android:name=".MerchantShopMapRuntimeActivity" android:exported="false" />
+    </application>
+</manifest>

@@ -357,6 +357,15 @@ main:has(.qg-customer-action-dock){padding-bottom:calc(142px + env(safe-area-ins
 <script src="https://unpkg.com/maplibre-gl@5.19.0/dist/maplibre-gl.js"></script>
 <script src="queuego-map-web.js?v=20261024-addresscompact1&camera3d=20261024&boundary=20261025"></script>
 <script src="queuego-order-number.js"></script>
+<script src="queuego-auth-feedback.js?v=20261117-ux1"></script>
+<style id="queuego-customer-auth-feedback">
+.qg-auth-field-error{margin:5px 2px 11px;color:#a9102d;font-size:13px;line-height:1.5;font-weight:600}
+.qg-auth-form-error{margin:12px 0;padding:11px 12px;border:1px solid #f2bdc7;background:#fff3f5;color:#a9102d;font-size:13px;line-height:1.5;border-radius:10px}
+.qg-auth-form-notice{margin:12px 0;padding:11px 12px;border:1px solid #ace4c3;background:#edfdf4;color:#145b3b;font-size:13px;line-height:1.5;border-radius:10px}
+.in[aria-invalid="true"]{border-color:#be123c!important;box-shadow:0 0 0 2px rgba(190,18,60,.12)}
+.qg-auth-label{display:block;margin:11px 0 5px;font-size:13px;font-weight:700;color:#30343b}
+#register-email-label[hidden],#register-email[hidden]{display:none!important}
+</style>
 </head>
 <body>
 <div id="root"></div>
@@ -370,7 +379,12 @@ const hdr=t=>{const h={apikey:CFG.KEY,'Content-Type':'application/json'};if(t)h.
 async function auth(path,body){
   const r=await fetch(CFG.URL+'/auth/v1/'+path,{method:'POST',headers:hdr(),body:JSON.stringify(body),signal:AbortSignal.timeout(15000)});
   const d=await r.json().catch(e=>{if(e?.name==='AbortError'||e?.name==='TimeoutError')throw e;return {}});
-  if(!r.ok)throw new Error(d.error_description||d.msg||d.message||'AUTH_ERROR');
+  if(!r.ok){
+    const error=new Error(d.error_description||d.msg||d.message||'AUTH_ERROR');
+    error.code=String(d.code||d.error||'');
+    error.status=r.status;
+    throw error;
+  }
   return d;
 }
 async function db(path,o={}){
@@ -406,15 +420,33 @@ async function login(v,pw){
   const d=await auth('token?grant_type=password',{email:v.includes('@')?v:emailOf(v),password:pw});
   const rows=await db('users?select=*&auth_user_id=eq.'+d.user.id,{token:d.access_token});
   const me=Array.isArray(rows)&&rows[0]||null;
-  if(!me||me.role!=='customer')throw new Error('ไม่พบบัญชีลูกค้าที่ใช้งานได้ กรุณาใช้แอปตามประเภทบัญชีหรือติดต่อฝ่ายช่วยเหลือ');
-  if(me.status!=='active')throw new Error('บัญชีนี้ยังไม่พร้อมใช้งาน กรุณาติดต่อฝ่ายช่วยเหลือ');
+  if(!me||me.role!=='customer'){
+    const error=new Error('CUSTOMER_WRONG_ROLE');
+    error.code='customer_wrong_role';
+    throw error;
+  }
+  if(me.status!=='active'){
+    const error=new Error('CUSTOMER_INACTIVE');
+    error.code='customer_inactive';
+    throw error;
+  }
   S.set({role:'customer',userId:me.id,authUserId:d.user.id,name:me?.name||'',phone:me?.phone||'',email:me.email||d.user.email||'',photo:me.metadata?.profileImage||me.metadata?.profile_image||me.metadata?.avatarUrl||'',
     accessToken:d.access_token,refreshToken:d.refresh_token,expiresAt:Date.now()+(d.expires_in||3600)*1000});
   cart=readCart();if(guestCart.items.length){if(!cart.items.length)cart=guestCart;else if(cart.shopId===guestCart.shopId){for(const item of guestCart.items){const mine=cart.items.find(x=>x.id===item.id);if(mine)mine.qty=Math.min(99,mine.qty+item.qty);else cart.items.push(item)}}else toast('มีตะกร้าคนละร้าน สินค้าก่อนเข้าสู่ระบบยังเก็บไว้');saveCart();if(cart.shopId===guestCart.shopId)localStorage.removeItem('qt_cart_guest')}marketCart=readMarketCart();if(!marketCart.items.length&&guestMarketCart.items.length){marketCart=guestMarketCart;saveMarketCart();localStorage.removeItem('qg_market_cart_guest')}
 }
 async function register({name,phone,email,password,lat,lng}){
   QueueGoPasswordPolicy.requireStrong(password);
-  await auth('signup',{email:email||emailOf(phone),password,data:{name,phone,role:'customer',latitude:lat,longitude:lng}});
+  const signed=await auth('signup',{
+    email:email||emailOf(phone),password,
+    data:{name,phone,role:'customer',latitude:lat,longitude:lng}
+  });
+  // Supabase may require email confirmation. Do not attempt an immediate
+  // password login that will fail with HTTP 400 after a successful signup.
+  if(email && signed?.user && !signed.session){
+    const pending=new Error('EMAIL_CONFIRM_REQUIRED');
+    pending.code='email_not_confirmed';
+    throw pending;
+  }
   await login(email||phone,password);
 }
 /* ===== 3) Helpers ===== */
@@ -1072,12 +1104,12 @@ const shopCard=s=>`<div class="sc" onclick="openPublicShop('${esc(s.id)}','${esc
 /* ===== 6) Views ===== */
 const V={};
 V.login=()=>layout(`<div class="card"><h1 style="font-size:24px;margin-bottom:4px">เข้าสู่ระบบ</h1><p class="sm" style="margin:0 0 16px">ยินดีต้อนรับสู่ QueueGo</p>
-<input class="in" id="lp" placeholder="เบอร์โทรหรืออีเมล" inputmode="tel" autocomplete="username"><input class="in" id="lw" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
+<label class="qg-auth-label" for="lp">เบอร์โทรศัพท์หรืออีเมล</label><input class="in" id="lp" placeholder="เบอร์โทร 10 หลัก หรืออีเมล" inputmode="text" autocomplete="username"><label class="qg-auth-label" for="lw">รหัสผ่าน</label><input class="in" id="lw" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
 <button class="prim" id="lb" style="margin-top:4px">เข้าสู่ระบบ</button>
 <p class="empty" style="padding:16px 0 0">ยังไม่มีบัญชี? <a href="#register" style="color:var(--red);font-weight:700">สมัครสมาชิก</a></p></div>`);
 V.register=()=>layout(`<div class="card"><h1 style="font-size:24px;margin-bottom:16px">สมัครสมาชิก</h1>
-<input class="in" id="rn" placeholder="ชื่อ-นามสกุล"><label for="register-mode">สมัครด้วย</label><select class="in" id="register-mode" onchange="document.getElementById('register-email').hidden=this.value!=='email'"><option value="phone">เบอร์โทรศัพท์</option><option value="email">อีเมล</option></select><input class="in" id="register-email" type="email" placeholder="อีเมล" hidden><input class="in" id="rp" placeholder="เบอร์โทร" inputmode="tel"><input class="in" id="rw" type="password" autocomplete="new-password" placeholder="อย่างน้อย 12 ตัว: A-Z, a-z, ตัวเลข, สัญลักษณ์" minlength="12">
-<input class="in" id="rw-confirm" type="password" autocomplete="new-password" placeholder="ยืนยันรหัสผ่าน"><p class="sm" style="margin:0 0 12px">ต้องอนุญาตตำแหน่งที่ตั้งเพื่อสมัครสมาชิก</p>
+<label class="qg-auth-label" for="rn">ชื่อและนามสกุล</label><input class="in" id="rn" autocomplete="name" placeholder="ชื่อ-นามสกุล"><label class="qg-auth-label" for="register-mode">สมัครด้วย</label><select class="in" id="register-mode"><option value="phone">เบอร์โทรศัพท์</option><option value="email">อีเมล</option></select><label class="qg-auth-label" for="register-email" id="register-email-label" hidden>อีเมล</label><input class="in" id="register-email" type="email" autocomplete="email" placeholder="name@example.com" hidden><label class="qg-auth-label" for="rp">เบอร์โทรศัพท์ (จำเป็นเมื่อสมัครด้วยเบอร์)</label><input class="in" id="rp" placeholder="0812345678" inputmode="tel" autocomplete="tel"><label class="qg-auth-label" for="rw">รหัสผ่าน</label><input class="in" id="rw" type="password" autocomplete="new-password" placeholder="อย่างน้อย 12 ตัว: A-Z, a-z, ตัวเลข, สัญลักษณ์" minlength="12">
+<label class="qg-auth-label" for="rw-confirm">ยืนยันรหัสผ่าน</label><input class="in" id="rw-confirm" type="password" autocomplete="new-password" placeholder="ยืนยันรหัสผ่าน"><p class="sm" style="margin:0 0 12px">ต้องอนุญาตตำแหน่งที่ตั้งเพื่อสมัครสมาชิก</p>
 <button class="prim" id="rb" style="margin-top:0">สมัครและเข้าสู่ระบบ</button>
 <p class="empty" style="padding:16px 0 0"><a href="#login" style="color:var(--red);font-weight:700">มีบัญชีแล้ว</a></p></div>`);
 V.home=async(_,ticket=routeVersion)=>{
@@ -1103,6 +1135,7 @@ ${qgHomeBannerMarkup(homeSlides)}
 <button class="cat" onclick="go('laundry')"><i>${ico('grid',25)}</i><b>ฝากซัก</b></button>
 <button class="cat" onclick="go('market')"><i>${ico('basket',25)}</i><b>ตลาดสด</b></button>
 <button class="cat" onclick="go('ride')"><i>${ico('car',25)}</i><b>บริการเรียกรถ</b></button>
+<button class="cat" onclick="go('express')"><i><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5 12 3l8 4.5v9L12 21l-8-4.5z"></path><path d="m4 7.5 8 4.5 8-4.5M12 12v9"></path><path d="M16.5 13.5H22m-2.5-2.5L22 13.5 19.5 16"></path></svg></i><b>ส่งด่วน</b></button>
 <button class="cat" onclick="go('shopping')"><i>${ico('shopping',25)}</i><b>ช้อปปิ้ง</b></button>
 </div></section>
 
@@ -1345,7 +1378,7 @@ V.checkout=async(_,ticket=routeVersion)=>{
   const catalog=new Map(menu.map(p=>[String(p.id),p])),unavailable=[];let changed=false;
   for(const item of cart.items){const product=catalog.get(String(item.id)),price=Number(product?.delivery_price??product?.price);if(!product||product.available===false||product.delivery_available===false||!Number.isFinite(price)||price<0){unavailable.push(item.name);continue}if(item.price!==price){item.price=price;changed=true}}
   if(changed)saveCart();
-  renderCheckout(`<div class="card" style="margin-top:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p>${changed?'<p role="status">ราคาสินค้ามีการเปลี่ยนแปลง ยอดด้านล่างเป็นราคาล่าสุด กรุณาตรวจสอบก่อนยืนยัน</p>':''}${unavailable.length?`<p role="alert">รายการที่ยังสั่งไม่ได้: ${unavailable.map(esc).join(', ')}</p><button class="lk" onclick="go('cart')">กลับไปแก้ตะกร้า</button>`:''}<div id="checkout-pin-map" class="mapbox" style="height:115px;margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><label for="delivery-address">ที่อยู่จัดส่ง</label><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(qgCompactCustomerAddress(currentPos?.address||''))}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)">${esc(cart.note||'')}</textarea></div>`,cartTotal(),null,unavailable.length>0);
+  renderCheckout(`<div class="card" style="margin-top:0"><b>${esc(s.shop_name||'ร้านค้า')}</b><p class="sm">ชำระเงินสด • ระบบเดลิเวอรี่ QueueGo</p>${changed?'<p role="status">ราคาสินค้ามีการเปลี่ยนแปลง ยอดด้านล่างเป็นราคาล่าสุด กรุณาตรวจสอบก่อนยืนยัน</p>':''}${unavailable.length?`<p role="alert">รายการที่ยังสั่งไม่ได้: ${unavailable.map(esc).join(', ')}</p><button class="lk" onclick="go('cart')">กลับไปแก้ตะกร้า</button>`:''}<div id="checkout-pin-map" class="mapbox" style="height:clamp(200px,28dvh,300px);margin-top:10px"></div><button style="margin-top:10px;padding:7px 11px;width:auto;border:1px solid #d1d5db;border-radius:9px;background:transparent;color:inherit;font-size:12px;font-weight:600" onclick="checkoutPicker&&checkoutPicker.locate()">ใช้ตำแหน่ง GPS ปัจจุบัน</button><div class="dist">Lat: <span id="co-lat">--</span> · Lng: <span id="co-lng">--</span></div><label for="delivery-address">ที่อยู่จัดส่ง</label><textarea class="ta" id="delivery-address" placeholder="ที่อยู่/จุดสังเกตสำหรับจัดส่ง">${esc(qgCompactCustomerAddress(currentPos?.address||''))}</textarea><label for="checkout-note">หมายเหตุสำหรับร้าน</label><textarea class="ta" id="checkout-note" maxlength="500" placeholder="รายละเอียดเพิ่มเติมสำหรับร้าน (ถ้ามี)" oninput="setCheckoutNote(this.value)">${esc(cart.note||'')}</textarea></div>`,cartTotal(),null,unavailable.length>0);
   let picked=currentPos&&qgIsValidCoordinate(currentPos.lat,currentPos.lng,true)?{lat:currentPos.lat,lng:currentPos.lng}:null,locationVersion=0,lastAutoAddress=null;
   const showTotal=loc=>{if(!loc)return;const fee=deliveryFeeFor(s,loc);$('checkout-delivery-fee').textContent=baht(fee);$('checkout-total').textContent=baht(cartTotal()+fee)};showTotal(picked);
   checkoutPicker=initLocationPicker('checkout-pin-map',picked?.lat,picked?.lng,async(lat,lng)=>{picked={lat,lng};showTotal(picked);currentPos={...currentPos,lat,lng};$('co-lat').textContent=lat.toFixed(6);$('co-lng').textContent=lng.toFixed(6);const version=++locationVersion,field=$('delivery-address'),previous=field.value;if(previous&&previous!==lastAutoAddress)return;const t=await qtReverseGeocodeCustomer(lat,lng);if(t&&version===locationVersion&&field.isConnected&&field.value===previous){field.value=qgCompactCustomerAddress(t);lastAutoAddress=field.value;currentPos.address=field.value}});
@@ -1474,19 +1507,69 @@ async function route(background=false){
   catch(e){if(ticket!==routeVersion)return;layout(`<div class="card"><b>โหลดข้อมูลไม่สำเร็จ</b><p class="sm" style="margin:6px 0 12px">${esc(e.message)}</p><button class="prim" onclick="shops=null;route()">ลองอีกครั้ง</button></div>`,'')}
 }
 function bind(pg){
-  if(pg==='login')$('lb').onclick=async e=>{const b=e.target;b.disabled=true;try{await login($('lp').value.trim(),$('lw').value);const destination=sessionStorage.getItem('qg_customer_after_login');sessionStorage.removeItem('qg_customer_after_login');go(destination==='checkout'?'checkout':'home')}catch(x){toast(x.message)}finally{b.disabled=false}};
-  if(pg==='register')$('rb').onclick=async e=>{
-    const b=e.target,name=$('rn').value.trim(),phone=$('rp').value.trim(),password=$('rw').value;
-    const mode=$('register-mode').value,email=mode==='email'?$('register-email').value.trim():'';
-    if(!name||(mode==='phone'?phone.replace(/\D/g,'').length<9:!(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))))return toast('กรอกข้อมูลสมัครสมาชิกให้ครบ');
-    if(!QueueGoPasswordPolicy.validate(password))return toast(QueueGoPasswordPolicy.MESSAGE);
-    if($('rw-confirm').value!==password)return toast('ยืนยันรหัสผ่านให้ตรงกัน');
-    b.disabled=true;
-    try{
-      const pos=await new Promise((ok,no)=>navigator.geolocation?navigator.geolocation.getCurrentPosition(ok,no,{enableHighAccuracy:true,timeout:15000}):no());
-      await register({name,phone,email,password,lat:pos.coords.latitude,lng:pos.coords.longitude});go('home');
-    }catch(x){toast(x&&x.message?x.message:'ต้องอนุญาตตำแหน่งที่ตั้งเพื่อสมัคร')}finally{b.disabled=false}
-  };
+  const feedback=window.QueueGoAuthFeedback;
+  if(pg==='login'){
+    for(const id of ['lp','lw']) $(id).addEventListener('input',()=>feedback.clearFieldError(document,id));
+    $('lb').onclick=async e=>{
+      const b=e.currentTarget;
+      feedback.clearFormError(document,'lb');
+      const identifier=$('lp').value.trim(),password=$('lw').value;
+      const validation=feedback.validateLogin({identifier,password});
+      if(validation){feedback.fieldError(document,validation.field,validation.message);return}
+      b.disabled=true;
+      try{
+        await login(identifier,password);
+        const destination=sessionStorage.getItem('qg_customer_after_login');
+        sessionStorage.removeItem('qg_customer_after_login');
+        go(destination==='checkout'?'checkout':'home');
+      }catch(error){
+        feedback.formError(document,'lb',feedback.errorMessage(error,'login'));
+      }finally{b.disabled=false}
+    };
+  }
+  if(pg==='register'){
+    const modeSelect=$('register-mode');
+    modeSelect.onchange=()=>{
+      const emailMode=modeSelect.value==='email';
+      $('register-email').hidden=!emailMode;
+      $('register-email-label').hidden=!emailMode;
+      feedback.clearFieldError(document,'register-email');
+      feedback.clearFieldError(document,'rp');
+      feedback.clearFormError(document,'rb');
+    };
+    modeSelect.onchange();
+    for(const id of ['rn','rp','register-email','rw','rw-confirm']){
+      $(id).addEventListener('input',()=>feedback.clearFieldError(document,id));
+    }
+    $('rb').onclick=async e=>{
+      const b=e.currentTarget;
+      feedback.clearFormError(document,'rb');
+      const name=$('rn').value.trim(),phone=$('rp').value.trim(),password=$('rw').value;
+      const mode=modeSelect.value,email=mode==='email'?$('register-email').value.trim():'';
+      const validation=feedback.validateRegistration({
+        name,phone,email,password,confirm:$('rw-confirm').value,mode
+      },QueueGoPasswordPolicy);
+      if(validation){feedback.fieldError(document,validation.field,validation.message);return}
+      b.disabled=true;
+      try{
+        const pos=await new Promise((resolve,reject)=>
+          navigator.geolocation?
+            navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:15000}):
+            reject({code:2})
+        );
+        await register({
+          name,phone:feedback.cleanPhone(phone),email,password,
+          lat:pos.coords.latitude,lng:pos.coords.longitude
+        });
+        go('home');
+      }catch(error){
+        const isLocationError=typeof error?.code==='number'&&error.code>=1&&error.code<=3;
+        const text=isLocationError?feedback.locationMessage(error):feedback.errorMessage(error,'register');
+        if(error?.code==='email_not_confirmed')feedback.formNotice(document,'rb',text);
+        else feedback.formError(document,'rb',text);
+      }finally{b.disabled=false}
+    };
+  }
 }
 addEventListener('hashchange',()=>route());
 
@@ -1502,7 +1585,8 @@ addEventListener('hashchange',()=>route());
 <script>QueueGoPush.configure({role:'customer',getAccessToken:()=>token(true)});</script>
 <script src="customer-features.js?v=20261021-design-language1"></script>
 <script src="customer-laundry.js?v=20261023-sharedstore1"></script>
-<script src="customer-ride.js?v=20261024-ride-map-follow1&address-compact=20261024&camera3d=20261024&layout=20261031-picker-parity1"></script>
+<script src="customer-ride.js?v=20261024-ride-map-follow1&address-compact=20261024&camera3d=20261024&layout=20261031-picker-parity1&entry=20261115-retry1"></script>
+<script src="customer-express.js?v=20261018-web2"></script>
 <script>route();</script>
 <script src="catalog/customer-grocery.js?v=20261012"></script>
 </body>

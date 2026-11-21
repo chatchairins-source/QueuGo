@@ -1,0 +1,15 @@
+'use strict';
+const fs=require('node:fs');
+const assert=require('node:assert/strict');
+const web=fs.readFileSync('merchant/index.html','utf8');
+const native=fs.readFileSync('native-android/merchant/src/main/java/com/queuego/merchant/MerchantHoursScreen.kt','utf8');
+const start=web.indexOf('function qgmThailandDateKey(');
+const end=web.indexOf('\n}',start)+2;
+assert.ok(start>=0&&end>start,'Web must define its Thailand-local date helper');
+const dateKey=new Function(`${web.slice(start,end)}; return qgmThailandDateKey`)();
+assert.equal(dateKey(new Date('2026-10-27T16:59:59.000Z')),'2026-10-27');
+assert.equal(dateKey(new Date('2026-10-27T17:00:00.000Z')),'2026-10-28');
+assert.ok(web.includes("'&day=gte.'+qgmThailandDateKey()"),'Web special-hours query must use the Thailand-local date');
+assert.ok(native.includes('ZoneId.of("Asia/Bangkok")')&&native.includes('api.loadBusinessHours(auth, shop.id, today)'),'Android must continue using the same Thailand-local date basis');
+assert.ok(web.includes("'rpc/merchant_save_hours'")&&native.includes('api.saveBusinessHours(auth, days, special)'),'Both clients must retain the same authoritative business-hours save flow');
+console.log('PASS 6 Merchant Thailand-local business-hours parity checks');

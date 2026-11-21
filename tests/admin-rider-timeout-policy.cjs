@@ -1,0 +1,16 @@
+'use strict';
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const code=fs.readFileSync('admin/index.html','utf8');
+const start=code.indexOf('<select id="qt-set-orderTimeout"');
+const end=code.indexOf('</select>',start);
+assert.ok(start>=0 && end>start,'Admin needs bounded Rider timeout selector');
+const selector=code.slice(start,end);
+assert.match(selector,/<option value="15"/,'15 minute policy required');
+assert.match(selector,/<option value="30"/,'30 minute policy required');
+assert.ok(!code.includes("['orderTimeout','Timeout ออเดอร์ (นาที)',1,undefined,1]"),'Unbounded number field must be removed');
+assert.ok(code.includes("if(![15,30].includes(timeout))"),'Admin must fail closed on invalid timeout');
+assert.ok(code.includes("orderTimeout:timeout"),'Admin must persist validated timeout');
+assert.ok(code.includes("ค่าใหม่มีผลกับออร์เดอร์ที่กำลังค้นหาไรเดอร์ด้วย"),'Admin must warn existing searches are affected');
+assert.ok(!code.includes('cfg.orderTimeout=Math.max(1,cfg.orderTimeout)'), 'Do not silently clamp invalid config to 1 minute');
+console.log('QueueGo ADMIN 15/30m Rider timeout policy UI: PASS (source contract, not live screenshot)');

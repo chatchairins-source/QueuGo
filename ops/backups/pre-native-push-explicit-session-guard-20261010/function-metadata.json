@@ -1,0 +1,13 @@
+{
+  "id": "6519f9ba-5d19-4378-a7a8-9b8cec1867dc",
+  "slug": "queuego-push",
+  "name": "queuego-push",
+  "status": "ACTIVE",
+  "version": 15,
+  "created_at": 1791306554070,
+  "updated_at": 1791621762276,
+  "verify_jwt": false,
+  "import_map": false,
+  "entrypoint_path": "/tmp/user_fn_pkypiqhlrmzocysgeqew_6519f9ba-5d19-4378-a7a8-9b8cec1867dc_15/source/index.ts",
+  "ezbr_sha256": "5be59f1ba299d302bb1dd929eb97c8e7d4a92549b8d3e89a324bddceea8a33b5"
+}

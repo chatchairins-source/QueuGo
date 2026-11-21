@@ -10,13 +10,10 @@ const customer=read('index.html');
 const customerFeatures=read('customer-features.js');
 const merchant=read('merchant/index.html');
 const rider=read('rider/index.html');
-const workflow=read('.github/workflows/build-queuego-apks.yml');
 const sql=read('supabase/migrations/20261006170833_queuego_background_push_unified.sql');
 const nativeSql=read('supabase/migrations/20261006173656_queuego_native_push_transport.sql');
 const retireLegacy=read('supabase/migrations/20261007043258_retire_legacy_rider_push_rpc_surface.sql');
 const cronFix=read('supabase/migrations/20261007034201_switch_push_retry_cron_to_unified_worker.sql');
-const androidPkg=JSON.parse(read('android-build/package.json'));
-const capacitor=JSON.parse(read('android-build/capacitor.config.json'));
 const edge=read('supabase/functions/queuego-push/index.ts');
 const retired=read('supabase/functions/rider-web-push/index.ts');
 const deletion=read('QueueGo-Pilot-Account-Deletion-Privacy.sql');
@@ -88,21 +85,39 @@ ok(riderOfferNotify.includes("insert into public.notifications(user_id,title,mes
 ok(riderOfferNotify.includes("h.outcome='expired' and h.resolved_at>now()-interval '30 seconds'"),'expired Rider offers must retry without the old 10-minute dead zone');
 ok(riderOfferNotify.includes("h.outcome='declined' and h.resolved_at>now()-interval '10 minutes'"),'explicit Rider declines must keep the longer cooldown');
 
-for(const asset of ['customer-features.js','customer-features.css','customer-laundry.js','account-deletion.js','queuego-ugc.js','queuego-native-push.js','queuego-push.js','queuego-push-sw.js']){
-  ok(workflow.includes(asset),'Customer Android bundle must include '+asset);
+// The Web Push/Capacitor compatibility path above remains covered, but APKs
+// must use Kotlin FirebaseMessagingService and authenticated QueueGo NativePush.
+const nativePush=read('native-android/shared/src/main/java/com/queuego/shared/NativePush.kt');
+ok(nativePush.includes('class NativePushApi')&&nativePush.includes('"queuego-push"'),'Native push must use unified QueueGo edge worker');
+ok(nativePush.includes('auth.session.accessToken')&&nativePush.includes('auth.session.sessionId'),'Native FCM registration must be bound to authenticated session');
+ok(nativePush.includes('suspend fun subscribe(')&&nativePush.includes('suspend fun unsubscribe('),'Native token lifecycle must include subscribe and revoke');
+for(const [role,file,service] of [
+  ['customer','CustomerPush.kt','QueueGoCustomerMessagingService'],
+  ['merchant','MerchantPush.kt','QueueGoMerchantMessagingService'],
+  ['rider','RiderPush.kt','QueueGoRiderMessagingService']
+]){
+  const kt=read('native-android/'+role+'/src/main/java/com/queuego/'+role+'/'+file);
+  const manifest=read('native-android/'+role+'/src/main/AndroidManifest.xml');
+  ok(kt.includes('FirebaseMessagingService')&&kt.includes('override fun onNewToken(')&&kt.includes('override fun onMessageReceived('),role+' must use a real Native Firebase messaging service');
+  ok(kt.includes('queuego_orders_v2'),role+' must retain QueueGo notification channel identity');
+  ok(kt.includes('SessionStore(')||kt.includes('SecureRoleSessionStore('),role+' must bind incoming push to an authenticated session');
+  ok(manifest.includes('android:name=".'+service+'"')&&manifest.includes('android:exported="false"'),role+' must declare a private Firebase service');
+  ok(manifest.includes('android.permission.POST_NOTIFICATIONS'),role+' must declare Android notification permission');
 }
-const copyLines=workflow.split('\n').filter(line=>line.trim().startsWith('cp '));
-const merchantCopy=copyLines.find(line=>line.includes('../role-realtime.js'))||'';
-const riderCopy=copyLines.find(line=>line.includes('../queuego-native-push.js')&&!line.includes('../role-realtime.js')&&!line.includes('../customer-features.js'))||'';
-for(const asset of ['../queuego-password-policy.js','../account-deletion.js','../queuego-ugc.js','../queuego-native-push.js','../queuego-push.js','../queuego-push-sw.js']){
-  ok(merchantCopy.includes(asset),'Merchant Android bundle must copy '+asset);
-  ok(riderCopy.includes(asset),'Rider Android bundle must copy '+asset);
+const customerNative=read('native-android/customer/src/main/java/com/queuego/customer/CustomerPush.kt');
+const merchantNative=read('native-android/merchant/src/main/java/com/queuego/merchant/MerchantPush.kt');
+const riderNative=read('native-android/rider/src/main/java/com/queuego/rider/RiderPush.kt');
+ok(customerNative.includes('NativeAuthApi().validate(cached, "customer")'),'Customer FCM refresh must revalidate its authenticated role');
+ok(merchantNative.includes('NativeAuthApi().validate(cached, "shop")'),'Merchant FCM refresh must revalidate its authenticated role');
+ok(riderNative.includes('recipientSession != cached.session.sessionId')&&riderNative.includes('subscribeNativePush'),'Rider push must reject messages belonging to another session');
+const pilot=read('.github/workflows/build-native-rider-pilot.yml');
+const release=read('.github/workflows/build-native-release.yml');
+ok(pilot.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&pilot.includes('Firebase config has no com.queuego.rider Android client'),'Native Pilot must validate actual Firebase package mapping');
+ok(release.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&release.includes('verify-native-release-artifacts.py'),'Certified release must validate Firebase and signed Native artifacts');
+for(const legacy of ['.github/workflows/build-queuego-apks.yml','.github/workflows/build-queuego-pilot-apks.yml']){
+  ok(!fs.existsSync(path.join(root,legacy)),'Retired Capacitor Android pipeline must stay absent: '+legacy);
 }
-ok(workflow.includes("s=s.replace('../queuego-password-policy.js','queuego-password-policy.js')")&&workflow.includes("s=s.replace('../queuego-ugc.js','queuego-ugc.js')")&&workflow.includes("s=s.replace('../queuego-native-push.js','queuego-native-push.js')")&&workflow.includes("s=s.replace('../queuego-push.js','queuego-push.js')"),'Android nested role bundles must rewrite shared UGC/push/password paths');
-ok(workflow.includes('QG_FIREBASE_GOOGLE_SERVICES_JSON_B64')&&workflow.includes('android/app/google-services.json'),'Android release must inject Firebase app configuration securely');
-ok(androidPkg.dependencies?.['@capacitor/push-notifications']==='8.0.0','Android build must install Capacitor 8 Push Notifications');
-ok(Array.isArray(capacitor.plugins?.PushNotifications?.presentationOptions),'Capacitor config must enable native push presentation options');
 ok(deletion.includes('delete from public.qg_push_subscriptions where user_id=v_user.id;'),'privacy source must remove unified web push subscriptions');
 ok(deletion.includes('delete from public.qg_native_push_tokens where user_id=v_user.id;'),'privacy source must remove native push tokens');
 
-console.log(JSON.stringify({checks,failures:0,scope:'Unified Customer/Merchant/Rider Web Push + Capacitor FCM lifecycle, shared outbox, privacy cleanup and Android bundle assets'}));
+console.log(JSON.stringify({checks,failures:0,scope:'Unified Web Push + Kotlin Native FCM services, authenticated token ownership, privacy cleanup and no retired Capacitor builds'}));

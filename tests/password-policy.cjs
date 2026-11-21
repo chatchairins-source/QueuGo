@@ -23,8 +23,23 @@ ok(manifest?.security?.leaked_password_protection_enabled===false,'Manifest must
 ok(manifest?.security?.leaked_password_protection_plan_requirement==='PRO_OR_ABOVE','Manifest must record the Pro-only leaked-password requirement');
 ok(manifest?.security?.leaked_password_protection_release_blocker===false,'Pro-only leaked-password protection must be classified as post-Beta hardening on the Free-plan baseline');
 ok(manifest?.android?.auth_gate_accepts_free_plan_compensating_controls===true,'Android release gate must record the certified Free-plan Auth path');
-for(const wf of ['.github/workflows/build-queuego-pilot-apks.yml','.github/workflows/build-queuego-apks.yml']){
-  const s=fs.readFileSync(wf,'utf8');
-  ok(s.includes('queuego-password-policy.js'),'Android workflow must bundle password policy: '+wf);
+// Native Kotlin/Compose apps share an explicit password contract, not the
+// retired Capacitor workflows. Keep validating both Web and Android signup.
+const nativePolicy=fs.readFileSync('native-android/shared/src/main/java/com/queuego/shared/NativeCustomerRegistration.kt','utf8');
+ok(nativePolicy.includes('password.length >= 12'),'Native password policy must require at least 12 characters');
+for(const required of ["password.any { it in 'a'..'z' }","password.any { it in 'A'..'Z' }","password.any { it in '0'..'9' }","password.any { it !in 'a'..'z'"]){
+  ok(nativePolicy.includes(required),'Native password must require upper/lower/digit/symbol: '+required);
+}
+ok(nativePolicy.includes('requireNativeStrongPassword(password)'),'Native registration models must enforce the common policy');
+const nativeAuth=fs.readFileSync('native-android/shared/src/main/java/com/queuego/shared/NativeAuthApi.kt','utf8');
+ok(nativeAuth.includes('requireNativeStrongPassword(password)'),'Native Auth service must reject weak passwords before signup');
+const nativeCustomer=fs.readFileSync('native-android/customer/src/main/java/com/queuego/customer/CustomerAuthenticationScreen.kt','utf8');
+ok(nativeCustomer.includes('requireNativeStrongPassword(password)')&&nativeCustomer.includes('PasswordVisualTransformation()'),'Native Customer signup must validate and mask passwords');
+const nativeRiderForm=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderRegistrationForm.kt','utf8');
+ok(nativeRiderForm.includes('isNativeStrongPassword(password)'),'Native Rider registration must enforce the common password policy');
+const nativeRiderUi=fs.readFileSync('native-android/rider/src/main/java/com/queuego/rider/RiderRegistrationScreen.kt','utf8');
+ok(nativeRiderUi.includes('PasswordVisualTransformation()')&&nativeRiderUi.includes('Never persist passwords or consent'),'Native Rider form must mask and never persist passwords');
+for(const retired of ['.github/workflows/build-queuego-pilot-apks.yml','.github/workflows/build-queuego-apks.yml']){
+  ok(!fs.existsSync(retired),'Retired Capacitor Android release workflow must remain absent: '+retired);
 }
 console.log(JSON.stringify({checks,failures:0,scope:'shared 12-character password policy across Customer, Merchant, Rider and Android bundles'}));

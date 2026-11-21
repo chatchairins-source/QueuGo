@@ -1,0 +1,998 @@
+{
+  "date": "2026-10-31",
+  "project": "pkypiqhlrmzocysgeqew",
+  "scope": "Literal Native RPC name/schema+EXECUTE prerequisite after two approved additive remediations; not E2E certification",
+  "applied_migrations": [
+    "native_rider_owned_proof_recovery_reader",
+    "native_rider_dispatch_readiness_rpc"
+  ],
+  "checked": 162,
+  "missing": [
+    "pos_save_tax_settings",
+    "qg_customer_order_eta",
+    "qg_express_complete_with_photo",
+    "qg_express_pickup_with_photo",
+    "qg_merchant_set_ready_estimate",
+    "qg_rider_publish_customer_eta",
+    "qg_rider_submit_public_license",
+    "queuego_express_config",
+    "queuego_express_state",
+    "queuego_laundry_shop_contacts",
+    "queuego_laundry_shop_manage",
+    "queuego_request_express"
+  ],
+  "rows": [
+    {
+      "name": "check_active_session",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "claim_active_session",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "effective_gp_rate",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "get_my_shop_orders",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "market_adjust_stock",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "market_pickup_route_summary",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "market_public_catalog_v2",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "market_public_markets_v1",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "market_public_shops_v2",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "market_save_product",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "merchant_revenue_days",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "merchant_save_hours",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_add_product_with_options",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_apply_discount",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_bill_action",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_cancel_bill",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_change_price",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_close_shift",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_create_bill_once",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_create_role_invite",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_current_shift",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_delete_table",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_edit_bill_once",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_enable_delivery",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_inventory_adjustment_history",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_inventory_stock_adjust",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_is_owner",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_join_shop",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_my_shop",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_open_shift",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_owner_dashboard",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_owner_item_sales",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_product_code_lookup",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_product_code_remove",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_product_code_save",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_product_codes_for_shop",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_record_cash_movement",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_refund_bill",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_register_shift_history",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_save_table",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_save_tax_settings",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_set_staff_role",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_submit_offline_draft",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "pos_take_payment",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_accept_ugc_terms",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_block_chat_counterpart",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_call_active",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_call_answer",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_call_decline",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_call_end",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_call_incoming",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_call_start",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_chat_moderation_state",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_complete_market_with_photo",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_complete_with_photo",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_create_ticket",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_customer_cancel_market_order",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_customer_cancel_order",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_customer_order_context",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_customer_order_eta",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_customer_rider_compliments",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_customer_save_review",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_customer_save_rider_compliments",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_express_complete_with_photo",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_express_pickup_with_photo",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_get_my_rider_offer",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_grocery_customer_categories",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "qg_grocery_customer_page",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "qg_grocery_merchant_page",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_grocery_source_add_to_shop",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_grocery_store_save",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_market_catalog_add",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_market_catalog_page",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_market_master_categories",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_market_owner_shop",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_market_pickup_with_photo",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_merchant_action_once",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_merchant_edit_order_items",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_merchant_order_rider_context",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_merchant_set_ready_estimate",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_pickup_with_photo",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_public_promotions",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "qg_public_shop_reviews",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "qg_report_chat",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_report_chat_with_evidence",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_action_once",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_active_delivery_return_v2",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_add_vehicle",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_benefits",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_cash_ledger",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_complete_delivery_return",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_compliment_summary",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_decline_offer",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_demand_heatmap",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_destination_preference",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_dispatch_preference",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_document_readiness",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_emergency_contact",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_fatigue_status",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_insurance_policies",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_mark_arrival",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_market_pickup_guides",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_missions",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_nearby_road_alerts",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_offer_performance",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_order_contact",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_order_load_summary",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_period_summary",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_pickup_guide",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_proof_committed",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_public_license_status",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_publish_customer_eta",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_rating_summary",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_report_delivery_issue",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_reverification_status",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_select_vehicle",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_set_destination_preference",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_set_emergency_contact",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_set_profile_photo",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_start_delivery_return",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_submit_map_feedback",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_submit_public_license",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_submit_reverification",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_submit_vehicle_inspection",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_supply_plan",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_vehicle_inspection_status",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_vehicle_list",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_rider_work_preferences",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_search_places",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "qg_table_rotate_qr",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "qg_unblock_chat_counterpart",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_claim_laundry_job",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_credit_summary",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_customer_ride_supply",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_delete_or_archive_product",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_express_config",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_express_state",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_feature_enabled",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "queuego_laundry_customer_catalog",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_merchant_setup",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_merchant_state",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_rider_action",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_rider_invite_action",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_rider_state",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_save_service",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_save_settings",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_shop_contacts",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_laundry_shop_manage",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_place_cash_order",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_place_laundry_order_v2",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_request_express",
+      "overloads": 0,
+      "authenticated_execute": false,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_request_market",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_request_ride",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_ride_config",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": true
+    },
+    {
+      "name": "queuego_ride_state",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_route_bundle_active_orders",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_route_bundle_candidates",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_set_laundry_rider_mode",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_shop_readiness",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "queuego_submit_market_membership",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "revoke_active_session",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    },
+    {
+      "name": "touch_active_session",
+      "overloads": 1,
+      "authenticated_execute": true,
+      "anonymous_execute": false
+    }
+  ]
+}

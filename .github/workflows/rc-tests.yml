@@ -40,7 +40,39 @@ jobs:
         run: node tests/rc-webkit-runner-contract.cjs
       - run: npm test
       - name: Install WebKit for complete Merchant mobile boot checks
-        run: npx playwright-core install --with-deps webkit
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Runner apt mirrors can take >10 minutes to download WebKit libs.
+          # A timed-out installer may leave a child apt-get holding dpkg locks.
+          # Retry only after old apt children have RELEASED their locks.
+          for attempt in 1 2; do
+            if timeout --kill-after=15s 900s npx playwright-core install --with-deps webkit; then
+              echo "WebKit installer succeeded on attempt ${attempt}"
+              exit 0
+            fi
+            if [[ "${attempt}" -lt 2 ]]; then
+              if ! command -v fuser >/dev/null 2>&1; then
+                echo "::error::Cannot verify apt locks without fuser; fail closed"
+                exit 1
+              fi
+              echo "::warning::WebKit installer failed; wait for orphaned apt lock before one retry"
+              apt_locks=(/var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock)
+              for lock_wait in {1..24}; do
+                if ! sudo fuser "${apt_locks[@]}" >/dev/null 2>&1; then
+                  break
+                fi
+                sleep 5
+              done
+              if sudo fuser "${apt_locks[@]}" >/dev/null 2>&1; then
+                echo "::error::Prior WebKit apt installer still holds dpkg/apt locks; fail closed"
+                exit 1
+              fi
+              sleep 5
+            fi
+          done
+          echo "::error::WebKit installer failed twice; browser gates remain blocking"
+          exit 1
       - name: Verify Admin fast boot and section isolation in mobile WebKit
         run: node tests/admin-boot-browser.cjs
       - name: Preserve Admin layout evidence
