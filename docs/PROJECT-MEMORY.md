@@ -1,3 +1,9 @@
+## 2026-11-21 Recovered-country provenance packaging acceptance
+
+- Exact Integration28a64aaa Native44875886175 job136760359743 rejected the real Rider APK because recovery adds thailand-shortbread-recovery.json but verify-bundled-thailand-apks.py allowed only2 map entries. Source country PR1373's positive run did not expose this recovered-data branch incompatibility.
+- Reproduced the rejection with the actual CLI and isolated ZIP fixtures. Accept only the one known provenance filename with exact pinned reference run/artifact/ZIP SHA, data_only=true, matching actual rendering source URL and a valid reference APK digest. Keep all unknown/duplicate-file, map hash/length/compression, Customer/Merchant online-only and exact DEX source guards. Actual current APK rendering/install gates remain unchanged.
+- Added executable CLI positive/negative cases and wired into Native before actual APK inspection. Fixtures are not installable APK, runtime or signed-release evidence. Hosted exact-head Native and installed-country gates remain mandatory. No Production or signing changes.
+
 ## 2026-11-21 Native country build transport recovery
 
 - Exact Integration6e837fc9 Native44872874421 failed its country step again after canonical+IPv4 curl7. Add recovery only after both transports exhaust known transport errors; HTTP errors, write errors and checksum failures remain fatal.
