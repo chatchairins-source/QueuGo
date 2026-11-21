@@ -5,7 +5,19 @@ const fs = require('node:fs');
 const { PGlite } = require('@electric-sql/pglite');
 const sql = fs.readFileSync('ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql', 'utf8');
 async function main() {
-  const db = new PGlite();
+  const testUrl = process.env.QG_PREFLIGHT_TEST_DATABASE_URL;
+  let db;
+  if(testUrl) {
+    const url = new URL(testUrl);
+    assert.ok(['postgres:','postgresql:'].includes(url.protocol) &&
+      ['127.0.0.1','localhost','[::1]'].includes(url.hostname) &&
+      /^\/qg_preflight_test_[a-z0-9_]+$/.test(url.pathname), 'disposable loopback test database required');
+    const {Client} = require('pg');
+    const client = new Client({connectionString:testUrl,connectionTimeoutMillis:5000});
+    await client.connect(); await client.query("SET statement_timeout='10s'; SET lock_timeout='5s'");
+    db = {exec:async sql=>{const result=await client.query(sql);return Array.isArray(result)?result:[result];},
+      query:(...args)=>client.query(...args),close:()=>client.end()};
+  } else db = new PGlite();
   let checks = 0;
   const equal = (actual, expected) => { assert.equal(Number(actual), expected); checks++; };
   const snapshot = async () => {
@@ -28,8 +40,8 @@ async function main() {
       CREATE TABLE grocery_stock_reservations(order_id integer, released boolean);
       CREATE TABLE pos_inventory_reservations(order_id integer, released boolean);
       CREATE TABLE qg_rider_offer_history(order_id integer);
-      INSERT INTO orders(id,status,payment_status,payment_method,rider_search_started_at)
-        VALUES(1,'searching_rider','unpaid','cash',now()-interval '31 minutes');
+      INSERT INTO orders(id,status,payment_status,payment_method,rider_search_started_at,created_at)
+        VALUES(1,'searching_rider','unpaid','cash',now()-interval '31 minutes',now()-interval '35 minutes');
     `);
     let row = await snapshot();
     equal(row.configured_timeout_minutes, 30);
@@ -69,15 +81,54 @@ async function main() {
     }
     await db.exec('UPDATE orders SET rider_search_started_at=NULL;');
     row = await snapshot();
-    equal(row.unknown_search_start, 1);
+    // A reporting fallback remains available, but the actual rider search start is absent.
+    equal(row.missing_actual_rider_search_start, 1);
+    equal(row.unknown_search_start, 0);
     equal(row.financial_preflight_only_candidates, 0);
+    // Timestamp gates must fail closed, and recover only when the actual
+    // search timestamp is again valid. Use an overdue fixture for each case.
+    await db.exec(`UPDATE orders SET rider_search_started_at=now()-interval '31 minutes',
+      created_at=now()-interval '35 minutes', merchant_accepted_at=NULL;`);
+    row = await snapshot();
+    equal(row.financial_preflight_only_candidates, 1);
+    await db.exec(`UPDATE orders SET created_at=now()-interval '20 minutes';`);
+    row = await snapshot();
+    equal(row.inconsistent_rider_search_start, 1);
+    equal(row.financial_preflight_only_candidates, 0);
+    equal(row.overdue_blocked_for_manual_review, 1);
+    await db.exec(`UPDATE orders SET created_at=now()-interval '35 minutes',
+      merchant_accepted_at=now()-interval '25 minutes';`);
+    row = await snapshot();
+    equal(row.inconsistent_rider_search_start, 1);
+    equal(row.financial_preflight_only_candidates, 0);
+    await db.exec(`UPDATE orders SET merchant_accepted_at=NULL,
+      rider_search_started_at=now()+interval '5 minutes';`);
+    row = await snapshot();
+    equal(row.future_search_start, 1);
+    equal(row.financial_preflight_only_candidates, 0);
+    await db.exec(`UPDATE orders SET rider_search_started_at=now()-interval '31 minutes';`);
+    row = await snapshot();
+    equal(row.financial_preflight_only_candidates, 1);
+    // NULL created_at used to evade the chronological comparison (NULL >= x
+    // evaluates UNKNOWN). It must be routed to manual review, not a candidate.
+    await db.exec('UPDATE orders SET created_at=NULL;');
+    row = await snapshot();
+    equal(row.missing_order_created_at, 1);
+    equal(row.financial_preflight_only_candidates, 0);
+    equal(row.overdue_blocked_for_manual_review, 1);
+    await db.exec(`UPDATE orders SET created_at=now()-interval '35 minutes';`);
+    row = await snapshot();
+    equal(row.missing_order_created_at, 0);
+    equal(row.financial_preflight_only_candidates, 1);
     assert.ok(Object.keys(row).every(key => !/(^id$|order_id|rider_id|address|phone)/.test(key)));
     checks++;
     // The operational query itself must run in a read-only transaction.
     await assert.rejects(db.exec(sql.replace('FROM facts;', 'FROM facts; DELETE FROM public.orders;')));
     await db.exec('ROLLBACK;');
     equal((await db.query('SELECT count(*) AS n FROM orders')).rows[0].n, 1);
+    await db.exec(fs.readFileSync('tests/backend/dispatch-search-time-negative.sql','utf8'));
+    checks++; // Execute Worker timestamp truth-table on this same database engine.
   } finally { await db.close(); }
-  console.log(JSON.stringify({ checks, failures: 0, scope: 'actual financial preflight SQL, disposable PGlite only' }));
+  console.log(JSON.stringify({ checks, failures: 0, engine:testUrl?'real PostgreSQL':'PGlite', scope: 'actual read-only financial preflight SQL on disposable synthetic schema; NOT authorization to terminalize orders' }));
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
