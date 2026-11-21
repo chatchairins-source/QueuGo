@@ -38,6 +38,16 @@ async function main(){
   await eq(904,1,0,'already-expired offer rejected',"now()-interval '2 minutes'","now()-interval '1 minute'");
   await seed(905,'1 minute');
   await eq(905,1,1,'valid offer allowed');
+  await db.query("INSERT INTO orders(id,status,created_at) VALUES($1,'searching_rider',now()-interval '1 minute')",[id(906)]);
+  await eq(906,1,0,'NULL rider search timestamp cannot fall back to recent creation');
+  await db.query("INSERT INTO orders(id,status,created_at,merchant_accepted_at) VALUES($1,'searching_rider',now()-interval '2 minutes',now()-interval '1 minute')",[id(907)]);
+  await eq(907,1,0,'NULL rider search timestamp cannot fall back to merchant acceptance');
+  await seed(908,'2 minutes');
+  await db.query("UPDATE orders SET created_at=now()-interval '1 minute' WHERE id=$1",[id(908)]);
+  await eq(908,1,0,'search started before order creation is rejected');
+  await seed(909,'2 minutes');
+  await db.query("UPDATE orders SET merchant_accepted_at=now()-interval '1 minute' WHERE id=$1",[id(909)]);
+  await eq(909,1,0,'search started before merchant accepted is rejected');
   const expiry=(await db.query('SELECT expires_at <= offered_at + interval \'30 seconds\' AS bounded FROM qg_rider_order_offers WHERE order_id=$1',[id(905)])).rows[0].bounded;
   assert.equal(expiry,true,'server caps offer TTL at 30 seconds');checks++;
   assert.equal((await db.query("SELECT count(*)::int AS n FROM notifications")).rows[0].n,0,'trigger itself must not emit notifications');checks++;

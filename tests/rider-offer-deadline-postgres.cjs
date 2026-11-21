@@ -129,6 +129,30 @@ async function main() {
     await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[id(909)]);
     await db.query('DELETE FROM qg_rider_order_offers WHERE order_id=$1',[id(909)]);
 
+    // The real dispatcher and insert trigger must agree on the persisted clock;
+    // no fallback to merchant acceptance or created_at can extend an offer.
+    await seed(910,'1 minute');
+    await db.query('UPDATE orders SET rider_search_started_at=NULL WHERE id=$1',[id(910)]);
+    eq(await dispatch(a),0,'missing server search timestamp suppresses real dispatch');
+    eq(await count('notifications',910),0,'missing clock never notifies Rider');
+    await seed(911,'2 minutes');
+    await db.query("UPDATE orders SET created_at=now()-interval '1 minute' WHERE id=$1",[id(911)]);
+    eq(await dispatch(a),0,'search time preceding order creation cannot dispatch');
+    eq(await count('qg_rider_order_offers',911),0,'chronologically invalid search cannot offer');
+    await seed(912,'2 minutes');
+    await db.query("UPDATE orders SET merchant_accepted_at=now()-interval '1 minute' WHERE id=$1",[id(912)]);
+    eq(await dispatch(a),0,'search time before merchant acceptance cannot dispatch');
+    eq(await count('notifications',912),0,'bad merchant/search time cannot notify');
+    await seed(913,'1 minute');
+    await db.query('UPDATE orders SET rider_assigned_at=now() WHERE id=$1',[id(913)]);
+    eq(await dispatch(a),0,'stale rider assignment timestamp cannot be reoffered');
+    await seed(914,'1 minute');
+    await db.query("UPDATE orders SET created_at=now()-interval '3 minutes', merchant_accepted_at=now()-interval '2 minutes' WHERE id=$1",[id(914)]);
+    eq(await dispatch(a),1,'valid merchant-before-search time remains dispatchable');
+    eq(await count('notifications',914),1,'valid timestamp chain notifies exactly once');
+    await db.query('DELETE FROM qg_rider_order_offers WHERE order_id=$1',[id(914)]);
+    await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[id(914)]);
+
     await db.query('BEGIN');
     await db.query('DROP TRIGGER qg_rider_offer_deadline_guard ON public.qg_rider_order_offers; DROP FUNCTION qg_private.guard_rider_offer_deadline()');
     await db.query('ROLLBACK');

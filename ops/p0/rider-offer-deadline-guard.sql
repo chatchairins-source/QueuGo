@@ -8,8 +8,9 @@
 -- The existing stranded order must be resolved through authorized operations.
 --
 -- Admin: system_settings.key='app', value.orderTimeout is minutes (currently 30).
--- Searching clock starts at rider_search_started_at, falling back to merchant
--- acceptance then creation when prior records lack a search start.
+-- Searching clock MUST be the persisted rider_search_started_at. Missing,
+-- future or contradictory clocks fail closed, matching Rider claim and timeout
+-- cancellation. Never fabricate time from merchant acceptance or creation.
 CREATE OR REPLACE FUNCTION qg_private.guard_rider_offer_deadline()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -24,7 +25,10 @@ DECLARE
 BEGIN
   SELECT o.status,
          o.rider_id,
-         COALESCE(o.rider_search_started_at, o.merchant_accepted_at, o.created_at) AS started_at
+         o.rider_assigned_at,
+         o.created_at,
+         o.merchant_accepted_at,
+         o.rider_search_started_at AS started_at
     INTO v_order
     FROM public.orders o
    WHERE o.id = NEW.order_id;
@@ -32,8 +36,13 @@ BEGIN
   IF NOT FOUND
      OR v_order.status IS DISTINCT FROM 'searching_rider'
      OR v_order.rider_id IS NOT NULL
+     OR v_order.rider_assigned_at IS NOT NULL
+     OR v_order.created_at IS NULL
      OR v_order.started_at IS NULL
-     OR v_order.started_at > now() THEN
+     OR v_order.started_at > now()
+     OR v_order.started_at < v_order.created_at
+     OR (v_order.merchant_accepted_at IS NOT NULL
+         AND v_order.started_at < v_order.merchant_accepted_at) THEN
     RETURN NULL;
   END IF;
 
