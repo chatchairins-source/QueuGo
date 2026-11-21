@@ -42,6 +42,19 @@ stats AS (
     (SELECT timeout_minutes FROM timeout_config) AS configured_timeout_minutes,
     (SELECT count(*) FROM searching)::integer AS searching_orders,
     (SELECT count(*) FROM invalid_search_clocks)::integer AS invalid_search_clocks,
+    -- Searching + any recorded assignment is a contradictory live order state.
+    -- Do not hide it by filtering assigned searches out of the normal CTE.
+    (SELECT count(*) FROM public.orders o
+      WHERE o.status='searching_rider'
+        AND (o.rider_id IS NOT NULL OR o.rider_assigned_at IS NOT NULL)
+    )::integer AS invalid_search_assignments,
+    -- The independent max-attempt cap must apply before timeout too.
+    (SELECT count(*) FROM public.qg_rider_order_offers x
+      JOIN searching o ON o.id=x.order_id WHERE x.attempt > 120
+    )::integer AS searching_live_offers_above_120,
+    (SELECT count(*) FROM public.qg_rider_offer_history x
+      JOIN searching o ON o.id=x.order_id WHERE x.attempt > 120
+    )::integer AS searching_historical_offers_above_120,
     (SELECT count(*) FROM overdue)::integer AS overdue_searching_orders,
     (SELECT count(*) FROM public.qg_rider_order_offers x
       JOIN overdue o ON o.id=x.order_id)::integer AS late_active_offers,
@@ -62,7 +75,9 @@ stats AS (
 )
 SELECT *,
   CASE
-    WHEN invalid_search_clocks>0 OR overdue_searching_orders>0 OR late_active_offers>0 OR invalid_status_active_offers>0
+    WHEN invalid_search_clocks>0 OR invalid_search_assignments>0
+      OR searching_live_offers_above_120>0 OR searching_historical_offers_above_120>0
+      OR overdue_searching_orders>0 OR late_active_offers>0 OR invalid_status_active_offers>0
       OR overdue_offers_last_hour>0 OR overdue_notifications_last_hour>0
       OR overdue_offer_attempts_above_120>0
     THEN 'NO_GO_DISPATCH_P0'
