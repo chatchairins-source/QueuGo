@@ -110,8 +110,15 @@ def verify_bundle(aab: Path) -> None:
         names = bundle.namelist()
         if len(names) != len(set(names)):
             raise ValueError("AAB has duplicate ZIP entries")
-        if "base/assets/maps/thailand-shortbread.pmtiles" in names or "base/assets/routing/tiles.tar" in names:
-            raise ValueError("Nationwide archives duplicated into Play base module")
+        # Every delivered country payload must come from the verified APK.
+        # Reject stale/generated extras as well as metadata duplicated in base.
+        payloads = {name for name in names
+                    if any(name.startswith(pack + "/assets/")
+                           for pack in (MAP_NAME, ROUTE_NAME)) and not name.endswith("/")}
+        if payloads != set(expected):
+            raise ValueError("Unexpected or missing Play country asset payload")
+        if any("base/" + member in names for member in FILES):
+            raise ValueError("Nationwide assets duplicated into Play base module")
         for member, target in expected.items():
             info = bundle.getinfo(member)
             if info.file_size != target.stat().st_size:

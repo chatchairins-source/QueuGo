@@ -44,3 +44,6 @@ for(const flag of ['GITHUB_SHA','rider_country_map','rider_country_routing',
 }
 assert.ok(!flow.includes('QG_RIDER_PLAY_ASSET_PACKS=1 gradle -p native-android :rider:assembleRelease'),'do not make a release APK that loses native offline map');
 console.log('QueueGo Play Rider nationwide asset packs: SOURCE CONTRACT PASS; actual signed Play AAB + device tests still REQUIRED');
+
+const payloadRuntime=require('child_process').spawnSync('python3',['tests/play-rider-asset-pack-runtime.py'],{encoding:'utf8',timeout:15000});
+assert.equal(payloadRuntime.status,0,'Actual Play payload verifier regression: '+payloadRuntime.stdout+payloadRuntime.stderr);
