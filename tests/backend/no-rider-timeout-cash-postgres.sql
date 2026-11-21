@@ -91,11 +91,17 @@ END $check$;
 -- Admin chooses the 15 minute policy without changing code.
 UPDATE public.system_settings SET value='{"orderTimeout":"15"}' WHERE key='app';
 SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001005',16);
+SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001006',14);
 DO $check$
 BEGIN
- IF qg_private.cancel_rider_timeout_cash(20)<>1
+ -- Dynamic Admin policy applies to existing unclaimed searches too:
+ -- the earlier 29-minute order now exceeds the new 15-minute threshold.
+ IF qg_private.cancel_rider_timeout_cash(20)<>2
+ OR (SELECT status FROM public.orders WHERE id='00000000-0000-4000-8000-000000001003')<>'cancelled'
  OR (SELECT status FROM public.orders WHERE id='00000000-0000-4000-8000-000000001005')<>'cancelled'
- THEN RAISE EXCEPTION '15-minute policy must cancel'; END IF;
+ THEN RAISE EXCEPTION '15-minute policy must cancel both expired searches'; END IF;
+ IF (SELECT status FROM public.orders WHERE id='00000000-0000-4000-8000-000000001006')<>'searching_rider'
+ THEN RAISE EXCEPTION '14-minute search must remain eligible'; END IF;
  IF (SELECT amount FROM public.payments WHERE order_id='00000000-0000-4000-8000-000000001005')<>100
  THEN RAISE EXCEPTION 'cash amount must remain unchanged'; END IF;
 END $check$;
