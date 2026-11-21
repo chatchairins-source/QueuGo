@@ -31,6 +31,10 @@ assert.ok(rider.includes('if (!playAssetPackAab)'),'debug and QA APKs must keep 
 assert.ok(flow.includes('QG_RIDER_PLAY_ASSET_PACKS=1 gradle -p native-android'),'certified AAB must build packs');
 assert.ok(flow.includes(':rider:assembleRelease --no-build-cache'),'signed QA APK still packages offline assets');
 assert.ok(flow.includes('stage-play-rider-assets.py --verify-bundle'),'verify exact pack contents after build');
+assert.ok(flow.includes('java -jar "$QG_BUNDLETOOL_JAR" validate --bundle="$bundle"'),
+  'Actual signed AABs must pass pinned Google bundletool structural validation before upload');
+assert.ok(flow.includes('for role in customer merchant rider; do'),
+  'Bundletool validation must include all three signed Native applications');
 assert.ok(flow.includes('fetch-rider-offline-candidate.py'),'reuse exact-HEAD offline-tested APK not synthetic assets');
 assert.ok(flow.includes('QG_REQUIRED_OFFLINE_RUN_ID'),'release must pin certified offline run');
 assert.ok(source.includes('QG_REQUIRED_OFFLINE_RUN_ID'),'offline candidate retrieval must honor certification run');
