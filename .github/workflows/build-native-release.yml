@@ -390,6 +390,24 @@ jobs:
             exit 1
           fi
 
+      - name: Recover verified exact-HEAD Rider offline APK, then stage Play install-time packs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          QG_REQUIRED_OFFLINE_RUN_ID: ${{ env.QG_CERTIFIED_RIDER_OFFLINE_RUN_ID }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${QG_REQUIRED_OFFLINE_RUN_ID:-}" ]; then
+            echo "::error::Certified Rider offline routing run is required for nationwide Play AAB"
+            exit 1
+          fi
+          python3 native-android/qa/fetch-rider-offline-candidate.py
+          python3 native-android/qa/stage-play-rider-assets.py \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          echo "QG_OFFLINE_MAP_ASSETS=$GITHUB_WORKSPACE/native-android/rider_country_map/src/main/assets" >> "$GITHUB_ENV"
+          echo "QG_OFFLINE_ROUTING_ASSETS=$GITHUB_WORKSPACE/native-android/rider_country_routing/src/main/assets" >> "$GITHUB_ENV"
+          echo "Installed offline assets verified and staged for APK and Play Asset Delivery"
+
       - name: Verify certified release gate before packaging
         env:
           QG_ANDROID_STORE_PASSWORD: ${{ secrets.QG_ANDROID_STORE_PASSWORD }}
@@ -403,7 +421,30 @@ jobs:
           QG_ANDROID_KEY_ALIAS: ${{ secrets.QG_ANDROID_KEY_ALIAS }}
           QG_ANDROID_KEY_PASSWORD: ${{ secrets.QG_ANDROID_KEY_PASSWORD }}
         run: |
-          gradle -p native-android             :customer:assembleRelease :customer:bundleRelease             :merchant:assembleRelease :merchant:bundleRelease             :rider:assembleRelease :rider:bundleRelease             --no-build-cache --stacktrace
+          set -euo pipefail
+          # Keep the Rider QA release APK fully offline to match device evidence.
+          gradle -p native-android \
+            :customer:assembleRelease :customer:bundleRelease \
+            :merchant:assembleRelease :merchant:bundleRelease \
+            :rider:assembleRelease --no-build-cache --stacktrace
+          # Play's base module must NOT contain the nationwide graph. The same
+          # verified assets are delivered in two install-time asset packs.
+          QG_RIDER_PLAY_ASSET_PACKS=1 gradle -p native-android \
+            :rider:bundleRelease --no-build-cache --rerun-tasks --stacktrace
+
+      - name: Verify Rider nationwide Play Asset Delivery pack integrity
+        run: python3 native-android/qa/stage-play-rider-assets.py --verify-bundle native-android/rider/build/outputs/bundle/release/rider-release.aab
+
+      - name: Validate all three actual signed AABs with pinned Google bundletool
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$QG_BUNDLETOOL_JAR"
+          for role in customer merchant rider; do
+            bundle="native-android/$role/build/outputs/bundle/release/$role-release.aab"
+            test -s "$bundle"
+            java -jar "$QG_BUNDLETOOL_JAR" validate --bundle="$bundle"
+          done
 
       - name: Verify Android 16 KB page-size packaging
         run: |
@@ -447,3 +488,6 @@ jobs:
           rm -f "$RUNNER_TEMP/queuego-release.keystore"
           rm -f "$RUNNER_TEMP/bundletool-all-1.18.3.jar"
           rm -rf "$RUNNER_TEMP/queuego-native-release-certification"
+          rm -rf "$RUNNER_TEMP/exact-rider-candidate" artifacts/rider-authenticated-review
+          rm -rf native-android/rider_country_map/src/main/assets/maps
+          rm -rf native-android/rider_country_routing/src/main/assets/routing

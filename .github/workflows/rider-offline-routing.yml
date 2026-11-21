@@ -37,23 +37,42 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: '9.6.0'
+      - name: Restore immutable audited MapLibre inputs
+        id: maplibre_inputs
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/maplibre-compat-inputs
+          key: qg-maplibre-audited-13.7.1-${{ hashFiles('native-android/qa/maplibre-swiftshader/prepare-repository.py') }}
+      - name: Reject corrupt cached MapLibre inputs
+        run: python3 native-android/qa/maplibre-swiftshader/test_cached_inputs.py
       - name: Prepare audited source-built MapLibre component
         env:
           GH_TOKEN: ${{ github.token }}
+          MAPLIBRE_INPUT_CACHE_HIT: ${{ steps.maplibre_inputs.outputs.cache-hit }}
         run: |
           set -euo pipefail
           inputs="$RUNNER_TEMP/maplibre-compat-inputs"
           repository="$RUNNER_TEMP/maplibre-compat-repository"
           mkdir -p "$inputs"
-          timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13484815852/zip" > "$inputs/x86_64.zip"
-          timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13485115419/zip" > "$inputs/arm64-v8a.zip"
-          base='https://repo.maven.apache.org/maven2/org/maplibre/gl/android-sdk-opengl/13.7.1/android-sdk-opengl-13.7.1'
-          curl --fail --location --retry 2 --max-time 180 "$base.aar" -o "$inputs/baseline.aar"
-          curl --fail --location --retry 2 --max-time 60 "$base.pom" -o "$inputs/baseline.pom"
+          if [ "$MAPLIBRE_INPUT_CACHE_HIT" != 'true' ]; then
+            timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13484815852/zip" > "$inputs/x86_64.zip"
+            timeout 180s gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/13485115419/zip" > "$inputs/arm64-v8a.zip"
+            base='https://repo.maven.apache.org/maven2/org/maplibre/gl/android-sdk-opengl/13.7.1/android-sdk-opengl-13.7.1'
+            curl --fail --location --retry 3 --retry-delay 15 --retry-max-time 120 --connect-timeout 15 --max-time 90 "$base.aar" -o "$inputs/baseline.aar"
+            curl --fail --location --retry 3 --retry-delay 15 --retry-max-time 120 --connect-timeout 15 --max-time 60 "$base.pom" -o "$inputs/baseline.pom"
+          fi
+          # Always validate the fixed ZIP/AAR/POM hashes and source-built ELF,
+          # including on cache hits. Cache content is never acceptance evidence.
           python3 native-android/qa/maplibre-swiftshader/prepare-repository.py prepare \
             --baseline-aar "$inputs/baseline.aar" --baseline-pom "$inputs/baseline.pom" \
             --x86-zip "$inputs/x86_64.zip" --arm64-zip "$inputs/arm64-v8a.zip" --repository "$repository"
           echo "QG_MAPLIBRE_COMPAT_REPOSITORY=$repository" >> "$GITHUB_ENV"
+      - name: Save only SHA-verified immutable MapLibre inputs
+        if: steps.maplibre_inputs.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: ${{ runner.temp }}/maplibre-compat-inputs
+          key: ${{ steps.maplibre_inputs.outputs.cache-primary-key }}
       - name: Restore immutable routing graph data
         id: routing_cache
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830

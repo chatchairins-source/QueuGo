@@ -442,6 +442,8 @@ jobs:
             echo "WebView is forbidden in QueueGo native apps"
             exit 1
           fi
+      - name: Verify strict country asset and recovery-provenance regressions
+        run: python3 tests/test-bundled-thailand-apks.py
       - name: Verify installed Thailand APK assets
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
         run: |

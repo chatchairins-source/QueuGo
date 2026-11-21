@@ -12,7 +12,7 @@ import time
 
 repo = Path(__file__).resolve().parents[2]
 sdk = Path(os.environ['ANDROID_HOME'])
-output = repo / 'artifacts/rider-offline-routing'
+output = Path(os.environ.get('QG_ROUTING_OUTPUT', str(repo / 'artifacts/rider-offline-routing')))
 output.mkdir(parents=True, exist_ok=True)
 registry = Path(os.environ['RUNNER_TEMP']) / 'routing-avd'
 registry.mkdir(exist_ok=True)
@@ -43,7 +43,23 @@ with (output/'emulator.log').open('w') as log:
             time.sleep(2)
         else:
             raise RuntimeError('Emulator failed to boot')
-        install_verified_apk(adb, repo/'native-android/rider/build/outputs/apk/debug/rider-debug.apk', 'com.queuego.rider')
+        play_apks = os.environ.get('QG_PLAY_BUNDLE_APKS', '')
+        if play_apks:
+            # Exercise actual bundletool-generated splits with install-time assets.
+            # This is debug packaging QA, never signed release/Play certification.
+            bundletool = Path(os.environ['QG_BUNDLETOOL_JAR'])
+            run(['java', '-jar', bundletool, 'install-apks',
+                 '--apks=' + str(Path(play_apks).resolve()),
+                 '--adb=' + str(sdk/'platform-tools/adb'),
+                 '--device-id=emulator-5554'], timeout=300)
+            installed = subprocess.check_output(
+                [str(a) for a in adb + ['shell', 'pm', 'path', 'com.queuego.rider']],
+                text=True, timeout=30)
+            assert all(pack in installed for pack in ('rider_country_map', 'rider_country_routing')), (
+                'Missing installed country asset splits: ' + installed)
+            (output/'installed-play-splits.txt').write_text(installed)
+        else:
+            install_verified_apk(adb, repo/'native-android/rider/build/outputs/apk/debug/rider-debug.apk', 'com.queuego.rider')
         tests = list((repo/'native-android/rider/build/outputs/apk/androidTest/debug').glob('*.apk'))
         assert len(tests) == 1, 'Expected one Rider instrumentation APK'
         install_verified_apk(adb, tests[0], 'com.queuego.rider.test')
