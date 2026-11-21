@@ -15,6 +15,10 @@ on:
       - 'tests/native-release-evidence-bundler.cjs'
       - 'native-android/qa/finalize-native-release-evidence.py'
       - '.github/workflows/native-release-evidence-regression.yml'
+      - '.github/workflows/native-release-certification.yml'
+      - 'ops/p0/rider-dispatch-deployment-readonly.sql'
+      - 'ops/p0/rider-dispatch-highwater-readonly.sql'
+      - 'tests/native-release-dispatch-cert.cjs'
   workflow_dispatch:
 
 permissions:
