@@ -90,6 +90,7 @@ jobs:
           node tests/rider-offer-deadline-live-dispatch.cjs
           node tests/rider-offer-deadline-negative.cjs
           node tests/rider-dispatch-highwater-readonly.cjs
+          node tests/rider-dispatch-highwater-deployment.cjs
       - name: Enforce source-only nondeployment
         run: |
           set -euo pipefail
