@@ -7,7 +7,19 @@ const {pgcrypto} = require('@electric-sql/pglite/contrib/pgcrypto');
 const migration = 'supabase/migrations/20261118222500_guard_table_checkout_replay_authorization.sql';
 const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
 (async () => {
- const db = new PGlite({extensions:{pgcrypto}}); let checks = 0;
+ const testUrl = process.env.QG_GUEST_REPLAY_TEST_DATABASE_URL;
+ let db;
+ if (testUrl) {
+  const url = new URL(testUrl);
+  assert.ok(['postgres:','postgresql:'].includes(url.protocol) &&
+   ['127.0.0.1','localhost','[::1]'].includes(url.hostname) &&
+   /^\/qg_guest_replay_test_[a-z0-9_]+$/.test(url.pathname), 'disposable loopback database required');
+  const {Client} = require('pg');
+  const client = new Client({connectionString:testUrl,connectionTimeoutMillis:5000});
+  await client.connect(); await client.query("SET statement_timeout='10s'; SET lock_timeout='5s'");
+  db = {exec:sql=>client.query(sql),query:(...args)=>client.query(...args),close:()=>client.end()};
+ } else db = new PGlite({extensions:{pgcrypto}});
+ let checks = 0;
  const equal = (a,b) => {assert.deepEqual(a,b); checks++;};
  try {
   await db.exec(`CREATE ROLE anon; CREATE SCHEMA extensions;
@@ -65,6 +77,6 @@ const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
    }
   } finally {await db.exec('RESET ROLE');}
   equal(Number((await db.query('SELECT count(*) AS n FROM orders')).rows[0].n),1);
-  console.log(JSON.stringify({checks,failures:0,scope:'PGlite actual source/candidate replay as anon; synthetic schema, NOT Production parity, concurrent checkout or settlement proof'}));
+  console.log(JSON.stringify({checks,failures:0,engine:testUrl?'real PostgreSQL':'PGlite',scope:'actual source/candidate replay as anon; synthetic schema, NOT Production parity, concurrent new checkout or settlement proof'}));
  } finally {await db.close();}
 })().catch(error => {console.error(error); process.exitCode=1;});
