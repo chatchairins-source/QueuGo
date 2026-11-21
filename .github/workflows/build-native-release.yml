@@ -435,6 +435,17 @@ jobs:
       - name: Verify Rider nationwide Play Asset Delivery pack integrity
         run: python3 native-android/qa/stage-play-rider-assets.py --verify-bundle native-android/rider/build/outputs/bundle/release/rider-release.aab
 
+      - name: Validate all three actual signed AABs with pinned Google bundletool
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$QG_BUNDLETOOL_JAR"
+          for role in customer merchant rider; do
+            bundle="native-android/$role/build/outputs/bundle/release/$role-release.aab"
+            test -s "$bundle"
+            java -jar "$QG_BUNDLETOOL_JAR" validate --bundle="$bundle"
+          done
+
       - name: Verify Android 16 KB page-size packaging
         run: |
           python3 native-android/qa/verify-16kb-page-size.py \
