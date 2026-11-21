@@ -1,0 +1,48 @@
+name: QueueGo Guest Checkout Replay Authorization
+on:
+  pull_request:
+    branches: [main, work-native-reconcile-main-20261114]
+    paths:
+      - supabase/migrations/20261118222500_guard_table_checkout_replay_authorization.sql
+      - supabase/migrations/20261007045146_unify_pos_qr_order_codes.sql
+      - scripts/test_checkout_replay_authorization.py
+      - scripts/test_checkout_replay_postgres_isolated.py
+      - tests/backend/guest-checkout-replay-runtime.cjs
+      - tests/backend/guest-checkout-prod-snapshot-20261121.sql
+      - tests/backend/guest-checkout-dependencies-prod-snapshot-20261121.sql
+      - tests/backend/guest-session-access-prod-snapshot-20261121.sql
+      - .github/workflows/guest-checkout-replay.yml
+permissions:
+  contents: read
+jobs:
+  replay-authorization:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+        env:
+          POSTGRES_DB: qg_guest_replay_test_ci
+          POSTGRES_PASSWORD: isolated-guest-replay-only
+        ports:
+          - 55441:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qg_guest_replay_test_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Check source authorization ordering
+        run: python3 scripts/test_checkout_replay_authorization.py
+      - name: Reproduce old replay bypass and exercise candidate as anon
+        run: node tests/backend/guest-checkout-replay-runtime.cjs
+      - name: Exercise the same replay cases on disposable PostgreSQL17.6
+        env:
+          QG_GUEST_REPLAY_TEST_DATABASE_URL: postgres://postgres:isolated-guest-replay-only@127.0.0.1:55441/qg_guest_replay_test_ci
+        run: node tests/backend/guest-checkout-replay-runtime.cjs
