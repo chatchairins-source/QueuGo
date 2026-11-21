@@ -1,3 +1,13 @@
+## 2026-11-21 Release verifier forward-reconciled with validated country recovery
+
+- Forward merge Integration28a64aaa into the AAB manifest candidate, retaining both parents and both memory records. Country recovery PR1373 passed exact Native/Installed Country/Export before Integration merge. Old transport PR1329 closed only after confirming its original commits are already ancestors and debug-only fallback publication is superseded. Current combined HEAD needs new CI; no prior result is relabelled.
+
+## 2026-11-21 Verify actual AAB runtime manifest independently
+
+- Post-build verifier checked APK non-debuggability but only AAB package/version/page alignment/signature. It now also parses actual bundletool-dumped AAB XML, requires exactly one application, rejects debuggable true/unknown flags and enforces numeric targetSdk>=36 independently of APK/source assertions. Missing android:debuggable correctly defaults false.
+- Isolated XML regression exercises valid default/false/0, true/1/unknown/reference flags, missing/old/codename target, higher numeric target and invalid/missing/duplicate manifest structures.4 test methods pass; existing workflow58, certification72 and Play169+Python10 pass. These fixtures are NOT signed AAB or physical acceptance.
+- No certified build has run; signing/Firebase preflight passed but backend backup credentials and physical/Play evidence remain missing. Do not weaken any existing main/certification gate.
+
 ## 2026-11-21 Native country build transport recovery
 
 - Exact Integration6e837fc9 Native44872874421 failed its country step again after canonical+IPv4 curl7. Add recovery only after both transports exhaust known transport errors; HTTP errors, write errors and checksum failures remain fatal.

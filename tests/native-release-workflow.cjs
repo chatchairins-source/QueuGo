@@ -74,3 +74,6 @@ ok(workflow.includes('if: always()')&&workflow.includes('queuego-release.keystor
 ok(!/assembleDebug|bundleDebug/.test(workflow),'certified release workflow must not package debug artifacts');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Fail-closed Native certified release workflow'}));
+
+const manifestRuntime=require('child_process').spawnSync('python3',['tests/test-native-aab-runtime-manifest.py'],{encoding:'utf8',timeout:15000,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}});
+assert.equal(manifestRuntime.status,0,'Actual AAB non-debuggable/target-SDK verifier: '+manifestRuntime.stdout+manifestRuntime.stderr);

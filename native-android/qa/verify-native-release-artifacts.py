@@ -15,6 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[2]
 NATIVE = ROOT / "native-android"
@@ -73,6 +74,27 @@ def android_build_tool(name: str) -> str:
         if executable.is_file() and os.access(executable, os.X_OK):
             return str(executable)
     raise ValueError(f"Android build tool unavailable: {name}")
+
+
+def verify_bundle_runtime_manifest(xml: str, role: str) -> dict:
+    """Check the shipped AAB itself, independently of its companion APK."""
+    try:
+        manifest = ET.fromstring(xml)
+    except ET.ParseError as error:
+        raise ValueError(f"invalid AAB manifest XML for {role}") from error
+    if manifest.tag != "manifest":
+        raise ValueError(f"invalid AAB manifest root for {role}")
+    apps = manifest.findall("application")
+    if len(apps) != 1:
+        raise ValueError(f"AAB must have exactly one application: {role}")
+    android = "{http://schemas.android.com/apk/res/android}"
+    if apps[0].get(android + "debuggable", "false") not in ("false", "0"):
+        raise ValueError(f"release AAB must not be debuggable: {role}")
+    sdks = manifest.findall("uses-sdk")
+    target = sdks[0].get(android + "targetSdkVersion", "") if len(sdks) == 1 else ""
+    if not re.fullmatch(r"[0-9]+", target) or int(target) < 36:
+        raise ValueError(f"release AAB targetSdk must be numeric API36 or newer: {role}")
+    return {"aab_non_debuggable": True, "aab_target_sdk": int(target)}
 
 
 def verify() -> dict:
@@ -170,6 +192,9 @@ def verify() -> dict:
         if aab_name != version_name:
             raise ValueError(f"AAB versionName mismatch for {role}")
 
+        aab_runtime = verify_bundle_runtime_manifest(
+            run([java, "-jar", str(bundletool), "dump", "manifest", f"--bundle={aab}"]), role)
+
         run([jarsigner, "-verify", str(aab)])
         aab_certificate = run([
             keytool, "-J-Duser.language=en", "-J-Duser.country=US",
@@ -194,6 +219,7 @@ def verify() -> dict:
             "aab": str(aab.relative_to(ROOT)),
             "aab_sha256": sha256(aab),
             "aab_manifest_metadata_verified": True,
+            **aab_runtime,
             "aab_page_alignment_16kb": True,
             "bundletool_sha256": bundletool_hash,
             "signer_certificate_sha256": cert_sha,
