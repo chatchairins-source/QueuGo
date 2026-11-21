@@ -1,3 +1,9 @@
+## 2026-11-21 Require live SQL-body parity during certification
+
+- Fresh read-only Production export: 392 migrations, each with exactly one stored SQL statement. Byte-exact comparison with current Integration source: 59 matched, 92 differing, 241 Production-only, 108 source-only. Do not repair history or apply old migrations automatically.
+- Certification checked version sets only; wire the existing fail-closed digest verifier to independently hashed live SQL bodies, under read-only PGOPTIONS. Null/multiple bodies yield invalid digests; empty history, differing/missing/additional source and SQL errors must block certification. No SQL body or credential is logged. The temporary hash manifest is cleaned on exit.
+- This prevents a future equal-version/different-body ledger from certifying release. It does not resolve present migration drift, deploy P0, supply backup credentials or certify signed AAB/Play.
+
 ## 2026-11-21 Run timeout/claim acceptance on the release Integration
 
 - Merged #1389 at 6e41747d after exact-head Native, Map, Dispatch PostgreSQL/PGlite and evidence checks passed. #1387/#1388 ancestry confirmed.
