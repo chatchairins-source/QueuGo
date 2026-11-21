@@ -23,6 +23,30 @@
 - NOT a migration/deployment or complete timeout lifecycle. No Production writes. Still requires exact-head CI, real PostgreSQL concurrency with all live triggers, audit/notification/stock lifecycle, migration drift, encrypted backup/actual restore, independent review and separately approved rollout. Do not use this candidate to resolve the live stranded order or claim #1268 closed.
 
 
+
+## 2026-11-21 Guest session ACL/RLS observed and exercised
+
+- Read-only live metadata confirms both qg_table_sessions/qg_table_requests have RLS enabled, owner/service_role grants only and qg_server_only_no_client_access policies ALL TO anon/authenticated USING false WITH CHECK false; neither role has CREATE on public. Captured this limited access surface into disposable tests, no Production policy changes.
+- Tests now execute ordinary owner-definer checkout and concurrency with those actual session policies enabled. Both client roles must be denied direct reads; rollback-only temporary client table grants exercise defense in depth: no visible rows, no UPDATE/DELETE and INSERT blocked by RLS. Full order/item trigger/RLS/settlement parity still requires separate evidence; these two session tables do not certify the entire application.
+
+## 2026-11-21 Guest checkout source reconciled with current Integration
+
+- Forward-merged Integration12f357c5 into #1246, retaining Worker/source history and all merged POS, real Fused GPS and financial preflight work. Retain Integration package/lock files (already pg8.23.1); no dependency downgrade or old-main overwrite. Shared memory conflict retains both current and guest records.
+- Predecessor baaffda7 exact44850977713 passed structural8, PGlite47 + PostgreSQL61: create totals/line, replay, invalid-cart rollback, session revocation race and new-checkout idempotency race. The reconciled final SHA needs fresh exact-head validation; no predecessor result is substituted. Keep DRAFT until complete live-trigger/RLS/settlement/deployment review. Production unchanged.
+
+## 2026-11-21 Guest checkout ordinary create and rollback regression
+
+- Extended the isolated checkout schema enough to run ordinary valid order creation and line totals, subsequent replay and invalid-quantity atomic rollback as anon. Uses captured unmodified Production qg_next_order_number (MD5 d6b34a0303aacce6fbcfd82b7c3c816e) and qg_table_distance_m (6ada408be6f231698e8ff0809d11d2d0), not fake success helpers. Only metadata was read; no live checkout/number generation or data mutation ran.
+- Added a real PostgreSQL first-checkout race: the second same-request caller must visibly wait on the session lock and, after commit, return the first order without a duplicate order/item/request. The schema remains synthetic without full live triggers/RLS/settlement. Do not claim business E2E or deployment approval from these positive function tests. Fresh exact-head PGlite/PostgreSQL results are required after this addition; f0cb8462 predecessor39 PostgreSQL checks are not final certification.
+
+## 2026-11-21 Guest checkout replay executable regression
+
+- Runtime negative testing additionally reproduced SQL NULL cart + NULL legacy payload hash returning a successful replay (SQL three-valued IF logic). Candidate now explicitly rejects p_items IS NULL before hashing/replay. This protects malformed/legacy data; the simplified nullable hash fixture is not evidence that live NOT NULL rows exist. Both source and runtime regression retain the case.
+
+- PR #1246 now includes a self-contained PGlite test using real pgcrypto and the unchanged original checkout function plus candidate migration. It reproduces the revoked-session replay disclosure in the old source, then runs the candidate RPC as anon, checks valid idempotency, revoked/expired/NULL expiry rejection, wrong device, changed/NULL cart hash, missing-order refusal, preserved function ACL and denied direct ledger/session writes. Synthetic fixture scope is explicitly limited: not live RLS/schema parity, new checkout concurrency or settlement certification. Real PostgreSQL additionally checks that a second replay waits on the session row lock and that committed revocation wins before the waiting replay returns; new-checkout and full session/RLS lifecycle remain unproven.
+- Corrected the existing real-PostgreSQL isolated test to assert the actual Thai payload-mismatch error instead of an absent English word. It still needs a dedicated loopback database with the complete fixture; no claim that it ran follows from the new PGlite test.
+- New exact-head workflow runs the 8 structural tests and the 32 shared runtime checks plus real-PostgreSQL existing-replay and committed-revocation row-lock races on PGlite and disposable PostgreSQL17.6. Only the local PGlite pass is known before hosted CI completes; do not treat a queued PostgreSQL step as evidence. Candidate migration is NOT applied to Production. Read-only current Production function comparison is now complete: captured definition MD5 59fdf2ac48864a52f77fbeaaacc8aace, matching committed original body, no application rows. Regression executes that exact definition and preserves observed anon/authenticated/service_role ACL. The live old replay guard is still after the first duplicate return. Keep this older-main-lineage PR draft until full schema/concurrency/E2E and Integration lineage reconciliation are complete. Current Integration is bfa3265a (POS #1342 merged); do not merge this divergent branch wholesale.
+
 ## 2026-11-21 Reused Worker Geofabrik transport fix after actual export failure
 
 - Export11802821 run44850349084 job136679987351 failed curl7 connecting to canonical Geofabrik despite six retries. Forward-merged Worker4 commits5409892e/d9c356bf from #1329, preserving attribution/history, without its separate debug-smoke publication commit. Same HTTPS PBF/official MD5 now retry IPv4 only for curl6/7/28/35/52/56, remove partial files, and fail hard for HTTP404 or unknown errors. No snapshot/source/checksum substitution or skipped country tests.
