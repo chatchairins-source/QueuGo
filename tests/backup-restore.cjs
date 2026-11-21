@@ -38,4 +38,22 @@ ok(verify.includes('queuego_restore_verification_ok'),'restore SQL must emit a s
 ok(verify.includes('qg_notifications_queuego_push'),'restore must verify unified notification trigger');
 ok(/restore_drill_certified/.test(release),'Closed Beta release must depend on restore certification');
 
+const {spawnSync}=require('node:child_process');
+for(const url of ['https://example.supabase.co','http://localhost:54321','http://127.0.0.1:54321@external.invalid','http://127.0.0.1:54321/storage']) {
+  const result=spawnSync(process.execPath,[path.join(root,'ops/restore-storage.mjs')],{
+    encoding:'utf8',
+    env:{...process.env,QG_RESTORE_SUPABASE_URL:url,QG_RESTORE_SERVICE_ROLE_KEY:'fixture',QG_STORAGE_MANIFEST:'/no-such-queuego-manifest'},
+  });
+  ok(result.status===1&&result.stderr.includes('Storage restore requires a loopback Supabase API origin'),
+    'restore must reject invalid destinations before opening the manifest');
+}
+for(const url of ['http://127.0.0.1:54321','http://[::1]:54321']) {
+  const result=spawnSync(process.execPath,[path.join(root,'ops/restore-storage.mjs')],{
+    encoding:'utf8',
+    env:{...process.env,QG_RESTORE_SUPABASE_URL:url,QG_RESTORE_SERVICE_ROLE_KEY:'fixture',QG_STORAGE_MANIFEST:'/no-such-queuego-manifest'},
+  });
+  ok(result.status===1&&result.stderr.includes('ENOENT')&&!result.stderr.includes('requires a loopback'),
+    'restore must allow Supabase CLI loopback endpoints');
+}
+
 console.log(JSON.stringify({checks,failures:0,scope:'Encrypted external database + Storage backup and local restore drill'}));
