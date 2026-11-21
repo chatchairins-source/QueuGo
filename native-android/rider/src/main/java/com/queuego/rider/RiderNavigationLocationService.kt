@@ -258,15 +258,41 @@ class RiderNavigationLocationService : Service() {
 
         val nextCallback = object : LocationCallback() {
             override fun onLocationResult(result: LocationResult) {
+                // A queued callback from a stopped subscription must not publish
+                // into a newly started navigation session.
+                if (callback !== this || !locationUpdatesStarted) return
                 result.locations.forEach(::accept)
             }
         }
         callback = nextCallback
+        // Mark the provisional subscription before invoking Play Services: a task
+        // listener may complete synchronously and must not be overwritten later.
+        locationUpdatesStarted = true
 
         val started = runCatching {
             fusedClient.requestLocationUpdates(request, nextCallback, Looper.getMainLooper())
+                .addOnSuccessListener {
+                    Log.i("QueueGoNavLocation", "foreground_fused_subscription_confirmed")
+                }
+                .addOnFailureListener { error ->
+                    // Play Services can reject an asynchronous registration after the
+                    // Java API call returns. Never keep a false 'GPS active' lease.
+                    Log.e("QueueGoNavLocation", "foreground_fused_subscription_failed", error)
+                    if (callback === nextCallback) {
+                        // A provider rejection can race with requestLocationUpdates()
+                        // returning, before locationUpdatesStarted is assigned.
+                        // The callback identity, not that provisional flag, owns
+                        // the subscription; always fail closed on its rejection.
+                        locationUpdatesStarted = false
+                        RiderNavigationLocationStore.clear()
+                        // A rejected provider subscription is not an active navigation
+                        // session. Terminate the foreground service and both dispatch
+                        // heartbeats rather than leaving a misleading GPS notification.
+                        stopSelf()
+                    }
+                }
             fusedClient.lastLocation.addOnSuccessListener { location ->
-                if (!locationUpdatesStarted || location == null) return@addOnSuccessListener
+                if (callback !== nextCallback || !locationUpdatesStarted || location == null) return@addOnSuccessListener
                 // Cached, current-location and streaming callbacks share the same
                 // freshness check inside accept(). No callback bypasses it.
                 accept(location)
@@ -275,15 +301,18 @@ class RiderNavigationLocationService : Service() {
             Log.w("QueueGoNavLocation", "location_updates_failed", it)
         }.isSuccess
 
-        if (started) {
-            locationUpdatesStarted = true
+        if (started && callback === nextCallback && locationUpdatesStarted) {
             Log.i(
                 "QueueGoNavLocation",
                 "foreground_updates_started interval=${NAVIGATION_LOCATION_INTERVAL_MS}ms min=${NAVIGATION_LOCATION_MIN_INTERVAL_MS}ms"
             )
         } else {
-            callback = null
-            stopSelf()
+            if (callback === nextCallback) {
+                locationUpdatesStarted = false
+                callback = null
+                RiderNavigationLocationStore.clear()
+                stopSelf()
+            }
         }
     }
 
@@ -339,7 +368,11 @@ class RiderNavigationLocationService : Service() {
                 longitude = location.longitude,
                 accuracyMeters = location.accuracy.takeIf { location.hasAccuracy() }
             )
-        ) return
+        ) {
+            // Diagnostic only: never log Rider coordinates or relax the fix gate.
+            Log.d("QueueGoNavLocation", "fused_fix_rejected_freshness_or_accuracy")
+            return
+        }
 
         val previous = lastAccepted
         if (previous != null) {

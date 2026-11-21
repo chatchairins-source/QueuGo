@@ -24,7 +24,7 @@ def install_android_sdk_packages(
         str(sdkmanager),
         "emulator",
         "platform-tools",
-        "system-images;android-30;default;x86_64",
+        "system-images;android-30;google_apis;x86_64",
     ]
     for attempt in range(1, max_attempts + 1):
         try:

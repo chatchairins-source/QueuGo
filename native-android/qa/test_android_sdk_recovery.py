@@ -31,10 +31,16 @@ class AndroidSdkRecoveryTest(unittest.TestCase):
             invocation[0][1:] == [
                 "emulator",
                 "platform-tools",
-                "system-images;android-30;default;x86_64",
+                "system-images;android-30;google_apis;x86_64",
             ] and invocation[1]["timeout"] == 300
             for invocation in seen
         ))
+
+    def test_rider_instrumentation_uses_real_google_api_emulator(self):
+        script = Path(__file__).with_name("capture-rider-launch.py").read_text(encoding="utf-8")
+        self.assertIn("system-images;android-30;google_apis;x86_64", script)
+        self.assertIn('"pm", "path", "com.google.android.gms"', script)
+        self.assertIn("Google Play Services is missing on the Android test emulator", script)
 
     def test_persistent_download_failure_propagates_and_blocks_runtime(self):
         attempts = []

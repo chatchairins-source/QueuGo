@@ -113,6 +113,22 @@ async function main() {
     await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[id(907)]);
     await db.query('DELETE FROM qg_rider_order_offers WHERE order_id=$1',[id(907)]);
 
+    await seed(908);
+    const futureOffer = await db.query(`INSERT INTO qg_rider_order_offers(order_id,rider_id,attempt,offered_at,expires_at)
+      VALUES($1,$2,1,now()+interval '10 minutes',now()+interval '11 minutes') RETURNING order_id`,[id(908),id(11)]);
+    eq(futureOffer.rows.length,0,'future caller timestamp cannot extend the server offer lease');
+    eq(await count('qg_rider_order_offers',908),0,'future timestamp creates no actionable offer');
+    eq(await dispatch(a),1,'ordinary server-timestamp dispatch still works after rejection');
+    await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[id(908)]);
+    await db.query('DELETE FROM qg_rider_order_offers WHERE order_id=$1',[id(908)]);
+    await seed(909,'-10 minutes');
+    eq(await dispatch(a),0,'future rider search start fails closed');
+    eq(await count('notifications',909),0,'future search clock cannot trigger targeted notifications');
+    await db.query("UPDATE orders SET rider_search_started_at=now()-interval '1 minute',created_at=now()-interval '1 minute' WHERE id=$1",[id(909)]);
+    eq(await dispatch(a),1,'repairing the synthetic clock restores normal dispatch');
+    await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[id(909)]);
+    await db.query('DELETE FROM qg_rider_order_offers WHERE order_id=$1',[id(909)]);
+
     await db.query('BEGIN');
     await db.query('DROP TRIGGER qg_rider_offer_deadline_guard ON public.qg_rider_order_offers; DROP FUNCTION qg_private.guard_rider_offer_deadline()');
     await db.query('ROLLBACK');

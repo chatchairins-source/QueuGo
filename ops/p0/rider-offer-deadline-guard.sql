@@ -32,7 +32,8 @@ BEGIN
   IF NOT FOUND
      OR v_order.status IS DISTINCT FROM 'searching_rider'
      OR v_order.rider_id IS NOT NULL
-     OR v_order.started_at IS NULL THEN
+     OR v_order.started_at IS NULL
+     OR v_order.started_at > now() THEN
     RETURN NULL;
   END IF;
 
@@ -63,6 +64,12 @@ BEGIN
   -- PostgreSQL LEAST ignores NULL arguments: reject missing inputs BEFORE
   -- clamping, so NULL never silently becomes the full order search deadline.
   IF NEW.offered_at IS NULL OR NEW.expires_at IS NULL THEN
+    RETURN NULL;
+  END IF;
+
+  -- A future caller timestamp must not turn a 30-second offer into minutes
+  -- of actionable work. The captured dispatcher uses the same transaction now().
+  IF NEW.offered_at > now() THEN
     RETURN NULL;
   END IF;
 
