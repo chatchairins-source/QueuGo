@@ -48,4 +48,6 @@ ok(!fs.existsSync(path.join(root,'.github/workflows/build-queuego-apks.yml')),
   'Legacy Capacitor release workflow must remain retired');
 
 require('./restore-storage-target.cjs');
+require('./backup-storage-paths.cjs');
+require('./backup-inventory-counts.cjs');
 console.log(JSON.stringify({checks,failures:0,scope:'Encrypted external database + Storage backup and local restore drill'}));

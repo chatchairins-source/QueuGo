@@ -15,8 +15,8 @@ const critical=[
 ];
 const failures=[];
 for(const key of critical){
-  const a=Number(source[key]??-1),b=Number(restored[key]??-1);
-  if(a<0||b<0)failures.push(key+':missing');
+  const a=source[key],b=restored[key];
+  if(!Number.isSafeInteger(a)||!Number.isSafeInteger(b)||a<0||b<0)failures.push(key+':invalid count');
   else if(b>a)failures.push(key+':restored count exceeds source snapshot');
   else if(a-b>2)failures.push(key+':source/restored drift too large ('+a+' vs '+b+')');
 }

@@ -2,6 +2,7 @@ import { localRestoreStorageTarget } from './restore-storage-target.mjs';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { storageBackupBucket, storageBackupPath } from './storage-backup-path.mjs';
 
 const rawUrl=process.env.QG_RESTORE_SUPABASE_URL;
 const key=process.env.QG_RESTORE_SERVICE_ROLE_KEY;
@@ -12,6 +13,9 @@ if(!rawUrl||!key)throw new Error('Missing local restore Storage credentials');
 const url=localRestoreStorageTarget(rawUrl);
 
 const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
+// Reject every unsafe entry before creating a client or restoring any object.
+for(const bucket of manifest.buckets||[])storageBackupBucket(bucket.id);
+for(const object of manifest.objects||[])storageBackupPath(root,object.bucket,object.path);
 const {createClient}=await import('@supabase/supabase-js');
 const supabase=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
 const {data:existing,error:listError}=await supabase.storage.listBuckets();
@@ -31,7 +35,7 @@ for(const bucket of manifest.buckets||[]){
 }
 
 for(const object of manifest.objects||[]){
-  const file=await readFile(path.join(root,object.bucket,...object.path.split('/')));
+  const file=await readFile(storageBackupPath(root,object.bucket,object.path));
   const localHash=createHash('sha256').update(file).digest('hex');
   if(localHash!==object.sha256)throw new Error('Backup checksum mismatch for '+object.bucket+'/'+object.path);
   const {error}=await supabase.storage.from(object.bucket).upload(object.path,file,{
