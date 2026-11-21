@@ -69,6 +69,9 @@ jobs:
           set -euo pipefail
           command=(gradle -p native-android :customer:testDebugUnitTest :customer:assembleDebug :customer:assembleDebugAndroidTest --no-daemon --stacktrace)
           first_log="$RUNNER_TEMP/customer-p0-gradle-first.log"
+          mkdir -p artifacts/customer-p0
+          # Preserve the first failure even if the metadata probe or retry fails.
+          trap 'if [ -f "$first_log" ]; then cp "$first_log" artifacts/customer-p0/gradle-first-attempt.log; fi' EXIT
           if "${command[@]}" 2>&1 | tee "$first_log"; then
             echo "Customer Android P0 unit, APK and instrumentation builds passed first attempt"
           else
