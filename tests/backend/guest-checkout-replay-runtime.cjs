@@ -22,7 +22,7 @@ const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
  let checks = 0;
  const equal = (a,b) => {assert.deepEqual(a,b); checks++;};
  try {
-  await db.exec(`CREATE ROLE anon; CREATE SCHEMA extensions;
+  await db.exec(`CREATE ROLE anon; CREATE ROLE authenticated; CREATE ROLE service_role; CREATE SCHEMA extensions;
    CREATE EXTENSION pgcrypto WITH SCHEMA extensions;
    CREATE TABLE qg_table_sessions(id uuid PRIMARY KEY,device_hash text,revoked_at timestamptz,expires_at timestamptz,table_id uuid,shop_id uuid);
    CREATE TABLE pos_tables(id uuid,shop_id uuid,active boolean,label text);
@@ -35,9 +35,11 @@ const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
   const start = source.toLowerCase().indexOf('create or replace function public.qg_table_checkout(');
   assert.ok(start >= 0); const end = source.indexOf('$function$;',start);
   assert.ok(end > start);
-  await db.exec(source.slice(start,end+'$function$;'.length));
+  const captured = fs.readFileSync('tests/backend/guest-checkout-prod-snapshot-20261121.sql','utf8');
+  equal(captured.split('$function$')[1].trim(),source.slice(start,end).split('$function$')[1].trim());
+  await db.exec(captured);
   await db.exec(`REVOKE ALL ON FUNCTION public.qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision) FROM PUBLIC;
-   GRANT EXECUTE ON FUNCTION public.qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision) TO anon;`);
+   GRANT EXECUTE ON FUNCTION public.qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision) TO anon,authenticated,service_role;`);
   const items = JSON.stringify([{id:uuid(5),quantity:1}]);
   const seed = async () => {
    await db.exec('TRUNCATE qg_table_requests,qg_table_sessions,orders');
