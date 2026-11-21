@@ -96,7 +96,7 @@ async function main(){
 
     // Missing/broken config never means infinite time.
     await db.exec("UPDATE system_settings SET value='{\"orderTimeout\":\"unlimited\"}';");
-    await db.query("UPDATE orders SET rider_search_started_at=now()-interval '35 minutes' WHERE id=$1",[id(2)]);
+    await db.query("UPDATE orders SET created_at=now()-interval '40 minutes',merchant_accepted_at=now()-interval '38 minutes',rider_search_started_at=now()-interval '35 minutes' WHERE id=$1",[id(2)]);
     row=(await db.query(sql)).rows[0];
     assert.equal(row.release_gate,'NO_GO_DISPATCH_P0');checks++;
     equal(row.configured_timeout_minutes,30,'invalid timeout uses finite default');
