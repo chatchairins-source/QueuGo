@@ -1,8 +1,9 @@
-## 2026-11-20 API30 Fused GPS clock-domain compatibility investigation
+## 2026-11-21 Fused GPS guest image correction
 
-- Exact reconciled #1304 HEAD4a75ad42 failed routing44758924005 at the REAL Fused fix assertion; offline route/restart/rendering passed. Rider review44758923973 then correctly refused the uncertified candidate. This is not merely waiting for CI and not yet resolved.
-- Retained artifact14640353025 shows guest uptime+2m15s, GPS last fix elapsed time+20777d15h12m29s. That is a different clock domain; app correctly rejects future fixes. No app timestamps/freshness/accuracy checks are to be normalized or weakened.
-- Source CI candidate selects Android emulator's supported legacy GNSS pipe with -feature -GnssGrpcV1 for the fixed API30 Google APIs guest. Official AOSP advancedFeatures.ini documents GnssGrpcV1 as the gRPC GNSS transport switch. Exact installed APK, real Fused callback path, false debug-store injection, tile assertions and both fresh regional emulators remain mandatory. Result metadata discloses transport. This is a hypothesis-driven harness compatibility fix; latest hosted gate must prove it before merge; no pass is claimed yet.
+- API30 legacy GNSS transport hypothesis failed again at #1304 d4e2d173, routing44828377296. Artifact14675363253 confirms transport disabled yet GPS elapsed time still reports epoch-scale ~20777 days versus guest uptime ~2 minutes. Do not retry that configuration as a fix.
+- Primary AOSP evidence: https://android.googlesource.com/device/generic/goldfish/+/33a10687b382110682cf65c0cdb375df954e5227/gnss/util.cpp uses system_clock time for GNSS elapsed timestamp, matching observed clock-domain error; Android Location API requires elapsedRealtimeNanos since boot. Application monotonic freshness/accuracy/jump guards remain unchanged.
+- Pin real-Fused QA guest to API33 Google APIs; keep exact offline-tested APK, two fresh regional boots, real Fused callback, false debug-store injection, full tiles and lifecycle assertions. Use default GNSS transport; retain privacy-safe DEBUG rejection evidence. Location switch preflight now fails closed if API33 cmd verification fails after bounded transport recovery; never treat an old settings field as success.
+- API30 failure remains recorded and is NOT relabeled passed by an API33 run. This does not certify API30 physical GPS, field roads or Play readiness. Exact latest hosted emulator result required; local13 Fused/5 SDK regression and Python syntax pass only.
 
 ## 2026-11-20 Reproduced Customer Android11 SurfaceView native crash
 
