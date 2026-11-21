@@ -1,13 +1,21 @@
 name: QueueGo P0 No Rider Auto-Cancel Isolated
 on:
+  workflow_dispatch:
+  push:
+    branches: [work-native-reconcile-main-20261114, main]
   pull_request:
-    branches: [fix/p0-terminal-cash-dependents-20261120]
+    branches: [fix/p0-terminal-cash-dependents-20261120, work-native-reconcile-main-20261114, main]
     paths:
       - ops/p0/no-rider-timeout-cash-review-only.sql
       - tests/backend/no-rider-timeout-cash-races.cjs
       - tests/backend/no-rider-timeout-cash-postgres.sql
       - tests/fixtures/order-transition-v22-prod-20261121.sql
       - ops/p0/v22-null-role-cash-review-only.sql
+      - tests/backend/terminal-cash-dependents-runtime.cjs
+      - tests/fixtures/cash-order-guard-prod-snapshot-20261121.sql
+      - tests/fixtures/cash-dependent-guards-prod-snapshot-20261121.sql
+      - tests/fixtures/cash-cancel-prod-snapshot-20261120.sql
+      - ops/p0/terminal-cash-dependents-review-only.sql
       - .github/workflows/p0-no-rider-timeout-cash.yml
 permissions:
   contents: read
