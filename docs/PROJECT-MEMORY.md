@@ -1,3 +1,8 @@
+## 2026-11-21 Reused Worker Geofabrik transport fix after actual export failure
+
+- Export11802821 run44850349084 job136679987351 failed curl7 connecting to canonical Geofabrik despite six retries. Forward-merged Worker4 commits5409892e/d9c356bf from #1329, preserving attribution/history, without its separate debug-smoke publication commit. Same HTTPS PBF/official MD5 now retry IPv4 only for curl6/7/28/35/52/56, remove partial files, and fail hard for HTTP404 or unknown errors. No snapshot/source/checksum substitution or skipped country tests.
+- Added execution of the actual workflow shell with disposable curl responses: normal fetch, six transport failures, PBF/MD5 HTTP404, unexpected failure and exhausted IPv4 failure. Existing official MD5 and size checks remain. This controlled regression is NOT successful upstream download or country runtime proof; final combined exact-head installed-country/exporter/Map/Native/P0 gates are all required.
+
 ## 2026-11-21 Release safety changes converged for final exact-head validation
 
 - #1353 incorporates #1352 by forward merge, retaining its history, on Integration12f357c5. This combines future-clock offer suppression, local-only Storage restore and the actual parallel Rider Maven404 recovery fix. Resolve only the shared memory-document conflict by retaining both records; no Worker reset/force push. Keep #1352 until the converged #1353 actually passes and merges, then close it as superseded.
