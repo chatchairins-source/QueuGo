@@ -30,7 +30,7 @@ declare
   v_note text;
   v_seen uuid[]:='{}';
 begin
-  if p_session is null or p_device_key is null or p_request is null
+  if p_session is null or p_device_key is null or p_request is null or p_items is null
      or jsonb_typeof(p_items)<>'array'
      or jsonb_array_length(p_items) not between 1 and 50 then
     raise exception 'รายการอาหารไม่ถูกต้อง';

@@ -67,6 +67,7 @@ const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
   await seed(); await assert.rejects(replay(uuid(9)),/ไม่พบสิทธิ์/); checks++;
   await assert.rejects(replay(uuid(2),JSON.stringify([{id:uuid(5),quantity:2}])),/รหัสคำขอถูกใช้กับรายการอาหารอื่น/); checks++;
   await db.exec('UPDATE qg_table_requests SET payload_hash=NULL');
+  await assert.rejects(replay(uuid(2),null),/รายการอาหารไม่ถูกต้อง/); checks++;
   await assert.rejects(replay(),/รหัสคำขอถูกใช้กับรายการอาหารอื่น/); checks++;
   await seed(); await db.exec('DELETE FROM orders');
   await assert.rejects(replay(),/ไม่พบออเดอร์เดิม/); checks++;

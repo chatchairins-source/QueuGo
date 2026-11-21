@@ -52,6 +52,11 @@ class CheckoutReplayAuthorizationTests(unittest.TestCase):
         second_guard = self.compact.index(guard, self.compact.index(guard) + 1)
         self.assertLess(second_guard, self.compact.index("'reason','recent_same_cart'"))
 
+    def test_sql_null_cart_rejected_before_hash_or_replay(self):
+        guard = self.compact.index("p_items is null")
+        self.assertLess(guard, self.compact.index("v_hash:="))
+        self.assertLess(guard, self.compact.index("from public.qg_table_requests"))
+
     def test_no_privilege_expansion(self):
         self.assertNotRegex(self.compact, r"\bgrant\s+")
         self.assertNotRegex(self.compact, r"\balter\s+table\s+.*disable\s+row\s+level\s+security")
