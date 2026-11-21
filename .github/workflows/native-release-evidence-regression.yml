@@ -6,6 +6,10 @@ on:
       - 'tests/native-release-evidence-bundler.cjs'
       - 'native-android/qa/finalize-native-release-evidence.py'
       - '.github/workflows/native-release-evidence-regression.yml'
+      - '.github/workflows/native-release-certification.yml'
+      - 'ops/p0/rider-dispatch-deployment-readonly.sql'
+      - 'ops/p0/rider-dispatch-highwater-readonly.sql'
+      - 'tests/native-release-dispatch-cert.cjs'
   push:
     paths:
       - 'tests/native-release-evidence-bundler.cjs'
@@ -32,3 +36,5 @@ jobs:
         run: python -m py_compile native-android/qa/finalize-native-release-evidence.py
       - name: Run fail-closed evidence regression
         run: node tests/native-release-evidence-bundler.cjs
+      - name: Exercise Production P0 certification gate with isolated psql fixtures
+        run: node tests/native-release-dispatch-cert.cjs
