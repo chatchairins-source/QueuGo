@@ -1,3 +1,9 @@
+## 2026-11-21 Keep package QA independent and cache only verified SDK inputs
+
+- Combined fd243a8e Rider routing44878462078 failed before app build on Maven Central HTTP429 during the audited baseline AAR fetch. Keep official URL/version and fixed hashes, add bounded15-second backoff and a content-keyed immutable-input cache. Always rerun prepare-repository.py validation of ZIP/AAR/POM/source-built ELF on cache hits; cache saves only after that succeeds. Corrupt-cache executable regression rejects before creating a repository. No cached app or old CI acceptance reused.
+- fd243a8e account-free Play QA workflow was cancelled while pending under the shared review-account mutex. Move that unchanged global lock to authenticated capture ONLY; keep cancel-in-progress=false and Production review credentials out of package QA. Package QA uses a per-ref lock and waits for exact-source offline success before restoring the verified SDK input cache. This avoids duplicate Maven fetches and prevents unrelated account jobs cancelling bundle checks.
+- Forward-reconciled Integration67bc9dfd (actual AAB manifest PR1375 merged after exact5371024e Native/Export success). Keep strict recovered-country candidate1381 and current Backend/Customer code. Source500 and cache/provenance/manifest/debug-store/workflow checks pass locally; latest exact-source real Android checks remain mandatory. No Production or main change.
+
 ## 2026-11-21 One combined Play release-source candidate
 
 - Combined existing PR1366 with reviewed Integration28a64aaa, strict country-provenance candidate0605222d (#1381) and actual AAB runtime-manifest candidate5371024e (#1375), retaining their Git parents. Only memory conflicts required resolution; keep all records and current Backend/Customer changes. Child PRs remain open until this composition passes and is integrated.

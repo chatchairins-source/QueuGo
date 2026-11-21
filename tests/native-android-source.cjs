@@ -2031,4 +2031,11 @@ ok(authenticatedReviewWorkflow.includes("- name: Fetch the exact offline-tested 
   authenticatedReviewWorkflow.includes('Capture authenticated Merchant views on Android Emulator'),
   'Merchant-only visual review must trigger on the POS successor and skip the unrelated nationwide Rider artifact');
 
+const qaHeader=authenticatedReviewWorkflow.slice(0,authenticatedReviewWorkflow.indexOf('jobs:'));
+const qaCapture=authenticatedReviewWorkflow.slice(authenticatedReviewWorkflow.indexOf('  capture:'),authenticatedReviewWorkflow.indexOf('  play-pack-runtime:'));
+const qaPlay=authenticatedReviewWorkflow.slice(authenticatedReviewWorkflow.indexOf('  play-pack-runtime:'));
+ok(!qaHeader.includes('\nconcurrency:'),'Account-free packaging must not be cancelled by a repository-wide account lock');
+ok(qaCapture.includes('    concurrency:\n      group: queuego-authenticated-review-accounts\n      cancel-in-progress: false'),'Authenticated review must retain the one-session global account lock');
+ok(qaPlay.includes('group: queuego-play-pack-${{ github.ref }}'),'Only obsolete packaging for the same ref may cancel newer packaging work');
+ok(!/secrets\.QG_(RIDER|MERCHANT|CUSTOMER)_REVIEW_/.test(qaPlay),'Play packaging must not consume Production review account credentials');
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo Customer Merchant Rider native Android source'}));
