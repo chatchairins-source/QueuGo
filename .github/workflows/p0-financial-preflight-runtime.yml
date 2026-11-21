@@ -12,6 +12,7 @@ on:
   pull_request:
     branches:
       - 'fix/backend-p0-preflight-time-gate-20261120'
+      - 'work-native-reconcile-main-20261114'
     paths:
       - 'ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql'
       - 'tests/backend/dispatch-financial-preflight-runtime.cjs'
@@ -28,6 +29,19 @@ jobs:
   isolated-pglite-preflight:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+        env:
+          POSTGRES_DB: qg_preflight_test_ci
+          POSTGRES_PASSWORD: isolated-preflight-only
+        ports:
+          - 55442:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qg_preflight_test_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -35,7 +49,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Install locked dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Execute actual financial preflight SQL on disposable PGlite
         run: |
           set -euo pipefail
@@ -46,3 +60,7 @@ jobs:
           test -f ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql
           # Match only executable shell command lines, not this grep expression itself.
           ! grep -Eq '^[[:space:]]*(supabase[[:space:]]+(db[[:space:]]+push|migration[[:space:]]+up|link)([[:space:]]|$)|psql[[:space:]].*prod)' .github/workflows/p0-financial-preflight-runtime.yml
+      - name: Execute the actual financial preflight SQL on disposable PostgreSQL17.6
+        env:
+          QG_PREFLIGHT_TEST_DATABASE_URL: postgres://postgres:isolated-preflight-only@127.0.0.1:55442/qg_preflight_test_ci
+        run: node tests/backend/dispatch-financial-preflight-runtime.cjs

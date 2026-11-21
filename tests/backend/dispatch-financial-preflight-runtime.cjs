@@ -5,7 +5,19 @@ const fs = require('node:fs');
 const { PGlite } = require('@electric-sql/pglite');
 const sql = fs.readFileSync('ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql', 'utf8');
 async function main() {
-  const db = new PGlite();
+  const testUrl = process.env.QG_PREFLIGHT_TEST_DATABASE_URL;
+  let db;
+  if(testUrl) {
+    const url = new URL(testUrl);
+    assert.ok(['postgres:','postgresql:'].includes(url.protocol) &&
+      ['127.0.0.1','localhost','[::1]'].includes(url.hostname) &&
+      /^\/qg_preflight_test_[a-z0-9_]+$/.test(url.pathname), 'disposable loopback test database required');
+    const {Client} = require('pg');
+    const client = new Client({connectionString:testUrl,connectionTimeoutMillis:5000});
+    await client.connect(); await client.query("SET statement_timeout='10s'; SET lock_timeout='5s'");
+    db = {exec:async sql=>{const result=await client.query(sql);return Array.isArray(result)?result:[result];},
+      query:(...args)=>client.query(...args),close:()=>client.end()};
+  } else db = new PGlite();
   let checks = 0;
   const equal = (actual, expected) => { assert.equal(Number(actual), expected); checks++; };
   const snapshot = async () => {
@@ -115,6 +127,6 @@ async function main() {
     await db.exec('ROLLBACK;');
     equal((await db.query('SELECT count(*) AS n FROM orders')).rows[0].n, 1);
   } finally { await db.close(); }
-  console.log(JSON.stringify({ checks, failures: 0, scope: 'actual financial preflight SQL, disposable PGlite only' }));
+  console.log(JSON.stringify({ checks, failures: 0, engine:testUrl?'real PostgreSQL':'PGlite', scope: 'actual read-only financial preflight SQL on disposable synthetic schema; NOT authorization to terminalize orders' }));
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
