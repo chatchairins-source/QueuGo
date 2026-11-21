@@ -46,6 +46,10 @@ async function main() {
   const acl=(await db.query("SELECT proacl::text AS acl FROM pg_proc WHERE oid='public.queuego_cancel_cash_dependents()'::regprocedure")).rows[0].acl;
   await db.exec(fs.readFileSync('ops/p0/terminal-cash-dependents-review-only.sql','utf8'));
   equal((await db.query("SELECT proacl::text AS acl FROM pg_proc WHERE oid='public.queuego_cancel_cash_dependents()'::regprocedure")).rows[0].acl,acl);
+  const definer=(await db.query("SELECT prosecdef, proconfig FROM pg_proc WHERE oid='public.queuego_cancel_cash_dependents()'::regprocedure")).rows[0];
+  equal(definer.prosecdef,true);
+  assert.ok(definer.proconfig.includes('search_path='),'SECURITY DEFINER must use empty search_path');checks++;
+  equal(definer.proconfig.length,1);
   const clean=await seed(); await transition(clean);
   equal(await status(clean,'payments'),'cancelled');equal(await status(clean,'deliveries'),'cancelled');
   const stamp=(await db.query('SELECT updated_at::text AS stamp FROM payments WHERE order_id=$1',[clean])).rows[0].stamp;
