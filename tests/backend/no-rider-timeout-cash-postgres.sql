@@ -233,12 +233,22 @@ END $full_guard$;
 -- an eligible order through both Production guards after null-safe patch.
 SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001402',31);
 DO $rpc_success$
+DECLARE changed integer;
 BEGIN
- IF qg_private.cancel_rider_timeout_cash(20)<>1
- OR (SELECT status FROM public.orders WHERE id='00000000-0000-4000-8000-000000001402')<>'cancelled'
- OR (SELECT status FROM public.payments WHERE order_id='00000000-0000-4000-8000-000000001402')<>'cancelled'
- OR (SELECT status FROM public.deliveries WHERE order_id='00000000-0000-4000-8000-000000001402')<>'cancelled'
- THEN RAISE EXCEPTION 'trusted private cron failed after v22 patch'; END IF;
+ changed:=qg_private.cancel_rider_timeout_cash(20);
+ -- The previous synthetic 1401 remains a valid, expired search after the
+ -- ROLLBACK-only null-role regression. Cron correctly closes BOTH 1401 + 1402.
+ IF changed<>2
+ OR (SELECT count(*) FROM public.orders WHERE id IN
+       ('00000000-0000-4000-8000-000000001401',
+        '00000000-0000-4000-8000-000000001402') AND status='cancelled')<>2
+ OR (SELECT count(*) FROM public.payments WHERE order_id IN
+       ('00000000-0000-4000-8000-000000001401',
+        '00000000-0000-4000-8000-000000001402') AND status='cancelled')<>2
+ OR (SELECT count(*) FROM public.deliveries WHERE order_id IN
+       ('00000000-0000-4000-8000-000000001401',
+        '00000000-0000-4000-8000-000000001402') AND status='cancelled')<>2
+ THEN RAISE EXCEPTION 'trusted private cron failed after v22 patch: changed %',changed; END IF;
 END $rpc_success$;
 SELECT 'LIVE_V22_NULL_ROLE_GAP_REPRODUCED_AND_PATCHED_PASS' AS evidence;
 
