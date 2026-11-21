@@ -1,3 +1,8 @@
+## 2026-11-21 Guest checkout ordinary create and rollback regression
+
+- Extended the isolated checkout schema enough to run ordinary valid order creation and line totals, subsequent replay and invalid-quantity atomic rollback as anon. Uses captured unmodified Production qg_next_order_number (MD5 d6b34a0303aacce6fbcfd82b7c3c816e) and qg_table_distance_m (6ada408be6f231698e8ff0809d11d2d0), not fake success helpers. Only metadata was read; no live checkout/number generation or data mutation ran.
+- Added a real PostgreSQL first-checkout race: the second same-request caller must visibly wait on the session lock and, after commit, return the first order without a duplicate order/item/request. The schema remains synthetic without full live triggers/RLS/settlement. Do not claim business E2E or deployment approval from these positive function tests. Fresh exact-head PGlite/PostgreSQL results are required after this addition; f0cb8462 predecessor39 PostgreSQL checks are not final certification.
+
 ## 2026-11-21 Guest checkout replay executable regression
 
 - Runtime negative testing additionally reproduced SQL NULL cart + NULL legacy payload hash returning a successful replay (SQL three-valued IF logic). Candidate now explicitly rejects p_items IS NULL before hashing/replay. This protects malformed/legacy data; the simplified nullable hash fixture is not evidence that live NOT NULL rows exist. Both source and runtime regression retain the case.
