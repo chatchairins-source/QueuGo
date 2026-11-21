@@ -465,6 +465,30 @@ fun QgTrackingMap(
     }
 }
 
+/** MapLibre can report a fully-rendered frame while raster tiles are still blank.
+ * Preserve real online-map evidence instead of treating a background and pin as geography.
+ */
+private fun queueGoRenderedBasemapHasDetail(bitmap: Bitmap): Boolean {
+    if (bitmap.width < 50 || bitmap.height < 50) return false
+    val colors = HashSet<Int>()
+    var edges = 0
+    var samples = 0
+    for (y in bitmap.height / 10 until bitmap.height * 9 / 10 step 3) {
+        for (x in bitmap.width / 10 until bitmap.width * 9 / 10 step 3) {
+            if (kotlin.math.abs(x - bitmap.width / 2) < 30 &&
+                kotlin.math.abs(y - bitmap.height / 2) < 30) continue
+            val pixel = bitmap.getPixel(x, y)
+            colors.add(pixel and 0x00F8F8F8)
+            val next = bitmap.getPixel((x + 3).coerceAtMost(bitmap.width - 1), y)
+            if (kotlin.math.abs(android.graphics.Color.red(pixel) - android.graphics.Color.red(next)) +
+                kotlin.math.abs(android.graphics.Color.green(pixel) - android.graphics.Color.green(next)) +
+                kotlin.math.abs(android.graphics.Color.blue(pixel) - android.graphics.Color.blue(next)) > 40) edges++
+            samples++
+        }
+    }
+    return colors.size >= 16 && samples > 0 && edges > samples / 1000
+}
+
 private class QueueGoLocationPickerHolder {
     var view: MapView? = null
     var map: MapLibreMap? = null
@@ -474,10 +498,37 @@ private class QueueGoLocationPickerHolder {
     var styleReady = false
     var fullyRendered = false
     var readyReported = false
+    var snapshotPending = false
+    var snapshotGeneration = 0
     var lastRecenterToken: Int? = null
     var selectedPoint: QgMapPoint? = null
     var onPointSelected: (QgMapPoint) -> Unit = {}
     var onReady: (Boolean) -> Unit = {}
+
+    /** Do not expose a blank raster canvas as a ready delivery map.
+     * This inspects the real MapLibre GL snapshot, not view decorations or markers.
+     * Async results are ignored after recenter or disposal.
+     */
+    fun checkRenderedMapReady() {
+        if (destroyed || !styleReady || !fullyRendered || readyReported || snapshotPending) return
+        val active = map ?: return
+        val requestedGeneration = snapshotGeneration
+        snapshotPending = true
+        active.snapshot { bitmap ->
+            val hasMapDetail = try {
+                queueGoRenderedBasemapHasDetail(bitmap)
+            } finally {
+                bitmap.recycle()
+            }
+            if (requestedGeneration == snapshotGeneration) {
+                snapshotPending = false
+                if (!destroyed && styleReady && fullyRendered && !readyReported && hasMapDetail) {
+                    readyReported = true
+                    onReady(true)
+                }
+            }
+        }
+    }
 
     fun renderSelectedPoint(point: QgMapPoint?) {
         selectedPoint = point?.takeIf { it.valid }
@@ -512,6 +563,8 @@ private class QueueGoLocationPickerHolder {
         lastRecenterToken = token
         readyReported = false
         fullyRendered = false
+        snapshotGeneration++
+        snapshotPending = false
         onReady(false)
         active.animateCamera(
             CameraUpdateFactory.newLatLngZoom(
@@ -553,6 +606,8 @@ private class QueueGoLocationPickerHolder {
         stop()
         view?.onDestroy()
         destroyed = true
+        snapshotGeneration++
+        snapshotPending = false
         map = null
         view = null
     }
@@ -600,10 +655,12 @@ fun QgLocationPickerMap(
                             }
                         )
                         view.addOnDidBecomeIdleListener {
-                            if (!holder.destroyed && holder.styleReady && holder.fullyRendered && !holder.readyReported) {
-                                holder.readyReported = true
-                                currentReady.value(true)
-                            }
+                            holder.checkRenderedMapReady()
+                        }
+                        // An idle callback can precede network tile arrival; recheck
+                        // when the actual map finishes loading rather than exposing a blank GL frame.
+                        view.addOnDidFinishLoadingMapListener {
+                            holder.checkRenderedMapReady()
                         }
                         view.getMapAsync { map ->
                             if (holder.destroyed) return@getMapAsync
@@ -641,6 +698,7 @@ fun QgLocationPickerMap(
                                 holder.lastRecenterToken = recenterToken
                                 holder.renderSelectedPoint(initialPoint?.takeIf { it.valid })
                                 holder.styleReady = true
+                                holder.checkRenderedMapReady()
                             }
                         }
                         if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) holder.start()
