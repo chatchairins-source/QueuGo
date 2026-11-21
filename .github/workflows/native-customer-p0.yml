@@ -7,6 +7,7 @@ on:
       - 'native-android/shared/**'
       - 'native-android/qa/run-customer-p0.py'
       - 'tests/native-customer-p0-maven-recovery.cjs'
+      - 'tests/native-customer-map-visual-contract.cjs'
       - '.github/workflows/native-customer-p0.yml'
       - '.github/workflows/build-native-rider-pilot.yml'
   pull_request:
@@ -15,6 +16,7 @@ on:
       - 'native-android/shared/**'
       - 'native-android/qa/run-customer-p0.py'
       - 'tests/native-customer-p0-maven-recovery.cjs'
+      - 'tests/native-customer-map-visual-contract.cjs'
       - '.github/workflows/native-customer-p0.yml'
   workflow_dispatch:
 permissions:
@@ -63,6 +65,8 @@ jobs:
           exit 1
       - name: Fail-closed Customer Android Maven recovery regression
         run: node tests/native-customer-p0-maven-recovery.cjs
+      - name: Verify real map pixel detail and bounded snapshot contract
+        run: node tests/native-customer-map-visual-contract.cjs
       - name: Customer JVM and real UI harness builds
         shell: bash
         run: |
