@@ -80,6 +80,47 @@ const uuid = n => '00000000-0000-4000-8000-' + String(n).padStart(12, '0');
    }
   } finally {await db.exec('RESET ROLE');}
   equal(Number((await db.query('SELECT count(*) AS n FROM orders')).rows[0].n),1);
-  console.log(JSON.stringify({checks,failures:0,engine:testUrl?'real PostgreSQL':'PGlite',scope:'actual source/candidate replay as anon; synthetic schema, NOT Production parity, concurrent new checkout or settlement proof'}));
+  if(testUrl) {
+   const {Client} = require('pg');
+   const holder = new Client({connectionString:testUrl,connectionTimeoutMillis:5000});
+   const waiter = new Client({connectionString:testUrl,connectionTimeoutMillis:5000});
+   await holder.connect(); await waiter.connect();
+   const args = [uuid(1),uuid(2),uuid(3),items,13.75,100.5];
+   const query = 'SELECT qg_table_checkout($1,$2,$3,$4::jsonb,$5,$6) AS result';
+   try {
+    for(const revoke of [false,true]) {
+     await seed();
+     await holder.query("BEGIN; SET LOCAL statement_timeout='10s'");
+     await waiter.query("BEGIN; SET LOCAL statement_timeout='10s'; SET LOCAL ROLE anon");
+     if(revoke) await holder.query('UPDATE qg_table_sessions SET revoked_at=now() WHERE id=$1',[uuid(1)]);
+     else {
+      await holder.query('SET LOCAL ROLE anon');
+      equal((await holder.query(query,args)).rows[0].result.reason,'same_request');
+     }
+     const pid = (await waiter.query('SELECT pg_backend_pid() AS pid')).rows[0].pid;
+     // Attach both handlers immediately; preserve a genuine SQL failure as data
+     // until the owning transaction releases its row lock.
+     const pending = waiter.query(query,args).then(value=>({value}),error=>({error}));
+     let blocked = false;
+     const deadline = Date.now()+5000;
+     while(Date.now()<deadline) {
+      const row = (await db.query('SELECT wait_event_type FROM pg_stat_activity WHERE pid=$1',[pid])).rows[0];
+      if(row?.wait_event_type==='Lock') {blocked=true;break;}
+      await new Promise(resolve=>setTimeout(resolve,25));
+     }
+     equal(blocked,true);
+     await holder.query('COMMIT');
+     const result = await pending;
+     if(revoke) {assert.match(result.error?.message??'',/หมดอายุ/);checks++;}
+     else {if(result.error) throw result.error; equal(result.value.rows[0].result.reason,'same_request');}
+     await waiter.query('ROLLBACK');
+     equal(Number((await db.query('SELECT count(*) AS n FROM qg_table_requests')).rows[0].n),1);
+    }
+   } finally {
+    await holder.query('ROLLBACK').catch(()=>{});await waiter.query('ROLLBACK').catch(()=>{});
+    await holder.end();await waiter.end();
+   }
+  }
+  console.log(JSON.stringify({checks,failures:0,engine:testUrl?'real PostgreSQL':'PGlite',scope:'actual source/candidate replay as anon; synthetic schema, existing-replay/committed-revocation races only on real PostgreSQL; NOT Production parity, concurrent new checkout or settlement proof'}));
  } finally {await db.close();}
 })().catch(error => {console.error(error); process.exitCode=1;});
