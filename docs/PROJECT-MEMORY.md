@@ -1,3 +1,9 @@
+## 2026-11-21 Cash-helper dependent guard composition
+
+- Extended isolated fixture to relevant Production UUID/numeric types and installed captured unmodified queuego_guard_cash_payment (MD5 cd73f6eec0a50bb8fd02fa2684ed685d) and queuego_guard_cash_delivery (MD5 034a0abb8a4743ae46325d1923022126), alongside the actual order guard.
+- Verify customer/shop ordinary cancellations remain compatible through all three guards; fixture-admin no_rider transition still composes; late client payment insertion and amount tampering are rejected; downstream failure rolls back order/payment/delivery with all guards present. The actor lookup remains an explicit fixture, not live JWT/RLS evidence.
+- Local PGlite116 checks pass. Previous order-guard-only exact hosted2926ca8b passed PGlite100 and real PostgreSQL109; those results do not certify this expansion. Latest real PostgreSQL and Native CI required. No Production writes, no guard weakening, no parent timeout authority, migration/restore or release certification claim.
+
 ## 2026-11-21 Cash-helper integration with actual cash-order guard
 
 - Captured current Production queuego_guard_cash_order() READ ONLY, MD5 faec72ee314f12ef37a2c72005c44bc0. Isolated helper fixture now installs this unmodified BEFORE trigger after unit/race/rollback coverage, with an explicitly simulated actor lookup (not live JWT/RLS certification).

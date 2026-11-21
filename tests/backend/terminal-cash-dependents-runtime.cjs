@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const {PGlite} = require('@electric-sql/pglite');
 const {Client} = require('pg');
 const testUrl = process.env.QG_CASH_HELPER_TEST_DATABASE_URL;
+const fixtureUuid=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
 async function database() {
  if(!testUrl) return new PGlite();
  const url=new URL(testUrl);
@@ -19,20 +20,20 @@ async function main() {
  const equal=(a,b)=>{assert.equal(a,b); checks++;};
  try {
   await db.exec(`CREATE ROLE service_role;
-   CREATE TABLE orders(id integer PRIMARY KEY,status text,rider_id uuid,rider_assigned_at timestamptz,market_order_id integer,paid_at timestamptz,total_amount numeric);
-   CREATE TABLE payments(order_id integer REFERENCES orders(id),status text,payment_method text,paid_at timestamptz,transaction_reference text,amount numeric,updated_at timestamptz);
-   CREATE TABLE deliveries(order_id integer REFERENCES orders(id),status text,updated_at timestamptz);
-   CREATE TABLE queuego_cash_order_locks(order_id integer PRIMARY KEY);
-   CREATE TABLE merchant_cash_receipts(order_id integer);
-   CREATE TABLE rider_cash_advances(order_id integer);
-   CREATE TABLE qg_rider_cash_return_refunds(order_id integer);
-   CREATE TABLE grocery_stock_reservations(order_id integer);
-   CREATE TABLE pos_inventory_reservations(order_id integer);`);
+   CREATE TABLE orders(id uuid PRIMARY KEY,status text,rider_id uuid,rider_assigned_at timestamptz,market_order_id uuid,paid_at timestamptz,total_amount numeric,customer_id uuid DEFAULT '00000000-0000-4000-8000-000000009001',shop_id uuid DEFAULT '00000000-0000-4000-8000-000000009002');
+   CREATE TABLE payments(order_id uuid REFERENCES orders(id),status text,payment_method text,paid_at timestamptz,transaction_reference text,amount numeric,updated_at timestamptz);
+   CREATE TABLE deliveries(order_id uuid REFERENCES orders(id),status text,updated_at timestamptz);
+   CREATE TABLE queuego_cash_order_locks(order_id uuid PRIMARY KEY);
+   CREATE TABLE merchant_cash_receipts(order_id uuid);
+   CREATE TABLE rider_cash_advances(order_id uuid);
+   CREATE TABLE qg_rider_cash_return_refunds(order_id uuid);
+   CREATE TABLE grocery_stock_reservations(order_id uuid);
+   CREATE TABLE pos_inventory_reservations(order_id uuid);`);
   await db.exec(fs.readFileSync('tests/fixtures/cash-cancel-prod-snapshot-20261120.sql','utf8'));
   await db.exec(`REVOKE ALL ON FUNCTION public.queuego_cancel_cash_dependents() FROM PUBLIC;
     GRANT EXECUTE ON FUNCTION public.queuego_cancel_cash_dependents() TO service_role;
     CREATE TRIGGER cash_cancel AFTER UPDATE OF status ON orders FOR EACH ROW EXECUTE FUNCTION public.queuego_cancel_cash_dependents();`);
-  const seed=async()=>{ const n=++next;
+  const seed=async()=>{ const n=fixtureUuid(++next);
    await db.query("INSERT INTO orders VALUES($1,'searching_rider',NULL,NULL,NULL,NULL,100)",[n]);
    await db.query("INSERT INTO payments VALUES($1,'pending','cash',NULL,NULL,100,NULL)",[n]);
    await db.query("INSERT INTO deliveries VALUES($1,'pending',NULL)",[n]);
@@ -85,7 +86,7 @@ async function main() {
    n=>db.query("INSERT INTO payments VALUES($1,'pending','cash',NULL,NULL,100,NULL)",[n]),
    n=>db.query("UPDATE orders SET rider_id='00000000-0000-4000-8000-000000000005'::uuid WHERE id=$1",[n]),
    n=>db.query('UPDATE orders SET rider_assigned_at=now() WHERE id=$1',[n]),
-   n=>db.query('UPDATE orders SET market_order_id=9 WHERE id=$1',[n]),
+   n=>db.query("UPDATE orders SET market_order_id='00000000-0000-4000-8000-000000000009'::uuid WHERE id=$1",[n]),
    n=>db.query('UPDATE orders SET paid_at=now() WHERE id=$1',[n]),
    n=>db.query("UPDATE deliveries SET status='delivered' WHERE order_id=$1",[n]),
    ...['merchant_cash_receipts','rider_cash_advances','qg_rider_cash_return_refunds','grocery_stock_reservations','pos_inventory_reservations'].map(table=>n=>db.query(`INSERT INTO ${table} VALUES($1)`,[n]))
@@ -154,10 +155,18 @@ async function main() {
   const existing=new Set((await db.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='orders'")).rows.map(row=>row.column_name));
   const guardFields=[...new Set([...actualGuard.matchAll(/\b(?:old|new)\.([a-z_][a-z0-9_]*)/gi)].map(match=>match[1].toLowerCase()))];
   const missing=guardFields.filter(name=>!existing.has(name));
-  if(missing.length) await db.exec('ALTER TABLE public.orders '+missing.map(name=>'ADD COLUMN '+name+' text').join(','));
+  function fixtureType(name) {
+   if(name.endsWith('_id') || name==='created_by') return 'uuid';
+   if(/_(latitude|longitude)$/.test(name)) return 'double precision';
+   if(/_(fee|amount|savings|rate|km|minutes)$/.test(name) || name==='subtotal') return 'numeric';
+   if(name.endsWith('_at')) return 'timestamptz';
+   if(name==='route_bundle_sequence') return 'integer';
+   return 'text';
+  }
+  if(missing.length) await db.exec('ALTER TABLE public.orders '+missing.map(name=>'ADD COLUMN '+name+' '+fixtureType(name)).join(','));
   // Actor lookup is an explicit fixture; this does not certify live JWT/RLS.
   await db.exec(`CREATE FUNCTION public.get_my_role() RETURNS text LANGUAGE sql AS $$ SELECT nullif(current_setting('qg.test_actor_role',true),'') $$;
-    CREATE FUNCTION public.get_my_user_id() RETURNS uuid LANGUAGE sql AS $$ SELECT NULL::uuid $$;
+    CREATE FUNCTION public.get_my_user_id() RETURNS uuid LANGUAGE sql AS $$ SELECT '00000000-0000-4000-8000-000000009001'::uuid $$;
     CREATE TABLE public.rider_profiles(id uuid,user_id uuid);`);
   await db.exec(actualGuard);
   await db.exec('CREATE TRIGGER zz_queuego_cash_order_guard BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION public.queuego_guard_cash_order();');
@@ -177,6 +186,39 @@ async function main() {
   const captured=await seed();await db.query("UPDATE payments SET status='paid',paid_at=now() WHERE order_id=$1",[captured]);
   await assert.rejects(transition(captured),/financial lifecycle review/);checks++;
   equal(await status(captured,'orders'),'searching_rider');equal(await status(captured,'payments'),'paid');
+  // Compose with both actual Production dependent guards as well. Fixture
+  // schema retains relevant UUID/numeric types so PostgreSQL plans real branches.
+  const dependentGuards=fs.readFileSync('tests/fixtures/cash-dependent-guards-prod-snapshot-20261121.sql','utf8');
+  for(const [table,fn] of [['payments','queuego_guard_cash_payment'],['deliveries','queuego_guard_cash_delivery']]) {
+   const body=dependentGuards.split('CREATE OR REPLACE FUNCTION public.'+fn+'()')[1].split('$function$;')[0];
+   const fields=[...new Set([...body.matchAll(/\b(?:old|new)\.([a-z_][a-z0-9_]*)/gi)].map(match=>match[1].toLowerCase()))];
+   const known=new Set((await db.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name=$1",[table])).rows.map(row=>row.column_name));
+   const add=fields.filter(name=>!known.has(name));
+   if(add.length) await db.exec('ALTER TABLE public.'+table+' '+add.map(name=>'ADD COLUMN '+name+' '+fixtureType(name)).join(','));
+  }
+  await db.exec(`CREATE TABLE public.shop_profiles(id uuid,user_id uuid);
+    INSERT INTO public.shop_profiles VALUES('00000000-0000-4000-8000-000000009002','00000000-0000-4000-8000-000000009001');`);
+  await db.exec(dependentGuards);
+  await db.exec(`CREATE TRIGGER zz_cash_payment_guard BEFORE INSERT OR UPDATE OR DELETE ON public.payments FOR EACH ROW EXECUTE FUNCTION public.queuego_guard_cash_payment();
+    CREATE TRIGGER zz_cash_delivery_guard BEFORE INSERT OR UPDATE OR DELETE ON public.deliveries FOR EACH ROW EXECUTE FUNCTION public.queuego_guard_cash_delivery();`);
+  for(const actor of ['customer','shop']) {
+   await db.query("SELECT set_config('qg.test_actor_role',$1,false)",[actor]);
+   const n=await seed();await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[n]);
+   equal(await status(n,'orders'),'cancelled');equal(await status(n,'payments'),'cancelled');equal(await status(n,'deliveries'),'cancelled');
+  }
+  await db.query("SELECT set_config('qg.test_actor_role','admin',false)");
+  const completeGuarded=await seed();await transition(completeGuarded);
+  equal(await status(completeGuarded,'payments'),'cancelled');equal(await status(completeGuarded,'deliveries'),'cancelled');
+  await db.query("SELECT set_config('qg.test_actor_role','customer',false)");
+  await assert.rejects(db.query("INSERT INTO payments(order_id,status,payment_method,amount) VALUES($1,'pending','cash',100)",[completeGuarded]),/cash payment is locked/);checks++;
+  equal(Number((await db.query('SELECT count(*) AS n FROM payments WHERE order_id=$1',[completeGuarded])).rows[0].n),1);
+  await assert.rejects(db.query('UPDATE payments SET amount=101 WHERE order_id=$1',[completeGuarded]),/cash payment amount is locked/);checks++;
+  equal(Number((await db.query('SELECT amount FROM payments WHERE order_id=$1',[completeGuarded])).rows[0].amount),100);
+  await db.query("SELECT set_config('qg.test_actor_role','admin',false)");
+  await db.exec('CREATE TRIGGER zzzz_guarded_failure AFTER UPDATE OF status ON public.orders FOR EACH ROW EXECUTE FUNCTION fail_terminal();');
+  const guardedRollback=await seed();await assert.rejects(transition(guardedRollback),/fixture downstream failure/);checks++;
+  equal(await status(guardedRollback,'orders'),'searching_rider');equal(await status(guardedRollback,'payments'),'pending');equal(await status(guardedRollback,'deliveries'),'pending');
+
 
  } finally {await db.close();}
  console.log(JSON.stringify({checks,failures:0,engine:testUrl?'real PostgreSQL':'PGlite',scope:'review-only cash dependent helper, actual captured baseline + disposable synthetic rows; NOT timeout scheduler or Production certification'}));
