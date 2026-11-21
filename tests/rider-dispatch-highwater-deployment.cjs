@@ -49,6 +49,50 @@ async function main() {
     equal(row.release_gate, 'OPERATOR_ATTESTATION_REQUIRED',
       'installation evidence is not operational approval');
 
+    // An enabled trigger is not enough: wrong event/timing/row mode or WHEN
+    // false would bypass every real offer insertion while appearing installed.
+    await db.exec('DROP TRIGGER qg_rider_offer_deadline_guard ON public.qg_rider_order_offers;');
+    await db.exec(`CREATE TRIGGER qg_rider_offer_deadline_guard
+      AFTER INSERT ON public.qg_rider_order_offers
+      FOR EACH ROW EXECUTE FUNCTION qg_private.guard_rider_offer_deadline();`);
+    row = await snapshot();
+    equal(row.offer_guard_trigger_enabled, false, 'AFTER INSERT trigger cannot enforce pre-insert guard');
+    equal(row.release_gate, 'NO_GO_DISPATCH_P0', 'AFTER trigger rejected');
+
+    await db.exec('DROP TRIGGER qg_rider_offer_deadline_guard ON public.qg_rider_order_offers;');
+    await db.exec(`CREATE TRIGGER qg_rider_offer_deadline_guard
+      BEFORE UPDATE ON public.qg_rider_order_offers
+      FOR EACH ROW EXECUTE FUNCTION qg_private.guard_rider_offer_deadline();`);
+    row = await snapshot();
+    equal(row.offer_guard_trigger_enabled, false, 'BEFORE UPDATE trigger cannot guard INSERT');
+    equal(row.release_gate, 'NO_GO_DISPATCH_P0', 'UPDATE-only trigger rejected');
+
+    await db.exec('DROP TRIGGER qg_rider_offer_deadline_guard ON public.qg_rider_order_offers;');
+    await db.exec(`CREATE TRIGGER qg_rider_offer_deadline_guard
+      BEFORE INSERT ON public.qg_rider_order_offers
+      FOR EACH STATEMENT EXECUTE FUNCTION qg_private.guard_rider_offer_deadline();`);
+    row = await snapshot();
+    equal(row.offer_guard_trigger_enabled, false, 'statement-level guard cannot reject an inserted row');
+    equal(row.release_gate, 'NO_GO_DISPATCH_P0', 'statement-level trigger rejected');
+
+    await db.exec('DROP TRIGGER qg_rider_offer_deadline_guard ON public.qg_rider_order_offers;');
+    await db.exec(`CREATE TRIGGER qg_rider_offer_deadline_guard
+      BEFORE INSERT ON public.qg_rider_order_offers
+      FOR EACH ROW WHEN (false)
+      EXECUTE FUNCTION qg_private.guard_rider_offer_deadline();`);
+    row = await snapshot();
+    equal(row.offer_guard_trigger_enabled, false, 'always-skipped WHEN clause rejected');
+    equal(row.release_gate, 'NO_GO_DISPATCH_P0', 'filtered trigger rejected');
+
+    await db.exec('DROP TRIGGER qg_rider_offer_deadline_guard ON public.qg_rider_order_offers;');
+    await db.exec(`CREATE TRIGGER qg_rider_offer_deadline_guard
+      BEFORE INSERT ON public.qg_rider_order_offers
+      FOR EACH ROW EXECUTE FUNCTION qg_private.guard_rider_offer_deadline();`);
+    row = await snapshot();
+    equal(row.offer_guard_trigger_enabled, true, 'reinstalled exact unconditional row guard');
+    equal(row.release_gate, 'OPERATOR_ATTESTATION_REQUIRED',
+      'valid shape still requires operator review');
+
     await db.exec('ALTER TABLE public.qg_rider_order_offers DISABLE TRIGGER qg_rider_offer_deadline_guard;');
     row = await snapshot();
     equal(row.offer_guard_trigger_enabled, false, 'disabled trigger rejected');

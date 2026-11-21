@@ -14,6 +14,11 @@ WITH installed AS (
         AND NOT t.tgisinternal
         AND t.tgenabled IN ('O','A')
         AND t.tgfoid = to_regprocedure('qg_private.guard_rider_offer_deadline()')
+        -- PostgreSQL tgtype=7 is precisely BEFORE INSERT FOR EACH ROW:
+        -- row(1) | before(2) | insert(4), with no other firing events.
+        AND t.tgtype = 7
+        -- A WHEN clause can silently make an enabled guard skip every row.
+        AND t.tgqual IS NULL
     ) AS offer_guard_trigger_enabled,
     to_regprocedure('qg_private.cancel_rider_timeout_cash(integer)') IS NOT NULL
       AS cash_timeout_function_present
