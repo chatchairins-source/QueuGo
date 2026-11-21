@@ -4,6 +4,12 @@
 - Certification checked version sets only; wire the existing fail-closed digest verifier to independently hashed live SQL bodies, under read-only PGOPTIONS. Null/multiple bodies yield invalid digests; empty history, differing/missing/additional source and SQL errors must block certification. No SQL body or credential is logged. The temporary hash manifest is cleaned on exit.
 - This prevents a future equal-version/different-body ledger from certifying release. It does not resolve present migration drift, deploy P0, supply backup credentials or certify signed AAB/Play.
 
+## 2026-11-21 Run timeout/claim acceptance on the release Integration
+
+- Merged #1389 at 6e41747d after exact-head Native, Map, Dispatch PostgreSQL/PGlite and evidence checks passed. #1387/#1388 ancestry confirmed.
+- Found no-rider timeout/claim-race CI accepted only PRs into its historical backend branch, so Integration changes did not execute those real PostgreSQL tests. Enable existing isolated timeout and claim workflows on Integration/main pushes and relevant PRs, plus manual dispatch. Retain disposable databases, pinned PostgreSQL and all financial assertions; expand timeout fixture/helper path coverage.
+- Production read-only recheck: 392 migrations; offer guard and cash timeout function both absent. No Production mutation, main merge, signed AAB or Play submission. New workflow HEAD requires hosted success before merge.
+
 ## 2026-11-21 Storage backup and restore reject path traversal
 
 - Also reproduced compare-inventory accepting all19 counts as nonnumeric strings (Number() produced NaN and every comparison was false). Require original nonnegative safe integers on both sides. Actual CLI regressions cover every critical key and malformed source/restored values, valid zero/counts and unchanged bounded-drift behavior. No claim that count comparison alone proves complete backup fidelity.
