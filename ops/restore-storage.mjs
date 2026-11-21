@@ -1,15 +1,18 @@
-import { createClient } from '@supabase/supabase-js';
+import { localRestoreStorageTarget } from './restore-storage-target.mjs';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 
-const url=process.env.QG_RESTORE_SUPABASE_URL;
+const rawUrl=process.env.QG_RESTORE_SUPABASE_URL;
 const key=process.env.QG_RESTORE_SERVICE_ROLE_KEY;
 const root=process.env.QG_STORAGE_BACKUP_DIR||'backup/storage';
 const manifestPath=process.env.QG_STORAGE_MANIFEST||path.join(path.dirname(root),'storage-manifest.json');
-if(!url||!key)throw new Error('Missing local restore Storage credentials');
+if(!rawUrl||!key)throw new Error('Missing local restore Storage credentials');
+// Validate before reading any backup or importing the network client.
+const url=localRestoreStorageTarget(rawUrl);
 
 const manifest=JSON.parse(await readFile(manifestPath,'utf8'));
+const {createClient}=await import('@supabase/supabase-js');
 const supabase=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
 const {data:existing,error:listError}=await supabase.storage.listBuckets();
 if(listError)throw listError;
