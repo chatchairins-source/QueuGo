@@ -4,7 +4,9 @@ const read=p=>fs.readFileSync(path.join(root,p),'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 
 const workflow=read('.github/workflows/backup-restore-drill.yml');
-const release=read('.github/workflows/build-queuego-apks.yml');
+const release=read('.github/workflows/build-native-release.yml');
+const certification=read('.github/workflows/native-release-certification.yml');
+const nativeGate=read('native-android/qa/verify-native-release-gate.py');
 const exporter=read('ops/backup-storage.mjs');
 const restorer=read('ops/restore-storage.mjs');
 const inventory=read('ops/backup-inventory.sql');
@@ -23,7 +25,7 @@ ok(workflow.indexOf('sha256sum --check backup/core.sha256')<workflow.indexOf('--
   'verify core backup checksums before local restore and archive creation');
 ok(/restore-storage\.mjs/.test(workflow),'Storage objects must be restored during the drill');
 ok(/aes-256-cbc/.test(workflow)&&/pbkdf2/.test(workflow),'off-site artifact must be encrypted before upload');
-ok(/upload-artifact@v4/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
+ok(/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/.test(workflow)&&/\.tar\.gz\.enc/.test(workflow),'only encrypted backup artifact should be uploaded');
 ok(!/upload-artifact@[\s\S]{0,400}backup\/data\.sql/.test(workflow),'plaintext database dump must never be uploaded');
 ok(/QG_BACKUP_PASSPHRASE/.test(workflow)&&/QG_SUPABASE_DB_URL/.test(workflow)&&/QG_SUPABASE_SERVICE_ROLE_KEY/.test(workflow),'backup secrets must be externalized');
 ok(/missing=0[\s\S]*Missing required secret: \$name[\s\S]*missing=1[\s\S]*if \[ "\$missing" -ne 0 \]/.test(workflow),'backup secret preflight must report all missing secrets before failing');
@@ -36,6 +38,13 @@ ok(verify.includes("public.qg_chat_moderation_post_allowed(uuid,uuid)")&&verify.
 ok(verify.includes("content_snapshot")&&verify.includes("qg_ugc_reports"),'restore must verify UGC moderation evidence snapshot');
 ok(verify.includes('queuego_restore_verification_ok'),'restore SQL must emit a success sentinel');
 ok(verify.includes('qg_notifications_queuego_push'),'restore must verify unified notification trigger');
-ok(/restore_drill_certified/.test(release),'Closed Beta release must depend on restore certification');
+ok(release.includes('QG_CERTIFIED_BACKUP_RESTORE_RUN_ID')&&release.includes('Certification references an invalid Backup Restore Drill run'),
+  'Native certified release must bind the exact successful backup/restore run');
+ok(certification.includes('Require successful exact-HEAD Backup Restore Drill')&&certification.includes('queuego-backup-'),
+  'Native certification must require a live encrypted backup artifact on the exact release HEAD');
+ok(nativeGate.includes('QG_CERTIFIED_BACKUP_RESTORE_RUN_ID')&&nativeGate.includes('backup_restore evidence does not match the attested Backup Restore Drill'),
+  'Native release gate must verify restore evidence against the attested backup run');
+ok(!fs.existsSync(path.join(root,'.github/workflows/build-queuego-apks.yml')),
+  'Legacy Capacitor release workflow must remain retired');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Encrypted external database + Storage backup and local restore drill'}));

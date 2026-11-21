@@ -63,6 +63,24 @@
     return esc(o.express_item_type||'พัสดุ')+' · '+Number(o.express_weight_kg||0).toLocaleString('th-TH')+' กก. · '+esc(o.express_size||'');
   }
 
+  function qgOpenCashConfirmPage({amount,onBack,onConfirm}){
+    if(!Number.isFinite(amount)||amount<0){toast('ยอดเงินสดไม่ถูกต้อง กรุณาโหลดงานใหม่');return false}
+    if(document.getElementById('qg-express-cash-confirm'))return false;
+    const screen=document.createElement('section');
+    screen.id='qg-express-cash-confirm';
+    screen.className='qg-rider-flow-page qg-cash-confirm-page';
+    screen.innerHTML=`<header class="qg-flow-head"><button type="button" aria-label="ย้อนกลับ">‹</button><div><b>เก็บเงินจากลูกค้า</b></div><span></span></header><main class="qg-cash-confirm-main"><p>ค่าส่งเงินสดที่ต้องเก็บ</p><div class="qg-cash-confirm-amount">฿${amount.toLocaleString('th-TH')}</div><p>ตรวจสอบยอดเงินสดก่อนจบงาน</p><div class="qg-slide-action"><div class="qg-slide-action-label">สไลด์เพื่อยืนยันว่าเก็บเงินแล้ว</div><input type="range" min="0" max="100" value="0" aria-label="สไลด์เพื่อยืนยันว่าเก็บเงินแล้ว"></div></main>`;
+    const back=screen.querySelector('header button');
+    back.onclick=()=>{screen.remove();onBack()};
+    qgBindSlideConfirm(screen.querySelector('.qg-slide-action'),async()=>{
+      back.disabled=true;
+      try{await onConfirm()}
+      finally{screen.remove();onBack()}
+    });
+    document.body.appendChild(screen);
+    return true;
+  }
+
   window.qgExpressProofPage=function(o,mode){
     if(!window.qgIsExpress(o))return false;
     const pickup=mode==='pickup';
@@ -70,7 +88,7 @@
     if(!pickup&&(statusFromRow(o)!=='in_progress'||!o.rider_arrived_customer_at))return false;
     qgCloseRiderFlowPage('qg-express-proof');
     const page=document.createElement('section');page.id='qg-express-proof';page.className='qg-rider-flow-page qg-rider-flow-compact';
-    const saved=readProof(o,mode),cash=Number(o.total_amount||0);
+    const saved=readProof(o,mode),cash=o.total_amount==null||String(o.total_amount).trim()===''?NaN:Number(o.total_amount);
     const title=pickup?'รับพัสดุที่จุดรับ':'ส่งพัสดุที่จุดส่ง';
     const party=pickup?(o.express_sender_name||'ผู้ส่ง'):(o.express_receiver_name||'ผู้รับ');
     const address=pickup?(o.pickup_address||'จุดรับพัสดุ'):(o.delivery_address||'จุดส่งพัสดุ');
@@ -119,8 +137,7 @@
         }catch(e){toast((pickup?'รับพัสดุ':'จบงาน Express')+'ไม่สำเร็จ: '+(e.message||e));next.disabled=false;return false}
       };
       if(!pickup){
-        page.hidden=true;
-        qgOpenCashConfirmPage({o,mode:'customer',amount:cash,onBack:()=>{page.hidden=false},onConfirm:async()=>{const ok=await commit();if(!ok)page.hidden=false;return ok}});
+        if(qgOpenCashConfirmPage({amount:cash,onBack:()=>{page.hidden=false},onConfirm:commit}))page.hidden=true;
       }else await commit();
     };
     return true;

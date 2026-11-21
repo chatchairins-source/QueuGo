@@ -16,7 +16,7 @@ for(const [rpc,kind] of Object.entries({
 }
 
 ok(rider.includes('<script src="reliability.js?v=20261023-laundryfix1"></script>'),'Rider page must actually load the durable reliability layer');
-ok(rider.indexOf('<script src="reliability.js?v=20261023-laundryfix1"></script>')<rider.indexOf('<script>boot();</script>'),'durable reliability layer must load before Rider boot');
+ok(rider.indexOf('<script src="reliability.js?v=20261023-laundryfix1"></script>')<rider.indexOf('<script>window.qgDeferredBoot?.();</script>'),'durable reliability layer must load before Rider boot');
 ok(rider.indexOf('<script src="reliability.js?v=20261023-laundryfix1"></script>')<rider.indexOf('<script id="qg-rider-order-actions">'),'durable wrapper must exist before order-action UI can be used');
 ok(reliability.includes("['mode','invite-accept','invite-reject'].includes(laundry)"),'stale snapshot must not lock Laundry mode or invite decisions');
 ok(reliability.includes("pending||S.snapshotStale&&staleSensitive(target)"),'click guard must only block stale-sensitive controls while snapshot is stale');

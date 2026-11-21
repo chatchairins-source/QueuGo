@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "dataset": "buriram-padded-osm-20261015",
+  "source_extract_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+  "source_timestamp": "2026-10-15T20:21:00Z",
+  "bounds": [
+    102.369,
+    14.109,
+    103.592,
+    15.819
+  ],
+  "licence": "ODbL-1.0",
+  "attribution": "© OpenStreetMap contributors",
+  "record_count": 3079,
+  "canonical_fields": [
+    "records",
+    "source_timestamp",
+    "bounds",
+    "licence",
+    "attribution"
+  ],
+  "canonical_sha256": "15ae2166b35548fd610457cca5896ac60fb66b824909230e8e2bb2fed8a4edda",
+  "source_artifact_zip_sha256": "1660dcfc376440d9811a6081bab3158332c25005db0441c92fdf2de17fefb7fe",
+  "source_artifact_run_id": 43569694827,
+  "description": "Cryptographic reproducibility baseline for real OSM places export; no synthetic records or Production mutations."
+}

@@ -1,3 +1,8 @@
+## 2026-11-21 Guest checkout source reconciled with current Integration
+
+- Forward-merged Integration12f357c5 into #1246, retaining Worker/source history and all merged POS, real Fused GPS and financial preflight work. Retain Integration package/lock files (already pg8.23.1); no dependency downgrade or old-main overwrite. Shared memory conflict retains both current and guest records.
+- Predecessor baaffda7 exact44850977713 passed structural8, PGlite47 + PostgreSQL61: create totals/line, replay, invalid-cart rollback, session revocation race and new-checkout idempotency race. The reconciled final SHA needs fresh exact-head validation; no predecessor result is substituted. Keep DRAFT until complete live-trigger/RLS/settlement/deployment review. Production unchanged.
+
 ## 2026-11-21 Guest checkout ordinary create and rollback regression
 
 - Extended the isolated checkout schema enough to run ordinary valid order creation and line totals, subsequent replay and invalid-quantity atomic rollback as anon. Uses captured unmodified Production qg_next_order_number (MD5 d6b34a0303aacce6fbcfd82b7c3c816e) and qg_table_distance_m (6ada408be6f231698e8ff0809d11d2d0), not fake success helpers. Only metadata was read; no live checkout/number generation or data mutation ran.
@@ -10,6 +15,40 @@
 - PR #1246 now includes a self-contained PGlite test using real pgcrypto and the unchanged original checkout function plus candidate migration. It reproduces the revoked-session replay disclosure in the old source, then runs the candidate RPC as anon, checks valid idempotency, revoked/expired/NULL expiry rejection, wrong device, changed/NULL cart hash, missing-order refusal, preserved function ACL and denied direct ledger/session writes. Synthetic fixture scope is explicitly limited: not live RLS/schema parity, new checkout concurrency or settlement certification. Real PostgreSQL additionally checks that a second replay waits on the session row lock and that committed revocation wins before the waiting replay returns; new-checkout and full session/RLS lifecycle remain unproven.
 - Corrected the existing real-PostgreSQL isolated test to assert the actual Thai payload-mismatch error instead of an absent English word. It still needs a dedicated loopback database with the complete fixture; no claim that it ran follows from the new PGlite test.
 - New exact-head workflow runs the 8 structural tests and the 32 shared runtime checks plus real-PostgreSQL existing-replay and committed-revocation row-lock races on PGlite and disposable PostgreSQL17.6. Only the local PGlite pass is known before hosted CI completes; do not treat a queued PostgreSQL step as evidence. Candidate migration is NOT applied to Production. Read-only current Production function comparison is now complete: captured definition MD5 59fdf2ac48864a52f77fbeaaacc8aace, matching committed original body, no application rows. Regression executes that exact definition and preserves observed anon/authenticated/service_role ACL. The live old replay guard is still after the first duplicate return. Keep this older-main-lineage PR draft until full schema/concurrency/E2E and Integration lineage reconciliation are complete. Current Integration is bfa3265a (POS #1342 merged); do not merge this divergent branch wholesale.
+## 2026-11-21 Rider Fused GPS integrated after exact-source gates
+
+- PR #1304 merged as c43e068b after fe41449f passed Native Pilot44844975972, actual offline routing/cold restart/rendering/ANGLE/real Fused44844976051, country APK export44844976471 and authenticated Rider/Merchant review + background FCM44844975993. API33 guest avoids the reproduced API30 GNSS epoch clock bug; application timestamp/freshness/accuracy gates remain intact. Physical road testing/API30 Fused/signed Play certification are still pending. No Production deployment.
+- Financial preflight branch forward-reconciled with c43e068b and retains both GPS and POS tax changes. Final timestamp truth-table + actual-query tests require fresh hosted results on its final SHA.
+
+## 2026-11-21 Actual rider-search preflight timestamps reconciled
+
+- Forward-reconciled Worker backend #1347/#1348 with Integration bfa3265a, retaining the merged POS tax fixes. The read-only financial preflight now requires an actual sane rider_search_started_at, not merely a merchant/order fallback; missing creation/search timestamps and invalid chronological ordering remain blocked. Repaired the isolated fixture to include a valid created_at and distinguish reporting fallback from actual search authority.
+- Exact 21beb17a hosted run44847893007 passed actual-query PGlite63 + PostgreSQL63. The final test version also executes the Worker seven-case timestamp SQL truth table on each database engine (64 checks expected); final hosted/Native results remain required. Actual SQL regression covers missing/future/inconsistent search start and missing creation time, with recovery and unchanged financial blockers/read-only enforcement. Added the same actual-query suite to disposable PostgreSQL17.6; hosted exact-head success is required, not inferred from PGlite. This is diagnostic read-only SQL, not a timeout entrypoint or permission to mutate Production. #1268 remains open and backup/restore/approved rollout gates remain.
+## 2026-11-21 Fused GPS guest image correction
+
+- API30 legacy GNSS transport hypothesis failed again at #1304 d4e2d173, routing44828377296. Artifact14675363253 confirms transport disabled yet GPS elapsed time still reports epoch-scale ~20777 days versus guest uptime ~2 minutes. Do not retry that configuration as a fix.
+- Primary AOSP evidence: https://android.googlesource.com/device/generic/goldfish/+/33a10687b382110682cf65c0cdb375df954e5227/gnss/util.cpp uses system_clock time for GNSS elapsed timestamp, matching observed clock-domain error; Android Location API requires elapsedRealtimeNanos since boot. Application monotonic freshness/accuracy/jump guards remain unchanged.
+- Pin real-Fused QA guest to API33 Google APIs; keep exact offline-tested APK, two fresh regional boots, real Fused callback, false debug-store injection, full tiles and lifecycle assertions. Use default GNSS transport; retain privacy-safe DEBUG rejection evidence. Location switch preflight now fails closed if API33 cmd verification fails after bounded transport recovery; never treat an old settings field as success.
+- API30 failure remains recorded and is NOT relabeled passed by an API33 run. This does not certify API30 physical GPS, field roads or Play readiness. Exact latest hosted emulator result required; local13 Fused/5 SDK regression and Python syntax pass only.
+
+## 2026-11-20 Reproduced Customer Android11 SurfaceView native crash
+
+- PR #1314 at `44a1b6a5` passed Customer API26/33/35. API30 run `44695889504` job `136152416974` crashed in the unchanged thirty-picker-cycle test: native `RefBase::incStrong` / `SurfaceControl.nativeSetFlags` / `SurfaceView.positionLost` on RenderThread after repeated disposal. This is an actual app-process SIGSEGV, not a test to retry away.
+- Shared online map factories now request MapLibre TextureView on legacy Android through API30, retaining default surface mode on Android12+ and the existing style, gestures, GPS and lifecycle ownership. Android11 passed the full six-test matrix at 9f608c66; Android8/API26 instead reproduced missing geographic pixels (3 colors) after EGL_BAD_MATCH in the old SurfaceView path, so the workaround includes legacy APIs. Dedicated Rider offline renderer is unchanged. Actual installed-view instrumentation verifies TextureView versus SurfaceView across all four APIs; retain rendered-road detail and thirty picker cycles/early background. Fresh exact-head build/runtime acceptance remains required.
+
+## 2026-11-20 Pilot convergence: exact-source Android review recovery
+
+- Reviewed main `db366228` and Integration #1072 `7e776164`. Exact Integration RC, Native Pilot, Map Buriram, P0 source gate, release-evidence/exporter regressions and installed nationwide routing + real Google APIs Fused GPS passed. Customer API35 metadata retrieval and authenticated Rider Profile review failed; do not replace those failures with older successes.
+- Customer run `44689261223`, job `136130882429`: Gradle could not retrieve pinned Central modules, then curl returned HTTP 404. Existing curl retries excluded 404. Retry only the same allowlisted POM retrieval, with two retries and a 45-second retry budget; validate nonempty artifactId before the existing single Gradle refresh. Actual local HTTP tests reproduce temporary 404 recovery and persistent 404 exhaustion; no test/compile failure bypass.
+- Rider run `44689261539`, job `136131557770`: diagnostics entry did not satisfy scroll visibility. Profile heading and bottom tab share text, while the previous minimum-label calculation could treat the heading as navigation. Identify the actual horizontal four-tab row and clickable tab bounds; keep occluded targets blocked. Preserve a genuine failure viewport and only target/navigation bounds if scrolling still fails. Exact-device acceptance remains pending; this is not a claim that the reproduced emulator failure is fully resolved.
+- Source regression checks cover duplicate Profile labels, navigation-icon overlap and missing tabs. The authenticated workflow runs them before capture. Real screenshots, background Rider FCM and full API matrix require the fresh commit's hosted CI.
+- Production read-only on 2026-11-20: 392 migrations, latest `20261111111354`; bounded-offer function/trigger are absent. P0 #1268 remains open. The timestamped source migration passes 114 isolated PGlite checks (guard/live dispatcher/negative/highwater), but containment/financial-safe terminalization, backup+restore evidence, VAT backend and signed three-role Play releases remain unverified. Do not claim 90% or Production readiness from source CI alone.
+
+## 2026-11-14 Release reconciliation candidate
+
+- Reconcile Web main `369e4b49` with Native candidate `b37405ea` on an isolated integration branch. Keep main's Web/POS implementations and browser CI. Use the Native release and certification workflows with the existing main-only attestation rules.
+- Keep both regression lists in package.json. The prior Native standalone candidate passed hosted Pilot; the integrated tree requires its own build and release evidence.
+- Production restore secrets, a hosted order-to-settlement run and signed APKs remain pending.
 
 ## 2026-11-13 Merchant POS responsive redesign
 
@@ -994,3 +1033,27 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Post-deploy readback: zero code rows, RLS enabled, no direct anon/authenticated table grants, four SECURITY DEFINER RPCs with fixed search paths and authenticated-only EXECUTE; lookup reads `coalesce(pos_price,price)` and has no GP/Delivery markup reference. Save/remove write audit_logs in the same transaction; no fake product, order or payment was made.
 - Production advisor identified missing child-side product_id/created_by indexes. PR #618 added both indexes with PGlite tests; exact RC `39772099278` passed and merge SHA is `bc8bdc173a8b798e84dee09833b76caf8b546614`. Applied as `20261022114328_pos_product_code_fk_indexes`; readback confirmed both. The remaining unused-index notice is expected while the registry is empty.
 - NEXT: align both migration filenames with Production versions, then proceed through the remaining POS inventory and authenticated cashier/device gates. QueueGo/POS remain NOT DONE.
+
+
+## 2026-11-20 P0 real PostgreSQL concurrency proof
+
+- Added tests/rider-offer-deadline-postgres.cjs and an isolated pinned PostgreSQL17.6 CI service alongside existing PGlite gates. Local real PostgreSQL17.6 passed 30 checks using three sessions: simultaneous cron, claim/terminal lock commit and rollback, no resurrection/spam/attempt121, role ACLs and transactional DDL rollback. Added migration-file workflow path filters. See docs/P0-DISPATCH-POSTGRES-20261120.md.
+- Scope is synthetic dispatch/locking proof; live financial terminalization, backup/restore and Production deployment remain incomplete. No Production writes or readiness-percentage certification.
+
+
+## 2026-11-20 POS tax derived-total update guard
+
+- Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. Reproduced isolated source defect: UPDATE of only pos_tax_amount=50,total_amount=150 on a 100+7 exclusive-tax fixture was accepted because the column-specific tax trigger did not fire. Existing integrity CHECK accepted the forged pair. This does not establish live client privileges or a Production exploit.
+- Extend existing tax snapshot trigger UPDATE columns to total_amount,pos_taxable_base,pos_tax_amount so the server recomputes derived tax/base/total from immutable bill snapshots and line net. Preserve existing RPC, RLS/ACL, legacy bill handling, Delivery rules and tax settings.
+- Added isolated runtime negative tests for forged exclusive total and inclusive tax split, plus base-only update; initial regression failed 150 != 107, then full tax fixture passed after correction. No Production writes or migrations applied. Exact-head CI, independent current Production schema/trigger compatibility, authorized rollout, receipt/refund/settlement acceptance remain required.
+
+
+## 2026-11-20 POS numeric special-value rejection
+
+- Continued on #1342 source after owner requested sustained bug fixing. Reproduced that PostgreSQL numeric NaN could create a synthetic POS bill even though comparison CHECKs passed; negative assertion initially failed with Missing expected rejection. This is source/isolation evidence, not a claim about live privileges or deployment.
+- Existing POS tax trigger now rejects NaN/Infinity/-Infinity in subtotal, discount and incoming total before any tax-disabled/legacy early return or arithmetic. Failed updates roll back; finite VAT calculations remain unchanged. Added actual-SQL nonfinite insert/update cases and rollback total/discount assertions. No Production DDL/DML or funds changed. Exact latest CI required; older PR CI is not certification for this addition.
+## 2026-11-20 Dispatch financial preflight timeout alignment
+
+- Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. The read-only financial preflight hardcoded 30 minutes while dispatcher/highwater honors Admin orderTimeout. Align with finite 1–1440 minute config and 30 minute fallback; report configured_timeout_minutes and overdue_at_configured_timeout. This changes diagnostic output, not cancellation authority. Deadline comparison includes the exact boundary.
+- Added actual-SQL PGlite execution regression (48 checks): configured timeout, invalid config fallback, each financial/stock/offer blocker, unknown identity/status/timestamps and read-only transaction enforcement. CI now watches and executes the operational SQL; previous negative fixture duplicated its predicate and could miss drift.
+- No Production writes, migrations, cancellations, cash unlock, refunds, stock changes or deployment. P0 #1268 stays OPEN/NO-GO. Exact-head CI and review remain required before integration; backup/restore, financial terminalization and authorized stranded-order resolution remain outstanding.

@@ -1,0 +1,18 @@
+import assert from 'node:assert/strict';
+import {planStackRoute} from '../supabase/functions/queuego-route-bundle-matrix/stack-planner.mjs';
+import {simulateStackFinancialPlan} from '../supabase/functions/queuego-route-bundle-matrix/stack-financial-plan.mjs';
+let checks=0;const eq=(a,b)=>{assert.deepEqual(a,b);checks++};
+const A='A',C='C',D='D',orderIds=[A,C,D];
+const pointMap={R:{kind:'rider'},O0P:{orderId:A,kind:'pickup'},O0D:{orderId:A,kind:'dropoff'},O1P:{orderId:C,kind:'pickup'},O1D:{orderId:C,kind:'dropoff'},O2P:{orderId:D,kind:'pickup'},O2D:{orderId:D,kind:'dropoff'}};
+const keys=Object.keys(pointMap),edges={};for(const x of keys)for(const y of keys)if(x!==y)edges[x+'|'+y]={km:.5,minutes:1};
+const evidence={bundleId:null,routeRevision:null,committedPrefix:[],lockedNext:null,lockedNextStop:null,primaryOrderId:A,candidateOrderId:D,orderIds,pointMap,edges,orders:{A:{status:'ready'},C:{status:'ready'},D:{status:'searching_rider'}},financialPolicyVersion:'stack-savings-group-weighted-v1',financialEvaluatedAt:'2026-10-18T00:00:00Z',financialOrders:{A:{currentFeeSatang:5000,lockedRiderPayoutSatang:5000,merchantReadyEstimateAt:'2026-10-18T00:00:00Z',shopCategory:'grocery'},C:{currentFeeSatang:3000,lockedRiderPayoutSatang:3000,merchantReadyEstimateAt:'2026-10-18T00:00:00Z',shopCategory:'grocery'},D:{currentFeeSatang:4000,lockedRiderPayoutSatang:null,merchantReadyEstimateAt:'2026-10-18T00:00:00Z',shopCategory:'grocery'}},financialRules:{existingGroupSavingsPercent:50,incrementalKmRateSatangPerKm:500,pickupCostSatang:200,dropoffCostSatang:200,minuteRateSatangPerMinute:100,maxDetourMeters:1500,maxDelaySeconds:600,maxPickupWaitSeconds:300}};
+const plan=planStackRoute(evidence);
+eq(plan.stops.map(s=>s.key),['O0P','O1P','O2P','O0D','O1D','O2D']);eq(plan.totalMinutes,18);
+const result=simulateStackFinancialPlan(evidence,plan);
+eq(result.eligible,true);eq(result.route.detourMeters,1000);eq(result.route.addedMinutes,6);eq(result.route.incrementalCompensationSatang,1500);
+eq(result.allocations.map(x=>[x.orderId,x.customerSavingSatang,x.proposedFeeSatang,x.riderPayoutSatang]),[['A',781,4219,5000],['C',469,2531,3000],['D',1250,2750,1500]]);
+eq(result.proposedCollectionsSatang,9500);eq(result.riderPayoutTotalSatang,9500);eq(result.fundingGapSatang,0);
+const food=structuredClone(evidence);food.financialRules.maxDelaySeconds=300;const foodResult=simulateStackFinancialPlan(food,planStackRoute(food));eq(foodResult.eligible,false);eq(foodResult.reason,'route delay exceeds policy');
+const ready=structuredClone(evidence);ready.financialOrders[D].merchantReadyEstimateAt='2026-10-18T00:20:00Z';const readyResult=simulateStackFinancialPlan(ready,planStackRoute(ready));eq(readyResult.eligible,false);eq(readyResult.reason,'merchant readiness wait exceeds policy');
+const missing=structuredClone(evidence);missing.financialOrders[D].merchantReadyEstimateAt=null;assert.throws(()=>planStackRoute(missing),/merchant readiness unavailable/);checks++;
+console.log(JSON.stringify({checks,failures:0,scope:'3-order read-only road/readiness burden, hard pickup-wait gate, quality gate, satang conservation and preserved Rider payouts'}));
