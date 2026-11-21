@@ -58,7 +58,7 @@ async function main(){
     equal(row.invalid_search_clocks,0,'valid persisted search clocks');
     equal(row.invalid_search_assignments,0,'no searching orders with assigned rider');
     equal(row.searching_live_offers_above_120,0,'no live above-cap offers on searching orders');
-    equal(row.searching_historical_offers_above_120,0,'above-cap old overdue history is separately caught');
+    equal(row.searching_historical_offers_above_120,1,'above-cap old overdue history is also counted for searching orders');
     equal(row.overdue_searching_orders,1,'one overdue order');
     equal(row.late_active_offers,1,'overdue active offer');
     equal(row.invalid_status_active_offers,1,'orphaned active offer on terminal order');
