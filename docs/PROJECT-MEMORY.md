@@ -1008,6 +1008,17 @@ Later in the same continuation, secure Merchant sign-in succeeded. The visible a
 - Scope is synthetic dispatch/locking proof; live financial terminalization, backup/restore and Production deployment remain incomplete. No Production writes or readiness-percentage certification.
 
 
+## 2026-11-20 POS tax derived-total update guard
+
+- Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. Reproduced isolated source defect: UPDATE of only pos_tax_amount=50,total_amount=150 on a 100+7 exclusive-tax fixture was accepted because the column-specific tax trigger did not fire. Existing integrity CHECK accepted the forged pair. This does not establish live client privileges or a Production exploit.
+- Extend existing tax snapshot trigger UPDATE columns to total_amount,pos_taxable_base,pos_tax_amount so the server recomputes derived tax/base/total from immutable bill snapshots and line net. Preserve existing RPC, RLS/ACL, legacy bill handling, Delivery rules and tax settings.
+- Added isolated runtime negative tests for forged exclusive total and inclusive tax split, plus base-only update; initial regression failed 150 != 107, then full tax fixture passed after correction. No Production writes or migrations applied. Exact-head CI, independent current Production schema/trigger compatibility, authorized rollout, receipt/refund/settlement acceptance remain required.
+
+
+## 2026-11-20 POS numeric special-value rejection
+
+- Continued on #1342 source after owner requested sustained bug fixing. Reproduced that PostgreSQL numeric NaN could create a synthetic POS bill even though comparison CHECKs passed; negative assertion initially failed with Missing expected rejection. This is source/isolation evidence, not a claim about live privileges or deployment.
+- Existing POS tax trigger now rejects NaN/Infinity/-Infinity in subtotal, discount and incoming total before any tax-disabled/legacy early return or arithmetic. Failed updates roll back; finite VAT calculations remain unchanged. Added actual-SQL nonfinite insert/update cases and rollback total/discount assertions. No Production DDL/DML or funds changed. Exact latest CI required; older PR CI is not certification for this addition.
 ## 2026-11-20 Dispatch financial preflight timeout alignment
 
 - Based on Integration `51f60f52a30c0e07e9cd179fad8625351c4a779e`. The read-only financial preflight hardcoded 30 minutes while dispatcher/highwater honors Admin orderTimeout. Align with finite 1–1440 minute config and 30 minute fallback; report configured_timeout_minutes and overdue_at_configured_timeout. This changes diagnostic output, not cancellation authority. Deadline comparison includes the exact boundary.
