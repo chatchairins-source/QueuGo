@@ -1,3 +1,8 @@
+## 2026-11-21 Storage restore target enforced locally
+
+- The restore drill script used upsert writes but trusted QG_RESTORE_SUPABASE_URL without checking its destination. Added strict HTTP(S) loopback-only validation before manifest reads and network-client import, rejecting Production/other remote hosts, URL credentials, nonroot paths, query and fragments. The unchanged drill local API_URL remains supported; no Production restore/deploy was run.
+- Runtime regression invokes the real entrypoint for forbidden endpoints with an intentionally missing manifest and no SDK import, requiring the local-target rejection rather than ENOENT/import/network failure. Positive helper cases cover IPv4/IPv6/localhost. Wired into the existing backup regression/npm test. This guard is not encrypted backup or actual restore proof; full drill and release evidence remain pending.
+
 ## 2026-11-21 Fused GPS guest image correction
 
 - API30 legacy GNSS transport hypothesis failed again at #1304 d4e2d173, routing44828377296. Artifact14675363253 confirms transport disabled yet GPS elapsed time still reports epoch-scale ~20777 days versus guest uptime ~2 minutes. Do not retry that configuration as a fix.
