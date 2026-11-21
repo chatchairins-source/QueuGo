@@ -1,3 +1,10 @@
+## 2026-11-21 Storage backup and restore reject path traversal
+
+- Reproduced the real backup CLI accepting a remote-object fixture photos/../../escaped.txt and writing outside its Storage root. No live data or Production credentials used. Restore used the same unchecked path composition.
+- Share strict bucket/object segment validation before normalization, reject empty/dot/parent/absolute/backslash/NUL paths, and preserve valid nested/Unicode/literal-percent names. Backup validates before download or folder recursion; restore preflights all manifest paths before creating its local SDK client or performing any restore.
+- Real CLI subprocess regressions substitute only the SDK boundary and cover invalid paths plus nested backup/restore and hash verification:72 checks pass. Existing local-only restore target19 and backup/release contracts27 also pass. This is isolated regression evidence, not an encrypted Production backup or actual restore acceptance. Credentials, main promotion, P0 deployment and physical/Play certification remain gated.
+- Play asset-pack PR1366 exact d28c4d2e passed Native, Export, actual Debug AAB split-installed offline routing and real Fused GPS on emulator, then merged into Integration54296a9b. Pending provenance PR1381 is included by ancestry and closed. New Integration HEAD requires its own CI; no signed Release AAB is claimed.
+
 ## 2026-11-21 Keep package QA independent and cache only verified SDK inputs
 
 - Combined fd243a8e Rider routing44878462078 failed before app build on Maven Central HTTP429 during the audited baseline AAR fetch. Keep official URL/version and fixed hashes, add bounded15-second backoff and a content-keyed immutable-input cache. Always rerun prepare-repository.py validation of ZIP/AAR/POM/source-built ELF on cache hits; cache saves only after that succeeds. Corrupt-cache executable regression rejects before creating a repository. No cached app or old CI acceptance reused.
