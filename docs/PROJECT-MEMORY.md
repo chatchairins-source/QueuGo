@@ -1,3 +1,9 @@
+## 2026-11-21 Native country build transport recovery
+
+- Exact Integration6e837fc9 Native44872874421 failed its country step again after canonical+IPv4 curl7. Add recovery only after both transports exhaust known transport errors; HTTP errors, write errors and checksum failures remain fatal.
+- Reuse the exact immutable full-country DATA and validator already in rider-offline-routing.yml: artifact12965729022 SHAa2a6985556e6ba26ef4509ba3605266ae6aa1d541bc6d772b076eac1f7a0e9b0, actual rendering source thailand-261029, explicit provenance/summary. Never relabel as monthly261101, reuse predecessor application code or reuse old CI acceptance. Current-source APK build, installed offline rendering and runtime gates remain required.
+- Existing real-shell transport regression now checks unavailable reference artifacts and IPv4 HTTP errors;12 checks pass, Native source496 passes, shell/YAML syntax and whitespace pass. Hosted country build still required. No Production/signing/Play write.
+
 ## 2026-11-21 Cash-helper dependent guard composition
 
 - Extended isolated fixture to relevant Production UUID/numeric types and installed captured unmodified queuego_guard_cash_payment (MD5 cd73f6eec0a50bb8fd02fa2684ed685d) and queuego_guard_cash_delivery (MD5 034a0abb8a4743ae46325d1923022126), alongside the actual order guard.
