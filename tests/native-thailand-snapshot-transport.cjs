@@ -31,13 +31,14 @@ if(!ipv4 && ['both',kind].includes(process.env.QG_FAIL_KIND)) {
 if(ipv4 && process.env.QG_FALLBACK_CODE)process.exit(Number(process.env.QG_FALLBACK_CODE));
 fs.writeFileSync(out,'synthetic transport payload');
 `,{mode:0o755});
+ fs.writeFileSync(path.join(bin,'gh'),'#!/bin/sh\nexit 73\n',{mode:0o755});
  const run=(name,kind,code,expected,expectedCalls,fallbackCode='')=>{
   const directory=path.join(root,name);fs.mkdirSync(directory);
   const log=path.join(directory,'calls.jsonl');
   const result=spawnSync('bash',['-c','set -euo pipefail\nsource_pbf="$QG_MAP_DATA_DIR/source.pbf"\nsource_md5="$QG_MAP_DATA_DIR/source.md5"\n'+block],{
    encoding:'utf8',timeout:10000,env:{...process.env,PATH:bin+path.delimiter+process.env.PATH,
     QG_MAP_DATA_DIR:directory,QG_THAILAND_PBF_URL:'https://download.geofabrik.de/asia/thailand-261101.osm.pbf',
-    QG_CURL_LOG:log,QG_FAIL_KIND:kind,QG_FAIL_CODE:String(code),QG_FALLBACK_CODE:String(fallbackCode)}});
+    RUNNER_TEMP:directory,GITHUB_ENV:path.join(directory,'github-env'),GITHUB_STEP_SUMMARY:path.join(directory,'summary'),GITHUB_REPOSITORY:'chatchairins-source/QueuGo',QG_CURL_LOG:log,QG_FAIL_KIND:kind,QG_FAIL_CODE:String(code),QG_FALLBACK_CODE:String(fallbackCode)}});
   if(result.error)throw result.error;
   assert.equal(result.status,expected,name+': '+result.stderr);
   const calls=fs.readFileSync(log,'utf8').trim().split('\n').map(JSON.parse);
@@ -51,6 +52,7 @@ fs.writeFileSync(out,'synthetic transport payload');
  run('normal','none',0,0,2);
  for(const code of [6,7,28,35,52,56])run('transport-'+code,'both',code,0,4);
  run('pbf-404','pbf',22,22,1);run('md5-404','md5',22,22,2);
- run('write-error','pbf',23,23,1);run('fallback-failure','pbf',7,28,2,28);
+ run('write-error','pbf',23,23,1);run('recovery-artifact-unavailable','pbf',7,73,2,28);
+ run('ipv4-http-failure','pbf',7,22,2,22);
 } finally {fs.rmSync(root,{recursive:true,force:true});}
 console.log(JSON.stringify({checks,failures:0,scope:'actual workflow shell transport fallback with disposable curl; not upstream download/country runtime certification'}));
