@@ -1,4 +1,5 @@
 const fs=require('fs'),assert=require('assert');
+require('./play-rider-asset-pack-release.cjs');
 const read=p=>fs.readFileSync(p,'utf8');
 let checks=0;const ok=(v,m)=>{assert.ok(v,m);checks++};
 for(const p of [

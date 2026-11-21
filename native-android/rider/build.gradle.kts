@@ -9,7 +9,14 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 }
 
+val playAssetPackAab = providers.environmentVariable("QG_RIDER_PLAY_ASSET_PACKS").orNull == "1"
+
 android {
+    // Split only the certified Play bundle into install-time asset packs.
+    // Debug/field APKs keep their original bundled nationwide offline data.
+    if (playAssetPackAab) {
+        assetPacks += listOf(":rider_country_map", ":rider_country_routing")
+    }
     namespace = "com.queuego.rider"
     compileSdk = 36
 
@@ -39,16 +46,19 @@ android {
 
 // Only Rider ships the nationwide offline archive. Customer/Merchant use online maps.
 providers.environmentVariable("QG_OFFLINE_MAP_ASSETS").orNull?.let { assetsRoot ->
+    if (!playAssetPackAab) {
     require(file("$assetsRoot/maps/thailand-shortbread.pmtiles").isFile) {
         "QG_OFFLINE_MAP_ASSETS has no nationwide Shortbread archive"
     }
     androidComponents.onVariants { variant ->
         variant.sources.assets?.addStaticSourceDirectory(assetsRoot)
     }
+    }
 }
 
 // Routing tiles are a separate, checksummed Valhalla graph; PMTiles cannot route.
 providers.environmentVariable("QG_OFFLINE_ROUTING_ASSETS").orNull?.let { assetsRoot ->
+    if (!playAssetPackAab) {
     require(file("$assetsRoot/routing/manifest.json").isFile &&
         file("$assetsRoot/routing/tiles.tar").isFile &&
         file("$assetsRoot/routing/valhalla.json").isFile) {
@@ -56,6 +66,7 @@ providers.environmentVariable("QG_OFFLINE_ROUTING_ASSETS").orNull?.let { assetsR
     }
     androidComponents.onVariants { variant ->
         variant.sources.assets?.addStaticSourceDirectory(assetsRoot)
+    }
     }
 }
 
@@ -97,6 +108,12 @@ val verifyRiderReleaseOfflineAssets = tasks.register("verifyRiderReleaseOfflineA
         val routingRoot = providers.environmentVariable("QG_OFFLINE_ROUTING_ASSETS").orNull
             ?.takeIf { it.isNotBlank() }
             ?: error("Rider release requires QG_OFFLINE_ROUTING_ASSETS")
+        if (playAssetPackAab) {
+            check(mapRoot == project.rootDir.resolve("rider_country_map/src/main/assets").absolutePath &&
+                  routingRoot == project.rootDir.resolve("rider_country_routing/src/main/assets").absolutePath) {
+                "Play Rider bundle must use the verified install-time asset pack directories"
+            }
+        }
         val required = listOf(
             file("$mapRoot/maps/thailand-shortbread.pmtiles"),
             file("$routingRoot/routing/manifest.json"),

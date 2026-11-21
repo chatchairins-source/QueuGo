@@ -23,7 +23,10 @@ deadline = time.monotonic() + 1800
 while True:
     runs = json.loads(gh(f"repos/{repo}/actions/runs?head_sha={head}&per_page=100"))["workflow_runs"]
     matching = [r for r in runs if r["name"] == "Rider in-process Thailand routing" and r["head_sha"] == head]
-    successful = [r for r in matching if r["conclusion"] == "success"]
+    required_run = os.environ.get("QG_REQUIRED_OFFLINE_RUN_ID", "").strip()
+assert not required_run or (required_run.isascii() and required_run.isdecimal() and int(required_run)>0), "Invalid certification-linked Rider routing run id"
+successful = [r for r in matching if r["conclusion"] == "success"
+              and (not required_run or str(r["id"]) == required_run)]
     if successful:
         run = max(successful, key=lambda r: r["id"])
         break
