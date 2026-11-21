@@ -47,3 +47,10 @@ console.log('QueueGo Play Rider nationwide asset packs: SOURCE CONTRACT PASS; ac
 
 const payloadRuntime=require('child_process').spawnSync('python3',['tests/play-rider-asset-pack-runtime.py'],{encoding:'utf8',timeout:15000});
 assert.equal(payloadRuntime.status,0,'Actual Play payload verifier regression: '+payloadRuntime.stdout+payloadRuntime.stderr);
+
+const qa=get('.github/workflows/rider-android-authenticated-review.yml');
+assert.ok(!qa.includes('--local-testing'),'Install-time-only QA must exercise real install-time splits without an external-storage download simulation');
+assert.ok(qa.includes('--ks="$QG_QA_DEBUG_KEYSTORE"')&&qa.includes('--ks-key-alias="$QG_QA_DEBUG_ALIAS"'),'Actual Gradle-reported debug identity must sign split APKs');
+const runtime=get('native-android/qa/run-rider-offline-routing.py');
+assert.ok(runtime.includes("'rider_country_map', 'rider_country_routing'"),'Both actual installed country splits remain mandatory');
+assert.ok(runtime.includes("'OK (3 tests)' in text")&&runtime.includes('for attempt in (1, 2):'),'Real offline tests must pass in both cold processes');

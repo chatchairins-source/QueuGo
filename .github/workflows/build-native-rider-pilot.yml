@@ -204,6 +204,9 @@ jobs:
           retention-days: 14
 
   native-pilot:
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-latest
     timeout-minutes: 75
     steps:
@@ -325,9 +328,12 @@ jobs:
         run: python3 tests/test-play-certified-export.py -v
       - name: Verify fail-closed Native pilot APK artifact publication
         run: node tests/native-apk-artifact-policy.cjs
+      - name: Verify bounded country transport and fail-closed data recovery
+        run: node tests/native-thailand-snapshot-transport.cjs
       - name: Build and bundle pinned nationwide offline map
-        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' || startsWith(github.ref_name, 'work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref_name, 'worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') }}
+        if: ${{ inputs.bundle_country || startsWith(github.ref_name, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-rider-nav-unified-offline-') || startsWith(github.head_ref, 'work-native-express-offline-map-') || github.head_ref == 'fix/ci-country-monthly-snapshot-20261119' || startsWith(github.head_ref, 'fix/release-country-data-') || startsWith(github.ref_name, 'work-native-reconcile-main-') || startsWith(github.head_ref, 'work-native-reconcile-main-') || startsWith(github.ref_name, 'worker4-qa-ci-release-') || startsWith(github.head_ref, 'worker4-qa-ci-release-') }}
         env:
+          GH_TOKEN: ${{ github.token }}
           QG_MAP_DATA_DIR: ${{ runner.temp }}/queuego-country-map
           QG_THAILAND_PBF_URL: https://download.geofabrik.de/asia/thailand-261101.osm.pbf
           QG_PLANETILER_DOWNLOAD: '0'
@@ -338,7 +344,8 @@ jobs:
           source_pbf="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf"
           source_md5="$QG_MAP_DATA_DIR/thailand-261101.osm.pbf.md5"
           # Prefer the canonical HTTPS endpoint; retry IPv4 only for transport failures.
-          # Never substitute a different snapshot or bypass the official MD5 check.
+          # Keep the monthly MD5 check. Only exhausted transport can recover the
+          # independently SHA-pinned full-country DATA with its actual source date.
           # Transport errors (DNS/connect/timeout/TLS/empty/recv) may retry via
           # IPv4. HTTP 404 exits 22 and must fail hard, never spin on a missing
           # monthly snapshot or sidestep its official MD5 verification.
@@ -349,7 +356,18 @@ jobs:
             case "$fetch_rc" in
               6|7|28|35|52|56)
                 rm -f "$source_pbf"
-                curl --ipv4 --fail --location --retry 6 --retry-delay 5 --retry-connrefused --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"
+                if curl --ipv4 --fail --location --retry 6 --retry-delay 5 --retry-connrefused --connect-timeout 30 --max-time 1200 "$QG_THAILAND_PBF_URL" -o "$source_pbf"; then
+                  :
+                else
+                  recovery_rc=$?
+                  case "$recovery_rc" in
+                    6|7|28|35|52|56)
+                      bash native-android/qa/recover-native-country-data.sh
+                      exit 0
+                      ;;
+                    *) echo "::error::IPv4 fetch HTTP/nontransport failure; refusing data recovery"; exit "$recovery_rc" ;;
+                  esac
+                fi
                 ;;
               *) echo "::error::Thailand snapshot HTTP/nontransport failure (curl $fetch_rc); no fallback"; exit "$fetch_rc" ;;
             esac
@@ -361,7 +379,18 @@ jobs:
             case "$fetch_rc" in
               6|7|28|35|52|56)
                 rm -f "$source_md5"
-                curl --ipv4 --fail --location --retry 6 --retry-delay 5 --retry-connrefused --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"
+                if curl --ipv4 --fail --location --retry 6 --retry-delay 5 --retry-connrefused --connect-timeout 30 --max-time 120 "$QG_THAILAND_PBF_URL.md5" -o "$source_md5"; then
+                  :
+                else
+                  recovery_rc=$?
+                  case "$recovery_rc" in
+                    6|7|28|35|52|56)
+                      bash native-android/qa/recover-native-country-data.sh
+                      exit 0
+                      ;;
+                    *) echo "::error::IPv4 fetch HTTP/nontransport failure; refusing data recovery"; exit "$recovery_rc" ;;
+                  esac
+                fi
                 ;;
               *) echo "::error::Thailand MD5 sidecar HTTP/nontransport failure (curl $fetch_rc); no fallback"; exit "$fetch_rc" ;;
             esac
@@ -413,6 +442,8 @@ jobs:
             echo "WebView is forbidden in QueueGo native apps"
             exit 1
           fi
+      - name: Verify strict country asset and recovery-provenance regressions
+        run: python3 tests/test-bundled-thailand-apks.py
       - name: Verify installed Thailand APK assets
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
         run: |

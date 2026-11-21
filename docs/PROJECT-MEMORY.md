@@ -1,3 +1,15 @@
+## 2026-11-21 One combined Play release-source candidate
+
+- Combined existing PR1366 with reviewed Integration28a64aaa, strict country-provenance candidate0605222d (#1381) and actual AAB runtime-manifest candidate5371024e (#1375), retaining their Git parents. Only memory conflicts required resolution; keep all records and current Backend/Customer changes. Child PRs remain open until this composition passes and is integrated.
+- Actual1f7df050 QA136759914159 built/validated all3 Debug AABs, generated Gradle-identity-signed splits and passed all split16KB checks. Installation then failed because bundletool --local-testing tried writing the scoped-storage on-demand simulation directory. These packs are install-time only. Generate normal split APKs and require BOTH real installed asset splits plus unchanged offline route/reroute/interrupted-copy/two-cold-process tests; never grant external-storage access or fabricate Play delivery success.
+- Corrected QA debug signing-report path worked on runner: actual store was under .config/.android. Fresh preflight06:55UTC still reports missing QG_SUPABASE_SERVICE_ROLE_KEY/QG_SUPABASE_DB_URL/QG_BACKUP_PASSPHRASE, while Firebase and release-keystore credentials validate. Signed production AAB and physical/Play certification remain blocked.
+- Customer API35 dependency-only first attempt failed; one targeted job rerun on unchanged Integration28a64aaa passed, completing API26/30/33/35. Original failure remains recorded. No Production write or main merge.
+
+## 2026-11-21 Asset-pack candidate local Integration reconciliation
+
+- Forward merge prepared against validated Integration28a64aaa, preserving current Customer map, Rider search-clock guards and verified country-data recovery. Only PROJECT-MEMORY conflicted; retain both records. No backend code reversion or reset/force push.
+- Remote PR1366 HEAD remains1f7df050 while its actual split QA runs; do not publish this reconciliation until that diagnostic run has completed. Export failure on1f7 is the already-fixed old Geofabrik transport path, so the reconciliation carries its existing fix instead of inventing another copy. No Production writes or signed-release claim.
+
 ## 2026-11-21 Debug AAB build and real signing-store correction
 
 - Exact eb04b804 actual QA job136752938648 built all three Debug AABs, verified the Rider country pack payload hashes and passed pinned bundletool structural validation for all three. It failed BEFORE split installation because the newly added QA step assumed HOME/.android/debug.keystore, absent on this runner. No signed production release or split-runtime success is claimed.
@@ -11,6 +23,28 @@
 - Local Play readiness169 + Python10, certified workflow58 and certification72 checks pass; Python/workflow/shell syntax and diff whitespace pass. Hosted job and real installed splits remain unproven until exact-head CI completes.
 - Fresh existing secret preflight rerun42630768316 on 2026-11-21 passed Firebase and upload-keystore/password/alias validation. Missing secret names: QG_SUPABASE_SERVICE_ROLE_KEY, QG_SUPABASE_DB_URL, QG_BACKUP_PASSPHRASE. No credential values read or exposed. This preflight is credential presence/validation, not current-source certification.
 - Production read-only05:56:41UTC:392 migrations, offer guard and timeout terminalizer absent, private release evidence bucket has0 ZIPs. No Production write. Customer map PR1369 merged into Integration6e837fc9 after API26/30/33/35 runtime success at f42774fe; alternate test-only PR1368 closed as superseded. Main remains gated.
+
+## 2026-11-21 Recovered-country provenance packaging acceptance
+
+- Exact Integration28a64aaa Native44875886175 job136760359743 rejected the real Rider APK because recovery adds thailand-shortbread-recovery.json but verify-bundled-thailand-apks.py allowed only2 map entries. Source country PR1373's positive run did not expose this recovered-data branch incompatibility.
+- Reproduced the rejection with the actual CLI and isolated ZIP fixtures. Accept only the one known provenance filename with exact pinned reference run/artifact/ZIP SHA, data_only=true, matching actual rendering source URL and a valid reference APK digest. Keep all unknown/duplicate-file, map hash/length/compression, Customer/Merchant online-only and exact DEX source guards. Actual current APK rendering/install gates remain unchanged.
+- Added executable CLI positive/negative cases and wired into Native before actual APK inspection. Fixtures are not installable APK, runtime or signed-release evidence. Hosted exact-head Native and installed-country gates remain mandatory. No Production or signing changes.
+
+## 2026-11-21 Release verifier forward-reconciled with validated country recovery
+
+- Forward merge Integration28a64aaa into the AAB manifest candidate, retaining both parents and both memory records. Country recovery PR1373 passed exact Native/Installed Country/Export before Integration merge. Old transport PR1329 closed only after confirming its original commits are already ancestors and debug-only fallback publication is superseded. Current combined HEAD needs new CI; no prior result is relabelled.
+
+## 2026-11-21 Verify actual AAB runtime manifest independently
+
+- Post-build verifier checked APK non-debuggability but only AAB package/version/page alignment/signature. It now also parses actual bundletool-dumped AAB XML, requires exactly one application, rejects debuggable true/unknown flags and enforces numeric targetSdk>=36 independently of APK/source assertions. Missing android:debuggable correctly defaults false.
+- Isolated XML regression exercises valid default/false/0, true/1/unknown/reference flags, missing/old/codename target, higher numeric target and invalid/missing/duplicate manifest structures.4 test methods pass; existing workflow58, certification72 and Play169+Python10 pass. These fixtures are NOT signed AAB or physical acceptance.
+- No certified build has run; signing/Firebase preflight passed but backend backup credentials and physical/Play evidence remain missing. Do not weaken any existing main/certification gate.
+
+## 2026-11-21 Native country build transport recovery
+
+- Exact Integration6e837fc9 Native44872874421 failed its country step again after canonical+IPv4 curl7. Add recovery only after both transports exhaust known transport errors; HTTP errors, write errors and checksum failures remain fatal.
+- Reuse the exact immutable full-country DATA and validator already in rider-offline-routing.yml: artifact12965729022 SHAa2a6985556e6ba26ef4509ba3605266ae6aa1d541bc6d772b076eac1f7a0e9b0, actual rendering source thailand-261029, explicit provenance/summary. Never relabel as monthly261101, reuse predecessor application code or reuse old CI acceptance. Current-source APK build, installed offline rendering and runtime gates remain required.
+- Existing real-shell transport regression now checks unavailable reference artifacts and IPv4 HTTP errors;12 checks pass, Native source496 passes, shell/YAML syntax and whitespace pass. Hosted country build still required. No Production/signing/Play write.
 
 ## 2026-11-21 Cash-helper dependent guard composition
 

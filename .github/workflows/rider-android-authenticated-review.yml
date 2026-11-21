@@ -394,7 +394,9 @@ jobs:
             java -jar "$jar" validate --bundle="$bundle"
             sha256sum "$bundle" >> artifacts/play-pack-runtime/debug-aab.sha256
           done
-          java -jar "$jar" build-apks --bundle=native-android/rider/build/outputs/bundle/debug/rider-debug.aab --output="$RUNNER_TEMP/rider-play-debug.apks" --local-testing --ks="$QG_QA_DEBUG_KEYSTORE" --ks-key-alias="$QG_QA_DEBUG_ALIAS" --ks-pass=pass:android --key-pass=pass:android
+          # Install-time packs ship as real APK splits. This app does not use
+          # fast-follow/on-demand delivery or its external-storage simulation.
+          java -jar "$jar" build-apks --bundle=native-android/rider/build/outputs/bundle/debug/rider-debug.aab --output="$RUNNER_TEMP/rider-play-debug.apks" --ks="$QG_QA_DEBUG_KEYSTORE" --ks-key-alias="$QG_QA_DEBUG_ALIAS" --ks-pass=pass:android --key-pass=pass:android
           python3 - <<'PYCODE'
           import os, pathlib, subprocess, zipfile
           root = pathlib.Path(os.environ['RUNNER_TEMP']) / 'play-split-verification'

@@ -16,7 +16,7 @@ async function main() {
     'CREATE ROLE authenticated;',
     'CREATE SCHEMA qg_private;',
     'CREATE TABLE public.system_settings(key text PRIMARY KEY, value jsonb NOT NULL);',
-    'CREATE TABLE public.orders(id uuid PRIMARY KEY, status text NOT NULL, rider_id uuid, rider_search_started_at timestamptz, merchant_accepted_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());',
+    'CREATE TABLE public.orders(id uuid PRIMARY KEY, status text NOT NULL, rider_id uuid, rider_search_started_at timestamptz, rider_assigned_at timestamptz, merchant_accepted_at timestamptz, created_at timestamptz NOT NULL DEFAULT now());',
     'CREATE TABLE public.qg_rider_order_offers(order_id uuid PRIMARY KEY, rider_id uuid NOT NULL, offered_at timestamptz NOT NULL, expires_at timestamptz NOT NULL, attempt integer NOT NULL, CONSTRAINT expires_after_offer CHECK(expires_at>offered_at));',
     'CREATE TABLE public.notifications(reference_id uuid NOT NULL);',
     "INSERT INTO public.system_settings(key,value) VALUES('app','{\"orderTimeout\":30}'::jsonb);",
@@ -71,7 +71,10 @@ async function main() {
   await seed(5, 'searching_rider', '20000000-0000-4000-8000-000000000002', '1 minute');
   await equal(await offer(5), false, 'already assigned rider cannot receive new offer');
   await seedFallback(6, '2 minutes', '3 hours');
-  await equal(await offer(6), true, 'older orders without search start use merchant acceptance time');
+  await equal(await offer(6), false, 'missing search start must fail closed even with fresh merchant acceptance');
+  await equal(await counts(6), [0, 0], 'missing clock emits no Rider offer or notification');
+  await db.query("UPDATE public.orders SET rider_search_started_at=now()-interval '1 minute' WHERE id=$1",[id(6)]);
+  await equal(await offer(6), true, 'repairing persisted search clock restores ordinary offers');
 
   await db.exec("UPDATE public.system_settings SET value='{\"orderTimeout\":1}'::jsonb WHERE key='app'");
   await seed(7, 'searching_rider', null, '2 minutes');
@@ -88,7 +91,19 @@ async function main() {
   await equal(await offer(8), false, 'missing setting defaults to bounded timeout');
 
   await db.exec("INSERT INTO public.orders(id,status,rider_search_started_at,created_at) VALUES('" + id(9) + "','searching_rider',NULL,now()-interval '1 hour')");
-  await equal(await offer(9), false, 'created timestamp is a finite fallback when search start missing');
+  await equal(await offer(9), false, 'missing search start may not fall back to created timestamp');
+  await db.exec("INSERT INTO public.orders(id,status,created_at) VALUES('" + id(16) + "','searching_rider',now()-interval '1 minute')");
+  await equal(await offer(16), false, 'recently created order with NULL search clock must fail closed');
+  await equal(await counts(16), [0,0], 'NULL search clock creates no targeted notification');
+  await seed(17,'searching_rider',null,'2 minutes','2 minutes','1 minute');
+  await equal(await offer(17), false, 'search clock before order creation must fail closed');
+  await seed(18,'searching_rider',null,'2 minutes','1 minute','3 minutes');
+  await equal(await offer(18), false, 'search clock preceding merchant acceptance must fail closed');
+  await seed(19,'searching_rider',null,'1 minute');
+  await db.query('UPDATE public.orders SET rider_assigned_at=now() WHERE id=$1',[id(19)]);
+  await equal(await offer(19), false, 'stale assigned timestamp prohibits a new offer even with NULL rider id');
+  await seed(20,'searching_rider',null,'1 minute','2 minutes','3 minutes');
+  await equal(await offer(20), true, 'valid merchant-before-search sequence still offers normally');
   await db.query('UPDATE public.orders SET status=$2 WHERE id=$1', [id(2),'cancelled']);
   await db.query('DELETE FROM public.qg_rider_order_offers WHERE order_id=$1', [id(2)]);
   await equal(await offer(2), false, 'concurrent terminal state prevents cron revival');
