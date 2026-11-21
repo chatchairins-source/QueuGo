@@ -185,6 +185,9 @@ SELECT public.qg_test_seed_timeout('00000000-0000-4000-8000-000000001401',31);
 -- isolated test transaction. ROLLBACK restores original trigger state.
 BEGIN;
 ALTER TABLE public.orders DISABLE TRIGGER zz_queuego_cash_order_guard;
+-- Isolate v22 as the only status-transition guard: ordinary cancellation's
+-- AFTER trigger would otherwise attempt a cash ledger write and fail first.
+ALTER TABLE public.orders DISABLE TRIGGER cash_cancel;
 DO $v22_independent$
 BEGIN
  BEGIN
