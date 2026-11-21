@@ -28,7 +28,7 @@ const roadTestPublish = nativePilotWorkflow.match(/^  publish-rider-road-test:\n
 ok(!!roadTestPublish && !roadTestPublish[1].includes(rideReleaseCandidateBranch),
    'Native launch candidate must not publish an APK automatically before real-device release acceptance');
 
-ok(nativePilotWorkflow.includes('group: queuego-native-${{ github.ref }}')&&nativePilotWorkflow.includes('cancel-in-progress: false')&&mapEngineWorkflow.includes('group: queuego-map-engine-${{ github.ref }}')&&mapEngineWorkflow.includes('cancel-in-progress: false'),'Native Pilot and Map Engine exact-head jobs must finish when the successor advances, while newer work waits');
+ok(nativePilotWorkflow.includes('group: queuego-native-${{ github.ref }}')&&nativePilotWorkflow.includes("cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'push' && (github.ref == 'refs/heads/work-native-reconcile-main-20261114' || github.ref == 'refs/heads/main')) }}")&&mapEngineWorkflow.includes('group: queuego-map-engine-${{ github.ref }}')&&mapEngineWorkflow.includes('cancel-in-progress: false'),'Native Pilot supersedes only its own PR or Integration/main pushes; Map Engine keeps serialized exact-head jobs');
 
 
 const parallelRoleStart=nativePilotWorkflow.indexOf('  parallel-role-smoke:\n');
