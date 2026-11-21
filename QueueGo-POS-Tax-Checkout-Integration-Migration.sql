@@ -36,6 +36,15 @@ declare v_settings public.pos_tax_settings%rowtype; v_rate numeric; v_base numer
 begin
   if new.sales_channel is distinct from 'POS' then return new; end if;
 
+  -- PostgreSQL numeric NaN passes ordinary >= 0 comparisons. Reject special
+  -- numeric values before disabled-tax/legacy returns and before arithmetic.
+  if new.subtotal::text in ('NaN','Infinity','-Infinity')
+     or new.discount_amount::text in ('NaN','Infinity','-Infinity')
+     or new.total_amount::text in ('NaN','Infinity','-Infinity') then
+    raise exception 'finite POS bill amounts required';
+  end if;
+
+
   -- Tax identity/rate come from the settings at bill creation, not from the
   -- cashier's later edits. Approved line changes only recalculate amounts.
   if tg_op = 'UPDATE' and (
@@ -84,7 +93,9 @@ end $$;
 
 drop trigger if exists pos_apply_tax_snapshot on public.orders;
 create trigger pos_apply_tax_snapshot
-before insert or update of subtotal,discount_amount,sales_channel,pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot
+-- Recalculate when derived columns are targeted too: an UPDATE OF trigger
+-- otherwise misses a forged tax split/total that leaves line inputs untouched.
+before insert or update of subtotal,discount_amount,sales_channel,total_amount,pos_taxable_base,pos_tax_amount,pos_tax_enabled_snapshot,pos_tax_rate_snapshot,pos_prices_include_tax_snapshot,pos_tax_registration_snapshot,pos_tax_branch_snapshot,pos_tax_address_snapshot
 on public.orders for each row execute function public.pos_apply_tax_snapshot();
 
 -- POS's original integrity check assumed every bill total excluded tax.

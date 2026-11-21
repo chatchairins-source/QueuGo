@@ -5,11 +5,20 @@ BEGIN READ ONLY;
 -- Keep the entire snapshot consistent while concurrent dispatch is running.
 SET TRANSACTION ISOLATION LEVEL REPEATABLE READ;
 SET LOCAL statement_timeout = '10s';
-WITH overdue AS (
+WITH timeout_config AS (
+ SELECT COALESCE(
+   (SELECT CASE
+     WHEN (value->>'orderTimeout') ~ '^[0-9]{1,4}$'
+      AND (value->>'orderTimeout')::integer BETWEEN 1 AND 1440
+     THEN (value->>'orderTimeout')::integer ELSE NULL
+    END FROM public.system_settings WHERE key='app'), 30
+ ) AS timeout_minutes
+), overdue AS (
  SELECT o.id, o.market_order_id, o.status, o.payment_status, o.payment_method, o.paid_at, o.cancelled_at, o.rider_assigned_at,
-        o.merchant_accepted_at, o.rider_search_started_at, o.created_at,
+        o.merchant_accepted_at, o.rider_search_started_at, o.created_at, c.timeout_minutes,
         COALESCE(o.rider_search_started_at,o.merchant_accepted_at,o.created_at) AS search_start
  FROM public.orders o
+ CROSS JOIN timeout_config c
  WHERE o.status='searching_rider' AND o.rider_id IS NULL
 ), facts AS (
  SELECT o.*,
@@ -28,8 +37,9 @@ WITH overdue AS (
         (SELECT count(*) FROM public.orders sibling WHERE sibling.market_order_id=o.market_order_id AND sibling.id<>o.id AND sibling.status IS DISTINCT FROM 'cancelled') AS active_market_siblings
  FROM overdue o
 )
-SELECT count(*) AS searching_orders,
-       count(*) FILTER (WHERE search_start < now()-interval '30 minutes') AS overdue_at_30m,
+SELECT (SELECT timeout_minutes FROM timeout_config) AS configured_timeout_minutes,
+       count(*) AS searching_orders,
+       count(*) FILTER (WHERE now() >= search_start + make_interval(mins => timeout_minutes)) AS overdue_at_configured_timeout,
        count(*) FILTER (WHERE search_start IS NULL) AS unknown_search_start,
        count(*) FILTER (WHERE search_start > now()) AS future_search_start,
        count(*) FILTER (WHERE cash_lock_exists) AS with_cash_lock,
@@ -50,8 +60,8 @@ SELECT count(*) AS searching_orders,
        count(*) FILTER (WHERE cancelled_at IS NOT NULL) AS contradictory_cancelled_timestamp,
        count(*) FILTER (WHERE market_order_id IS NOT NULL) AS market_group_needs_review,
        count(*) FILTER (WHERE live_offer_row_exists) AS with_offer_row,
-       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND search_start IS NOT NULL AND search_start <= now() AND payment_status='unpaid' AND payment_method IS NOT NULL AND btrim(payment_method)<>'' AND paid_at IS NULL AND rider_assigned_at IS NULL AND cancelled_at IS NULL AND NOT cash_lock_exists AND NOT live_offer_row_exists AND NOT payment_ledger_exists AND NOT merchant_cash_receipt_exists AND NOT rider_cash_advance_exists AND NOT rider_cash_refund_exists AND NOT grocery_reservation_exists AND NOT pos_reservation_exists AND active_market_siblings=0 AND market_order_id IS NULL) AS financial_preflight_only_candidates,
-       count(*) FILTER (WHERE search_start < now()-interval '30 minutes' AND (cash_lock_exists OR payment_ledger_exists OR merchant_cash_receipt_exists OR rider_cash_advance_exists OR rider_cash_refund_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR payment_method IS NULL OR btrim(payment_method) = '' OR paid_at IS NOT NULL OR rider_assigned_at IS NOT NULL OR cancelled_at IS NOT NULL OR live_offer_row_exists OR active_market_siblings>0 OR market_order_id IS NOT NULL)) AS overdue_blocked_for_manual_review,
+       count(*) FILTER (WHERE now() >= search_start + make_interval(mins => timeout_minutes) AND search_start IS NOT NULL AND search_start <= now() AND payment_status='unpaid' AND payment_method IS NOT NULL AND btrim(payment_method)<>'' AND paid_at IS NULL AND rider_assigned_at IS NULL AND cancelled_at IS NULL AND NOT cash_lock_exists AND NOT live_offer_row_exists AND NOT payment_ledger_exists AND NOT merchant_cash_receipt_exists AND NOT rider_cash_advance_exists AND NOT rider_cash_refund_exists AND NOT grocery_reservation_exists AND NOT pos_reservation_exists AND active_market_siblings=0 AND market_order_id IS NULL) AS financial_preflight_only_candidates,
+       count(*) FILTER (WHERE now() >= search_start + make_interval(mins => timeout_minutes) AND (cash_lock_exists OR payment_ledger_exists OR merchant_cash_receipt_exists OR rider_cash_advance_exists OR rider_cash_refund_exists OR grocery_reservation_exists OR pos_reservation_exists OR payment_status IS DISTINCT FROM 'unpaid' OR payment_method IS NULL OR btrim(payment_method) = '' OR paid_at IS NOT NULL OR rider_assigned_at IS NOT NULL OR cancelled_at IS NOT NULL OR live_offer_row_exists OR active_market_siblings>0 OR market_order_id IS NOT NULL)) AS overdue_blocked_for_manual_review,
        coalesce(max(offer_history_count),0) AS max_offer_history,
        count(*) FILTER (WHERE active_market_siblings>0) AS with_active_siblings
 FROM facts;

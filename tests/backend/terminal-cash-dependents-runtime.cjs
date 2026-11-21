@@ -19,7 +19,7 @@ async function main() {
  const equal=(a,b)=>{assert.equal(a,b); checks++;};
  try {
   await db.exec(`CREATE ROLE service_role;
-   CREATE TABLE orders(id integer PRIMARY KEY,status text,rider_id integer,rider_assigned_at timestamptz,market_order_id integer,paid_at timestamptz,total_amount numeric);
+   CREATE TABLE orders(id integer PRIMARY KEY,status text,rider_id uuid,rider_assigned_at timestamptz,market_order_id integer,paid_at timestamptz,total_amount numeric);
    CREATE TABLE payments(order_id integer REFERENCES orders(id),status text,payment_method text,paid_at timestamptz,transaction_reference text,amount numeric,updated_at timestamptz);
    CREATE TABLE deliveries(order_id integer REFERENCES orders(id),status text,updated_at timestamptz);
    CREATE TABLE queuego_cash_order_locks(order_id integer PRIMARY KEY);
@@ -83,7 +83,7 @@ async function main() {
    n=>db.query("UPDATE payments SET amount='NaN'::numeric WHERE order_id=$1",[n]),
    n=>db.query('DELETE FROM payments WHERE order_id=$1',[n]),
    n=>db.query("INSERT INTO payments VALUES($1,'pending','cash',NULL,NULL,100,NULL)",[n]),
-   n=>db.query('UPDATE orders SET rider_id=5 WHERE id=$1',[n]),
+   n=>db.query("UPDATE orders SET rider_id='00000000-0000-4000-8000-000000000005'::uuid WHERE id=$1",[n]),
    n=>db.query('UPDATE orders SET rider_assigned_at=now() WHERE id=$1',[n]),
    n=>db.query('UPDATE orders SET market_order_id=9 WHERE id=$1',[n]),
    n=>db.query('UPDATE orders SET paid_at=now() WHERE id=$1',[n]),
@@ -147,6 +147,37 @@ async function main() {
     CREATE TRIGGER zzz_failure AFTER UPDATE OF status ON orders FOR EACH ROW EXECUTE FUNCTION fail_terminal();`);
   const atomic=await seed();await assert.rejects(transition(atomic),/fixture downstream failure/);checks++;
   equal(await status(atomic,'orders'),'searching_rider');equal(await status(atomic,'payments'),'pending');equal(await status(atomic,'deliveries'),'pending');
+  // Add the actual current Production BEFORE guard, rather than certifying the
+  // helper on a schema where every caller can transition orders directly.
+  await db.exec('DROP TRIGGER zzz_failure ON orders;');
+  const actualGuard=fs.readFileSync('tests/fixtures/cash-order-guard-prod-snapshot-20261121.sql','utf8');
+  const existing=new Set((await db.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='orders'")).rows.map(row=>row.column_name));
+  const guardFields=[...new Set([...actualGuard.matchAll(/\b(?:old|new)\.([a-z_][a-z0-9_]*)/gi)].map(match=>match[1].toLowerCase()))];
+  const missing=guardFields.filter(name=>!existing.has(name));
+  if(missing.length) await db.exec('ALTER TABLE public.orders '+missing.map(name=>'ADD COLUMN '+name+' text').join(','));
+  // Actor lookup is an explicit fixture; this does not certify live JWT/RLS.
+  await db.exec(`CREATE FUNCTION public.get_my_role() RETURNS text LANGUAGE sql AS $$ SELECT nullif(current_setting('qg.test_actor_role',true),'') $$;
+    CREATE FUNCTION public.get_my_user_id() RETURNS uuid LANGUAGE sql AS $$ SELECT NULL::uuid $$;
+    CREATE TABLE public.rider_profiles(id uuid,user_id uuid);`);
+  await db.exec(actualGuard);
+  await db.exec('CREATE TRIGGER zz_queuego_cash_order_guard BEFORE UPDATE ON public.orders FOR EACH ROW EXECUTE FUNCTION public.queuego_guard_cash_order();');
+  for(const actor of ['', 'customer', 'shop', 'rider', 'service_role']) {
+   await db.query("SELECT set_config('qg.test_actor_role',$1,false)",[actor]);
+   const n=await seed();
+   await assert.rejects(transition(n),/forbidden|cannot change|invalid .*transition/);checks++;
+   equal(await status(n,'orders'),'searching_rider');
+   equal(await status(n,'payments'),'pending');equal(await status(n,'deliveries'),'pending');
+  }
+  await db.query("SELECT set_config('qg.test_actor_role','customer',false)");
+  const legacyCancel=await seed();await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[legacyCancel]);
+  equal(await status(legacyCancel,'payments'),'cancelled');
+  await db.query("SELECT set_config('qg.test_actor_role','admin',false)");
+  const adminCase=await seed();await transition(adminCase);
+  equal(await status(adminCase,'orders'),'no_rider_available');equal(await status(adminCase,'payments'),'cancelled');
+  const captured=await seed();await db.query("UPDATE payments SET status='paid',paid_at=now() WHERE order_id=$1",[captured]);
+  await assert.rejects(transition(captured),/financial lifecycle review/);checks++;
+  equal(await status(captured,'orders'),'searching_rider');equal(await status(captured,'payments'),'paid');
+
  } finally {await db.close();}
  console.log(JSON.stringify({checks,failures:0,engine:testUrl?'real PostgreSQL':'PGlite',scope:'review-only cash dependent helper, actual captured baseline + disposable synthetic rows; NOT timeout scheduler or Production certification'}));
 }
