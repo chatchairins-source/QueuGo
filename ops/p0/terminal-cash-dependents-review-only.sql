@@ -17,7 +17,7 @@ CREATE OR REPLACE FUNCTION public.queuego_cancel_cash_dependents()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public', 'pg_temp'
+SET search_path TO ''
 AS $function$
 BEGIN
   IF OLD.status IS NOT DISTINCT FROM NEW.status
