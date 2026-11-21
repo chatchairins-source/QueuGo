@@ -1,7 +1,18 @@
+## 2026-11-21 Rider Fused GPS integrated after exact-source gates
+
+- PR #1304 merged as c43e068b after fe41449f passed Native Pilot44844975972, actual offline routing/cold restart/rendering/ANGLE/real Fused44844976051, country APK export44844976471 and authenticated Rider/Merchant review + background FCM44844975993. API33 guest avoids the reproduced API30 GNSS epoch clock bug; application timestamp/freshness/accuracy gates remain intact. Physical road testing/API30 Fused/signed Play certification are still pending. No Production deployment.
+- Financial preflight branch forward-reconciled with c43e068b and retains both GPS and POS tax changes. Final timestamp truth-table + actual-query tests require fresh hosted results on its final SHA.
+
 ## 2026-11-21 Actual rider-search preflight timestamps reconciled
 
 - Forward-reconciled Worker backend #1347/#1348 with Integration bfa3265a, retaining the merged POS tax fixes. The read-only financial preflight now requires an actual sane rider_search_started_at, not merely a merchant/order fallback; missing creation/search timestamps and invalid chronological ordering remain blocked. Repaired the isolated fixture to include a valid created_at and distinguish reporting fallback from actual search authority.
-- Actual SQL regression covers missing/future/inconsistent search start and missing creation time, with recovery and unchanged financial blockers/read-only enforcement. Added the same actual-query suite to disposable PostgreSQL17.6; hosted exact-head success is required, not inferred from PGlite. This is diagnostic read-only SQL, not a timeout entrypoint or permission to mutate Production. #1268 remains open and backup/restore/approved rollout gates remain.
+- Exact 21beb17a hosted run44847893007 passed actual-query PGlite63 + PostgreSQL63. The final test version also executes the Worker seven-case timestamp SQL truth table on each database engine (64 checks expected); final hosted/Native results remain required. Actual SQL regression covers missing/future/inconsistent search start and missing creation time, with recovery and unchanged financial blockers/read-only enforcement. Added the same actual-query suite to disposable PostgreSQL17.6; hosted exact-head success is required, not inferred from PGlite. This is diagnostic read-only SQL, not a timeout entrypoint or permission to mutate Production. #1268 remains open and backup/restore/approved rollout gates remain.
+## 2026-11-21 Fused GPS guest image correction
+
+- API30 legacy GNSS transport hypothesis failed again at #1304 d4e2d173, routing44828377296. Artifact14675363253 confirms transport disabled yet GPS elapsed time still reports epoch-scale ~20777 days versus guest uptime ~2 minutes. Do not retry that configuration as a fix.
+- Primary AOSP evidence: https://android.googlesource.com/device/generic/goldfish/+/33a10687b382110682cf65c0cdb375df954e5227/gnss/util.cpp uses system_clock time for GNSS elapsed timestamp, matching observed clock-domain error; Android Location API requires elapsedRealtimeNanos since boot. Application monotonic freshness/accuracy/jump guards remain unchanged.
+- Pin real-Fused QA guest to API33 Google APIs; keep exact offline-tested APK, two fresh regional boots, real Fused callback, false debug-store injection, full tiles and lifecycle assertions. Use default GNSS transport; retain privacy-safe DEBUG rejection evidence. Location switch preflight now fails closed if API33 cmd verification fails after bounded transport recovery; never treat an old settings field as success.
+- API30 failure remains recorded and is NOT relabeled passed by an API33 run. This does not certify API30 physical GPS, field roads or Play readiness. Exact latest hosted emulator result required; local13 Fused/5 SDK regression and Python syntax pass only.
 
 ## 2026-11-20 Reproduced Customer Android11 SurfaceView native crash
 

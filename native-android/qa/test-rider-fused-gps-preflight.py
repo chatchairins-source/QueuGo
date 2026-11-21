@@ -61,28 +61,21 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'master Location switch not verified'):
             extracted_preflight(fake_adb)()
         self.assertEqual(sum(x[-1] == "is-location-enabled" for x in calls), 3)
-        self.assertEqual(sum(x[-1] == "location_mode" for x in calls), 1)
+        self.assertEqual(sum(x[-1] == "location_mode" for x in calls), 0)
 
-    def test_api30_legacy_location_mode_accepted_only_when_enabled(self):
-        for expected_mode in ('1', '2', '3'):
+    def test_exhausted_transport_never_trusts_legacy_mode(self):
+        for mode in ('0', '1', '2', '3', 'null', ''):
             calls = []
             def fake_adb(*args, **kwargs):
                 calls.append(args)
                 if args[-1] == 'is-location-enabled':
-                    raise subprocess.CalledProcessError(255, 'unsupported cmd location is-location-enabled')
-                return SimpleNamespace(stdout=expected_mode + '\n' if args[-1] == 'location_mode' else '')
-            extracted_preflight(fake_adb)()
-            self.assertEqual(sum(x[-1] == 'is-location-enabled' for x in calls), 3)
-            self.assertEqual(sum(x[-1] == 'location_mode' for x in calls), 1)
-
-    def test_api30_legacy_location_mode_disabled_and_unknown_fail_closed(self):
-        for mode in ('0', 'null', '', '4'):
-            def fake_adb(*args, **kwargs):
-                if args[-1] == 'is-location-enabled':
-                    raise subprocess.CalledProcessError(255, 'unsupported cmd')
-                return SimpleNamespace(stdout=mode + '\n' if args[-1] == 'location_mode' else '')
+                    raise subprocess.CalledProcessError(255, 'transport unavailable')
+                return SimpleNamespace(stdout=mode + '\n')
             with self.assertRaisesRegex(RuntimeError, 'master Location switch not verified'):
                 extracted_preflight(fake_adb)()
+            self.assertEqual(sum(x[-1] == 'is-location-enabled' for x in calls), 3)
+            self.assertFalse(any(x[-1] == 'location_mode' for x in calls))
+
     def test_other_adb_failure_is_not_retried(self):
         calls = []
         def fake_adb(*args, **kwargs):
@@ -93,6 +86,56 @@ class FusedGpsMasterLocationPreflight(unittest.TestCase):
         with self.assertRaises(subprocess.CalledProcessError):
             extracted_preflight(fake_adb)()
         self.assertEqual(sum(x[-1] == "is-location-enabled" for x in calls), 1)
+    def test_real_fused_failure_requires_retained_platform_evidence(self):
+        self.assertIn("capture_fused_failure_evidence(label)", SOURCE)
+        self.assertIn('"location-provider": ["shell", "dumpsys", "location"]', SOURCE)
+        self.assertIn('"fused-logcat": ["logcat", "-d", "-t", "300", "-s"', SOURCE)
+        self.assertIn("raise AssertionError(\"Real Fused GPS test failed:", SOURCE)
+        self.assertIn('"allowDebugStoreInjection", "false"', SOURCE)
+
+    def test_rejected_fused_subscription_stops_navigation_service(self):
+        # Source contract only; the exact-head Android emulator gate remains mandatory.
+        service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
+        failure = service.split('.addOnFailureListener { error ->', 1)[1].split('fusedClient.lastLocation', 1)[0]
+        self.assertIn('foreground_fused_subscription_failed', failure)
+        # A synchronous/early failure callback must not be skipped while the
+        # subscription-start flag is still provisional.
+        self.assertIn('if (callback === nextCallback) {', failure)
+        self.assertNotIn('if (callback === nextCallback && locationUpdatesStarted)', failure)
+        self.assertIn('locationUpdatesStarted = false', failure)
+        self.assertIn('RiderNavigationLocationStore.clear()', failure)
+        self.assertIn('stopSelf()', failure)
+
+    def test_synchronous_provider_failure_cannot_reenable_subscription(self):
+        # Source regression: Play Services may complete a listener before
+        # requestLocationUpdates returns. Emulator evidence remains mandatory.
+        service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
+        start = service.split("private fun startLocationUpdates()", 1)[1].split("private fun stopLocationUpdates()", 1)[0]
+        provisional = start.index("locationUpdatesStarted = true")
+        request = start.index("fusedClient.requestLocationUpdates(request, nextCallback")
+        self.assertLess(provisional, request)
+        self.assertEqual(start.count("locationUpdatesStarted = true"), 1)
+        self.assertIn("if (started && callback === nextCallback && locationUpdatesStarted)", start)
+        self.assertIn("locationUpdatesStarted = false", start.split("} else {", 1)[-1])
+
+    def test_stale_fused_callback_cannot_publish_after_restart(self):
+        # Contract guard only: installed emulator GPS evidence is still required.
+        service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
+        callback = service.split("override fun onLocationResult(result: LocationResult)", 1)[1].split("callback = nextCallback", 1)[0]
+        self.assertIn("callback !== this || !locationUpdatesStarted", callback)
+        cached = service.split("fusedClient.lastLocation.addOnSuccessListener", 1)[1].split("accept(location)", 1)[0]
+        self.assertIn("callback !== nextCallback", cached)
+
+    def test_rejected_fused_fix_diagnostic_preserves_privacy_and_gate(self):
+        # This is a source contract, not evidence that the emulator delivered a fix.
+        service = (ROOT / "native-android/rider/src/main/java/com/queuego/rider/RiderNavigationLocationService.kt").read_text()
+        section = service.split("private fun accept(location: Location)", 1)[1].split("val previous = lastAccepted", 1)[0]
+        self.assertIn("riderNavigationFixEligible(", section)
+        self.assertIn('Log.d("QueueGoNavLocation", "fused_fix_rejected_freshness_or_accuracy")', section)
+        self.assertIn("return", section.split("fused_fix_rejected_freshness_or_accuracy", 1)[1])
+        self.assertNotIn("location.latitude}", section)
+        self.assertNotIn("location.longitude}", section)
+
     def test_preflight_required_before_real_instrumentation(self):
         self.assertIn("ensure_emulator_location_enabled()\n                run_case(label, longitude, latitude)", SOURCE)
         self.assertIn('"allowDebugStoreInjection", "false"', SOURCE)

@@ -6,6 +6,7 @@ on:
     paths:
       - 'ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql'
       - 'tests/backend/dispatch-financial-preflight-runtime.cjs'
+      - 'tests/backend/dispatch-search-time-negative.sql'
       - '.github/workflows/p0-financial-preflight-runtime.yml'
       - 'package-lock.json'
       - 'package.json'
@@ -16,6 +17,7 @@ on:
     paths:
       - 'ops/p0/dispatch-terminalization-preflight-readonly-20261120.sql'
       - 'tests/backend/dispatch-financial-preflight-runtime.cjs'
+      - 'tests/backend/dispatch-search-time-negative.sql'
       - '.github/workflows/p0-financial-preflight-runtime.yml'
       - 'package-lock.json'
       - 'package.json'

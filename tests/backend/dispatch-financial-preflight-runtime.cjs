@@ -126,6 +126,8 @@ async function main() {
     await assert.rejects(db.exec(sql.replace('FROM facts;', 'FROM facts; DELETE FROM public.orders;')));
     await db.exec('ROLLBACK;');
     equal((await db.query('SELECT count(*) AS n FROM orders')).rows[0].n, 1);
+    await db.exec(fs.readFileSync('tests/backend/dispatch-search-time-negative.sql','utf8'));
+    checks++; // Execute Worker timestamp truth-table on this same database engine.
   } finally { await db.close(); }
   console.log(JSON.stringify({ checks, failures: 0, engine:testUrl?'real PostgreSQL':'PGlite', scope: 'actual read-only financial preflight SQL on disposable synthetic schema; NOT authorization to terminalize orders' }));
 }
