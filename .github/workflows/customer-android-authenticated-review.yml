@@ -41,8 +41,6 @@ jobs:
       cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    env:
-      ANDROID_AVD_HOME: ${{ runner.temp }}/queuego-customer-review-avd
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -94,6 +92,8 @@ jobs:
             gradle -p native-android :customer:testDebugUnitTest :customer:assembleDebug :customer:assembleDebugAndroidTest --no-daemon --stacktrace
       - name: Boot Google Android emulator
         id: boot
+        env:
+          ANDROID_AVD_HOME: ${{ runner.temp }}/queuego-customer-review-avd
         shell: bash
         run: |
           set -euo pipefail
