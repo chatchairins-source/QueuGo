@@ -7,6 +7,7 @@ on:
       - 'QueueGo-POS-Tax-Foundation-Migration.sql'
       - 'QueueGo-POS-Tax-Checkout-Integration-Migration.sql'
       - 'tests/pos-tax-backend-isolated.cjs'
+      - 'tests/fixtures/pos-order-guards-prod-20261122.json'
       - '.github/workflows/pos-tax-backend-isolated.yml'
   push:
     branches:
@@ -16,6 +17,7 @@ on:
       - 'QueueGo-POS-Tax-Foundation-Migration.sql'
       - 'QueueGo-POS-Tax-Checkout-Integration-Migration.sql'
       - 'tests/pos-tax-backend-isolated.cjs'
+      - 'tests/fixtures/pos-order-guards-prod-20261122.json'
       - '.github/workflows/pos-tax-backend-isolated.yml'
 permissions:
   contents: read
@@ -31,5 +33,5 @@ jobs:
           cache: npm
       - name: Install exact locked PostgreSQL test dependency
         run: npm ci --no-audit --no-fund
-      - name: Verify isolated VAT financial calculations and immutable snapshots
+      - name: Verify VAT calculations, role isolation and captured POS order guards
         run: node tests/pos-tax-backend-isolated.cjs

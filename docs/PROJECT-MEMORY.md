@@ -1,3 +1,10 @@
+## 2026-11-22 Compose POS tax with captured order guard and audit triggers
+
+- #1404 merged at3430c7b84785e60b7b928dc72f7a997e9abc05f8 after exactba6b5285 POS44993397324 and Native44993397247 SUCCESS. New Integration requires independent acceptance; no Production rollout implied.
+- Read Production pos_guard_write(), pos_record_event() and is_active_admin() definitions without mutation. Preserve their exact bodies/line endings in a JSON fixture; assert stored prosrc MD5 values24b325d54243e5ee81ac9a38864d4664,db6ba3e0b907a762faad7a24eee378a2,0c97812c83ef42b869a119a22d969aaf after isolated install. Plain SQL text transport normalized CRLF in the Admin helper; corrected fixture representation instead of weakening hash assertions.
+- Expanded PGlite suite86 checks PASS locally: candidate tax trigger cannot bypass the existing order write guard, audit observes calculated totals and before/after edits, immutable snapshot rejection produces no audit, and downstream audit failure atomically rolls back order/tax changes. Non-POS totals/audit exclusion retained. Actual Production helper bodies execute; server context, identities and table rows remain synthetic.
+- This is not the complete checkout RPC, all live triggers/RLS, payment/refund/stock composition or Production certification. Root financial SQL and migration history unchanged; no live DDL/DML/financial changes. Extend hosted tax workflow path coverage for the captured fixture and require exact-head CI before merge. Backup/restore, migration reconciliation and controlled rollout gates remain open.
+
 ## 2026-11-22 Exercise POS tax role boundaries in the isolated database
 
 - Integration691ef5a1 passed its observed16 workflows, including current Native/Export, Customer API matrix, routing, authenticated review and isolated cash/claim. This does not certify Production rollout or signed Release AABs.

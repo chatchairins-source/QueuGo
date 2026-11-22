@@ -129,7 +129,67 @@ async function main(){
   assert.equal(Number(history.total_amount),214);assert.equal(Number(history.pos_tax_rate_snapshot),7);checks+=2;
   assert.equal((await db.query("SELECT has_table_privilege('authenticated','pos_tax_settings','UPDATE') AS allowed")).rows[0].allowed,false);checks++;
 
-  console.log(JSON.stringify({checks,failures:0,scope:'isolated PGlite POS tax calculations and actual role/RLS enforcement with captured helpers and synthetic identities; NOT live JWT, full checkout, refund or Production certification'}));
+  // Compose the candidate tax trigger with the two actual Production POS order
+  // trigger functions. The orders/audit table shape and server flag are fixtures;
+  // this does not simulate or certify the complete Production checkout RPC.
+  await db.exec(`CREATE TABLE public.pos_events(
+   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),shop_id uuid,order_id uuid,actor_id uuid,
+   entity text,action text,before_state jsonb,after_state jsonb);
+   ${JSON.parse(fs.readFileSync('tests/fixtures/pos-order-guards-prod-20261122.json','utf8')).definitions.map(row=>row.definition+';').join('\n')}
+   CREATE TRIGGER pos_audit_orders AFTER INSERT OR DELETE OR UPDATE ON public.orders
+    FOR EACH ROW EXECUTE FUNCTION public.pos_record_event();
+   CREATE TRIGGER pos_orders_guard BEFORE INSERT OR DELETE OR UPDATE ON public.orders
+    FOR EACH ROW EXECUTE FUNCTION public.pos_guard_write();`);
+  for(const [name,expected] of [
+   ['is_active_admin','0c97812c83ef42b869a119a22d969aaf'],
+   ['pos_guard_write','24b325d54243e5ee81ac9a38864d4664'],
+   ['pos_record_event','db6ba3e0b907a762faad7a24eee378a2']
+  ]){
+   const hash=(await db.query("SELECT md5(prosrc) AS hash FROM pg_proc WHERE oid=('public.'||$1||'()')::regprocedure",[name])).rows[0].hash;
+   assert.equal(hash,expected,'captured trigger/helper body must remain byte-identical');checks++;
+  }
+  const auditCount=async()=>Number((await db.query('SELECT count(*) AS n FROM pos_events')).rows[0].n);
+  await db.query("SELECT set_config('queuego.pos_rpc','',false)");
+  await assert.rejects(insert(201,100),/POS records require server RPC/);checks++;
+  assert.equal((await db.query('SELECT id FROM orders WHERE id=$1',[uuid(201)])).rows.length,0);checks++;
+  assert.equal(await auditCount(),0);checks++;
+  await assert.rejects(db.query('UPDATE orders SET subtotal=300 WHERE id=$1',[uuid(104)]),/POS records require server RPC/);checks++;
+  assert.equal(Number((await db.query('SELECT total_amount FROM orders WHERE id=$1',[uuid(104)])).rows[0].total_amount),214);checks++;
+  await assert.rejects(db.query('DELETE FROM orders WHERE id=$1',[uuid(104)]),/POS records require server RPC/);checks++;
+
+  await db.query("SELECT set_config('queuego.pos_rpc','on',false)");
+  row=await insert(202,100);
+  assert.equal(Number(row.total_amount),107);checks++;
+  let event=(await db.query('SELECT * FROM pos_events WHERE order_id=$1',[uuid(202)])).rows[0];
+  assert.equal(event.action,'INSERT');assert.equal(event.actor_id,uuid(1));assert.equal(event.before_state,null);checks+=3;
+  assert.equal(Number(event.after_state.total_amount),107);assert.equal(Number(event.after_state.pos_tax_amount),7);checks+=2;
+  await db.query('UPDATE orders SET subtotal=200 WHERE id=$1',[uuid(202)]);
+  event=(await db.query("SELECT * FROM pos_events WHERE order_id=$1 AND action='UPDATE'",[uuid(202)])).rows[0];
+  assert.equal(Number(event.before_state.total_amount),107);assert.equal(Number(event.after_state.total_amount),214);checks+=2;
+  assert.equal(Number(event.before_state.subtotal),100);assert.equal(Number(event.after_state.subtotal),200);checks+=2;
+  assert.equal(await auditCount(),2);checks++;
+  await assert.rejects(db.query('UPDATE orders SET pos_tax_rate_snapshot=0 WHERE id=$1',[uuid(202)]),/immutable/);checks++;
+  assert.equal(await auditCount(),2);checks++;
+
+  // A downstream audit failure must roll back the tax total AND the source
+  // order change atomically, instead of publishing an unaudited financial edit.
+  await db.exec(`CREATE FUNCTION public.reject_tax_audit_fixture() RETURNS trigger LANGUAGE plpgsql AS $$
+   BEGIN RAISE EXCEPTION 'isolated audit failure'; END $$;
+   CREATE TRIGGER reject_tax_audit_fixture BEFORE INSERT ON pos_events
+    FOR EACH ROW EXECUTE FUNCTION public.reject_tax_audit_fixture();`);
+  await assert.rejects(db.query('UPDATE orders SET subtotal=300 WHERE id=$1',[uuid(202)]),/isolated audit failure/);checks++;
+  row=(await db.query('SELECT subtotal,total_amount,pos_tax_amount FROM orders WHERE id=$1',[uuid(202)])).rows[0];
+  assert.equal(Number(row.subtotal),200);assert.equal(Number(row.total_amount),214);assert.equal(Number(row.pos_tax_amount),14);checks+=3;
+  assert.equal(await auditCount(),2);checks++;
+  await db.exec('DROP TRIGGER reject_tax_audit_fixture ON pos_events; DROP FUNCTION public.reject_tax_audit_fixture()');
+  // A non-POS order retains its existing totals and creates no POS audit entry.
+  await db.query("SELECT set_config('queuego.pos_rpc','',false)");
+  await db.query("INSERT INTO orders(id,shop_id,order_type,sales_channel,subtotal,total_amount) VALUES($1,$2,'QUEUEGO_DELIVERY','APP',100,100)",[uuid(203),uuid(20)]);
+  row=(await db.query('SELECT total_amount,pos_tax_enabled_snapshot FROM orders WHERE id=$1',[uuid(203)])).rows[0];
+  assert.equal(Number(row.total_amount),100);assert.equal(row.pos_tax_enabled_snapshot,null);checks+=2;
+  assert.equal(await auditCount(),2);checks++;
+
+  console.log(JSON.stringify({checks,failures:0,scope:'isolated PGlite POS tax calculations, actual role/RLS and captured POS order guard/audit composition; synthetic identities/server context, NOT live JWT, full checkout/refund or Production certification'}));
  }finally{await db.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

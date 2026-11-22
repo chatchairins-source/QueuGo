@@ -1,0 +1,22 @@
+{
+  "captured_read_only_on": "2026-11-22",
+  "scope": "Production function definitions only; disposable fixture, not migration/deployment approval",
+  "definitions": [
+    {
+      "proname": "is_active_admin",
+      "body_md5": "0c97812c83ef42b869a119a22d969aaf",
+      "definition": "CREATE OR REPLACE FUNCTION public.is_active_admin()\n RETURNS boolean\n LANGUAGE sql\n SECURITY DEFINER\n SET search_path TO 'public'\nAS $function$\r\n  select exists (\r\n    select 1\r\n    from public.users\r\n    where auth_user_id = auth.uid()\r\n      and role = 'admin'\r\n      and status = 'active'\r\n  );\r\n$function$\n"
+    },
+    {
+      "proname": "pos_guard_write",
+      "body_md5": "24b325d54243e5ee81ac9a38864d4664",
+      "definition": "CREATE OR REPLACE FUNCTION public.pos_guard_write()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare v_order uuid;v_channel text;\nbegin\n if tg_table_name='orders' then\n  v_channel:=case when tg_op='DELETE' then old.sales_channel else new.sales_channel end;\n  if tg_op='UPDATE' and old.sales_channel='POS' then v_channel:='POS'; end if;\n else\n  v_order:=case when tg_op='DELETE' then old.order_id else new.order_id end;\n  select sales_channel into v_channel from public.orders where id=v_order;\n end if;\n if v_channel='POS' and current_setting('queuego.pos_rpc',true) is distinct from 'on' and not public.is_active_admin() then\n  raise exception 'POS records require server RPC';\n end if;\n return case when tg_op='DELETE' then old else new end;\nend $function$\n"
+    },
+    {
+      "proname": "pos_record_event",
+      "body_md5": "db6ba3e0b907a762faad7a24eee378a2",
+      "definition": "CREATE OR REPLACE FUNCTION public.pos_record_event()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'public', 'pg_temp'\nAS $function$\ndeclare v_order uuid;v_shop uuid;v_row jsonb;\nbegin\n v_row:=case when tg_op='DELETE' then to_jsonb(old) else to_jsonb(new) end;\n if tg_table_name='orders' then\n  if coalesce(v_row->>'sales_channel','')<>'POS' then return case when tg_op='DELETE' then old else new end; end if;\n  v_order:=(v_row->>'id')::uuid;v_shop:=(v_row->>'shop_id')::uuid;\n elsif tg_table_name='pos_staff' then\n  v_shop:=(v_row->>'shop_id')::uuid;\n else\n  v_order:=(v_row->>'order_id')::uuid;\n  select shop_id into v_shop from public.orders where id=v_order and sales_channel='POS';\n end if;\n if v_shop is not null then\n  insert into public.pos_events(shop_id,order_id,actor_id,entity,action,before_state,after_state)\n  values(v_shop,v_order,auth.uid(),tg_table_name,tg_op,\n    case when tg_op='INSERT' then null else to_jsonb(old) end,\n    case when tg_op='DELETE' then null else to_jsonb(new) end);\n end if;\n return case when tg_op='DELETE' then old else new end;\nend $function$\n"
+    }
+  ]
+}
+
