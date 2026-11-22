@@ -107,7 +107,7 @@ class SecureRoleSessionStore(private val context: Context, private val roleKey: 
             user.id == other.user.id && user.authUserId == other.user.authUserId && user.role == other.user.role
 
     private fun NativeAuth.sameStoredSession(other: NativeAuth): Boolean =
-        samePrincipal(other) && session == other.session
+        samePrincipal(other) && session == other.session && user.status == other.user.status
 
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }

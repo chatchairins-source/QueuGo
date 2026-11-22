@@ -44,6 +44,9 @@ class MerchantSessionStoreRuntimeTest {
             assertTrue(ui.isCurrent(renewed))
             assertFalse(ui.isCurrent(old))
             assertFalse(service.saveIfCurrent(old, old))
+            ui.save(renewed.copy(user = renewed.user.copy(status = "suspended")))
+            assertFalse(service.isCurrent(renewed))
+            assertFalse(service.saveIfCurrent(renewed, old))
             // Independent instances race against the same actual encrypted record.
             repeat(20) { iteration ->
                 ui.save(old)
