@@ -509,6 +509,20 @@ private class QueueGoLocationPickerHolder {
     var frameListener: MapView.OnDidFinishRenderingFrameListener? = null
     var idleListener: MapView.OnDidBecomeIdleListener? = null
     var loadListener: MapView.OnDidFinishLoadingMapListener? = null
+    var cameraMoveListener: MapLibreMap.OnCameraMoveStartedListener? = null
+
+    // Readiness belongs to a viewport and foreground GL surface, not the lifetime
+    // of the picker. A previously detailed frame cannot certify a camera move,
+    // surface resize or return from background (API35 run 44997785665).
+    fun invalidateRenderedMap() {
+        if (destroyed) return
+        val wasReady = readyReported
+        readyReported = false
+        fullyRendered = false
+        snapshotGeneration++
+        snapshotPending = false
+        if (wasReady) onReady(false)
+    }
 
     /** Do not expose a blank raster canvas as a ready delivery map.
      * This inspects the real MapLibre GL snapshot, not view decorations or markers.
@@ -566,11 +580,7 @@ private class QueueGoLocationPickerHolder {
         renderSelectedPoint(point)
         if (lastRecenterToken == token) return
         lastRecenterToken = token
-        readyReported = false
-        fullyRendered = false
-        snapshotGeneration++
-        snapshotPending = false
-        onReady(false)
+        invalidateRenderedMap()
         active.animateCamera(
             CameraUpdateFactory.newLatLngZoom(
                 LatLng(point.latitude, point.longitude),
@@ -595,6 +605,7 @@ private class QueueGoLocationPickerHolder {
 
     fun pause() {
         if (destroyed || !resumed) return
+        invalidateRenderedMap()
         view?.onPause()
         resumed = false
     }
@@ -618,6 +629,8 @@ private class QueueGoLocationPickerHolder {
             loadListener?.let(active::removeOnDidFinishLoadingMapListener)
             active.onDestroy()
         }
+        cameraMoveListener?.let { map?.removeOnCameraMoveStartedListener(it) }
+        cameraMoveListener = null
         frameListener = null
         idleListener = null
         loadListener = null
@@ -664,11 +677,21 @@ fun QgLocationPickerMap(
                     MapLibre.getInstance(ctx.applicationContext)
                     MapView(ctx, queueGoOnlineMapOptions(ctx)).also { view ->
                         holder.view = view
+                        view.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
+                            if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
+                                holder.invalidateRenderedMap()
+                            }
+                        }
                         view.onCreate(null)
                         // A loaded style can still show only a background or ancestor tiles.
                         // Readiness requires a fully rendered frame followed by map idle.
                         val frameListener = MapView.OnDidFinishRenderingFrameListener { fully, _, _ ->
-                            if (!holder.destroyed && holder.styleReady) holder.fullyRendered = fully
+                            if (!holder.destroyed && holder.styleReady) {
+                                val previouslyFullyRendered = holder.fullyRendered
+                                if (!fully && previouslyFullyRendered) holder.invalidateRenderedMap()
+                                holder.fullyRendered = fully
+                                if (fully && !previouslyFullyRendered) holder.checkRenderedMapReady()
+                            }
                         }
                         val idleListener = MapView.OnDidBecomeIdleListener {
                             holder.checkRenderedMapReady()
@@ -687,6 +710,11 @@ fun QgLocationPickerMap(
                         view.getMapAsync { map ->
                             if (holder.destroyed) return@getMapAsync
                             holder.map = map
+                            val cameraMoveListener = MapLibreMap.OnCameraMoveStartedListener {
+                                holder.invalidateRenderedMap()
+                            }
+                            holder.cameraMoveListener = cameraMoveListener
+                            map.addOnCameraMoveStartedListener(cameraMoveListener)
                             map.uiSettings.isLogoEnabled = false
                             map.uiSettings.isCompassEnabled = false
                             map.uiSettings.isAttributionEnabled = true

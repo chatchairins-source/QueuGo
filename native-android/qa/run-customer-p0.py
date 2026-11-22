@@ -115,6 +115,18 @@ try:
     summary['result'] = 'PASS'
 finally:
     try:
+        # Preserve the actual failing GL frame too; previously an instrumentation
+        # assertion exited before run-as pulled its PNG/metrics from the device.
+        for filename in ('picker-0.png', 'picker-29.png', 'road-detail-0.png', 'road-detail-29.png',
+                         'road-detail-0.txt', 'road-detail-29.txt'):
+            try:
+                captured = subprocess.run([str(a) for a in adb + ['exec-out', 'run-as',
+                    'com.queuego.customer', 'cat', 'files/p0-evidence/' + filename]],
+                    capture_output=True, timeout=15)
+                if captured.returncode == 0 and captured.stdout:
+                    (out / filename).write_bytes(captured.stdout)
+            except subprocess.TimeoutExpired:
+                pass  # The original runtime failure remains fatal.
         for buffer in ('all', 'crash'):
             result = subprocess.run([str(a) for a in adb + ['logcat', '-b', buffer, '-d']], capture_output=True, text=True, timeout=15)
             (out / (buffer + '-logcat.txt')).write_text(result.stdout + result.stderr)

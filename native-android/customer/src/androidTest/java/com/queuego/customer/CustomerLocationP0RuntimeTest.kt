@@ -73,13 +73,15 @@ class CustomerLocationP0RuntimeTest {
     @Test fun appCameraMovesDoNotBecomeUserDeliverySelections() {
         val ready = AtomicBoolean(false)
         val selections = AtomicInteger(0)
+        val invalidations = AtomicInteger(0)
         val target = mutableStateOf<com.queuego.shared.QgMapPoint?>(null)
         val token = mutableStateOf(0)
         compose.setContent {
             com.queuego.shared.QgLocationPickerMap(
                 initialPoint = null, recenterPoint = target.value, recenterToken = token.value,
                 modifier = Modifier.fillMaxSize().testTag("camera-owner-map"),
-                onPointSelected = { selections.incrementAndGet() }, onReady = { ready.set(it) })
+                onPointSelected = { selections.incrementAndGet() },
+                onReady = { ready.set(it); if (!it) invalidations.incrementAndGet() })
         }
         compose.waitUntil(30_000) { ready.get() }
         compose.waitForIdle()
@@ -88,12 +90,13 @@ class CustomerLocationP0RuntimeTest {
             target.value = com.queuego.shared.QgMapPoint(14.995, 103.103, 0)
             token.value = 1
         }
-        compose.waitForIdle()
+        compose.waitUntil(30_000) { invalidations.get() > 0 && ready.get() }
         compose.runOnIdle {
             assertEquals("App GPS recenter echoed as a user pan", 0, selections.get())
         }
+        val beforePan = invalidations.get()
         compose.onNodeWithTag("camera-owner-map").performTouchInput { swipeLeft(durationMillis = 300) }
-        compose.waitForIdle()
+        compose.waitUntil(30_000) { invalidations.get() > beforePan && ready.get() }
         compose.runOnIdle {
             assertEquals("Panning must not choose a delivery stop", 0, selections.get())
         }
