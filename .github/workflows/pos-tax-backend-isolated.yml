@@ -1,5 +1,6 @@
 name: QueueGo POS Tax Backend Isolated
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - 'work-native-**'
@@ -15,14 +16,7 @@ on:
     branches:
       - 'test/pos-tax-backend-isolated-20261120'
       - 'work-native-reconcile-main-20261114'
-    paths:
-      - 'QueueGo-POS-Tax-Foundation-Migration.sql'
-      - 'QueueGo-POS-Tax-Checkout-Integration-Migration.sql'
-      - 'tests/pos-tax-backend-isolated.cjs'
-      - 'tests/fixtures/pos-order-guards-prod-20261122.json'
-      - 'tests/fixtures/pos-payment-prod-20261122.json'
-      - 'ops/p0/pos-payment-finite-review-only.sql'
-      - '.github/workflows/pos-tax-backend-isolated.yml'
+      - 'main'
 permissions:
   contents: read
 jobs:

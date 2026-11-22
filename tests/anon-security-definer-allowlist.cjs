@@ -58,3 +58,4 @@ ok(/revoke execute on function public\.market_public_catalog\(\) from public,ano
 ok(/revoke execute on function public\.queuego_nearest_market[\s\S]+from public,anon/i.test(reduction),'nearest-market helper must stay non-anonymous');
 
 console.log(JSON.stringify({checks,failures:0,scope:'Reviewed anonymous SECURITY DEFINER allowlist for public storefront and guest QR table ordering'}));
+require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/anon-security-definer-regex.cjs')],{stdio:'inherit'});

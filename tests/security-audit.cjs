@@ -28,3 +28,4 @@ for(const [role,source,inputId] of [['Customer',customer,'rw'],['Merchant',merch
 }
 
 console.log(JSON.stringify({checks,failures:0,scope:'QueueGo pilot Data API/SECURITY DEFINER hardening, explicit server-only RLS deny, and shared 12-character signup password policy'}));
+require('node:child_process').execFileSync(process.execPath,[path.join(root,'tests/financial-exposure-inventory.cjs')],{stdio:'inherit'});
