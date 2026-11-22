@@ -59,6 +59,8 @@ private suspend fun merchantFirebaseToken(): String = suspendCancellableCoroutin
 }
 
 internal suspend fun syncMerchantNativePush(context: Context, auth: NativeAuth): Boolean {
+    val sessions = SecureRoleSessionStore(context, "shop")
+    if (!sessions.isCurrent(auth)) return false
     val store = NativePushDeviceStore(context, "shop")
     val api = NativePushApi()
     if (auth.user.role != "shop" || auth.user.status != "active") {
@@ -68,6 +70,7 @@ internal suspend fun syncMerchantNativePush(context: Context, auth: NativeAuth):
     ensureMerchantNotificationChannel(context)
     if (!merchantFirebaseConfigured(context)) return false
     val token = merchantFirebaseToken().trim()
+    if (!sessions.isCurrent(auth)) return false
     require(token.length >= 16) { "ไม่ได้รับ Push token จาก Firebase" }
     api.subscribe(auth, store.deviceId(), token)
     return true
@@ -103,8 +106,10 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         val cached = sessionStore.load() ?: return
         serviceScope.launch {
             runCatching {
-                val auth = NativeAuthApi().validate(cached, "shop") { sessionStore.save(it) }
-                if (auth.user.status == "active") {
+                val auth = NativeAuthApi().validate(cached, "shop") { refreshed ->
+                    check(sessionStore.saveIfCurrent(cached, refreshed)) { "Merchant session changed during refresh" }
+                }
+                if (auth.user.status == "active" && sessionStore.isCurrent(auth)) {
                     NativePushApi().subscribe(
                         auth,
                         NativePushDeviceStore(applicationContext, "shop").deviceId(),

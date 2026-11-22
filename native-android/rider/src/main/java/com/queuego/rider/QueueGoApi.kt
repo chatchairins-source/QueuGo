@@ -1006,7 +1006,6 @@ class QueueGoApi {
             auth.session.accessToken,
             JSONObject().put("action", "test")
         )
-        Unit
     }
 
     suspend fun unsubscribeNativePush(

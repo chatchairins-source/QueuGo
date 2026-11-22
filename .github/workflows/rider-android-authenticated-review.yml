@@ -231,15 +231,29 @@ jobs:
         run: python3 native-android/qa/capture-rider-authenticated-review.py
       - name: Verify actual background FCM on the same authenticated Rider candidate
         if: ${{ needs.credential-check.outputs.merchant_only != 'true' }}
+        env:
+          QG_PUSH_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           adb="$ANDROID_HOME/platform-tools/adb"
           "$adb" -s emulator-5554 install -r native-android/rider/build/outputs/apk/androidTest/debug/rider-debug-androidTest.apk
+          set +e
           "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.rider.RiderPushRuntimeTest com.queuego.rider.test/androidx.test.runner.AndroidJUnitRunner > artifacts/rider-authenticated-review/background-fcm.txt
+          instrument_status=$?
+          set -e
+          "$adb" -s emulator-5554 exec-out run-as com.queuego.rider cat files/push-evidence/background-fcm.json > artifacts/rider-authenticated-review/background-fcm.json || true
+          "$adb" -s emulator-5554 logcat -d -v threadtime -s QueueGoPushQA:I '*:S' > artifacts/rider-authenticated-review/background-fcm-logcat.txt || true
+          test "$instrument_status" -eq 0
           python3 - <<'PY'
           from pathlib import Path
+          import json, os
           text = Path("artifacts/rider-authenticated-review/background-fcm.txt").read_text()
           assert "OK (1 test)" in text and "FAILURES" not in text, "Actual background FCM test failed; inspect retained instrumentation"
+          metrics = json.loads(Path("artifacts/rider-authenticated-review/background-fcm.json").read_text())
+          assert metrics["source_commit"] == os.environ["QG_PUSH_EXPECTED_SHA"], "FCM evidence source mismatch"
+          assert metrics["backend_created"] is True and metrics["real_fcm_received"] is True, "Actual backend-to-device FCM is mandatory"
+          assert 0 <= metrics["elapsed_ms"] <= metrics["max_wait_ms"] == 180000
+          print(json.dumps({"role": "rider", "delivery_elapsed_ms": metrics["elapsed_ms"], "within_fast_window_90s": metrics["within_fast_window"]}))
           print("QUEUEGO_REAL_BACKGROUND_FCM_PASS")
           PY
       - name: Capture authenticated Merchant views on Android Emulator
@@ -252,17 +266,32 @@ jobs:
         run: python3 native-android/qa/capture-merchant-authenticated-review.py
       - name: Verify actual background FCM for authenticated Merchant
         if: always() && steps.merchant_review.outcome == 'success'
+        env:
+          QG_PUSH_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
           adb="$ANDROID_HOME/platform-tools/adb"
           "$adb" -s emulator-5554 install -r native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk
-          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.merchant.MerchantPushRuntimeTest,com.queuego.merchant.MerchantPendingIntentRuntimeTest com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner > artifacts/merchant-authenticated-review/background-fcm.txt
+          set +e
+          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.merchant.MerchantPushRuntimeTest,com.queuego.merchant.MerchantPendingIntentRuntimeTest,com.queuego.merchant.MerchantSessionStoreRuntimeTest com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner > artifacts/merchant-authenticated-review/background-fcm.txt
+          instrument_status=$?
+          set -e
+          "$adb" -s emulator-5554 exec-out run-as com.queuego.merchant cat files/push-evidence/background-fcm.json > artifacts/merchant-authenticated-review/background-fcm.json || true
+          "$adb" -s emulator-5554 logcat -d -v threadtime -s QueueGoPushQA:I '*:S' > artifacts/merchant-authenticated-review/background-fcm-logcat.txt || true
+          test "$instrument_status" -eq 0
           python3 - <<'PYFCM'
           from pathlib import Path
+          import json, os
           text = Path("artifacts/merchant-authenticated-review/background-fcm.txt").read_text()
-          assert "OK (2 tests)" in text and "FAILURES" not in text, "Actual Merchant FCM or PendingIntent identity failed; inspect instrumentation"
+          assert "OK (3 tests)" in text and "FAILURES" not in text, "Actual Merchant FCM, PendingIntent or secure-session race failed; inspect instrumentation"
+          metrics = json.loads(Path("artifacts/merchant-authenticated-review/background-fcm.json").read_text())
+          assert metrics["source_commit"] == os.environ["QG_PUSH_EXPECTED_SHA"], "FCM evidence source mismatch"
+          assert metrics["backend_created"] is True and metrics["real_fcm_received"] is True, "Actual backend-to-device FCM is mandatory"
+          assert 0 <= metrics["elapsed_ms"] <= metrics["max_wait_ms"] == 180000
+          print(json.dumps({"role": "merchant", "delivery_elapsed_ms": metrics["elapsed_ms"], "within_fast_window_90s": metrics["within_fast_window"]}))
           print("QUEUEGO_MERCHANT_REAL_BACKGROUND_FCM_PASS")
           print("QUEUEGO_MERCHANT_PENDING_INTENT_IDENTITY_PASS")
+          print("QUEUEGO_MERCHANT_SECURE_SESSION_RACE_PASS")
           PYFCM
       - name: Set up Web visual review dependencies
         if: always() && needs.credential-check.outputs.merchant_only == 'true'
@@ -302,6 +331,8 @@ jobs:
             artifacts/merchant-authenticated-review/metadata.json
             artifacts/merchant-authenticated-review/hierarchy-status.json
             artifacts/merchant-authenticated-review/background-fcm.txt
+            artifacts/merchant-authenticated-review/background-fcm.json
+            artifacts/merchant-authenticated-review/background-fcm-logcat.txt
           if-no-files-found: warn
           retention-days: 7
       - name: Save authenticated Rider screenshots
@@ -315,6 +346,8 @@ jobs:
             artifacts/rider-authenticated-review/candidate.json
             artifacts/rider-authenticated-review/play-services.json
             artifacts/rider-authenticated-review/background-fcm.txt
+            artifacts/rider-authenticated-review/background-fcm.json
+            artifacts/rider-authenticated-review/background-fcm-logcat.txt
           if-no-files-found: warn
           retention-days: 7
 

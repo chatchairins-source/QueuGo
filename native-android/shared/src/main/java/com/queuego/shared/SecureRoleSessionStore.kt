@@ -7,6 +7,7 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import org.json.JSONObject
 import java.security.KeyStore
+import java.util.concurrent.ConcurrentHashMap
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -15,15 +16,19 @@ import javax.crypto.spec.GCMParameterSpec
 private const val SECURE_ROLE_SESSION_MAX_PLAINTEXT_BYTES = 48 * 1024
 private const val SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS = 64 * 1024
 
+// All instances for one app/role share a monitor, including UI and FCM services.
+private val secureRoleSessionLocks = ConcurrentHashMap<String, Any>()
+
 class SecureRoleSessionStore(private val context: Context, private val roleKey: String) {
     private val prefs = context.getSharedPreferences("queuego_native_" + roleKey, Context.MODE_PRIVATE)
     private val alias = "queuego_native_session_" + roleKey
+    private val lock = secureRoleSessionLocks.getOrPut(context.packageName + ":" + roleKey) { Any() }
 
     fun deviceId(): String =
         Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
             ?.takeIf { it.isNotBlank() } ?: "android-device"
 
-    fun save(auth: NativeAuth) {
+    fun save(auth: NativeAuth): Unit = synchronized(lock) {
         val json = JSONObject()
             .put("authUserId", auth.session.authUserId)
             .put("accessToken", auth.session.accessToken)
@@ -48,13 +53,13 @@ class SecureRoleSessionStore(private val context: Context, private val roleKey: 
         prefs.edit().putString("session", encrypted).apply()
     }
 
-    fun load(): NativeAuth? {
-        val raw = prefs.getString("session", null) ?: return null
+    fun load(): NativeAuth? = synchronized(lock) {
+        val raw = prefs.getString("session", null) ?: return@synchronized null
         if (raw.length > SECURE_ROLE_SESSION_MAX_ENCRYPTED_CHARS) {
             prefs.edit().remove("session").apply()
-            return null
+            return@synchronized null
         }
-        return runCatching {
+        runCatching {
             val o = JSONObject(decrypt(raw))
             NativeAuth(
                 NativeSession(
@@ -81,7 +86,28 @@ class SecureRoleSessionStore(private val context: Context, private val roleKey: 
         }
     }
 
-    fun clear() { prefs.edit().remove("session").apply() }
+    fun clear(): Unit = synchronized(lock) { prefs.edit().remove("session").apply() }
+
+    /** Async refresh may not restore a cleared session or overwrite a new login.
+     * Hold the same monitor as save/clear across comparison, encryption and write.
+     */
+    fun saveIfCurrent(expected: NativeAuth, refreshed: NativeAuth): Boolean = synchronized(lock) {
+        val current = load() ?: return@synchronized false
+        if (!current.sameStoredSession(expected) || !expected.samePrincipal(refreshed)) return@synchronized false
+        save(refreshed)
+        true
+    }
+
+    fun isCurrent(auth: NativeAuth): Boolean = synchronized(lock) {
+        load()?.sameStoredSession(auth) == true
+    }
+
+    private fun NativeAuth.samePrincipal(other: NativeAuth): Boolean =
+        session.authUserId == other.session.authUserId && session.sessionId == other.session.sessionId &&
+            user.id == other.user.id && user.authUserId == other.user.authUserId && user.role == other.user.role
+
+    private fun NativeAuth.sameStoredSession(other: NativeAuth): Boolean =
+        samePrincipal(other) && session == other.session && user.status == other.user.status
 
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
