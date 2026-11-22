@@ -75,6 +75,26 @@ class RecoveryTest(unittest.TestCase):
             with self.assertRaises(MetadataError):
                 validate_pom(pom.replace(b"4.12.0", b"4.13.0"), coordinate)
 
+    def test_observed_customer_transitive_coroutine_keeps_exact_tasks(self):
+        coordinates = ["org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2",
+                       "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0"]
+        command = ["gradle", "-p", "native-android", ":customer:testDebugUnitTest",
+                   ":customer:assembleDebug", ":customer:assembleDebugAndroidTest", "--no-daemon", "--stacktrace"]
+        output = "\n".join("Could not resolve " + coordinate + "." for coordinate in coordinates)
+        code, calls, probes, waits = self.exercise(output, [1, 0], command=command)
+        self.assertEqual((code, probes, waits), (0, sorted(coordinates), [15]))
+        self.assertEqual(calls, [command, command + ["--refresh-dependencies"]])
+        self.assertEqual(retry_coordinates(output + "\nCould not resolve org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.1."), [])
+
+    def test_observed_transitive_coroutine_pom_requires_exact_version(self):
+        coordinate = "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0"
+        pom = (b"<project><groupId>org.jetbrains.kotlinx</groupId>"
+               b"<artifactId>kotlinx-coroutines-test</artifactId><version>1.9.0</version></project>")
+        self.assertTrue(metadata_url(coordinate).endswith("kotlinx-coroutines-test/1.9.0/kotlinx-coroutines-test-1.9.0.pom"))
+        validate_pom(pom, coordinate)
+        with self.assertRaises(MetadataError):
+            validate_pom(pom.replace(b"1.9.0", b"1.10.2"), coordinate)
+
     def test_metadata_failure_does_not_run_gradle_again(self):
         code, calls, _, _ = self.exercise(MISSING, [9], MetadataError("no metadata"))
         self.assertEqual((code, len(calls)), (9, 1))

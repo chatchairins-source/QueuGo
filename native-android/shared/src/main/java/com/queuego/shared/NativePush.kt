@@ -50,11 +50,10 @@ class NativePushApi(private val http: QueueGoNativeApi = QueueGoNativeApi()) {
         )
     }
 
-    suspend fun test(auth: NativeAuth) {
+    suspend fun test(auth: NativeAuth): Any =
         http.functionPost(
             "queuego-push",
             auth.session.accessToken,
             JSONObject().put("action", "test")
         )
-    }
 }

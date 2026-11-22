@@ -18,6 +18,8 @@ import xml.etree.ElementTree as ET
 PINNED = frozenset({
     "io.github.rallista:valhalla-mobile:0.6.4",
     "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.10.2",
+    # Observed transitive metadata429 in API26 job137170255792; not a version override.
+    "org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0",
     "com.squareup:javawriter:2.1.1",
     "org.hamcrest:hamcrest-library:1.3",
     "org.hamcrest:hamcrest-integration:1.3",
