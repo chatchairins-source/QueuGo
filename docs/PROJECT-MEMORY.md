@@ -1,3 +1,11 @@
+## 2026-11-22 Forward-converge the pending anonymous definer audit
+
+- PR1230/1234 source was still absent from Integration. Verified original0cf6a87b13333d747c93d01e8ce312d2b0010f72 contains the inventory plus corrected single-backslash PostgreSQL regex; its five commits add only two SQL files relative to common ancestor369e4b49. Forward composition retains both Git parents; expanded the shallow local history to verify the common ancestor rather than allowing unrelated histories or resetting.
+- Add executable PGlite regression to existing anonymous-allowlist test: six regex cases and actual pg_proc inventory over synthetic SECURITY DEFINER definitions,22 checks PASS alongside existing30 allowlist checks. Inventory stays read-only; scanner fixtures are never invoked. This tests keyword detection, not runtime authorization/exploitability.
+- Fresh read-only Production first inventory statement returns exactly nine reviewed anonymous routines, all explicit grants without PUBLIC EXECUTE. Correct scanner recognizes set_config in qg_table_checkout. No DDL/DML/privilege changes or function invocation occurred. Full security/physical/Production certification is not inferred from this snapshot.
+- Forward-compose old PR1215's single read-only noncash financial inventory too, retaining its original parent. Add executable catalog tests for column-only UPDATE versus table-wide grants and negative missing-RLS/disabled-trigger sentinels; fixture guards are never invoked and are not runtime authorization proof. Existing security npm tests run both new inventory regressions.
+- Separate POS PR1405 currentcade0199 includes review-only non-finite payment fix #1406 and137 checks. Hosted44995482573 verified137 PGlite and137 real PostgreSQL checks; merge-candidate669acd9 has byte-identical tree tocade0199. Native44995482587 pending; do not claim merge/deployment. Integration base3430c7b8 and all existing restore/migration/P0/physical/Play gates remain in force.
+
 ## 2026-11-22 Exercise POS tax role boundaries in the isolated database
 
 - Integration691ef5a1 passed its observed16 workflows, including current Native/Export, Customer API matrix, routing, authenticated review and isolated cash/claim. This does not certify Production rollout or signed Release AABs.
