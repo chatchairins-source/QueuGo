@@ -14,6 +14,8 @@ on:
       - 'native-android/qa/capture-merchant-authenticated-review.py'
       - 'native-android/qa/test_merchant_authenticated_review_tabs.py'
       - 'native-android/qa/fetch-rider-offline-candidate.py'
+      - 'native-android/qa/gh_api_retry.py'
+      - 'native-android/qa/test_rider_ci_gh_api.py'
       - 'native-android/qa/stage-play-rider-assets.py'
       - 'native-android/qa/run-rider-offline-routing.py'
       - 'native-android/rider_country_map/**'
@@ -370,6 +372,8 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: '9.6.0'
+      - name: Test fail-closed transient GitHub API retries
+        run: python3 native-android/qa/test_rider_ci_gh_api.py
       - name: Fetch successful exact-source offline-tested Rider APK
         env:
           GH_TOKEN: ${{ github.token }}
