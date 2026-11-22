@@ -538,11 +538,51 @@ jobs:
           path: artifacts/role-export/merchant/
           compression-level: 0
           if-no-files-found: error
+      # Rider APK with nationwide maps can exceed a single artifact download
+      # transport limit. Retain the exact validated APK; split only its delivery.
+      - name: Split validated Rider APK for bounded field-test downloads
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          dir=artifacts/role-export/rider
+          mapfile -t apks < <(find "$dir" -maxdepth 1 -type f -name '*.apk' -print)
+          test "${#apks[@]}" -eq 1
+          mkdir -p artifacts/rider-download/part-a artifacts/rider-download/part-b
+          python3 - "${apks[0]}" <<'PY'
+          import hashlib, pathlib, sys
+          source = pathlib.Path(sys.argv[1])
+          expected = (source.parent / 'SHA256SUMS').read_text().split()[0]
+          if hashlib.sha256(source.read_bytes()).hexdigest() != expected:
+              raise SystemExit('Rider APK failed original export SHA-256')
+          size = source.stat().st_size
+          # Two bounded archives, each below the 512 MiB connector limit.
+          if not (1 < size <= 600 * 1024 * 1024):
+              raise SystemExit('Rider APK outside safe two-part delivery range')
+          parts = [pathlib.Path('artifacts/rider-download/part-a'), pathlib.Path('artifacts/rider-download/part-b')]
+          with source.open('rb') as inp:
+              for i, folder in enumerate(parts):
+                  data = inp.read(300 * 1024 * 1024) if i == 0 else inp.read()
+                  (folder / (source.name + f'.part{i+1}')).write_bytes(data)
+                  (folder / 'TESTED-SOURCE.json').write_bytes((source.parent / 'TESTED-SOURCE.json').read_bytes())
+                  (folder / 'SHA256SUMS').write_bytes((source.parent / 'SHA256SUMS').read_bytes())
+          joined = b''.join((folder / (source.name + f'.part{i+1}')).read_bytes() for i, folder in enumerate(parts))
+          if len(joined) != size or hashlib.sha256(joined).hexdigest() != expected:
+              raise SystemExit('Rider delivery parts fail reassembly SHA-256')
+          print('Verified two-part Rider debug APK delivery; not Production certified')
+          PY
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
         with:
-          name: queuego-tested-rider-apk
-          path: artifacts/role-export/rider/
+          name: queuego-tested-rider-apk-part-a
+          path: artifacts/rider-download/part-a/
+          compression-level: 0
+          if-no-files-found: error
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: ${{ env.QG_OFFLINE_MAP_ASSETS != '' }}
+        with:
+          name: queuego-tested-rider-apk-part-b
+          path: artifacts/rider-download/part-b/
           compression-level: 0
           if-no-files-found: error
       # Mission 2026-10-10: incomplete builds and evidence remain internal.
