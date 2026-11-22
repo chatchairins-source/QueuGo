@@ -85,12 +85,13 @@ class CustomerLocationP0RuntimeTest {
         }
         compose.waitUntil(30_000) { ready.get() }
         compose.waitForIdle()
+        val beforeRecenter = invalidations.get()
         compose.runOnIdle {
             assertEquals("Fallback camera became a delivery selection", 0, selections.get())
             target.value = com.queuego.shared.QgMapPoint(14.995, 103.103, 0)
             token.value = 1
         }
-        compose.waitUntil(30_000) { invalidations.get() > 0 && ready.get() }
+        compose.waitUntil(30_000) { invalidations.get() > beforeRecenter && ready.get() }
         compose.runOnIdle {
             assertEquals("App GPS recenter echoed as a user pan", 0, selections.get())
         }
