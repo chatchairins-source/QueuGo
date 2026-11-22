@@ -239,7 +239,26 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           text = Path("artifacts/rider-authenticated-review/background-fcm.txt").read_text()
-          assert "OK (1 test)" in text and "FAILURES" not in text, "Actual background FCM test failed; inspect retained instrumentation"
+          import re
+          if "OK (1 test)" not in text or "FAILURES" in text:
+              # Fail closed, but expose safe failure *types* instead of an opaque
+              # assertion. Never echo instrumentation lines: they may contain
+              # account identifiers, tokens or notification payloads.
+              patterns = (
+                  r"INSTRUMENTATION_FAILED",
+                  r"INSTRUMENTATION_ABORTED",
+                  r"FAILURES!!!",
+                  r"Process crashed",
+                  r"java\\.lang\\.[A-Za-z]+(?:Exception|Error)",
+                  r"android\\.[A-Za-z.]+(?:Exception|Error)",
+                  r"Tests run: [0-9]+, +Failures: [0-9]+",
+              )
+              found = [label for label in patterns if re.search(label, text)]
+              print("::error::Rider background FCM instrumentation did not pass: "
+                    + (", ".join(found) if found else "missing expected OK (1 test) marker"))
+              print("::error::Inspect retained rider-authenticated-screens/background-fcm.txt; "
+                    "FCM remains a mandatory release gate")
+              raise SystemExit(1)
           print("QUEUEGO_REAL_BACKGROUND_FCM_PASS")
           PY
       - name: Capture authenticated Merchant views on Android Emulator
