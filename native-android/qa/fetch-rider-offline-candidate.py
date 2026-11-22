@@ -7,9 +7,7 @@ import re
 import subprocess
 import time
 import zipfile
-
-def gh(path):
-    return subprocess.check_output(["gh", "api", path], timeout=120)
+from gh_api_retry import github_api as gh
 
 def sha(path):
     with path.open("rb") as f:
@@ -40,9 +38,7 @@ def download_part(i):
     assert len(choices) == 1, "Missing unique candidate part: " + name
     a = choices[0]
     archive = root / f"part{i}.zip"
-    with archive.open("wb") as f:
-        subprocess.run(["gh", "api", f"repos/{repo}/actions/artifacts/{a['id']}/zip"],
-                       stdout=f, check=True, timeout=300)
+    gh(f"repos/{repo}/actions/artifacts/{a['id']}/zip", output_file=archive)
     assert sha(archive) == a["digest"].removeprefix("sha256:"), "Artifact digest mismatch"
     part_name = f"rider-debug.apk.part0{i}"
     expected = {part_name}
