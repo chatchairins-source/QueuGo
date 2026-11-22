@@ -185,3 +185,4 @@ assert(workflow.includes('maplibre-osm-runtime:'));
 assert(!/LongdoMapAndroidSDK|api\.longdo|ms\.longdo/i.test(workflow));
 
 console.log('Standalone QueueGo Rider MapLibre navigation contracts: PASS');
+require('./rider-offline-maven-recovery.cjs');

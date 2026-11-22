@@ -9,6 +9,8 @@ on:
       - native-android/rider-navigation-map/src/androidTest/**
       - native-android/rider-navigation-map/build.gradle.kts
       - native-android/qa/run-rider-navigation-map-runtime.py
+      - native-android/qa/gradle_maven_recovery.py
+      - native-android/qa/test_gradle_maven_recovery.py
       - .github/workflows/native-country-offline-runtime.yml
       - .github/workflows/build-native-rider-pilot.yml
       - native-android/qa/prepare-thailand-map-assets.py

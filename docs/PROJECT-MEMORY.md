@@ -1,3 +1,11 @@
+## 2026-11-22 Recover the observed offline-routing Maven build failure
+
+- Exact Integrationcee004683e17f54c7a1fa83ae17b1e36da793c55 routing44996812393/job137129500690 failed BEFORE runtime: pinned mockwebserver4.12.0 and okhttp-tls4.12.0 metadata missing for rider-maplibre-osm unit tests. Authenticated44996812274 capture/play jobs correctly failed because that exact-source offline gate failed; no older APK/CI substitution was permitted.
+- The offline build still called raw Gradle, bypassing the existing bounded Maven recovery used by other lanes. Route this same five-task command through the existing helper, preserve original/retry logs, and add only the two observed exact coordinates already pinned in source. No mirror/version substitution, assertion bypass, unbounded retry or cache-as-acceptance. Unknown/mixed compiler/test failures and metadata denial still fail closed.
+- Add direct controls and observed-coordinate/POM regressions; workflow path coverage now includes shared helper and maplibre module so changes execute actual routing acceptance. Existing source/APK fingerprints, cryptographic inputs, no-network routes, same-APK renderer/Fused phases and authenticated gate are unchanged. Local contracts/control tests are not Android runtime acceptance; new exact-head hosted routing/Native/auth checks required.
+- Forward-compose Security PR1407 sourcef6c0630a with this fix so the combined candidate is tested on one exact source; preserve both memory records and all original audit ancestors. Installed-country acceptance also retriggers on shared helper changes. Do not reuse earlier branch CI to accept this composition.
+- No Production mutation, main promotion, signed AAB or Play upload. P0/finite payment/VAT rollout, backup credentials/actual restore, SQL-body reconciliation and physical/Play evidence remain open.
+
 ## 2026-11-22 Forward-converge the pending anonymous definer audit
 
 - PR1230/1234 source was still absent from Integration. Verified original0cf6a87b13333d747c93d01e8ce312d2b0010f72 contains the inventory plus corrected single-backslash PostgreSQL regex; its five commits add only two SQL files relative to common ancestor369e4b49. Forward composition retains both Git parents; expanded the shallow local history to verify the common ancestor rather than allowing unrelated histories or resetting.
