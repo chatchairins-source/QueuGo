@@ -34,10 +34,10 @@ try {
   for(const [a,b] of [[valid,valid],[Object.fromEntries(keys.map(k=>[k,0])),Object.fromEntries(keys.map(k=>[k,0]))]]){
     const r=run(a,b);assert.equal(r.status,0,r.stderr);checks++;
   }
-  // Preserve existing bounded snapshot-drift behavior; do not loosen it.
-  for(const [count,passed] of [[8,true],[7,false],[11,false]]){
-    const r=run(valid,{...valid,'public.orders':count});
-    assert.equal(r.status===0,passed);checks++;
+  // A missing or extra row is a failed restore, including one/two order rows.
+  for(const key of keys)for(const delta of [-3,-2,-1,1,2,3]){
+    const r=run(valid,{...valid,[key]:10+delta});
+    assert.notEqual(r.status,0,key+' must reject count delta '+delta);checks++;
   }
   console.log(JSON.stringify({checks,failures:0,scope:'actual inventory comparison CLI rejects malformed counts; no live restore certification'}));
 }finally{fs.rmSync(dir,{recursive:true,force:true});}

@@ -31,6 +31,10 @@ ok(/QG_BACKUP_PASSPHRASE/.test(workflow)&&/QG_SUPABASE_DB_URL/.test(workflow)&&/
 ok(/missing=0[\s\S]*Missing required secret: \$name[\s\S]*missing=1[\s\S]*if \[ "\$missing" -ne 0 \]/.test(workflow),'backup secret preflight must report all missing secrets before failing');
 ok(exporter.includes('storage-manifest.json')&&exporter.includes('sha256'),'Storage exporter must hash every object');
 ok(restorer.includes('upsert:true')&&restorer.includes('Restored object verification failed'),'Storage restore must re-upload and checksum verify objects');
+ok(workflow.includes('node ops/inventory-from-copy-dump.mjs backup/data.sql > backup/source-inventory.json'),
+  'expected restore counts must come from the actual COPY dump snapshot');
+ok(workflow.includes('backup/observed-live-inventory.json')&&workflow.includes('backup/source-inventory.json backup/storage-manifest.json > backup/core.sha256'),
+  'moving live observations must be separate and authoritative dump inventory checksummed');
 ok(inventory.includes('auth.users')&&inventory.includes('storage.objects'),'backup inventory must cover Auth and Storage metadata');
 ok(inventory.includes('public.qg_ugc_terms_acceptances')&&inventory.includes('public.qg_user_blocks')&&inventory.includes('public.qg_ugc_reports'),'backup inventory must cover UGC safety state');
 ok(verify.includes("queuego_private.qg_chat_moderation_post_allowed"),'restore must verify private UGC moderation helper');
@@ -50,4 +54,5 @@ ok(!fs.existsSync(path.join(root,'.github/workflows/build-queuego-apks.yml')),
 require('./restore-storage-target.cjs');
 require('./backup-storage-paths.cjs');
 require('./backup-inventory-counts.cjs');
+require('./backup-copy-inventory.cjs');
 console.log(JSON.stringify({checks,failures:0,scope:'Encrypted external database + Storage backup and local restore drill'}));

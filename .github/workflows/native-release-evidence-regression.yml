@@ -10,6 +10,15 @@ on:
       - 'ops/p0/rider-dispatch-deployment-readonly.sql'
       - 'ops/p0/rider-dispatch-highwater-readonly.sql'
       - 'tests/native-release-dispatch-cert.cjs'
+      - 'ops/backup-inventory-contract.mjs'
+      - 'ops/inventory-from-copy-dump.mjs'
+      - 'ops/compare-inventory.mjs'
+      - 'ops/backup-inventory.sql'
+      - 'tests/backup-restore.cjs'
+      - 'tests/backup-inventory-counts.cjs'
+      - 'tests/backup-copy-inventory.cjs'
+      - 'tests/backend/backup-copy-postgres.cjs'
+      - '.github/workflows/backup-restore-drill.yml'
   push:
     paths:
       - 'tests/native-release-evidence-bundler.cjs'
@@ -19,6 +28,15 @@ on:
       - 'ops/p0/rider-dispatch-deployment-readonly.sql'
       - 'ops/p0/rider-dispatch-highwater-readonly.sql'
       - 'tests/native-release-dispatch-cert.cjs'
+      - 'ops/backup-inventory-contract.mjs'
+      - 'ops/inventory-from-copy-dump.mjs'
+      - 'ops/compare-inventory.mjs'
+      - 'ops/backup-inventory.sql'
+      - 'tests/backup-restore.cjs'
+      - 'tests/backup-inventory-counts.cjs'
+      - 'tests/backup-copy-inventory.cjs'
+      - 'tests/backend/backup-copy-postgres.cjs'
+      - '.github/workflows/backup-restore-drill.yml'
   workflow_dispatch:
 
 permissions:
@@ -30,6 +48,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '20'
@@ -42,3 +62,41 @@ jobs:
         run: node tests/native-release-evidence-bundler.cjs
       - name: Exercise Production P0 certification gate with isolated psql fixtures
         run: node tests/native-release-dispatch-cert.cjs
+
+  backup-copy-regression:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17.6@sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+        env:
+          POSTGRES_DB: qg_backup_source_ci
+          POSTGRES_PASSWORD: isolated-backup-only
+        options: >-
+          --health-cmd "pg_isready -U postgres -d qg_backup_source_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '22'
+      - name: Verify backup safety and exact COPY snapshot counts
+        run: node tests/backup-restore.cjs
+      - name: Restore a real PostgreSQL dump to a separate disposable database
+        env:
+          QG_BACKUP_TEST_CONTAINER: ${{ job.services.postgres.id }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/backup-copy
+          node tests/backend/backup-copy-postgres.cjs | tee artifacts/backup-copy/postgres.json
+      - name: Retain only synthetic verification results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: backup-copy-postgres-isolated
+          path: artifacts/backup-copy/
+          if-no-files-found: warn
