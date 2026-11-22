@@ -16,6 +16,8 @@ INSERT INTO p0_preflight_cases(case_name,payment_status,payment_method,search_st
  ('unknown_status',NULL,'cash',now()-interval '31 minutes',false),
  ('unknown_method','unpaid',NULL,now()-interval '31 minutes',false),
  ('blank_method','unpaid','   ',now()-interval '31 minutes',false),
+ ('card_method','unpaid','card',now()-interval '31 minutes',false),
+ ('transfer_method','unpaid','bank_transfer',now()-interval '31 minutes',false),
  ('not_expired','unpaid','cash',now()-interval '29 minutes',false),
  ('future_start','unpaid','cash',now()+interval '1 minute',false),
  ('missing_start','unpaid','cash',NULL,false);
@@ -48,7 +50,7 @@ BEGIN
  FROM (
  SELECT case_name, expected,
   (search_start < now()-interval '30 minutes' AND search_start IS NOT NULL AND search_start <= now()
-   AND payment_status='unpaid' AND payment_method IS NOT NULL AND btrim(payment_method)<>''
+   AND payment_status='unpaid' AND lower(btrim(payment_method))='cash'
    AND paid_at IS NULL AND rider_assigned_at IS NULL AND cancelled_at IS NULL
    AND NOT cash_lock AND NOT payment_ledger AND NOT merchant_receipt AND NOT rider_advance
    AND NOT rider_refund AND NOT grocery_reservation AND NOT pos_reservation AND NOT offer_row
