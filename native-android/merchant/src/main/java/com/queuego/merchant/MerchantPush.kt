@@ -5,6 +5,8 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import java.util.UUID
 import android.media.AudioAttributes
 import android.media.RingtoneManager
 import android.os.Build
@@ -77,6 +79,20 @@ internal suspend fun disableMerchantNativePush(context: Context, auth: NativeAut
     }
 }
 
+internal fun merchantNotificationPendingIntent(
+    context: Context, identity: String, referenceId: String, type: String
+): PendingIntent {
+    val intent = Intent(context, MainActivity::class.java).apply {
+        data = Uri.parse(identity)
+        flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        putExtra("queuego_push_reference_id", referenceId)
+        putExtra("queuego_push_type", type)
+    }
+    return PendingIntent.getActivity(
+        context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+}
+
 class QueueGoMerchantMessagingService : FirebaseMessagingService() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -113,17 +129,10 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
         val body = message.notification?.body ?: message.data["message"] ?: "มีรายการอัปเดตใน QueueGo"
         val referenceId = message.data["referenceId"] ?: message.data["reference_id"] ?: ""
         val type = message.data["type"].orEmpty()
-        val intent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("queuego_push_reference_id", referenceId)
-            putExtra("queuego_push_type", type)
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            (message.messageId ?: referenceId + type).hashCode(),
-            intent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
+        val identity = merchantPushIdentity(cached.user.id, merchantPushMessageKey(
+            message.messageId, referenceId, type, UUID.randomUUID().toString()
+        ))
+        val pendingIntent = merchantNotificationPendingIntent(this, identity, referenceId, type)
         val notification = NotificationCompat.Builder(this, MERCHANT_NOTIFICATION_CHANNEL)
             .setSmallIcon(R.drawable.qg_notification)
             .setContentTitle(title.take(80))
@@ -139,8 +148,7 @@ class QueueGoMerchantMessagingService : FirebaseMessagingService() {
             .build()
         runCatching {
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).notify(
-                (message.messageId ?: referenceId.ifBlank { System.currentTimeMillis().toString() }).hashCode(),
-                notification
+                identity, 0, notification
             )
         }
     }

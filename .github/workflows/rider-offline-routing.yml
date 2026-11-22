@@ -6,9 +6,13 @@ on:
       - '.github/workflows/rider-android-authenticated-review.yml'
       - 'native-android/qa/fetch-rider-offline-candidate.py'
       - 'native-android/rider-navigation-map/**'
+      - 'native-android/rider-maplibre-osm/**'
       - 'native-android/rider/**'
       - 'native-android/merchant/**'
       - 'native-android/qa/run-rider-offline-routing.py'
+      - 'native-android/qa/gradle_maven_recovery.py'
+      - 'native-android/qa/test_gradle_maven_recovery.py'
+      - 'tests/rider-offline-maven-recovery.cjs'
       - 'native-android/qa/run-rider-fused-gps.py'
       - 'native-android/qa/test-rider-fused-gps-preflight.py'
       - 'native-android/qa/maplibre-swiftshader/**'
@@ -169,9 +173,15 @@ jobs:
         run: |
           set +o pipefail
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-36' 'build-tools;36.0.0' 'platform-tools' 'emulator' 'system-images;android-30;default;x86_64'
+      - name: Verify bounded exact-source Maven recovery controls
+        run: |
+          python3 -m unittest discover -s native-android/qa -p 'test_gradle_maven_recovery.py' -v
+          node tests/rider-offline-maven-recovery.cjs
       - name: Exact-source JVM tests and Rider Debug APK
         run: |
-          gradle -p native-android :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest :rider:testDebugUnitTest :rider:assembleDebug :rider:assembleDebugAndroidTest --no-daemon --stacktrace
+          python3 native-android/qa/gradle_maven_recovery.py \
+            --log artifacts/rider-offline-routing/gradle-first-attempt.log -- \
+            gradle -p native-android :rider-navigation-map:testDebugUnitTest :rider-maplibre-osm:testDebugUnitTest :rider:testDebugUnitTest :rider:assembleDebug :rider:assembleDebugAndroidTest --no-daemon --stacktrace
           mkdir -p artifacts/rider-offline-routing
           git rev-parse HEAD > artifacts/rider-offline-routing/build-commit.txt
           stat -c %s native-android/rider/build/outputs/apk/debug/rider-debug.apk > artifacts/rider-offline-routing/apk-size-bytes.txt

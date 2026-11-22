@@ -256,12 +256,13 @@ jobs:
           set -euo pipefail
           adb="$ANDROID_HOME/platform-tools/adb"
           "$adb" -s emulator-5554 install -r native-android/merchant/build/outputs/apk/androidTest/debug/merchant-debug-androidTest.apk
-          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.merchant.MerchantPushRuntimeTest com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner > artifacts/merchant-authenticated-review/background-fcm.txt
+          "$adb" -s emulator-5554 shell am instrument -w -r -e class com.queuego.merchant.MerchantPushRuntimeTest,com.queuego.merchant.MerchantPendingIntentRuntimeTest com.queuego.merchant.test/androidx.test.runner.AndroidJUnitRunner > artifacts/merchant-authenticated-review/background-fcm.txt
           python3 - <<'PYFCM'
           from pathlib import Path
           text = Path("artifacts/merchant-authenticated-review/background-fcm.txt").read_text()
-          assert "OK (1 test)" in text and "FAILURES" not in text, "Actual Merchant background FCM failed; inspect instrumentation"
+          assert "OK (2 tests)" in text and "FAILURES" not in text, "Actual Merchant FCM or PendingIntent identity failed; inspect instrumentation"
           print("QUEUEGO_MERCHANT_REAL_BACKGROUND_FCM_PASS")
+          print("QUEUEGO_MERCHANT_PENDING_INTENT_IDENTITY_PASS")
           PYFCM
       - name: Set up Web visual review dependencies
         if: always() && needs.credential-check.outputs.merchant_only == 'true'

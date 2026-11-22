@@ -18,7 +18,7 @@ POM = (b"<project><groupId>com.google.code.findbugs</groupId>"
 
 
 class RecoveryTest(unittest.TestCase):
-    def exercise(self, output, codes, probe_error=None):
+    def exercise(self, output, codes, probe_error=None, command=None):
         calls, probes, waits = [], [], []
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / "first.log"
@@ -33,7 +33,7 @@ class RecoveryTest(unittest.TestCase):
                 if probe_error:
                     raise probe_error
 
-            command = ["gradle", ":customer:assembleDebugAndroidTest", "--stacktrace"]
+            command = command or ["gradle", ":customer:assembleDebugAndroidTest", "--stacktrace"]
             code = execute(command, log, build=build, probe=probe, sleep=waits.append)
             self.assertEqual(log.read_text(), output, "original failure evidence retained")
         return code, calls, probes, waits
@@ -52,6 +52,28 @@ class RecoveryTest(unittest.TestCase):
     def test_second_failure_is_final(self):
         code, calls, _, _ = self.exercise(MISSING, [1, 7])
         self.assertEqual((code, len(calls)), (7, 2))
+
+    def test_observed_offline_test_dependencies_keep_all_tasks(self):
+        coordinates = ["com.squareup.okhttp3:mockwebserver:4.12.0",
+                       "com.squareup.okhttp3:okhttp-tls:4.12.0"]
+        command = ["gradle", "-p", "native-android", ":rider-navigation-map:testDebugUnitTest",
+                   ":rider-maplibre-osm:testDebugUnitTest", ":rider:testDebugUnitTest",
+                   ":rider:assembleDebug", ":rider:assembleDebugAndroidTest", "--no-daemon", "--stacktrace"]
+        output = "\n".join("Could not find " + coordinate + "." for coordinate in coordinates)
+        code, calls, probes, waits = self.exercise(output, [1, 0], command=command)
+        self.assertEqual((code, probes, waits), (0, coordinates, [15]))
+        self.assertEqual(calls, [command, command + ["--refresh-dependencies"]])
+        self.assertEqual(retry_coordinates(output + "\nCould not find com.squareup.okhttp3:mockwebserver:4.13.0."), [])
+
+    def test_offline_dependency_poms_require_exact_coordinates(self):
+        for artifact in ("mockwebserver", "okhttp-tls"):
+            coordinate = "com.squareup.okhttp3:" + artifact + ":4.12.0"
+            pom = ("<project><groupId>com.squareup.okhttp3</groupId><artifactId>" + artifact
+                   + "</artifactId><version>4.12.0</version></project>").encode()
+            validate_pom(pom, coordinate)
+            self.assertTrue(metadata_url(coordinate).endswith(artifact + "/4.12.0/" + artifact + "-4.12.0.pom"))
+            with self.assertRaises(MetadataError):
+                validate_pom(pom.replace(b"4.12.0", b"4.13.0"), coordinate)
 
     def test_metadata_failure_does_not_run_gradle_again(self):
         code, calls, _, _ = self.exercise(MISSING, [9], MetadataError("no metadata"))

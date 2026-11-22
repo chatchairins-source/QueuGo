@@ -22,6 +22,8 @@ PINNED = frozenset({
     "org.hamcrest:hamcrest-library:1.3",
     "org.hamcrest:hamcrest-integration:1.3",
     "com.google.code.findbugs:jsr305:2.0.2",
+    "com.squareup.okhttp3:mockwebserver:4.12.0",
+    "com.squareup.okhttp3:okhttp-tls:4.12.0",
     "org.jetbrains.kotlin.plugin.compose:org.jetbrains.kotlin.plugin.compose.gradle.plugin:2.4.10",
 })
 COORD = r"([A-Za-z0-9_.-]+:[A-Za-z0-9_.-]+:[A-Za-z0-9_.+-]+)"
