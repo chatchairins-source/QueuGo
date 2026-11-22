@@ -296,7 +296,7 @@ jobs:
     timeout-minutes: 25
     permissions:
       actions: read
-      contents: write
+      contents: read
     steps:
       - name: Reconstruct and verify exact offline-tested Rider APK
         env:
@@ -346,17 +346,19 @@ jobs:
           sed -i "s/QueueGo-Rider-FieldTest.apk/QueueGo-Rider-FieldTest-${EXPECTED_SHA:0:8}.apk/" SHA256SUMS.txt
           sha256sum -c SHA256SUMS.txt
           printf 'Source: %s\nOffline installed-test run: %s\nField-test only. Physical road, full order E2E and FCM delivery remain independent gates.\n' "$EXPECTED_SHA" "$GITHUB_RUN_ID" > SOURCE.txt
-      - name: Publish verified single APK as prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          EXPECTED_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          set -euo pipefail
-          tag="rider-country-field-${EXPECTED_SHA:0:8}"
-          apk="QueueGo-Rider-FieldTest-${EXPECTED_SHA:0:8}.apk"
-          if gh release view "$tag" >/dev/null 2>&1; then
-            gh release upload "$tag" "$apk" SHA256SUMS.txt SOURCE.txt --clobber
-          else
-            gh release create "$tag" "$apk" SHA256SUMS.txt SOURCE.txt --target "$EXPECTED_SHA" --prerelease --title "QueueGo verified offline Rider field test ${EXPECTED_SHA:0:8}" --notes-file SOURCE.txt
-          fi
+      # The repository's GITHUB_TOKEN cannot create Releases on PR events
+      # (observed HTTP 403 on exact Integration run 45028553995).
+      # Publish the same byte-verified field APK as a per-run Actions artifact
+      # instead; no extra contents write permission or unsafe token required.
+      # This is an expiring debug field-test artifact, NOT a Play release.
+      - name: Upload SHA-verified field APK and provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-fieldtest-${{ github.event.pull_request.head.sha }}
+          path: |
+            QueueGo-Rider-FieldTest-*.apk
+            SHA256SUMS.txt
+            SOURCE.txt
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
