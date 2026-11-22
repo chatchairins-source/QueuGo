@@ -3,8 +3,21 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 const {PGlite}=require('@electric-sql/pglite');
 const uuid=n=>'00000000-0000-4000-8000-'+String(n).padStart(12,'0');
+async function isolatedDatabase(){
+ const target=process.env.QG_POS_TEST_DATABASE_URL;
+ if(!target)return {db:new PGlite(),engine:'PGlite'};
+ const url=new URL(target);
+ // This destructive schema/role fixture must never point at a hosted database.
+ assert(['postgres:','postgresql:'].includes(url.protocol)&&
+  ['127.0.0.1','localhost'].includes(url.hostname)&&url.port==='55448'&&
+  url.pathname==='/qg_pos_test_ci'&&!url.search,'only the disposable local POS CI database is allowed');
+ const {Client}=require('pg');
+ const client=new Client({connectionString:target});
+ await client.connect();
+ return {db:{exec:sql=>client.query(sql),query:(sql,args)=>client.query(sql,args),close:()=>client.end()},engine:'PostgreSQL'};
+}
 async function main(){
- const db=new PGlite();let checks=0;
+ const {db,engine}=await isolatedDatabase();let checks=0;
  try{
   await db.exec("CREATE SCHEMA auth; CREATE ROLE anon; CREATE ROLE authenticated;");
   await db.exec("CREATE TABLE auth.users(id uuid PRIMARY KEY);");
@@ -189,7 +202,98 @@ async function main(){
   assert.equal(Number(row.total_amount),100);assert.equal(row.pos_tax_enabled_snapshot,null);checks+=2;
   assert.equal(await auditCount(),2);checks++;
 
-  console.log(JSON.stringify({checks,failures:0,scope:'isolated PGlite POS tax calculations, actual role/RLS and captured POS order guard/audit composition; synthetic identities/server context, NOT live JWT, full checkout/refund or Production certification'}));
+  // Exercise the captured payment RPC itself, not a fake receipt or client guard.
+  await db.exec(`ALTER TABLE shop_profiles ADD COLUMN public_category text DEFAULT 'market', ADD COLUMN metadata jsonb DEFAULT '{}';
+   ALTER TABLE pos_staff ADD COLUMN permissions jsonb DEFAULT '{}', ADD COLUMN staff_role text DEFAULT 'CASHIER';
+   ALTER TABLE orders ADD COLUMN status text DEFAULT 'pending', ADD COLUMN payment_status text DEFAULT 'UNPAID',
+    ADD COLUMN kitchen_status text DEFAULT 'NEW', ADD COLUMN bill_status text DEFAULT 'OPEN', ADD COLUMN payment_method text,
+    ADD COLUMN cash_tendered numeric CHECK(cash_tendered IS NULL OR cash_tendered>=0),
+    ADD COLUMN cash_change numeric CHECK(cash_change IS NULL OR cash_change>=0),
+    ADD COLUMN paid_at timestamptz, ADD COLUMN updated_at timestamptz, ADD COLUMN pos_register_shift_id uuid;
+   CREATE TABLE pos_register_shifts(id uuid,shop_id uuid,cashier_user_id uuid,closed_at timestamptz);
+   INSERT INTO pos_register_shifts VALUES('${uuid(30)}','${uuid(20)}','${uuid(1)}',null);
+   CREATE TABLE payments(order_id uuid,amount numeric,payment_method text,status text,paid_at timestamptz);
+   ${JSON.parse(fs.readFileSync('tests/fixtures/pos-payment-prod-20261122.json','utf8')).definitions.map(row=>row.definition+';').join('\n')}
+   CREATE ROLE service_role;
+   REVOKE ALL ON FUNCTION public.pos_take_payment(uuid,text,numeric) FROM PUBLIC,anon;
+   GRANT EXECUTE ON FUNCTION public.pos_take_payment(uuid,text,numeric) TO authenticated,service_role;`);
+  const payment='public.pos_take_payment(uuid,text,numeric)';
+  const executeAcl=(await db.query(`SELECT has_function_privilege('anon',$1,'EXECUTE') AS anon,
+   has_function_privilege('authenticated',$1,'EXECUTE') AS auth,
+   has_function_privilege('service_role',$1,'EXECUTE') AS service`,[payment])).rows[0];
+  assert.equal(executeAcl.anon,false);assert.equal(executeAcl.auth,true);assert.equal(executeAcl.service,true);checks+=3;
+  const originalPaymentHash=(await db.query('SELECT md5(prosrc) AS hash FROM pg_proc WHERE oid=$1::regprocedure',[payment])).rows[0].hash;
+  assert.equal(originalPaymentHash,'439406595ff236408dd07a21fbd4afd3');checks++;
+  await db.query("SELECT set_config('queuego.pos_rpc','on',false)");
+  await insert(301,100);
+  // Reproduce the captured baseline gap transactionally, then undo every row.
+  await db.exec('BEGIN');
+  await db.query("SELECT public.pos_take_payment($1,'cash','NaN'::numeric)",[uuid(301)]);
+  row=(await db.query('SELECT payment_status,cash_tendered::text,cash_change::text FROM orders WHERE id=$1',[uuid(301)])).rows[0];
+  assert.equal(row.payment_status,'PAID');assert.equal(row.cash_tendered,'NaN');assert.equal(row.cash_change,'NaN');checks+=3;
+  await db.exec('ROLLBACK');
+  assert.equal((await db.query('SELECT * FROM payments')).rows.length,0);checks++;
+  assert.equal((await db.query('SELECT payment_status FROM orders WHERE id=$1',[uuid(301)])).rows[0].payment_status,'UNPAID');checks++;
+  const beforeAcl=(await db.query('SELECT proowner,proacl::text FROM pg_proc WHERE oid=$1::regprocedure',[payment])).rows[0];
+  await db.exec(fs.readFileSync('ops/p0/pos-payment-finite-review-only.sql','utf8'));
+  assert.deepEqual((await db.query('SELECT proowner,proacl::text FROM pg_proc WHERE oid=$1::regprocedure',[payment])).rows[0],beforeAcl);checks++;
+  const beforePaymentAudit=await auditCount();
+  for(const special of ['NaN','Infinity','-Infinity']){
+   await assert.rejects(db.query("SELECT public.pos_take_payment($1,'cash',$2::numeric)",[uuid(301),special]),/finite POS cash received required/);checks++;
+  }
+  await assert.rejects(db.query("SELECT public.pos_take_payment($1,'cash',100)",[uuid(301)]),/cash received is less than total/);checks++;
+  await assert.rejects(db.query("SELECT public.pos_take_payment($1,null,null)",[uuid(301)]),/invalid payment method/);checks++;
+  assert.equal((await db.query('SELECT * FROM payments')).rows.length,0);checks++;
+  assert.equal(await auditCount(),beforePaymentAudit);checks++;
+  let paid=(await db.query("SELECT public.pos_take_payment($1,'cash',110) AS bill",[uuid(301)])).rows[0].bill;
+  assert.equal(paid.payment_status,'PAID');assert.equal(Number(paid.total_amount),107);assert.equal(Number(paid.cash_change),3);checks+=3;
+  const paidAudit=await auditCount();
+  paid=(await db.query("SELECT public.pos_take_payment($1,'cash',110) AS bill",[uuid(301)])).rows[0].bill;
+  assert.equal(paid.payment_status,'PAID');assert.equal((await db.query('SELECT * FROM payments')).rows.length,1);checks+=2;
+  assert.equal(await auditCount(),paidAudit);checks++;
+  await assert.rejects(db.query("SELECT public.pos_take_payment($1,'cash','NaN'::numeric)",[uuid(301)]),/finite POS cash received required/);checks++;
+  // A later audit failure must roll back the payment INSERT and closed bill too.
+  await insert(302,100);
+  await db.exec(`CREATE FUNCTION public.reject_payment_audit_fixture() RETURNS trigger LANGUAGE plpgsql AS $$
+   BEGIN RAISE EXCEPTION 'isolated payment audit failure'; END $$;
+   CREATE TRIGGER reject_payment_audit_fixture BEFORE INSERT ON pos_events
+    FOR EACH ROW EXECUTE FUNCTION public.reject_payment_audit_fixture();`);
+  await assert.rejects(db.query("SELECT public.pos_take_payment($1,'cash',110)",[uuid(302)]),/isolated payment audit failure/);checks++;
+  assert.equal((await db.query('SELECT * FROM payments WHERE order_id=$1',[uuid(302)])).rows.length,0);checks++;
+  assert.equal((await db.query('SELECT payment_status FROM orders WHERE id=$1',[uuid(302)])).rows[0].payment_status,'UNPAID');checks++;
+  await db.exec('DROP TRIGGER reject_payment_audit_fixture ON pos_events; DROP FUNCTION public.reject_payment_audit_fixture()');
+  // Deliberately corrupt legacy-like rows only inside disposable transactions.
+  // Remove the fixture tax constraint/trigger temporarily so the RPC's own total
+  // validation is tested independently; every schema/row change is rolled back.
+  for(const badTotal of ['NaN','Infinity','-Infinity',null,'-1']){
+   await db.exec('BEGIN; ALTER TABLE orders DISABLE TRIGGER pos_apply_tax_snapshot; ALTER TABLE orders DROP CONSTRAINT pos_channel_integrity_check');
+   await db.query('UPDATE orders SET total_amount=$2::numeric WHERE id=$1',[uuid(302),badTotal]);
+   await db.exec('SAVEPOINT before_invalid_payment');
+   await assert.rejects(db.query("SELECT public.pos_take_payment($1,'cash',110)",[uuid(302)]),/finite nonnegative POS bill total required/);checks++;
+   await db.exec('ROLLBACK');
+   assert.equal((await db.query('SELECT * FROM payments WHERE order_id=$1',[uuid(302)])).rows.length,0);checks++;
+   assert.equal(Number((await db.query('SELECT total_amount FROM orders WHERE id=$1',[uuid(302)])).rows[0].total_amount),107);checks++;
+  }
+  // Review-only deployment refuses unknown/already-modified baselines instead
+  // of overwriting a concurrently changed financial function.
+  await assert.rejects(db.exec(fs.readFileSync('ops/p0/pos-payment-finite-review-only.sql','utf8')),/POS payment baseline changed/);checks++;
+  await db.exec('ROLLBACK');
+  assert.deepEqual((await db.query('SELECT proowner,proacl::text FROM pg_proc WHERE oid=$1::regprocedure',[payment])).rows[0],beforeAcl);checks++;
+  // Preserve legitimate zero-value and noncash bills; a finite guard must not
+  // silently narrow existing supported payment methods or manufacture change.
+  await insert(303,0);
+  paid=(await db.query("SELECT public.pos_take_payment($1,'cash',0) AS bill",[uuid(303)])).rows[0].bill;
+  assert.equal(paid.payment_status,'PAID');assert.equal(Number(paid.cash_change),0);checks+=2;
+  await insert(304,100);
+  paid=(await db.query("SELECT public.pos_take_payment($1,'card',null) AS bill",[uuid(304)])).rows[0].bill;
+  assert.equal(paid.payment_status,'PAID');assert.equal(paid.cash_change,null);assert.equal(Number(paid.total_amount),107);checks+=3;
+  await actor('authenticated',2);
+  await assert.rejects(db.query("SELECT public.pos_take_payment($1,'cash',110)",[uuid(301)]),/bill not found/);checks++;
+  await actor('authenticated',4);
+  await assert.rejects(db.query("SELECT public.pos_take_payment($1,'cash',110)",[uuid(301)]),/cashier permission denied/);checks++;
+  await actor('postgres',1);
+
+  console.log(JSON.stringify({checks,failures:0,engine,scope:'isolated POS tax/role/RLS, captured order guard/audit and payment RPC finite-value/replay/rollback; synthetic identities and tables, NOT all live triggers/JWT/refund/Production certification'}));
  }finally{await db.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});

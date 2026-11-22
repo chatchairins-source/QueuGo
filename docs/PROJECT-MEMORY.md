@@ -1,3 +1,11 @@
+## 2026-11-22 Reject non-finite server POS cash tender — review-only candidate
+
+- During #1405 composition, captured current pos_take_payment(uuid,text,numeric), prosrc MD5439406595ff236408dd07a21fbd4afd3. Its finite-value check is absent; observed cash tender/change CHECK constraints only require >=0. Reproduced PAID with NaN tender/change using the unmodified captured RPC, captured POS guard/audit/helpers and matching cash checks in disposable PGlite, then rolled back. No Production payment RPC or order mutation; full live API/other-trigger exploitability not claimed. Track separately in #1406.
+- Added ops/p0/pos-payment-finite-review-only.sql: requires exact original body/config/owner/function flags before CREATE OR REPLACE, rejects special tender and null/special/negative bill totals, rejects null method, retains owner/EXECUTE ACL. Not a migration/deployment; does not rewrite financial history. Reapplication/drift fails closed.
+- Expanded suite137 checks PASS locally: preserve finite cash, zero/card methods, final tax total, cash change, exactly-once retry, role/cross-shop denial, no payment/audit on rejection and atomic ledger/order rollback on audit failure. Corrupt legacy-like fault rows and schema changes are disposable rollback-only tests. Actual captured payment EXECUTE grants are preserved.
+- Existing tax workflow now runs the same harness on PGlite and pinned PostgreSQL17.6, retaining both results; real PostgreSQL acceptance is pending hosted CI. Harness rejects remote or non-designated database URLs before connecting. Current #1405 must receive fresh exact-head CI; predecessor86-check CI is not certification for this source.
+- Production #1406, dispatch #1268 and VAT #1227 remain open pending complete trigger/checkout/refund/stock review, encrypted backup/actual restore, migration reconciliation and approved financial rollout. No main/signed AAB/Play claim.
+
 ## 2026-11-22 Compose POS tax with captured order guard and audit triggers
 
 - #1404 merged at3430c7b84785e60b7b928dc72f7a997e9abc05f8 after exactba6b5285 POS44993397324 and Native44993397247 SUCCESS. New Integration requires independent acceptance; no Production rollout implied.
