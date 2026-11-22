@@ -112,7 +112,10 @@ def run_case(label, longitude, latitude):
             time.sleep(2)
         if process.poll() is None:
             process.kill()
-            raise RuntimeError("Fused GPS instrumentation timed out")
+            partial_output = process.communicate(timeout=15)[0]
+            (OUT / (label + "-instrumentation.txt")).write_text(partial_output)
+            capture_fused_failure_evidence(label)
+            raise RuntimeError("Fused GPS instrumentation timed out; provider and service evidence captured")
         output = process.communicate(timeout=15)[0]
         (OUT / (label + "-instrumentation.txt")).write_text(output)
         if process.returncode != 0 or "OK (1 test)" not in output:
