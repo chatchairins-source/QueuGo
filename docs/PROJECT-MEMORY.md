@@ -1,3 +1,10 @@
+## 2026-11-22 Exercise POS tax role boundaries in the isolated database
+
+- Integration691ef5a1 passed its observed16 workflows, including current Native/Export, Customer API matrix, routing, authenticated review and isolated cash/claim. This does not certify Production rollout or signed Release AABs.
+- The tax test previously forced pos_is_owner=true and one shop, so relrowsecurity=true alone did not test access control. Read current Production pos_is_owner()/pos_my_shop() definitions without mutation; exercise those helper bodies with two shop owners, staff, unrelated and missing identities in disposable PGlite. Identity claims/rows remain synthetic, not live JWT evidence.
+- Actual SET ROLE checks enforce shop-only reads, owner-only settings RPC, denied direct writes/anon execution, and RLS write denial even under temporary table grants (rolled back). Retain existing32 financial/snapshot checks; expanded suite56 checks PASS locally. No root SQL, migration history, live privileges or orders changed. Hosted exact-head acceptance remains required.
+- Production guard/cash-timeout/POS tax remain absent; encrypted restore credentials,392-migration SQL-body reconciliation, controlled financial rollout, complete POS checkout/refund composition and physical/Play evidence are still open.
+
 ## 2026-11-21 Recover actual Integration Maven failures without retry storms
 
 - Exact bb450ed8 failed Customer API26 build job136843034162 (pinned coroutines/JavaWriter/Hamcrest/jsr305 metadata misses; the POM probe also exhausted404), navigation-map job136843095880 (Valhalla0.6.4 absent) and map-display job136843095960 (Maven429 for the pinned Kotlin Compose plugin marker disabled repository resolution). No source/test failure was rerun blindly.

@@ -25,6 +25,8 @@ Therefore **the Android tax settings screen cannot save successfully on current 
 
 ## Backend tax delivery sequence — still required
 
+2026-11-22 isolated acceptance: `tests/pos-tax-backend-isolated.cjs` now runs the captured Production owner/shop helper bodies with actual PostgreSQL roles and RLS in PGlite. All 56 checks pass locally, including two-shop visibility, staff/unrelated/missing-identity RPC denial, anonymous denial, direct-write ACLs and rollback-only temporary-grant RLS defense. Authentication identities and records are synthetic; this is not live JWT, full checkout/refund/trigger composition or Production acceptance. Root SQL and Production remain unchanged. Exact-head hosted CI is still required.
+
 - Review existing source files `QueueGo-POS-Tax-Foundation-Migration.sql` and `QueueGo-POS-Tax-Checkout-Integration-Migration.sql`. Both are at repo root, **not in the timestamped migrations currently deployed to Production**. Do not simply paste them into the live SQL Editor.
 - Reconcile the entire Production migration history and actual definitions of `public.orders`, `pos_guard_write`, related triggers, `pos_channel_integrity_check`, permission checks, tax and payment RPCs against current source. Run exact migration upgrade on disposable staging with representative legacy and new bills.
 - Verify `pos_my_shop` / `pos_is_owner`, owner-only settings write, `SELECT` RLS for the shop, authenticated RPC `EXECUTE`, and denial of anon/cross-shop users. Review any `SECURITY DEFINER` `search_path`, grants and all billing-affecting triggers. Do **not** relax security to make the button work.
