@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
-import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.click
 
 /** Isolated Android UI harness: real picker/MapLibre GL, no account, backend writes or orders. */
@@ -96,13 +95,64 @@ class CustomerLocationP0RuntimeTest {
             assertEquals("App GPS recenter echoed as a user pan", 0, selections.get())
         }
         val beforePan = invalidations.get()
-        compose.onNodeWithTag("camera-owner-map").performTouchInput { swipeLeft(durationMillis = 300) }
+        // Android 11 MapLibre uses TextureView. Inject the pan into the actual
+        // platform MapView instead of a Compose wrapper semantics node: the
+        // latter may consume a synthetic Compose swipe without ever starting
+        // the native MapLibre gesture on API 30.
+        swipeOnActualMapView()
         compose.waitUntil(30_000) { invalidations.get() > beforePan && ready.get() }
         compose.runOnIdle {
             assertEquals("Panning must not choose a delivery stop", 0, selections.get())
         }
         compose.onNodeWithTag("camera-owner-map").performTouchInput { click(center) }
         compose.waitUntil(10_000) { selections.get() == 1 }
+    }
+
+    /** A real screen-coordinate touch stream must reach MapLibre's platform view.
+     * Compose's gesture helper on the outer Box is not sufficient proof that
+     * the AndroidView/TextureView received a drag on legacy Android.
+     */
+    private fun swipeOnActualMapView() {
+        val bounds = android.graphics.Rect()
+        compose.activityRule.scenario.onActivity { activity ->
+            fun findMap(view: android.view.View): org.maplibre.android.maps.MapView? {
+                if (view is org.maplibre.android.maps.MapView) return view
+                if (view is android.view.ViewGroup) for (i in 0 until view.childCount) {
+                    findMap(view.getChildAt(i))?.let { return it }
+                }
+                return null
+            }
+            val map = requireNotNull(findMap(activity.window.decorView)) {
+                "Native MapLibre MapView is absent during pan regression"
+            }
+            assertTrue("Native MapLibre MapView must be visible", map.getGlobalVisibleRect(bounds))
+        }
+        assertTrue("Native map is too narrow for a drag", bounds.width() >= 200)
+        assertTrue("Native map is too short for a drag", bounds.height() >= 200)
+        val startX = bounds.left + bounds.width() * 0.75f
+        val endX = bounds.left + bounds.width() * 0.25f
+        val y = bounds.top + bounds.height() * 0.5f
+        val automation = InstrumentationRegistry.getInstrumentation().uiAutomation
+        val downTime = android.os.SystemClock.uptimeMillis()
+        fun inject(action: Int, x: Float) {
+            val event = android.view.MotionEvent.obtain(
+                downTime, android.os.SystemClock.uptimeMillis(), action, x, y, 0
+            )
+            try {
+                event.source = android.view.InputDevice.SOURCE_TOUCHSCREEN
+                assertTrue("Failed to inject native MapView touch action $action",
+                    automation.injectInputEvent(event, true))
+            } finally {
+                event.recycle()
+            }
+        }
+        inject(android.view.MotionEvent.ACTION_DOWN, startX)
+        for (step in 1..15) {
+            android.os.SystemClock.sleep(20)
+            inject(android.view.MotionEvent.ACTION_MOVE,
+                startX + (endX - startX) * step / 15f)
+        }
+        inject(android.view.MotionEvent.ACTION_UP, endX)
     }
 
     @Test fun thirtyOpenGpsSaveCloseCyclesAndEarlyBackground() {
