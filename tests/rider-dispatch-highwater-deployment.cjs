@@ -21,7 +21,7 @@ async function snapshot() {
 }
 async function main() {
   try {
-    await db.exec('CREATE SCHEMA qg_private; CREATE SCHEMA cron; CREATE TABLE public.qg_rider_order_offers(id integer); CREATE TABLE cron.job(jobname text, active boolean, username text, schedule text, command text);');
+    await db.exec('CREATE SCHEMA qg_private; CREATE SCHEMA cron; CREATE TABLE public.qg_rider_order_offers(id integer); CREATE TABLE cron.job(jobname text, active boolean, username text, database text, schedule text, command text);');
     let row = await snapshot();
     equal(row.offer_guard_function_present, false, 'missing offer guard');
     equal(row.offer_guard_trigger_enabled, false, 'missing offer guard trigger');
@@ -51,8 +51,8 @@ async function main() {
     equal(row.release_gate, 'NO_GO_DISPATCH_P0', 'without cron fail closed');
 
     // Synthetic metadata only: NO cron.schedule or Production access.
-    await db.exec(`INSERT INTO cron.job(jobname,active,username,schedule,command)
-      VALUES('queuego-rider-cash-timeout',true,'postgres','* * * * *',
+    await db.exec(`INSERT INTO cron.job(jobname,active,username,database,schedule,command)
+      VALUES('queuego-rider-cash-timeout',true,'postgres',current_database(),'* * * * *',
         'SELECT qg_private.cancel_rider_timeout_cash(30);');`);
     row = await snapshot();
     equal(row.cash_timeout_cron_active, true, 'exact trusted active 1-minute cron found');
@@ -61,6 +61,7 @@ async function main() {
     for(const [field,bad,good,label] of [
       ['active','false','true','disabled'],
       ['username',"'anon'","'postgres'",'untrusted execution role'],
+      ['database',"'wrong_database'","current_database()",'wrong target database'],
       ['schedule',"'*/2 * * * *'","'* * * * *'",'wrong interval'],
       ['command',"'SELECT qg_private.cancel_rider_timeout_cash(31);'","'SELECT qg_private.cancel_rider_timeout_cash(30);'",'wrong command']
     ]) {
@@ -70,8 +71,8 @@ async function main() {
       equal(row.release_gate, 'NO_GO_DISPATCH_P0', label+' release blocked');
       await db.exec(`UPDATE cron.job SET ${field}=${good};`);
     }
-    await db.exec(`INSERT INTO cron.job(jobname,active,username,schedule,command)
-      VALUES('shadow-timeout',true,'postgres','* * * * *',
+    await db.exec(`INSERT INTO cron.job(jobname,active,username,database,schedule,command)
+      VALUES('shadow-timeout',true,'postgres',current_database(),'* * * * *',
         'SELECT qg_private.cancel_rider_timeout_cash(30);');`);
     row = await snapshot();
     equal(row.cash_timeout_cron_active, false, 'duplicate invocation blocked');
