@@ -31,6 +31,8 @@ WITH installed AS (
         WHERE jobname = 'queuego-rider-cash-timeout'
           AND active IS TRUE
           AND username = 'postgres'
+          -- A job pointed at another database cannot terminalize these orders.
+          AND database = current_database()
           AND schedule = '* * * * *'
           AND command = 'SELECT qg_private.cancel_rider_timeout_cash(30);'
       ) = 1 AS cash_timeout_cron_active
