@@ -1,0 +1,34 @@
+name: QueueGo Checkout Replay Source Security Gate
+on:
+  pull_request:
+    branches:
+      - work-native-reconcile-main-20261114
+    paths:
+      - 'ops/security/qg-table-checkout-revoked-replay-review-20261123.sql'
+      - 'tests/backend/table-checkout-revoked-replay-source.cjs'
+      - '.github/workflows/checkout-replay-security-source.yml'
+  push:
+    branches:
+      - fix/backend-table-checkout-revoked-replay-20261123
+    paths:
+      - 'ops/security/qg-table-checkout-revoked-replay-review-20261123.sql'
+      - 'tests/backend/table-checkout-revoked-replay-source.cjs'
+      - '.github/workflows/checkout-replay-security-source.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 pinned
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 pinned
+        with:
+          node-version: '22'
+      - name: Assert revoked and expired sessions fail before replay
+        run: node tests/backend/table-checkout-revoked-replay-source.cjs
+      - name: Explicitly limit certification scope
+        run: echo 'SOURCE ONLY - NOT PostgreSQL E2E, concurrency, RLS, migration parity, or Production deployment.'
