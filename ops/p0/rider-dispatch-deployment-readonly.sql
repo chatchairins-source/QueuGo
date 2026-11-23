@@ -33,6 +33,10 @@ WITH installed AS (
           AND username = 'postgres'
           -- A job pointed at another database cannot terminalize these orders.
           AND database = current_database()
+          -- Supabase Production uses pg_cron localhost:5432. An otherwise
+          -- matching job targeting a remote node or wrong port is a NO-GO.
+          AND nodename = 'localhost'
+          AND nodeport = 5432
           AND schedule = '* * * * *'
           AND command = 'SELECT qg_private.cancel_rider_timeout_cash(30);'
       ) = 1 AS cash_timeout_cron_active
