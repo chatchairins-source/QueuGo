@@ -1,0 +1,161 @@
+name: QueueGo Internal App Sharing AAB Candidates
+
+# Debug AABs for Internal App Sharing only. Never claim certified Play releases.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - work-native-reconcile-main-20261114
+    paths:
+      - '.github/workflows/internal-app-sharing-aabs.yml'
+      - 'native-android/**'
+      - 'ops/play/**'
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: qg-internal-sharing-aab-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  build-internal-sharing-aab:
+    if: github.ref == 'refs/heads/work-native-reconcile-main-20261114'
+    strategy:
+      fail-fast: false
+      matrix:
+        role: [customer, merchant, rider]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      QG_ROLE: ${{ matrix.role }}
+      QG_FIREBASE_CONFIG_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Require trusted exact-source Integration SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$GITHUB_REF" = 'refs/heads/work-native-reconcile-main-20261114'
+          case "$QG_ROLE" in customer|merchant|rider) ;; *) exit 1 ;; esac
+          echo "::notice::Internal App Sharing candidate only, NOT a certified Play release"
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+        with:
+          gradle-version: '9.6.0'
+      - name: Install Android SDK platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          { yes || true; } | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - name: Validate exact three-role Firebase clients without exposing secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          raw = os.environ.get("QG_FIREBASE_CONFIG_B64", "")
+          if not raw:
+              raise SystemExit("::error::Missing QG_FIREBASE_GOOGLE_SERVICES_JSON_B64")
+          cfg = base64.b64decode(raw, validate=True)
+          data = json.loads(cfg)
+          clients = data.get("client") or []
+          for pkg in ("com.queuego.customer", "com.queuego.merchant", "com.queuego.rider"):
+              matches = [c for c in clients if c.get("client_info", {}).get("android_client_info", {}).get("package_name") == pkg]
+              if len(matches) != 1 or not matches[0].get("client_info", {}).get("mobilesdk_app_id"):
+                  raise SystemExit(f"::error::Firebase config missing complete {pkg} client")
+          if not data.get("project_info", {}).get("project_id"):
+              raise SystemExit("::error::Missing Firebase project identity")
+          dest = Path("native-android") / os.environ["QG_ROLE"] / "google-services.json"
+          dest.write_bytes(cfg)
+          dest.chmod(0o600)
+          print("One validated Firebase client per role; no secret contents logged")
+          PY
+      - name: Recover exactly source-tested Rider offline assets
+        if: matrix.role == 'rider'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 native-android/qa/fetch-rider-offline-candidate.py
+          rid="$(python3 -c 'import json; print(json.load(open("artifacts/rider-authenticated-review/candidate.json"))["offline_run_id"])')"
+          QG_REQUIRED_OFFLINE_RUN_ID="$rid" python3 native-android/qa/stage-play-rider-assets.py \
+            native-android/rider/build/outputs/apk/debug/rider-debug.apk
+          echo "QG_REQUIRED_OFFLINE_RUN_ID=$rid" >> "$GITHUB_ENV"
+          echo "QG_OFFLINE_MAP_ASSETS=$GITHUB_WORKSPACE/native-android/rider_country_map/src/main/assets" >> "$GITHUB_ENV"
+          echo "QG_OFFLINE_ROUTING_ASSETS=$GITHUB_WORKSPACE/native-android/rider_country_routing/src/main/assets" >> "$GITHUB_ENV"
+      - name: Test and bundle actual native role
+        env:
+          QG_RIDER_PLAY_ASSET_PACKS: ${{ matrix.role == 'rider' && '1' || '0' }}
+        run: |
+          set -euo pipefail
+          gradle -p native-android ":$QG_ROLE:testDebugUnitTest" ":$QG_ROLE:bundleDebug" \
+            --no-daemon --stacktrace
+      - name: Verify bundletool and package AAB with source SHA-256
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool="$RUNNER_TEMP/bundletool-all-1.18.3.jar"
+          curl --fail --location --retry 3 --connect-timeout 15 --max-time 180 \
+            "https://github.com/google/bundletool/releases/download/1.18.3/bundletool-all-1.18.3.jar" -o "$tool"
+          echo "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d91028e29  $tool" | sha256sum -c -
+          aab="native-android/$QG_ROLE/build/outputs/bundle/debug/$QG_ROLE-debug.aab"
+          test -s "$aab"
+          java -jar "$tool" validate --bundle="$aab"
+          python3 - "$aab" "$QG_ROLE" "$GITHUB_SHA" <<'PY'
+          import hashlib, json, sys, zipfile
+          from pathlib import Path
+          aab, role, source = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+          with zipfile.ZipFile(aab) as z:
+              names = z.namelist()
+              if len(names) != len(set(names)) or not {"BundleConfig.pb", "base/manifest/AndroidManifest.xml"}.issubset(names):
+                  raise SystemExit("::error::Malformed or duplicate AAB modules")
+          with aab.open("rb") as stream:
+              sha = hashlib.file_digest(stream, "sha256").hexdigest()
+          output = Path("internal-sharing-aab")
+          output.mkdir(exist_ok=True)
+          name = f"QueueGo-{role}-InternalSharing-{source[:8]}.aab"
+          target = output / name
+          aab.replace(target)
+          (output / "SHA256SUMS.txt").write_text(f"{sha}  {name}\n")
+          (output / "SOURCE.json").write_text(json.dumps({
+              "role": role, "source_sha": source, "sha256": sha,
+              "distribution": "Google Play Internal App Sharing ONLY",
+              "certified_release": False, "production_approved": False,
+              "not_for_play_internal_testing_track": True,
+              "warning": "Debug AAB, not an upload-key-certified Release AAB. Do not use for live orders."
+          }, indent=2) + "\n")
+          print(f"INTERNAL_SHARING_AAB_CREATED role={role} bytes={target.stat().st_size} sha256={sha}")
+          PY
+          (cd internal-sharing-aab && sha256sum -c SHA256SUMS.txt)
+      - name: Verify Rider exact tested nationwide Play asset pack bytes
+        if: matrix.role == 'rider'
+        run: |
+          python3 native-android/qa/stage-play-rider-assets.py --verify-bundle \
+            "internal-sharing-aab/QueueGo-rider-InternalSharing-${GITHUB_SHA:0:8}.aab"
+      - name: Retain real AAB and provenance
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-internal-sharing-${{ matrix.role }}-${{ github.sha }}
+          path: internal-sharing-aab/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Clean Firebase and offline asset staging
+        if: always()
+        shell: bash
+        run: |
+          rm -f "native-android/$QG_ROLE/google-services.json"
+          rm -rf "$RUNNER_TEMP/exact-rider-candidate" artifacts/rider-authenticated-review
+          rm -rf native-android/rider_country_map/src/main/assets/maps
+          rm -rf native-android/rider_country_routing/src/main/assets/routing
