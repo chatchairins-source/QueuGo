@@ -1,0 +1,136 @@
+name: QueueGo Rider AAB Portable Chunk Export
+
+# Transport-only. Repackage an ALREADY verified AAB into pieces that fit
+# connector transfer limits. This does not build, sign or alter the AAB.
+on:
+  push:
+    branches:
+      - ci/rider-internal-aab-chunks-20261123
+    paths:
+      - '.github/workflows/rider-internal-aab-chunks.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verified-rider-chunks:
+    if: github.ref == 'refs/heads/ci/rider-internal-aab-chunks-20261123'
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_RUN_ID: '45097405806'
+      SOURCE_SHA: df5bd3cd2c23d382820be5466b163da4708c596d
+      SOURCE_ARTIFACT: queuego-internal-sharing-rider-df5bd3cd2c23d382820be5466b163da4708c596d
+      AAB_NAME: QueueGo-rider-InternalSharing-df5bd3cd.aab
+      AAB_SHA256: 3139b5b9bb2a003dc13115fed5bbe0496fffbcbf514df6485c70742ce9905299
+      AAB_BYTES: '883683935'
+    steps:
+      - name: Verify trusted original successful Rider AAB run
+        shell: bash
+        run: |
+          set -euo pipefail
+          info="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN_ID")"
+          jq -e --arg sha "$SOURCE_SHA" '
+            .head_sha == $sha
+            and .name == "QueueGo Internal App Sharing AAB Candidates"
+            and .conclusion == "success"
+            and .head_branch == "work-native-reconcile-main-20261114"
+          ' <<< "$info" >/dev/null
+          echo "Original exact-source, 3-role successful AAB run verified"
+      - name: Download original verified Rider AAB
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p original
+          gh run download "$SOURCE_RUN_ID" \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "$SOURCE_ARTIFACT" \
+            --dir original
+          test -s "original/$AAB_NAME"
+          test -s original/SHA256SUMS.txt
+          test -s original/SOURCE.json
+          (cd original && sha256sum -c SHA256SUMS.txt)
+          printf '%s  %s\n' "$AAB_SHA256" "$AAB_NAME" > expected.sha256
+          (cd original && sha256sum -c ../expected.sha256)
+          actual="$(stat -c %s "original/$AAB_NAME")"
+          test "$actual" = "$AAB_BYTES" || {
+            echo "::error::Original Rider AAB byte length mismatch"
+            exit 1
+          }
+          python3 - <<'PY'
+          import json, os, zipfile
+          from pathlib import Path
+          source=json.loads(Path("original/SOURCE.json").read_text())
+          if source.get("role") != "rider" or source.get("source_sha") != os.environ["SOURCE_SHA"]:
+              raise SystemExit("::error::Rider source provenance mismatch")
+          if source.get("sha256") != os.environ["AAB_SHA256"] or source.get("certified_release") is not False:
+              raise SystemExit("::error::Rider digest or internal-sharing distinction mismatch")
+          with zipfile.ZipFile(Path("original")/os.environ["AAB_NAME"]) as archive:
+              members=set(archive.namelist())
+              needed={"BundleConfig.pb","base/manifest/AndroidManifest.xml"}
+              if not needed.issubset(members):
+                  raise SystemExit("::error::Required AAB entries missing")
+              for prefix in ("rider_country_map/assets/maps/","rider_country_routing/assets/routing/"):
+                  if not any(name.startswith(prefix) for name in members):
+                      raise SystemExit("::error::Rider country asset pack missing: "+prefix)
+          print("Original Rider AAB SHA, original provenance, base and country asset packs PASS")
+          PY
+      - name: Split without modifying any Rider AAB bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p parts manifest
+          split --bytes=225000000 --numeric-suffixes=0 --suffix-length=2 \
+            "original/$AAB_NAME" "parts/$AAB_NAME.part"
+          count="$(find parts -maxdepth 1 -type f -name '*.part[0-9][0-9]' | wc -l)"
+          test "$count" -eq 4 || { echo "::error::Expected exactly 4 AAB parts"; exit 1; }
+          (cd parts && sha256sum -- *.part[0-9][0-9]) > manifest/CHUNKS.sha256
+          printf '%s  %s\n' "$AAB_SHA256" "$AAB_NAME" > manifest/WHOLE.sha256
+          printf 'Original AAB run: %s\nExact source SHA: %s\nOriginal AAB bytes: %s\nGoogle Play Internal App Sharing DEBUG only; not a signed Play track release.\n' \
+            "$SOURCE_RUN_ID" "$SOURCE_SHA" "$AAB_BYTES" > manifest/SOURCE.txt
+          cat parts/*.part[0-9][0-9] | sha256sum | grep -Fx "$AAB_SHA256  -" || {
+            echo "::error::Split parts do not reconstruct original AAB digest"
+            exit 1
+          }
+          (cd parts && sha256sum -c ../manifest/CHUNKS.sha256)
+      - name: Upload exact Rider chunk 00
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-aab-part00-df5bd3cd
+          path: parts/QueueGo-rider-InternalSharing-df5bd3cd.aab.part00
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Upload exact Rider chunk 01
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-aab-part01-df5bd3cd
+          path: parts/QueueGo-rider-InternalSharing-df5bd3cd.aab.part01
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Upload exact Rider chunk 02
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-aab-part02-df5bd3cd
+          path: parts/QueueGo-rider-InternalSharing-df5bd3cd.aab.part02
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Upload exact Rider chunk 03
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-aab-part03-df5bd3cd
+          path: parts/QueueGo-rider-InternalSharing-df5bd3cd.aab.part03
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Upload source and complete chunk checksums
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-rider-aab-manifest-df5bd3cd
+          path: manifest/
+          if-no-files-found: error
+          retention-days: 14
