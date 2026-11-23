@@ -50,6 +50,19 @@ def check_history(history):
     return result
 
 
+def load_private_history(path, repo_root):
+    # The source SQL may contain secrets or customer data. Never accept a
+    # committed/in-repo export even if it was linked through a different path.
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("private Production SQL export must be a regular file, not a symlink")
+    private = path.resolve(strict=True)
+    if private.is_relative_to(repo_root.resolve()):
+        raise ValueError("private Production SQL export MUST be outside Git repository")
+    if os.name == "posix" and (private.stat().st_mode & 0o077):
+        raise ValueError("private Production SQL export must be chmod 600")
+    return json.loads(private.read_text(encoding="utf-8"))
+
+
 def stage(history, source, output, repo_root, expected_count):
     source, output, repo_root = source.resolve(), output.resolve(), repo_root.resolve()
     if not source.is_dir() or source.is_symlink():
@@ -141,6 +154,38 @@ def self_test():
         assert "select 2" not in manifest, "manifest must not embed SQL"
         if os.name == "posix":
             assert private.stat().st_mode & 0o077 == 0, "private directory permission"
+        synthetic_export = base / "synthetic_export.json"
+        synthetic_export.write_text(json.dumps(data), encoding="utf-8")
+        if os.name == "posix":
+            synthetic_export.chmod(0o600)
+        assert load_private_history(synthetic_export, repo) == data
+        in_repo_export = repo / "accidental_production_export.json"
+        in_repo_export.write_text(json.dumps(data), encoding="utf-8")
+        if os.name == "posix":
+            in_repo_export.chmod(0o600)
+        try:
+            load_private_history(in_repo_export, repo)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("in-repo Production export was accepted")
+        linked_export = base / "export_symlink.json"
+        linked_export.symlink_to(in_repo_export)
+        try:
+            load_private_history(linked_export, repo)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("linked Production export was accepted")
+        if os.name == "posix":
+            synthetic_export.chmod(0o644)
+            try:
+                load_private_history(synthetic_export, repo)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("world-readable Production export was accepted")
+            synthetic_export.chmod(0o600)
         # An incomplete but otherwise valid ledger export must fail closed.
         try:
             stage({"migrations": data["migrations"][:1]}, source, base / "partial", repo, 2)
@@ -193,7 +238,7 @@ def main():
     if args.history is None or args.output is None or args.expected_count is None:
         p.error("--history, --output and --expected-count required unless --self-test")
     repo = Path(__file__).resolve().parents[1]
-    history = json.loads(args.history.read_text(encoding="utf-8"))
+    history = load_private_history(args.history, repo)
     report = stage(history, args.source, args.output, repo, args.expected_count)
     # Output counts only: never emit SQL, credentials, or paths into CI logs.
     print(json.dumps({
