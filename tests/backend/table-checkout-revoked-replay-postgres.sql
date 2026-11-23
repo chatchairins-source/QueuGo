@@ -24,7 +24,41 @@ VALUES
 ('00000000-0000-0000-0000-000000000002',encode(extensions.digest('00000000-0000-0000-0000-000000000010','sha256'),'hex'),NULL,now()-interval '1 minute');
 INSERT INTO public.qg_table_requests(session_id,request_id,payload_hash,order_id)
 VALUES ('00000000-0000-0000-0000-000000000001','00000000-0000-0000-0000-000000000020','irrelevant','00000000-0000-0000-0000-000000000030');
+-- Positive control: active sessions must still replay the same request exactly once.
+INSERT INTO public.qg_table_sessions(id,device_hash,revoked_at,expires_at)
+VALUES ('00000000-0000-0000-0000-000000000003',
+ encode(extensions.digest('00000000-0000-0000-0000-000000000010','sha256'),'hex'),
+ NULL,now()+interval '1 day');
+INSERT INTO public.orders(id,order_number)
+VALUES ('00000000-0000-0000-0000-000000000031','QG-TEST-001');
+INSERT INTO public.qg_table_requests(session_id,request_id,payload_hash,order_id)
+VALUES ('00000000-0000-0000-0000-000000000003',
+ '00000000-0000-0000-0000-000000000021',
+ encode(extensions.digest('[{"id": "00000000-0000-0000-0000-000000000040", "quantity": 1}]'::jsonb::text,'sha256'),'hex'),
+ '00000000-0000-0000-0000-000000000031');
 SET ROLE qg_checkout_test_anon;
+DO $privileges$
+BEGIN
+ IF has_table_privilege(current_user,'public.qg_table_sessions','SELECT')
+ OR has_table_privilege(current_user,'public.qg_table_requests','SELECT')
+ OR has_table_privilege(current_user,'public.orders','SELECT')
+ OR NOT has_function_privilege(current_user,
+   'public.qg_table_checkout(uuid,uuid,uuid,jsonb,double precision,double precision)','EXECUTE')
+ THEN RAISE EXCEPTION 'SECURITY FAILURE: unexpected anon privileges'; END IF;
+END $privileges$;
+DO $positive$
+DECLARE result jsonb;
+BEGIN
+ result := public.qg_table_checkout(
+  '00000000-0000-0000-0000-000000000003',
+  '00000000-0000-0000-0000-000000000010',
+  '00000000-0000-0000-0000-000000000021',
+  '[{"id":"00000000-0000-0000-0000-000000000040","quantity":1}]'::jsonb,13.0,100.0);
+ IF result->>'order_id' <> '00000000-0000-0000-0000-000000000031'
+ OR result->>'duplicate' <> 'true'
+ OR result->>'reason' <> 'same_request'
+ THEN RAISE EXCEPTION 'Active idempotent replay failed: %', result; END IF;
+END $positive$;
 DO $test$
 DECLARE sid uuid; msg text; rejected integer := 0;
 BEGIN
@@ -50,12 +84,12 @@ END $test$;
 RESET ROLE;
 DO $test$
 BEGIN
- IF (SELECT count(*) FROM public.qg_table_requests) <> 1 THEN
+ IF (SELECT count(*) FROM public.qg_table_requests) <> 2 THEN
   RAISE EXCEPTION 'Replay altered request rows';
  END IF;
- IF (SELECT count(*) FROM public.orders) <> 0 THEN
+ IF (SELECT count(*) FROM public.orders) <> 1 THEN
   RAISE EXCEPTION 'Replay created order';
  END IF;
 END $test$;
 ROLLBACK;
-\echo PASS: isolated PostgreSQL revoked/expired anon EXECUTE rejection; no order or request mutation
+\echo PASS: isolated PostgreSQL revoked/expired rejection, active idempotent replay, privilege boundary, no mutation
