@@ -168,7 +168,9 @@ async function main() {
   assert(!/\b(INSERT|UPDATE|DELETE)\s+(?:FROM\s+)?public\.(payments|settlements|merchant_cash_receipts|rider_cash_advances)\b/i.test(guardSql), 'containment must not touch money'); checks++;
   assert(guardSql.includes('SECURITY INVOKER') && guardSql.includes("SET search_path TO ''"), 'trigger must not introduce definer bypass'); checks++;
   assert(guardSql.includes("NEW.offered_at + interval '30 seconds'"), 'each individual offer is capped at 30 seconds'); checks++;
-  assert(guardSql.includes('NEW.expires_at <= now()'), 'already expired offer cannot trigger Rider notification'); checks++;
+  assert(guardSql.includes('v_checked_at timestamptz := pg_catalog.clock_timestamp()'), 'deadline gate must use wall time, not frozen transaction time'); checks++;
+  assert(guardSql.includes('NEW.expires_at <= v_checked_at'), 'already expired offer cannot trigger Rider notification after a delayed transaction'); checks++;
+  assert(!guardSql.includes('NEW.expires_at <= now()'), 'do not reintroduce transaction-frozen time guard'); checks++;
   assert(guardSql.includes('NEW.offered_at IS NULL OR NEW.expires_at IS NULL'), 'malformed timestamp must fail closed before LEAST'); checks++;
   await db.close();
   console.log(JSON.stringify({checks, failures:0, scope:'isolated PGlite bounded Rider offer insertion/notification guard; source-only, not deployed'}));
