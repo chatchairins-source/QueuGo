@@ -16,7 +16,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: qg-internal-sharing-aab-${ github.sha }
+  group: qg-internal-sharing-aab-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
@@ -29,8 +29,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
-      QG_ROLE: ${ matrix.role }
-      QG_FIREBASE_CONFIG_B64: ${ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }
+      QG_ROLE: ${{ matrix.role }}
+      QG_FIREBASE_CONFIG_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -84,7 +84,7 @@ jobs:
       - name: Recover exactly source-tested Rider offline assets
         if: matrix.role == 'rider'
         env:
-          GH_TOKEN: ${ github.token }
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           python3 native-android/qa/fetch-rider-offline-candidate.py
@@ -96,7 +96,7 @@ jobs:
           echo "QG_OFFLINE_ROUTING_ASSETS=$GITHUB_WORKSPACE/native-android/rider_country_routing/src/main/assets" >> "$GITHUB_ENV"
       - name: Test and bundle actual native role
         env:
-          QG_RIDER_PLAY_ASSET_PACKS: ${ matrix.role == 'rider' && '1' || '0' }
+          QG_RIDER_PLAY_ASSET_PACKS: ${{ matrix.role == 'rider' && '1' || '0' }}
         run: |
           set -euo pipefail
           gradle -p native-android ":$QG_ROLE:testDebugUnitTest" ":$QG_ROLE:bundleDebug" \
@@ -146,7 +146,7 @@ jobs:
       - name: Retain real AAB and provenance
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: queuego-internal-sharing-${ matrix.role }-${ github.sha }
+          name: queuego-internal-sharing-${{ matrix.role }}-${{ github.sha }}
           path: internal-sharing-aab/
           if-no-files-found: error
           compression-level: 0
