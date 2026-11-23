@@ -1,0 +1,21 @@
+name: QueueGo Private Migration Export Self-test
+on:
+  pull_request:
+    branches: [work-native-reconcile-main-20261114]
+    paths:
+      - scripts/export_private_migration_history.py
+      - scripts/stage_missing_production_migrations.py
+      - .github/workflows/private-migration-export-selftest.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-private-export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned
+        with:
+          persist-credentials: false
+      - name: Verify private read-only SQL history export and negative controls
+        run: python3 scripts/export_private_migration_history.py --self-test
