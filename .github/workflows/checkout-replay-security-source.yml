@@ -15,6 +15,7 @@ on:
       - 'ops/security/qg-table-checkout-revoked-replay-review-20261123.sql'
       - 'tests/backend/table-checkout-revoked-replay-source.cjs'
       - '.github/workflows/checkout-replay-security-source.yml'
+      - 'tests/backend/table-checkout-revoked-replay-postgres.sql'
   workflow_dispatch:
 permissions:
   contents: read
