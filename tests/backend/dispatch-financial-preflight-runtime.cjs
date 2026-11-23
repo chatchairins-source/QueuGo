@@ -70,7 +70,7 @@ async function main() {
       equal(row.overdue_blocked_for_manual_review, 1);
       await db.exec(`DELETE FROM ${table};`);
     }
-    for (const assignment of ["payment_method=NULL", "payment_method=' '", "payment_status=NULL",
+    for (const assignment of ["payment_method=NULL", "payment_method=' '", "payment_method='card'", "payment_method='bank_transfer'", "payment_status=NULL",
       'paid_at=now()', 'rider_assigned_at=now()', 'cancelled_at=now()', 'market_order_id=7']) {
       await db.exec(`UPDATE orders SET ${assignment};`);
       row = await snapshot();
