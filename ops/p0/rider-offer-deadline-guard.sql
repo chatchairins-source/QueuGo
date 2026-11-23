@@ -22,6 +22,8 @@ DECLARE
   v_timeout_raw text;
   v_timeout_minutes integer := 30;
   v_deadline timestamptz;
+  -- Date/time safety must use wall clock, never the frozen BEGIN timestamp.
+  v_checked_at timestamptz := pg_catalog.clock_timestamp();
 BEGIN
   SELECT o.status,
          o.rider_id,
@@ -39,7 +41,7 @@ BEGIN
      OR v_order.rider_assigned_at IS NOT NULL
      OR v_order.created_at IS NULL
      OR v_order.started_at IS NULL
-     OR v_order.started_at > now()
+     OR v_order.started_at > v_checked_at
      OR v_order.started_at < v_order.created_at
      OR (v_order.merchant_accepted_at IS NOT NULL
          AND v_order.started_at < v_order.merchant_accepted_at) THEN
@@ -66,7 +68,7 @@ BEGIN
   END IF;
 
   v_deadline := v_order.started_at + make_interval(mins => v_timeout_minutes);
-  IF now() >= v_deadline THEN
+  IF v_checked_at >= v_deadline THEN
     RETURN NULL;
   END IF;
 
@@ -77,8 +79,9 @@ BEGIN
   END IF;
 
   -- A future caller timestamp must not turn a 30-second offer into minutes
-  -- of actionable work. The captured dispatcher uses the same transaction now().
-  IF NEW.offered_at > now() THEN
+  -- of actionable work. Callers may stamp offered_at at transaction start;
+  -- compare against wall time so a long-running transaction cannot bypass expiry.
+  IF NEW.offered_at > v_checked_at THEN
     RETURN NULL;
   END IF;
 
@@ -89,7 +92,7 @@ BEGIN
     NEW.offered_at + interval '30 seconds',
     v_deadline
   );
-  IF NEW.expires_at <= NEW.offered_at OR NEW.expires_at <= now() THEN
+  IF NEW.expires_at <= NEW.offered_at OR NEW.expires_at <= v_checked_at THEN
     RETURN NULL;
   END IF;
   RETURN NEW;
