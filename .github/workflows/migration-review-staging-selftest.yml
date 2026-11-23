@@ -1,0 +1,20 @@
+name: QueueGo Historical Migration Review Staging Self-test
+on:
+  pull_request:
+    branches: [work-native-reconcile-main-20261114]
+    paths:
+      - scripts/stage_missing_production_migrations.py
+      - .github/workflows/migration-review-staging-selftest.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-recovery-selftest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # pinned
+        with:
+          persist-credentials: false
+      - name: Verify private staging and exact-byte recovery, no Production connection
+        run: python3 scripts/stage_missing_production_migrations.py --self-test
