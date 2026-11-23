@@ -1,0 +1,52 @@
+name: QueueGo Checkout Replay Source Security Gate
+on:
+  pull_request:
+    branches:
+      - work-native-reconcile-main-20261114
+    paths:
+      - 'ops/security/qg-table-checkout-revoked-replay-review-20261123.sql'
+      - 'tests/backend/table-checkout-revoked-replay-source.cjs'
+      - '.github/workflows/checkout-replay-security-source.yml'
+      - 'tests/backend/table-checkout-revoked-replay-postgres.sql'
+  push:
+    branches:
+      - fix/backend-table-checkout-revoked-replay-20261123
+    paths:
+      - 'ops/security/qg-table-checkout-revoked-replay-review-20261123.sql'
+      - 'tests/backend/table-checkout-revoked-replay-source.cjs'
+      - '.github/workflows/checkout-replay-security-source.yml'
+      - 'tests/backend/table-checkout-revoked-replay-postgres.sql'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  source-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 pinned
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4 pinned
+        with:
+          node-version: '22'
+      - name: Assert revoked and expired sessions fail before replay
+        run: node tests/backend/table-checkout-revoked-replay-source.cjs
+      - name: Verify revoked and expired anon replay in isolated PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/backend/table-checkout-revoked-replay-postgres.sql
+      - name: Explicitly limit certification scope
+        run: echo 'Isolated PostgreSQL revoked/expired anon negative paths only - NOT full checkout E2E, concurrency, migration parity, or Production deployment.'
