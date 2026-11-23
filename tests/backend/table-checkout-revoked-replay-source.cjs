@@ -1,36 +1,40 @@
 'use strict';
-// Static fail-closed contract only; actual PostgreSQL role/concurrency tests remain mandatory.
+// Static source-order gate only; real PostgreSQL ACL/concurrency tests are separate release gates.
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
-const sql = fs.readFileSync('ops/security/qg-table-checkout-revoked-replay-review-20261123.sql','utf8');
+const sql = fs.readFileSync('ops/security/qg-table-checkout-revoked-replay-review-20261123.sql', 'utf8');
+const gateText = 'if v.revoked_at is not null or now()>=v.expires_at then';
 function validate(source) {
-  assert.match(source,/SECURITY DEFINER\s+SET search_path TO ''/i,
-    'SECURITY DEFINER must pin empty search_path');
-  const body = source.slice(source.indexOf('AS $function$'));
-  const lock = body.indexOf('for update;');
-  const gate = body.indexOf('if v.revoked_at is not null or now()>=v.expires_at then');
-  const replay = body.indexOf('where session_id=p_session and request_id=p_request;');
-  const recentCart = body.indexOf('and payload_hash=v_hash');
-  const requestWrite = body.indexOf('insert into public.qg_table_requests(');
-  const orderWrite = body.indexOf('insert into public.orders(');
-  assert.ok(lock >= 0 && gate > lock && replay > gate && recentCart > gate &&
-    requestWrite > gate && orderWrite > gate,
-    'session must be row-locked and checked before all replay and write paths');
-  assert.equal(body.match(/if v.revoked_at is not null or now\(\)>=v.expires_at then/g)?.length,1,
-    'exactly one revocation gate');
+  assert.match(source, /SECURITY DEFINER\s+SET search_path TO ''/i, 'SECURITY DEFINER must pin empty search_path');
+  const start = source.indexOf('AS $function$');
+  assert.ok(start >= 0, 'function body must exist');
+  const body = source.slice(start);
+  const markers = [
+    'for update;',
+    gateText,
+    'where session_id=p_session and request_id=p_request;',
+    'and payload_hash=v_hash',
+    'insert into public.qg_table_requests(',
+    'insert into public.orders('
+  ];
+  const positions = markers.map(marker => body.indexOf(marker));
+  assert.ok(positions.every(p => p >= 0), 'all lock, gate, replay and write markers must exist');
+  assert.ok(positions[0] < positions[1] && positions.slice(2).every(p => p > positions[1]),
+    'session must be row-locked and checked before every replay and write');
+  assert.equal(body.split(gateText).length - 1, 1, 'exactly one revocation gate');
 }
 validate(sql);
-// Mutation controls prove the guard actually rejects the dangerous historical ordering.
-const gateText = 'if v.revoked_at is not null or now()>=v.expires_at then';
-const oldGate = sql.indexOf(gateText);
-const blockEnd = sql.indexOf('end if;', oldGate) + 'end if;'.length;
-const block = sql.slice(oldGate, blockEnd);
-const moved = sql.slice(0,oldGate) + sql.slice(blockEnd);
-const replayMarker = '  v_hash:=encode(extensions.digest(p_items::text';
-const mutated = moved.replace(replayMarker, block + '\n' + replayMarker);
-// Move the gate after the first replay query to model a real regression.
-const replayEnd = moved.indexOf('  select * into t');
-const late = moved.slice(0,replayEnd) + block + '\n' + moved.slice(replayEnd);
-assert.throws(()=>validate(late),/row-locked and checked/);
-assert.throws(()=>validate(sql.replace("SET search_path TO ''","SET search_path TO 'public', 'pg_temp'")),/empty search_path/);
-console.log('PASS checkout source ordering and negative mutation controls (NOT PostgreSQL E2E)');
+const gateStart = sql.indexOf(gateText);
+const gateEnd = sql.indexOf('end if;', gateStart) + 'end if;'.length;
+assert.ok(gateStart >= 0 && gateEnd > gateStart, 'revocation block must exist');
+const block = sql.slice(gateStart, gateEnd);
+const removed = sql.slice(0, gateStart) + sql.slice(gateEnd);
+const latePosition = removed.indexOf('  select * into t');
+assert.ok(latePosition >= 0, 'replay section boundary must exist');
+const late = removed.slice(0, latePosition) + block + '\n' + removed.slice(latePosition);
+assert.throws(() => validate(late), /row-locked and checked/);
+assert.throws(() => validate(removed), /all lock, gate, replay and write markers/);
+assert.throws(() => validate(sql.replace('for update;', 'for share;')), /all lock, gate, replay and write markers/);
+assert.throws(() => validate(sql.replace("SET search_path TO ''", "SET search_path TO 'public', 'pg_temp'")), /empty search_path/);
+assert.throws(() => validate(sql.replace(gateText, gateText + '\n  ' + gateText)), /exactly one revocation gate/);
+console.log('PASS: checkout source ordering + five negative mutation controls (NOT PostgreSQL E2E)');
