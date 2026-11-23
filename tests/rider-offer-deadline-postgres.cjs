@@ -164,6 +164,9 @@ async function main() {
     eq(expiredAfterWait.rows.length,0,'real wall clock expiry blocks a stale transaction timestamp');
     await a.query('COMMIT');
     eq(await count('qg_rider_order_offers',915),0,'delayed transaction leaves no Rider offer');
+    // Keep this negative fixture from becoming an eligible active search when
+    // the Admin timeout policy is restored for subsequent dispatcher tests.
+    await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[id(915)]);
     await db.query("UPDATE system_settings SET value=jsonb_set(value,'{orderTimeout}','30'::jsonb) WHERE key='app'");
 
     await db.query('BEGIN');
