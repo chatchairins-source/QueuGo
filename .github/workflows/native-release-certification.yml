@@ -203,8 +203,8 @@ jobs:
           test -n "${QG_SUPABASE_DB_URL:-}" || { echo "::error::Missing QG_SUPABASE_DB_URL for Rider dispatch P0 check"; exit 1; }
           export PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=10000'
           installed="$(psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -f ops/p0/rider-dispatch-deployment-readonly.sql)"
-          if [ "$installed" != 't|t|t|OPERATOR_ATTESTATION_REQUIRED' ]; then
-            echo '::error::Rider dispatch P0 prevention function, enabled trigger, or timeout authority is missing (issue #1268)'
+          if [ "$installed" != 't|t|t|t|OPERATOR_ATTESTATION_REQUIRED' ]; then
+            echo '::error::Rider dispatch P0 guard, enabled trigger, timeout function or trusted every-minute Cron is missing (issue #1268)'
             exit 1
           fi
           health="$(psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -f ops/p0/rider-dispatch-highwater-readonly.sql)"
@@ -212,7 +212,7 @@ jobs:
             *'|PASS_DISPATCH_OVERTIME') echo 'Rider dispatch current searching state: no overdue/invalid-clock exposure detected';;
             *) echo '::error::Rider dispatch searching-state health gate failed (issue #1268)'; exit 1;;
           esac
-          echo 'P0 component presence and read-only dispatch health verified; cron, finance, privileges, and operator signoff remain separate required evidence'
+          echo 'P0 components, read-only exact trusted Cron configuration and dispatch health verified; real Cron execution, finance and operator signoff remain separate evidence'
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
