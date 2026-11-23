@@ -21,7 +21,7 @@ assert.match(script, /set -euo pipefail/, 'abort on errors and failed pipes');
 assert.match(script, /default_transaction_read_only=on/, 'database must enforce read-only');
 assert.match(script, /ops\/p0\/rider-dispatch-deployment-readonly\.sql/, 'check deployed function and trigger');
 assert.match(script, /ops\/p0\/rider-dispatch-highwater-readonly\.sql/, 'check current dispatch health');
-assert.match(script, /t\|t\|t\|OPERATOR_ATTESTATION_REQUIRED/, 'no implicit certification from absent guards');
+assert.match(script, /t\|t\|t\|t\|OPERATOR_ATTESTATION_REQUIRED/, 'no implicit certification from absent guards');
 assert.match(script, /PASS_DISPATCH_OVERTIME/, 'no implicit certification from overdue or invalid clocks');
 
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'queuego-cert-dispatch-'));
@@ -42,7 +42,7 @@ esac
     const env = {
       ...process.env, PATH:tmp+path.delimiter+process.env.PATH,
       QG_SUPABASE_DB_URL: 'postgresql://fixture-only',
-      QG_TEST_COMPONENTS: 't|t|t|OPERATOR_ATTESTATION_REQUIRED',
+      QG_TEST_COMPONENTS: 't|t|t|t|OPERATOR_ATTESTATION_REQUIRED',
       QG_TEST_HEALTH: '30|0|0|0|0|0|0|0|0|0|PASS_DISPATCH_OVERTIME',
       QG_TEST_DBFAIL: '0',
       ...opts,
@@ -55,11 +55,13 @@ esac
   }
   const scenarios = [
     [{}, true, 'installed components and clean live health permit proceeding to remaining release gates'],
-    [{QG_TEST_COMPONENTS:'f|f|f|NO_GO_DISPATCH_P0'}, false, 'no Production preventive installation'],
-    [{QG_TEST_COMPONENTS:'t|f|t|NO_GO_DISPATCH_P0'}, false, 'disabled or absent trigger'],
-    [{QG_TEST_COMPONENTS:'t|t|f|NO_GO_DISPATCH_P0'}, false, 'cash timeout authority missing'],
+    [{QG_TEST_COMPONENTS:'f|f|f|f|NO_GO_DISPATCH_P0'}, false, 'no Production preventive installation'],
+    [{QG_TEST_COMPONENTS:'t|t|t|f|NO_GO_DISPATCH_P0'}, false, 'missing or disabled trusted Cron'],
+    [{QG_TEST_COMPONENTS:'t|t|t|f|OPERATOR_ATTESTATION_REQUIRED'}, false, 'inconsistent Cron flag fails'],
+    [{QG_TEST_COMPONENTS:'t|f|t|t|NO_GO_DISPATCH_P0'}, false, 'disabled or absent trigger'],
+    [{QG_TEST_COMPONENTS:'t|t|f|t|NO_GO_DISPATCH_P0'}, false, 'cash timeout authority missing'],
     [{QG_TEST_COMPONENTS:''}, false, 'empty SQL result'],
-    [{QG_TEST_COMPONENTS:'t|t|t|PASS'}, false, 'wrong status cannot pass'],
+    [{QG_TEST_COMPONENTS:'t|t|t|t|PASS'}, false, 'wrong status cannot pass'],
     [{QG_TEST_HEALTH:'30|1|1|NO_GO_DISPATCH_P0'}, false, 'overdue searching order'],
     [{QG_TEST_HEALTH:'30|0|1|NO_GO_DISPATCH_P0'}, false, 'invalid persisted search clock'],
     [{QG_TEST_HEALTH:''}, false, 'empty health output'],
