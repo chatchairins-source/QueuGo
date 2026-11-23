@@ -50,7 +50,7 @@ def check_history(history):
     return result
 
 
-def stage(history, source, output, repo_root):
+def stage(history, source, output, repo_root, expected_count):
     source, output, repo_root = source.resolve(), output.resolve(), repo_root.resolve()
     if not source.is_dir() or source.is_symlink():
         raise ValueError("source migration directory missing or unsafe")
@@ -59,6 +59,8 @@ def stage(history, source, output, repo_root):
     if output.exists():
         raise ValueError("staging path already exists; never overwrite")
     records = check_history(history)
+    if not isinstance(expected_count, int) or expected_count <= 0 or len(records) != expected_count:
+        raise ValueError("history row count differs from independently checked Production count")
     actual = {}
     for file in sorted(source.glob("*.sql")):
         if not file.is_file() or file.is_symlink():
@@ -126,7 +128,7 @@ def self_test():
             {"version": "20260101000001", "name": "missing", "statements": ["select 2;\n"]},
         ]}
         private = base / "staging"
-        result = stage(data, source, private, repo)
+        result = stage(data, source, private, repo, 2)
         assert result["production_versions"] == 2
         assert result["matching_exact_bytes"] == 1
         assert result["production_only_staged"] == 1
@@ -139,6 +141,13 @@ def self_test():
         assert "select 2" not in manifest, "manifest must not embed SQL"
         if os.name == "posix":
             assert private.stat().st_mode & 0o077 == 0, "private directory permission"
+        # An incomplete but otherwise valid ledger export must fail closed.
+        try:
+            stage({"migrations": data["migrations"][:1]}, source, base / "partial", repo, 2)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("partial Production history export was accepted")
         for tampered in [
             {"migrations": data["migrations"] * 2},
             {"migrations": [{"version": "20260101000004", "name": "../bad", "statements": ["x"]}]},
@@ -146,25 +155,25 @@ def self_test():
             {"migrations": []},
         ]:
             try:
-                stage(tampered, source, base / ("blocked" + str(len(tampered["migrations"]))), repo)
+                stage(tampered, source, base / ("blocked" + str(len(tampered["migrations"]))), repo, 2)
             except ValueError:
                 pass
             else:
                 raise AssertionError("malformed history was accepted")
         try:
-            stage(data, source, repo / "unsafe", repo)
+            stage(data, source, repo / "unsafe", repo, 2)
         except ValueError:
             pass
         else:
             raise AssertionError("SQL staging inside repo was allowed")
         try:
-            stage(data, source, private, repo)
+            stage(data, source, private, repo, 2)
         except ValueError:
             pass
         else:
             raise AssertionError("existing staging folder was overwritten")
         existing.write_bytes(b"select changed;\n")
-        mismatch = stage(data, source, base / "different", repo)
+        mismatch = stage(data, source, base / "different", repo, 2)
         assert mismatch["same_version_name_or_digest_conflicts"] == ["20260101000000"]
         assert mismatch["matching_exact_bytes"] == 0
     print("PASS: private review-only migration reconstruction, exact bytes, no overwrites, negative tests")
@@ -176,15 +185,16 @@ def main():
     p.add_argument("--source", type=Path, default=Path("supabase/migrations"))
     p.add_argument("--output", type=Path)
     p.add_argument("--self-test", action="store_true")
+    p.add_argument("--expected-count", type=int, help="independently verified live Production ledger count")
     args = p.parse_args()
     if args.self_test:
         self_test()
         return
-    if args.history is None or args.output is None:
-        p.error("--history and --output required unless --self-test")
+    if args.history is None or args.output is None or args.expected_count is None:
+        p.error("--history, --output and --expected-count required unless --self-test")
     repo = Path(__file__).resolve().parents[1]
     history = json.loads(args.history.read_text(encoding="utf-8"))
-    report = stage(history, args.source, args.output, repo)
+    report = stage(history, args.source, args.output, repo, args.expected_count)
     # Output counts only: never emit SQL, credentials, or paths into CI logs.
     print(json.dumps({
         k: v for k, v in report.items()
