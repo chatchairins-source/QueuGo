@@ -1,8 +1,8 @@
 -- P0 #1268 — read-only deployment-component gate.
 -- This deliberately never reports PASS merely because no orders are searching.
--- Presence/enablement is necessary, NOT sufficient: cron scheduling, privileges,
--- real financial settlement, backup/restore and postdeployment negative tests
--- still require independent operator attestation.
+-- This read-only gate also requires an exact active trusted Cron job.
+-- Presence is NOT sufficient: real Cron execution, privileges, financial
+-- settlement, restore proof and operator attestation remain independent gates.
 WITH installed AS (
   SELECT
     to_regprocedure('qg_private.guard_rider_offer_deadline()') IS NOT NULL
@@ -22,13 +22,27 @@ WITH installed AS (
     ) AS offer_guard_trigger_enabled,
     to_regprocedure('qg_private.cancel_rider_timeout_cash(integer)') IS NOT NULL
       AS cash_timeout_function_present
+), scheduled AS (
+  SELECT
+    -- Fail closed for cron disabled/wrong role/interval/command or shadow jobs.
+    COUNT(*) FILTER (WHERE command ILIKE '%cancel_rider_timeout_cash%') = 1
+      AND COUNT(*) FILTER (WHERE jobname = 'queuego-rider-cash-timeout') = 1
+      AND COUNT(*) FILTER (
+        WHERE jobname = 'queuego-rider-cash-timeout'
+          AND active IS TRUE
+          AND username = 'postgres'
+          AND schedule = '* * * * *'
+          AND command = 'SELECT qg_private.cancel_rider_timeout_cash(30);'
+      ) = 1 AS cash_timeout_cron_active
+  FROM cron.job
 )
-SELECT *,
+SELECT installed.*, scheduled.cash_timeout_cron_active,
   CASE
     WHEN offer_guard_function_present
       AND offer_guard_trigger_enabled
       AND cash_timeout_function_present
+      AND scheduled.cash_timeout_cron_active
     THEN 'OPERATOR_ATTESTATION_REQUIRED'
     ELSE 'NO_GO_DISPATCH_P0'
   END AS release_gate
-FROM installed;
+FROM installed CROSS JOIN scheduled;
