@@ -153,6 +153,19 @@ async function main() {
     await db.query('DELETE FROM qg_rider_order_offers WHERE order_id=$1',[id(914)]);
     await db.query("UPDATE orders SET status='cancelled' WHERE id=$1",[id(914)]);
 
+    // P0 regression: PostgreSQL now() is frozen at BEGIN. A transaction that
+    // crosses the actual deadline must not insert a Rider offer using stale time.
+    await seed(915, '1 minute');
+    await db.query("UPDATE system_settings SET value=jsonb_set(value,'{orderTimeout}','1'::jsonb) WHERE key='app'");
+    await a.query('BEGIN');
+    await a.query("UPDATE orders SET created_at=now()-interval '59 seconds', rider_search_started_at=now()-interval '59 seconds' WHERE id=$1",[id(915)]);
+    await a.query('SELECT pg_sleep(2.2)');
+    const expiredAfterWait = await a.query("INSERT INTO public.qg_rider_order_offers(order_id,rider_id,attempt,offered_at,expires_at) VALUES($1,$2,1,now(),now()+interval '30 seconds') RETURNING order_id",[id(915),id(11)]);
+    eq(expiredAfterWait.rows.length,0,'real wall clock expiry blocks a stale transaction timestamp');
+    await a.query('COMMIT');
+    eq(await count('qg_rider_order_offers',915),0,'delayed transaction leaves no Rider offer');
+    await db.query("UPDATE system_settings SET value=jsonb_set(value,'{orderTimeout}','30'::jsonb) WHERE key='app'");
+
     await db.query('BEGIN');
     await db.query('DROP TRIGGER qg_rider_offer_deadline_guard ON public.qg_rider_order_offers; DROP FUNCTION qg_private.guard_rider_offer_deadline()');
     await db.query('ROLLBACK');
