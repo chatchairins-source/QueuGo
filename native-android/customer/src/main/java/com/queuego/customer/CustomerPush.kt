@@ -103,6 +103,8 @@ private suspend fun customerFirebaseToken(): String = suspendCancellableCoroutin
 }
 
 internal suspend fun syncCustomerNativePush(context: Context, auth: NativeAuth): Boolean {
+    val sessions = SecureRoleSessionStore(context, "customer")
+    if (!sessions.isCurrent(auth)) return false
     val store = NativePushDeviceStore(context, "customer")
     val api = NativePushApi()
     if (auth.user.role != "customer" || auth.user.status != "active") {
@@ -112,6 +114,7 @@ internal suspend fun syncCustomerNativePush(context: Context, auth: NativeAuth):
     ensureCustomerNotificationChannel(context)
     if (!customerFirebaseConfigured(context)) return false
     val token = customerFirebaseToken().trim()
+    if (!sessions.isCurrent(auth)) return false
     require(token.length >= 16) { "ไม่ได้รับ Push token จาก Firebase" }
     api.subscribe(auth, store.deviceId(), token)
     return true
@@ -134,8 +137,11 @@ class QueueGoCustomerMessagingService : FirebaseMessagingService() {
         if (!customerPushEnabled(applicationContext, cached.user.id)) return
         serviceScope.launch {
             runCatching {
-                val auth = NativeAuthApi().validate(cached, "customer") { sessionStore.save(it) }
-                if (auth.user.status == "active") {
+                val auth = NativeAuthApi().validate(cached, "customer") { renewed ->
+                    check(sessionStore.saveIfCurrent(cached, renewed)) { "Customer session changed during refresh" }
+                }
+                if (auth.user.status == "active" && sessionStore.isCurrent(auth) &&
+                    customerPushEnabled(applicationContext, auth.user.id)) {
                     NativePushApi().subscribe(
                         auth,
                         NativePushDeviceStore(applicationContext, "customer").deviceId(),
