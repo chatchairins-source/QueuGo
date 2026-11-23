@@ -7,6 +7,7 @@ on:
       - 'ops/security/qg-table-checkout-revoked-replay-review-20261123.sql'
       - 'tests/backend/table-checkout-revoked-replay-source.cjs'
       - '.github/workflows/checkout-replay-security-source.yml'
+      - 'tests/backend/table-checkout-revoked-replay-postgres.sql'
   push:
     branches:
       - fix/backend-table-checkout-revoked-replay-20261123
@@ -21,6 +22,18 @@ jobs:
   source-security:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 pinned
         with:
@@ -30,5 +43,9 @@ jobs:
           node-version: '22'
       - name: Assert revoked and expired sessions fail before replay
         run: node tests/backend/table-checkout-revoked-replay-source.cjs
+      - name: Verify revoked and expired anon replay in isolated PostgreSQL
+        env:
+          PGPASSWORD: postgres
+        run: psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f tests/backend/table-checkout-revoked-replay-postgres.sql
       - name: Explicitly limit certification scope
-        run: echo 'SOURCE ONLY - NOT PostgreSQL E2E, concurrency, RLS, migration parity, or Production deployment.'
+        run: echo 'Isolated PostgreSQL revoked/expired anon negative paths only - NOT full checkout E2E, concurrency, migration parity, or Production deployment.'
