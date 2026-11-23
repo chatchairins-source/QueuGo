@@ -177,5 +177,4 @@ begin
     'table_name',t.label
   );
 end
-$function$
-
+$function$;
