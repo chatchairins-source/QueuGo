@@ -1,0 +1,43 @@
+name: QueueGo Checkout Session Lock Concurrency
+on:
+  pull_request:
+    branches: [work-native-reconcile-main-20261114]
+    paths:
+      - 'tests/backend/table-checkout-session-lock-concurrency.sh'
+      - '.github/workflows/checkout-session-lock-concurrency.yml'
+      - 'tests/backend/table-checkout-revoked-replay-postgres.sql'
+      - 'ops/security/qg-table-checkout-revoked-replay-review-20261123.sql'
+  push:
+    branches: [test/backend-checkout-session-lock-concurrency-20261123]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  postgres-lock:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4 pinned
+        with:
+          persist-credentials: false
+      - name: Check syntax
+        run: bash -n tests/backend/table-checkout-session-lock-concurrency.sh
+      - name: Verify PostgreSQL competing-session lock and replay
+        env:
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: bash tests/backend/table-checkout-session-lock-concurrency.sh
