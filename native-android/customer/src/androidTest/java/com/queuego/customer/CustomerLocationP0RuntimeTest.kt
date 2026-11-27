@@ -73,14 +73,21 @@ class CustomerLocationP0RuntimeTest {
         val ready = AtomicBoolean(false)
         val selections = AtomicInteger(0)
         val invalidations = AtomicInteger(0)
+        val requested = InstrumentationRegistry.getArguments().getString("mapSurface")
+        val texture = when (requested) { null -> null; "surface" -> false; "texture" -> true; else -> error("Unknown mapSurface") }
+        val beforePan = AtomicInteger(-1)
+        fun diag(event: String) {
+            android.util.Log.i("MAPDIAG", "event=$event mode=$requested beforePan=${beforePan.get()} invalidations=${invalidations.get()} ready=${ready.get()} selections=${selections.get()}")
+        }
         val target = mutableStateOf<com.queuego.shared.QgMapPoint?>(null)
         val token = mutableStateOf(0)
         compose.setContent {
             com.queuego.shared.QgLocationPickerMap(
                 initialPoint = null, recenterPoint = target.value, recenterToken = token.value,
                 modifier = Modifier.fillMaxSize().testTag("camera-owner-map"),
+                diagnosticTexture = texture, diagnosticEvent = if (texture != null) ::diag else null,
                 onPointSelected = { selections.incrementAndGet() },
-                onReady = { ready.set(it); if (!it) invalidations.incrementAndGet() })
+                onReady = { ready.set(it); if (!it) invalidations.incrementAndGet(); diag("readyChange") })
         }
         compose.waitUntil(30_000) { ready.get() }
         compose.waitForIdle()
@@ -94,13 +101,15 @@ class CustomerLocationP0RuntimeTest {
         compose.runOnIdle {
             assertEquals("App GPS recenter echoed as a user pan", 0, selections.get())
         }
-        val beforePan = invalidations.get()
+        beforePan.set(invalidations.get())
+        diag("panStart")
         // Android 11 MapLibre uses TextureView. Inject the pan into the actual
         // platform MapView instead of a Compose wrapper semantics node: the
         // latter may consume a synthetic Compose swipe without ever starting
         // the native MapLibre gesture on API 30.
         swipeOnActualMapView()
-        compose.waitUntil(30_000) { invalidations.get() > beforePan && ready.get() }
+        diag("waitAfterPan")
+        compose.waitUntil(30_000) { invalidations.get() > beforePan.get() && ready.get() }
         compose.runOnIdle {
             assertEquals("Panning must not choose a delivery stop", 0, selections.get())
         }
