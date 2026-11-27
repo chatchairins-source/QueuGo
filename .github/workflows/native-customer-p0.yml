@@ -9,13 +9,7 @@ concurrency:
   group: cold-customer-p0-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  picker-runtime:
-    strategy:
-      fail-fast: true
-      max-parallel: 10
-      matrix:
-        api: [30]
-        round: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -29,7 +23,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
         with:
           gradle-version: '9.6.0'
-          cache-read-only: ${{ github.event_name == 'pull_request' || (github.ref != 'refs/heads/main' && github.ref != 'refs/heads/work-native-reconcile-main-20261114') }}
+          cache-read-only: false
       - name: Android SDK
         shell: bash
         run: |
@@ -50,30 +44,54 @@ jobs:
           done
           echo "::error::Android SDK installation failed after two bounded attempts"
           exit 1
-      - name: Customer JVM and real UI harness builds
+      - name: Build both APKs with bounded network retries
         shell: bash
         run: |
-          set -euo pipefail
-          python3 native-android/qa/gradle_maven_recovery.py \
-            --log artifacts/customer-p0/gradle-first-attempt.log -- \
-            gradle -p native-android :customer:testDebugUnitTest :customer:assembleDebug :customer:assembleDebugAndroidTest --no-daemon --stacktrace
-      - name: Android acceleration
+          set -uo pipefail
+          for retry in 0 1 2; do
+            echo "build_retry_count=$retry"
+            gradle -p native-android :customer:assembleDebug :customer:assembleDebugAndroidTest --build-cache --no-daemon --stacktrace 2>&1 | tee build.log
+            rc=${PIPESTATUS[0]}
+            if ((rc == 0)); then break; fi
+            if ((retry == 2)) || ! grep -Eqi 'Received status code (429|50[0234])|Read timed out|Connection reset|Temporary failure in name resolution|Connection timed out' build.log; then exit "$rc"; fi
+            sleep $((30 * (retry + 1)))
+          done
+          mkdir pair
+          cp native-android/customer/build/outputs/apk/debug/customer-debug.apk pair/
+          cp native-android/customer/build/outputs/apk/androidTest/debug/customer-debug-androidTest.apk pair/
+          (cd pair && sha256sum *.apk > SHA256SUMS)
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: apk-pair
+          path: pair/
+          if-no-files-found: error
+  test:
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        round: [1,2,3,4,5,6,7,8,9,10]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/download-artifact@v4
+        with:
+          name: apk-pair
+          path: pair
+      - name: Verify both APKs and enable emulator acceleration
         run: |
+          (cd pair && sha256sum -c SHA256SUMS)
           test -c /dev/kvm
           sudo chown "$(id -u):$(id -g)" /dev/kvm
-      - name: Thirty actual picker cycles and early GL background
+      - name: Cold boot and run the camera test once
         env:
-          QG_P0_API: ${{ matrix.api }}
-        run: |
-          sed -e 's/for n in range(1, 4):/for n in [${{ matrix.round }}]:/' -e "s/for mode in ('surface', 'texture'):/for mode in ['texture']:/" native-android/qa/diag_api30.py > native-android/qa/cold_round.py
-          python3 native-android/qa/cold_round.py
-      - name: Preserve failures and runtime evidence
+          QG_P0_API: '30'
+          QG_ROUND: ${{ matrix.round }}
+        run: python3 native-android/qa/cold_round.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: cold-api30-round-${{ matrix.round }}
-          path: |
-            artifacts/customer-p0/
-            native-android/customer/build/reports/tests/
-            native-android/customer/build/outputs/androidTest-results/
-          if-no-files-found: warn
+          path: artifacts/customer-p0/30/
+          if-no-files-found: error

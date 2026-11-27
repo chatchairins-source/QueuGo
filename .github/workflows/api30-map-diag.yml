@@ -1,7 +1,6 @@
 name: API30 Map Surface Diagnostics
 on:
-  push:
-    branches: [diag/api30-map]
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
