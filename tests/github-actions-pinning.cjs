@@ -15,6 +15,7 @@ const workflows=[
   '.github/workflows/build-native-release.yml',
   '.github/workflows/native-release-certification.yml',
   '.github/workflows/backup-restore-drill.yml',
+  '.github/workflows/customer-android-authenticated-review.yml',
   '.github/workflows/rc-tests.yml',
   '.github/workflows/queuego-map-engine-buriram.yml'
 ];

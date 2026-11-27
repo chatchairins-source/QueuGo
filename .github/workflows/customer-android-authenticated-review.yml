@@ -1,0 +1,146 @@
+name: Customer authenticated Android runtime
+on:
+  pull_request:
+    branches: [main, 'work-native-**']
+    paths:
+      - 'native-android/customer/**'
+      - 'native-android/shared/**'
+      - 'native-android/qa/run-customer-authenticated-review.py'
+      - '.github/workflows/customer-android-authenticated-review.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  customer-credentials:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Fail before taking the shared review-account lock when inputs are missing
+        env:
+          QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
+          QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: python3 native-android/qa/run-customer-authenticated-review.py --preflight-only
+      - name: Retain credential names only
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: customer-authenticated-credential-presence
+          path: artifacts/customer-authenticated-review/credential-presence.json
+          if-no-files-found: error
+          retention-days: 7
+  customer-live:
+    needs: customer-credentials
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    concurrency:
+      group: queuego-authenticated-review-accounts
+      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Require dedicated real Customer review credentials
+        env:
+          QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
+          QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: python3 native-android/qa/run-customer-authenticated-review.py --preflight-only
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@ed408507eac070d1f99cc633dbcf757c94c7933a
+        with:
+          gradle-version: '9.6.0'
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Install Google Android runtime and compile SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2; do
+            if timeout --signal=TERM --kill-after=10s 300s bash -c \
+              'yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" "emulator" "platform-tools" "system-images;android-30;google_apis;x86_64" >/dev/null'; then
+              exit 0
+            fi
+          done
+          exit 1
+      - name: Configure the existing Customer Firebase client
+        env:
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: |
+          python3 - <<'PY'
+          import base64, json, os
+          from pathlib import Path
+          data = base64.b64decode(os.environ['QG_FIREBASE_GOOGLE_SERVICES_JSON_B64'], validate=True)
+          config = json.loads(data)
+          packages = {c.get('client_info', {}).get('android_client_info', {}).get('package_name') for c in config.get('client', [])}
+          assert 'com.queuego.customer' in packages, 'Actual Customer Firebase client required'
+          path = Path('native-android/customer/google-services.json')
+          path.write_bytes(data)
+          path.chmod(0o600)
+          PY
+      - name: Build exact-source Customer app and real Android test
+        run: |
+          python3 native-android/qa/gradle_maven_recovery.py \
+            --log artifacts/customer-authenticated-review/gradle-first.log -- \
+            gradle -p native-android :customer:testDebugUnitTest :customer:assembleDebug :customer:assembleDebugAndroidTest --no-daemon --stacktrace
+      - name: Boot Google Android emulator
+        id: boot
+        env:
+          ANDROID_AVD_HOME: ${{ runner.temp }}/queuego-customer-review-avd
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -c /dev/kvm
+          sudo chown "$(id -u):$(id -g)" /dev/kvm
+          mkdir -p "$ANDROID_AVD_HOME"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd -n customer_review \
+            -k 'system-images;android-30;google_apis;x86_64' --device pixel_4 \
+            -p "$ANDROID_AVD_HOME/customer_review" <<< 'no'
+          nohup "$ANDROID_HOME/emulator/emulator" -avd customer_review -port 5554 \
+            -accel on -no-window -no-snapshot -no-audio -no-boot-anim -gpu swiftshader \
+            -memory 2048 -cores 2 > "$RUNNER_TEMP/customer-emulator.log" 2>&1 &
+          adb="$ANDROID_HOME/platform-tools/adb"
+          timeout 90s "$adb" -s emulator-5554 wait-for-device
+          stable=0
+          for attempt in $(seq 1 90); do
+            if [ "$("$adb" -s emulator-5554 shell getprop sys.boot_completed | tr -d '\r')" = '1' ] &&
+              [ "$("$adb" -s emulator-5554 shell service check activity | tr -d '\r')" = 'Service activity: found' ] &&
+              [ "$("$adb" -s emulator-5554 shell service check package | tr -d '\r')" = 'Service package: found' ]; then
+              stable=$((stable + 1))
+              if [ "$stable" -ge 3 ]; then exit 0; fi
+            else
+              stable=0
+            fi
+            sleep 5
+          done
+          exit 1
+      - name: Exercise real Customer login UI restore opt-in FCM and notification tap
+        env:
+          QG_CUSTOMER_REVIEW_PHONE: ${{ secrets.QG_CUSTOMER_REVIEW_PHONE }}
+          QG_CUSTOMER_REVIEW_PASSWORD: ${{ secrets.QG_CUSTOMER_REVIEW_PASSWORD }}
+          QG_FIREBASE_GOOGLE_SERVICES_JSON_B64: ${{ secrets.QG_FIREBASE_GOOGLE_SERVICES_JSON_B64 }}
+        run: python3 native-android/qa/run-customer-authenticated-review.py
+      - name: Retain source-bound status without credentials or screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: customer-authenticated-runtime
+          path: artifacts/customer-authenticated-review/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Remove private credentials and stop emulator
+        if: always()
+        shell: bash
+        run: |
+          if [ -x "$ANDROID_HOME/platform-tools/adb" ]; then
+            "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 shell run-as com.queuego.customer rm -f files/qa-customer-credentials.json >/dev/null 2>&1 || true
+            "$ANDROID_HOME/platform-tools/adb" -s emulator-5554 emu kill >/dev/null 2>&1 || true
+          fi
+          rm -f native-android/customer/google-services.json
