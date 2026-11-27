@@ -652,7 +652,9 @@ fun QgLocationPickerMap(
     initialCameraPoint: QgMapPoint? = null,
     modifier: Modifier = Modifier,
     onPointSelected: (QgMapPoint) -> Unit,
-    onReady: (Boolean) -> Unit = {}
+    onReady: (Boolean) -> Unit = {},
+    diagnosticTexture: Boolean? = null,
+    diagnosticEvent: ((String) -> Unit)? = null
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
@@ -675,7 +677,7 @@ fun QgLocationPickerMap(
                 modifier = Modifier.fillMaxSize(),
                 factory = { ctx ->
                     MapLibre.getInstance(ctx.applicationContext)
-                    MapView(ctx, queueGoOnlineMapOptions(ctx)).also { view ->
+                    MapView(ctx, queueGoOnlineMapOptions(ctx).apply { diagnosticTexture?.let { textureMode(it) } }).also { view ->
                         holder.view = view
                         view.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
                             if (right - left != oldRight - oldLeft || bottom - top != oldBottom - oldTop) {
@@ -686,6 +688,7 @@ fun QgLocationPickerMap(
                         // A loaded style can still show only a background or ancestor tiles.
                         // Readiness requires a fully rendered frame followed by map idle.
                         val frameListener = MapView.OnDidFinishRenderingFrameListener { fully, _, _ ->
+                            diagnosticEvent?.invoke("frame fully=$fully")
                             if (!holder.destroyed && holder.styleReady) {
                                 val previouslyFullyRendered = holder.fullyRendered
                                 if (!fully && previouslyFullyRendered) holder.invalidateRenderedMap()
@@ -694,6 +697,7 @@ fun QgLocationPickerMap(
                             }
                         }
                         val idleListener = MapView.OnDidBecomeIdleListener {
+                            diagnosticEvent?.invoke("mapIdle")
                             holder.checkRenderedMapReady()
                         }
                         // An idle callback can precede network tile arrival; recheck
@@ -710,6 +714,10 @@ fun QgLocationPickerMap(
                         view.getMapAsync { map ->
                             if (holder.destroyed) return@getMapAsync
                             holder.map = map
+                            if (diagnosticEvent != null) {
+                                map.addOnCameraIdleListener { diagnosticEvent.invoke("cameraIdle") }
+                                map.addOnCameraMoveListener { diagnosticEvent.invoke("cameraMove") }
+                            }
                             val cameraMoveListener = MapLibreMap.OnCameraMoveStartedListener {
                                 holder.invalidateRenderedMap()
                             }
