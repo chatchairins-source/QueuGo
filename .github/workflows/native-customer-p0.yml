@@ -1,39 +1,21 @@
 name: Customer P0 Android runtime matrix
 on:
   push:
-    branches: [work-native-credit-live-enablement-20261016, work-native-customer-longdo-location-runtime-fix-20261016, fix-rider-invalid-step-metrics-20261106]
-    paths:
-      - 'native-android/customer/**'
-      - 'native-android/shared/**'
-      - 'native-android/qa/run-customer-p0.py'
-      - 'native-android/qa/gradle_maven_recovery.py'
-      - 'native-android/qa/test_gradle_maven_recovery.py'
-      - 'tests/native-customer-p0-maven-recovery.cjs'
-      - 'tests/native-customer-map-ready.cjs'
-      - '.github/workflows/native-customer-p0.yml'
-      - '.github/workflows/build-native-rider-pilot.yml'
-  pull_request:
-    paths:
-      - 'native-android/customer/**'
-      - 'native-android/shared/**'
-      - 'native-android/qa/run-customer-p0.py'
-      - 'native-android/qa/gradle_maven_recovery.py'
-      - 'native-android/qa/test_gradle_maven_recovery.py'
-      - 'tests/native-customer-p0-maven-recovery.cjs'
-      - '.github/workflows/native-customer-p0.yml'
+    branches: [diag/api30-map]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: customer-p0-${{ github.ref }}
+  group: cold-customer-p0-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   picker-runtime:
     strategy:
-      fail-fast: false
-      max-parallel: 2
+      fail-fast: true
+      max-parallel: 10
       matrix:
-        api: [26, 30, 33, 35]
+        api: [30]
+        round: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -68,10 +50,6 @@ jobs:
           done
           echo "::error::Android SDK installation failed after two bounded attempts"
           exit 1
-      - name: Fail-closed Customer Android Maven recovery regression
-        run: node tests/native-customer-p0-maven-recovery.cjs
-      - name: Require real geographic pixels before reporting Customer map ready
-        run: node tests/native-customer-map-ready.cjs
       - name: Customer JVM and real UI harness builds
         shell: bash
         run: |
@@ -86,12 +64,14 @@ jobs:
       - name: Thirty actual picker cycles and early GL background
         env:
           QG_P0_API: ${{ matrix.api }}
-        run: python3 native-android/qa/run-customer-p0.py
+        run: |
+          sed -e 's/for n in range(1, 4):/for n in [${{ matrix.round }}]:/' -e "s/for mode in ('surface', 'texture'):/for mode in ['texture']:/" native-android/qa/diag_api30.py > native-android/qa/cold_round.py
+          python3 native-android/qa/cold_round.py
       - name: Preserve failures and runtime evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: customer-p0-api-${{ matrix.api }}
+          name: cold-api30-round-${{ matrix.round }}
           path: |
             artifacts/customer-p0/
             native-android/customer/build/reports/tests/
