@@ -1,0 +1,161 @@
+{
+  "schema": 1,
+  "source_repository": "chatchairins-source/QueuGo",
+  "source_web_ref": "main",
+  "source_web_sha": "7e036a0735cc49905e9b0a2434492470551a0c9d",
+  "captured_at": "2026-10-26",
+  "customer": {
+    "home": {
+      "categories": [
+        {
+          "route": "food",
+          "label": "อาหาร"
+        },
+        {
+          "route": "cafe",
+          "label": "เครื่องดื่ม"
+        },
+        {
+          "route": "grocery",
+          "label": "ร้านขายของชำ"
+        },
+        {
+          "route": "laundry",
+          "label": "ฝากซัก"
+        },
+        {
+          "route": "market",
+          "label": "ตลาดสด"
+        },
+        {
+          "route": "ride",
+          "label": "บริการเรียกรถ"
+        },
+        {
+          "route": "shopping",
+          "label": "ช้อปปิ้ง"
+        }
+      ],
+      "nearby_shop_categories": [
+        "food",
+        "cafe"
+      ],
+      "category_tile": {
+        "tile_width_css_px": 58,
+        "tile_width_native_dp": 58,
+        "gap_css_px": 9,
+        "gap_native_dp": 9,
+        "circle_css_px": 48,
+        "circle_native_dp": 48,
+        "icon_css_px": 22,
+        "icon_native_dp": 22,
+        "label_font_css_px": 9.5,
+        "label_font_native_sp": 9.5,
+        "label_nowrap": true
+      },
+      "shop_card": {
+        "radius_css_px": 16,
+        "radius_native_dp": 16,
+        "list_gap_css_px": 7,
+        "list_gap_native_dp": 7,
+        "padding_css_px": 8,
+        "padding_native_dp": 8,
+        "image_css_px": 78,
+        "image_native_dp": 78,
+        "compact_image_css_px": 72,
+        "compact_image_native_dp": 72,
+        "image_radius_css_px": 13,
+        "image_radius_native_dp": 13,
+        "content_gap_css_px": 9,
+        "content_gap_native_dp": 9,
+        "meta_gap_css_px": 5,
+        "meta_gap_native_dp": 5,
+        "meta_font_css_px": 10.5,
+        "meta_font_native_sp": 10.5,
+        "status_margin_top_css_px": 5,
+        "status_margin_top_native_dp": 5,
+        "status_padding_horizontal_css_px": 6,
+        "status_padding_horizontal_native_dp": 6,
+        "status_padding_vertical_css_px": 3,
+        "status_padding_vertical_native_dp": 3,
+        "status_font_css_px": 9.5,
+        "status_font_native_sp": 9.5
+      }
+    },
+    "bottom_navigation": [
+      {
+        "route": "home",
+        "label": "หน้าหลัก"
+      },
+      {
+        "route": "search",
+        "label": "ค้นหา"
+      },
+      {
+        "route": "cart",
+        "label": "ตะกร้า"
+      },
+      {
+        "route": "orders",
+        "label": "ออเดอร์"
+      }
+    ],
+    "bottom_navigation_geometry": {
+      "outer_horizontal_padding_css_px": 8,
+      "outer_horizontal_padding_native_dp": 8,
+      "home_outer_vertical_padding_css_px": 6,
+      "home_outer_vertical_padding_native_dp": 6,
+      "default_outer_vertical_padding_css_px": 4,
+      "default_outer_vertical_padding_native_dp": 4,
+      "home_item_vertical_padding_css_px": 3,
+      "home_item_vertical_padding_native_dp": 3,
+      "default_item_vertical_padding_css_px": 2,
+      "default_item_vertical_padding_native_dp": 2,
+      "home_icon_box_css_px": 24,
+      "home_icon_box_native_dp": 24,
+      "default_icon_box_css_px": 22,
+      "default_icon_box_native_dp": 22,
+      "icon_css_px": 20,
+      "icon_native_dp": 20,
+      "home_label_font_css_px": 10,
+      "home_label_font_native_sp": 10,
+      "default_label_font_css_px": 9,
+      "default_label_font_native_sp": 9,
+      "fixed_row_height": false,
+      "explicit_label_line_height": false
+    },
+    "guest_login_destinations": {
+      "ride": "home",
+      "express": "home",
+      "orders": "home",
+      "laundry": "home",
+      "market_submit": "home",
+      "default_protected": "home",
+      "checkout": "checkout"
+    },
+    "laundry_shell": {
+      "global_top_bar": true,
+      "bottom_navigation": true,
+      "bottom_navigation_selected": "home",
+      "home_density": false
+    },
+    "guest_top_bar_geometry": {
+      "home_horizontal_padding_css_px": 16,
+      "home_horizontal_padding_native_dp": 16,
+      "home_vertical_padding_css_px": 10,
+      "home_vertical_padding_native_dp": 10,
+      "compact_horizontal_padding_css_px": 12,
+      "compact_horizontal_padding_native_dp": 12,
+      "compact_vertical_padding_css_px": 6,
+      "compact_vertical_padding_native_dp": 6,
+      "brand_letter_spacing_css_px": -0.4,
+      "brand_letter_spacing_native_sp": -0.4,
+      "login_label": "เข้าสู่ระบบ",
+      "login_color": "red",
+      "login_font_css_px": 13,
+      "login_font_native_sp": 13,
+      "login_font_weight": 700,
+      "login_background": "none"
+    }
+  }
+}

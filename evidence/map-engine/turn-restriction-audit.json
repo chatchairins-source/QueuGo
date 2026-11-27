@@ -1,0 +1,2195 @@
+{
+  "dataset": {
+    "api_version": 1,
+    "engine": "QueueGo/Valhalla",
+    "engine_version": "3.9.1",
+    "dataset_sha256": "426e2d638ba73005a681b0ddb30ffa2638ce9fc392b329cef89f04e70fbe442d",
+    "source_timestamp": "2026-10-15T20:21:00Z",
+    "bounds": [
+      102.369,
+      14.109,
+      103.592,
+      15.819
+    ],
+    "attribution": "© OpenStreetMap contributors",
+    "licence": "ODbL-1.0",
+    "live_traffic": false,
+    "historical_speed_feed": false
+  },
+  "rules": [
+    {
+      "id": 1538817,
+      "restriction": "only_straight_on",
+      "from": [
+        1090716630
+      ],
+      "to": [
+        1090716624
+      ],
+      "via_nodes": [
+        370559614
+      ],
+      "via_ways": [],
+      "status": "uncovered",
+      "reason": "Insufficient approach/departure geometry"
+    },
+    {
+      "id": 2070447,
+      "restriction": "only_straight_on",
+      "from": [
+        152947583
+      ],
+      "to": [
+        152947580
+      ],
+      "via_nodes": [
+        1657141674
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.11304722382188,
+          "lat": 14.989341824192447,
+          "heading": 72,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.11322410073772,
+          "lat": 14.989397930676551,
+          "heading": 72,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 19.0
+    },
+    {
+      "id": 2070448,
+      "restriction": "only_straight_on",
+      "from": [
+        152947563
+      ],
+      "to": [
+        152947291
+      ],
+      "via_nodes": [
+        1657141672
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.11314532176392,
+          "lat": 14.989179820234716,
+          "heading": 347,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.11309263230416,
+          "lat": 14.989352231938339,
+          "heading": 342,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 19.0
+    },
+    {
+      "id": 2070449,
+      "restriction": "only_straight_on",
+      "from": [
+        153512904
+      ],
+      "to": [
+        153512910
+      ],
+      "via_nodes": [
+        1661819308
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.12920994351808,
+          "lat": 15.007899258910296,
+          "heading": 30,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.12931683860957,
+          "lat": 15.008046276861819,
+          "heading": 37,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 19.0
+    },
+    {
+      "id": 2070451,
+      "restriction": "only_straight_on",
+      "from": [
+        736151455
+      ],
+      "to": [
+        97670848
+      ],
+      "via_nodes": [
+        423810923
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.11326569341578,
+          "lat": 14.989264430249381,
+          "heading": 252,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.1131347,
+          "lat": 14.9892236,
+          "heading": 252,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 15.0
+    },
+    {
+      "id": 2070452,
+      "restriction": "only_straight_on",
+      "from": [
+        153512809
+      ],
+      "to": [
+        153512741
+      ],
+      "via_nodes": [
+        1661819311
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.12926881784163,
+          "lat": 15.008057705049179,
+          "heading": 114,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.1294185,
+          "lat": 15.0079743,
+          "heading": 122,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 19.0
+    },
+    {
+      "id": 2073522,
+      "restriction": "only_straight_on",
+      "from": [
+        153973878
+      ],
+      "to": [
+        153973881
+      ],
+      "via_nodes": [
+        1665852925
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.19921047157962,
+          "lat": 15.508998632351961,
+          "heading": 9,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.19923516149724,
+          "lat": 15.509176907959526,
+          "heading": 7,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 19.0
+    },
+    {
+      "id": 2073523,
+      "restriction": "only_straight_on",
+      "from": [
+        153973882
+      ],
+      "to": [
+        153973876
+      ],
+      "via_nodes": [
+        370574921
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.19937564305741,
+          "lat": 15.509288808067566,
+          "heading": 188,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.19935064709149,
+          "lat": 15.50911056616474,
+          "heading": 188,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 19.0
+    },
+    {
+      "id": 2073524,
+      "restriction": "only_straight_on",
+      "from": [
+        153973861
+      ],
+      "to": [
+        153973860
+      ],
+      "via_nodes": [
+        1665852929
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.19919625220736,
+          "lat": 15.509229364450734,
+          "heading": 84,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.199369,
+          "lat": 15.5092443,
+          "heading": 85,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 19.0
+    },
+    {
+      "id": 2148441,
+      "restriction": "only_straight_on",
+      "from": [
+        160599219
+      ],
+      "to": [],
+      "via_nodes": [],
+      "via_ways": [],
+      "status": "uncovered",
+      "reason": "list index out of range"
+    },
+    {
+      "id": 6805986,
+      "restriction": "no_left_turn",
+      "from": [
+        460753575
+      ],
+      "to": [
+        23747521
+      ],
+      "via_nodes": [
+        418749856
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.07854910954285,
+          "lat": 14.60313754259673,
+          "heading": 359,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.07846444203629,
+          "lat": 14.603074666679579,
+          "heading": 217,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 663.0
+    },
+    {
+      "id": 6805988,
+      "restriction": "no_left_turn",
+      "from": [
+        203035174
+      ],
+      "to": [
+        460753580
+      ],
+      "via_nodes": [
+        418131809
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.0849044327539,
+          "lat": 14.57056275663991,
+          "heading": 261,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.08488514524743,
+          "lat": 14.570423589850055,
+          "heading": 169,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1529.0
+    },
+    {
+      "id": 6982073,
+      "restriction": "no_left_turn",
+      "from": [
+        386297732
+      ],
+      "to": [
+        474728750
+      ],
+      "via_nodes": [
+        3896164307
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.71452416120424,
+          "lat": 14.410431788418007,
+          "heading": 17,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.7143996118332,
+          "lat": 14.410492410767397,
+          "heading": 278,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 49.0
+    },
+    {
+      "id": 6982074,
+      "restriction": "no_left_turn",
+      "from": [
+        386297733
+      ],
+      "to": [
+        474728752
+      ],
+      "via_nodes": [
+        3896164318
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.71465288901003,
+          "lat": 14.41046258637025,
+          "heading": 277,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.71456838089885,
+          "lat": 14.410338335533641,
+          "heading": 196,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 50.0
+    },
+    {
+      "id": 6982075,
+      "restriction": "no_left_turn",
+      "from": [
+        386297736
+      ],
+      "to": [
+        474728754
+      ],
+      "via_nodes": [
+        3896164293
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.71464159766222,
+          "lat": 14.410579953266772,
+          "heading": 198,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.71476519312286,
+          "lat": 14.41052126861361,
+          "heading": 97,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 50.0
+    },
+    {
+      "id": 6982076,
+      "restriction": "no_left_turn",
+      "from": [
+        386297730
+      ],
+      "to": [
+        474728756
+      ],
+      "via_nodes": [
+        3896164300
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.71451216145844,
+          "lat": 14.410551402641664,
+          "heading": 97,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.71459391564603,
+          "lat": 14.410675987438266,
+          "heading": 15,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 50.0
+    },
+    {
+      "id": 6982135,
+      "restriction": "no_u_turn",
+      "from": [
+        202821208
+      ],
+      "to": [
+        202821208
+      ],
+      "via_nodes": [
+        2127599256
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.71913175064078,
+          "lat": 14.439301956647284,
+          "heading": 102,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.71886022015542,
+          "lat": 14.439362124583806,
+          "heading": 283,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "uncovered_approach",
+      "examined_transitions": 0,
+      "violations": [],
+      "distance_m": 96.0
+    },
+    {
+      "id": 6982136,
+      "restriction": "no_left_turn",
+      "from": [
+        202821208
+      ],
+      "to": [
+        474731351
+      ],
+      "via_nodes": [
+        2127599256
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.71913175064078,
+          "lat": 14.439301956647284,
+          "heading": 102,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.719178666459,
+          "lat": 14.439427189524809,
+          "heading": 1,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "uncovered_approach",
+      "examined_transitions": 0,
+      "violations": [],
+      "distance_m": 515.0
+    },
+    {
+      "id": 6982137,
+      "restriction": "no_left_turn",
+      "from": [
+        1095127431
+      ],
+      "to": [
+        202821208
+      ],
+      "via_nodes": [
+        2127599256
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.71919009314597,
+          "lat": 14.439249130360514,
+          "heading": 344,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.71904105192236,
+          "lat": 14.439321269941855,
+          "heading": 282,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "uncovered_approach",
+      "examined_transitions": 0,
+      "violations": [],
+      "distance_m": 15.0
+    },
+    {
+      "id": 6982240,
+      "restriction": "no_right_turn",
+      "from": [
+        457344026
+      ],
+      "to": [
+        474747491
+      ],
+      "via_nodes": [
+        4519304658
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.49284650486926,
+          "lat": 14.584896094266604,
+          "heading": 257,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49292325614387,
+          "lat": 14.584951024675336,
+          "heading": 61,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 3084.0
+    },
+    {
+      "id": 6982241,
+      "restriction": "no_right_turn",
+      "from": [
+        474747490
+      ],
+      "to": [
+        457344020
+      ],
+      "via_nodes": [
+        4519304667
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.4940565675996,
+          "lat": 14.586376173551988,
+          "heading": 16,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49406051427914,
+          "lat": 14.586284852146266,
+          "heading": 183,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 2458.0
+    },
+    {
+      "id": 6982242,
+      "restriction": "no_u_turn",
+      "from": [
+        474747490
+      ],
+      "to": [
+        474747490
+      ],
+      "via_nodes": [
+        4519304667
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.4940565675996,
+          "lat": 14.586376173551988,
+          "heading": 16,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49397599675127,
+          "lat": 14.586117976075474,
+          "heading": 197,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 2478.0
+    },
+    {
+      "id": 6982243,
+      "restriction": "no_u_turn",
+      "from": [
+        474747491
+      ],
+      "to": [
+        474747490
+      ],
+      "via_nodes": [
+        4519304658
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.49284195204795,
+          "lat": 14.584907474891779,
+          "heading": 241,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49372125842596,
+          "lat": 14.585648419442943,
+          "heading": 49,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 3200.0
+    },
+    {
+      "id": 6982244,
+      "restriction": "no_u_turn",
+      "from": [
+        474747489
+      ],
+      "to": [
+        474747489
+      ],
+      "via_nodes": [
+        4519304658
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.4927583807764,
+          "lat": 14.584868475369634,
+          "heading": 67,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49250050362116,
+          "lat": 14.584765991136384,
+          "heading": 248,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "uncovered_approach",
+      "examined_transitions": 0,
+      "violations": [],
+      "distance_m": 534.0
+    },
+    {
+      "id": 6982245,
+      "restriction": "no_u_turn",
+      "from": [
+        41123471
+      ],
+      "to": [
+        41123471
+      ],
+      "via_nodes": [
+        4519304667
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.4940762810241,
+          "lat": 14.586463910495489,
+          "heading": 189,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49411996716881,
+          "lat": 14.586730373468425,
+          "heading": 9,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 456.0
+    },
+    {
+      "id": 6982246,
+      "restriction": "no_u_turn",
+      "from": [
+        455538713
+      ],
+      "to": [
+        455538713
+      ],
+      "via_nodes": [
+        501835120
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.49367626751892,
+          "lat": 14.585509582534383,
+          "heading": 310,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49389125712919,
+          "lat": 14.58533782884519,
+          "heading": 130,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 5994.0
+    },
+    {
+      "id": 6982247,
+      "restriction": "no_left_turn",
+      "from": [
+        455538713
+      ],
+      "to": [
+        474747491
+      ],
+      "via_nodes": [
+        501835120
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.49367626751892,
+          "lat": 14.585509582534383,
+          "heading": 310,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49355359290142,
+          "lat": 14.585433008733558,
+          "heading": 219,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 2676.0
+    },
+    {
+      "id": 6982248,
+      "restriction": "no_u_turn",
+      "from": [
+        474747491
+      ],
+      "to": [
+        474747491
+      ],
+      "via_nodes": [
+        501835120
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.49361159763382,
+          "lat": 14.585503269577853,
+          "heading": 39,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49342667389148,
+          "lat": 14.585301732898381,
+          "heading": 221,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 2697.0
+    },
+    {
+      "id": 6982249,
+      "restriction": "no_u_turn",
+      "from": [
+        474747490
+      ],
+      "to": [
+        474747490
+      ],
+      "via_nodes": [
+        501835120
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.49366748614199,
+          "lat": 14.585575073147648,
+          "heading": 215,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49382150340041,
+          "lat": 14.585799743511737,
+          "heading": 34,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 3337.0
+    },
+    {
+      "id": 6982250,
+      "restriction": "no_left_turn",
+      "from": [
+        474747490
+      ],
+      "to": [
+        455538713
+      ],
+      "via_nodes": [
+        501835120
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.49366748614199,
+          "lat": 14.585575073147648,
+          "heading": 215,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.49374761146375,
+          "lat": 14.585451958017481,
+          "heading": 130,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 3317.0
+    },
+    {
+      "id": 8438265,
+      "restriction": "no_left_turn",
+      "from": [
+        1500900493
+      ],
+      "to": [
+        384260987
+      ],
+      "via_nodes": [
+        5750055780
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.40848407774948,
+          "lat": 14.630675036825602,
+          "heading": 74,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.40848175863195,
+          "lat": 14.630814600770545,
+          "heading": 340,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1067.0
+    },
+    {
+      "id": 8438266,
+      "restriction": "no_left_turn",
+      "from": [
+        202698915
+      ],
+      "to": [
+        606477372
+      ],
+      "via_nodes": [
+        5750055778
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.40874938282336,
+          "lat": 14.630621159943857,
+          "heading": 254,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.40875383849817,
+          "lat": 14.630482558412128,
+          "heading": 159,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 741.0
+    },
+    {
+      "id": 8438267,
+      "restriction": "no_left_turn",
+      "from": [
+        41703014
+      ],
+      "to": [
+        606477374
+      ],
+      "via_nodes": [
+        5750055777
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.40858376294395,
+          "lat": 14.630527430833112,
+          "heading": 342,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.40843594563583,
+          "lat": 14.630530117992528,
+          "heading": 253,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 740.0
+    },
+    {
+      "id": 8438268,
+      "restriction": "no_left_turn",
+      "from": [
+        1500900499
+      ],
+      "to": [
+        606477376
+      ],
+      "via_nodes": [
+        5750055779
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.40864882141778,
+          "lat": 14.63076770003019,
+          "heading": 161,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.40879463268473,
+          "lat": 14.630771581532308,
+          "heading": 70,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1067.0
+    },
+    {
+      "id": 10956578,
+      "restriction": "no_u_turn",
+      "from": [
+        582208466
+      ],
+      "to": [
+        787858201
+      ],
+      "via_nodes": [
+        5568693895
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.43176139043177,
+          "lat": 14.885963243377008,
+          "heading": 211,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.43178613938106,
+          "lat": 14.886051078880898,
+          "heading": 20,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "uncovered_approach",
+      "examined_transitions": 0,
+      "violations": [],
+      "distance_m": 2096.0
+    },
+    {
+      "id": 10956579,
+      "restriction": "no_u_turn",
+      "from": [
+        582208467
+      ],
+      "to": [
+        787858202
+      ],
+      "via_nodes": [
+        3064469755
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.43238526823949,
+          "lat": 14.887454454961484,
+          "heading": 24,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.43235330870664,
+          "lat": 14.88736990134486,
+          "heading": 202,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "uncovered_approach",
+      "examined_transitions": 0,
+      "violations": [],
+      "distance_m": 2203.0
+    },
+    {
+      "id": 12401032,
+      "restriction": "no_straight_on",
+      "from": [
+        590875185
+      ],
+      "to": [
+        913699413
+      ],
+      "via_nodes": [
+        5640598000
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.30323454160731,
+          "lat": 15.307163828564262,
+          "heading": 226,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.30308118529564,
+          "lat": 15.307063134123396,
+          "heading": 239,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "uncovered_approach",
+      "examined_transitions": 0,
+      "violations": [],
+      "distance_m": 572.0
+    },
+    {
+      "id": 14017278,
+      "restriction": "no_right_turn",
+      "from": [
+        386889372
+      ],
+      "to": [
+        1043681649
+      ],
+      "via_nodes": [],
+      "via_ways": [
+        1043681646
+      ],
+      "query": [
+        {
+          "lon": 103.51295132935725,
+          "lat": 14.876259428941717,
+          "heading": 330,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.5125803086447,
+          "lat": 14.876382449017745,
+          "heading": 351,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1141.0
+    },
+    {
+      "id": 15268305,
+      "restriction": "only_straight_on",
+      "from": [
+        1131092552
+      ],
+      "to": [
+        1131092555
+      ],
+      "via_nodes": [
+        10542399368
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.4637643674944,
+          "lat": 15.63767694482848,
+          "heading": 343,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.4637996187713,
+          "lat": 15.637835471214398,
+          "heading": 22,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 20.0
+    },
+    {
+      "id": 15268306,
+      "restriction": "only_straight_on",
+      "from": [
+        1131090349
+      ],
+      "to": [
+        1131090348
+      ],
+      "via_nodes": [
+        10542391821
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.47535872979903,
+          "lat": 15.634593358319686,
+          "heading": 184,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.47525643040727,
+          "lat": 15.634468364204846,
+          "heading": 230,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 20.0
+    },
+    {
+      "id": 16142291,
+      "restriction": "no_left_turn",
+      "from": [
+        542170465
+      ],
+      "to": [
+        1193297147
+      ],
+      "via_nodes": [
+        5241937005
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82736160050244,
+          "lat": 15.012195542687499,
+          "heading": 178,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.82749413307961,
+          "lat": 15.012195970473938,
+          "heading": 70,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1570.0
+    },
+    {
+      "id": 16142292,
+      "restriction": "no_right_turn",
+      "from": [
+        1193297148
+      ],
+      "to": [
+        1193297146
+      ],
+      "via_nodes": [
+        5241937005
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82732048231361,
+          "lat": 15.01213250207838,
+          "heading": 66,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.827398,
+          "lat": 15.0120603,
+          "heading": 160,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 676.0
+    },
+    {
+      "id": 16142293,
+      "restriction": "no_left_turn",
+      "from": [
+        542170464
+      ],
+      "to": [
+        1193297149
+      ],
+      "via_nodes": [
+        5241936996
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82722684200445,
+          "lat": 15.012089654902221,
+          "heading": 63,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.82722127127687,
+          "lat": 15.01223735487348,
+          "heading": 340,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 724.0
+    },
+    {
+      "id": 16142294,
+      "restriction": "no_right_turn",
+      "from": [
+        542170466
+      ],
+      "to": [
+        1193297148
+      ],
+      "via_nodes": [
+        5241936996
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82728675564749,
+          "lat": 15.012069060073474,
+          "heading": 337,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.8273631,
+          "lat": 15.0121506,
+          "heading": 66,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 2407.0
+    },
+    {
+      "id": 16142295,
+      "restriction": "no_u_turn",
+      "from": [
+        160598998
+      ],
+      "to": [
+        160598998
+      ],
+      "via_nodes": [
+        257193583
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82762564287755,
+          "lat": 15.013019911576109,
+          "heading": 208,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.82775550014289,
+          "lat": 15.013258781032766,
+          "heading": 28,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 281.0
+    },
+    {
+      "id": 16142296,
+      "restriction": "no_u_turn",
+      "from": [
+        1193297150
+      ],
+      "to": [
+        542170464
+      ],
+      "via_nodes": [
+        5241936979
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82630055949362,
+          "lat": 15.010667971704713,
+          "heading": 213,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.82633101116873,
+          "lat": 15.01075390108636,
+          "heading": 24,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1144.0
+    },
+    {
+      "id": 16142297,
+      "restriction": "no_u_turn",
+      "from": [
+        542170469
+      ],
+      "to": [
+        542170469
+      ],
+      "via_nodes": [
+        5241936979
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82625310116103,
+          "lat": 15.010590675237907,
+          "heading": 28,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.82611990812713,
+          "lat": 15.010353526665355,
+          "heading": 208,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1127.0
+    },
+    {
+      "id": 16142298,
+      "restriction": "no_u_turn",
+      "from": [
+        1193297147
+      ],
+      "to": [
+        542170463
+      ],
+      "via_nodes": [
+        1726477729
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82925401197377,
+          "lat": 15.012004618467026,
+          "heading": 103,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.82915980857436,
+          "lat": 15.012000658536412,
+          "heading": 273,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 624.0
+    },
+    {
+      "id": 16142299,
+      "restriction": "no_u_turn",
+      "from": [
+        542170462
+      ],
+      "to": [
+        542170462
+      ],
+      "via_nodes": [
+        1726477729
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82934580867162,
+          "lat": 15.011992197504133,
+          "heading": 273,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.8294642,
+          "lat": 15.0119871,
+          "heading": 93,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 866.0
+    },
+    {
+      "id": 16142300,
+      "restriction": "no_u_turn",
+      "from": [
+        542170462
+      ],
+      "to": [
+        542170462
+      ],
+      "via_nodes": [
+        5667997875
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82941769132839,
+          "lat": 15.011989102495868,
+          "heading": 93,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.8292993,
+          "lat": 15.0119942,
+          "heading": 273,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 591.0
+    },
+    {
+      "id": 16142301,
+      "restriction": "no_u_turn",
+      "from": [
+        1193297152
+      ],
+      "to": [
+        1193297152
+      ],
+      "via_nodes": [
+        5667997875
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.82951060791325,
+          "lat": 15.011983530160519,
+          "heading": 275,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.82978931882307,
+          "lat": 15.011971411652079,
+          "heading": 93,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 919.0
+    },
+    {
+      "id": 17320674,
+      "restriction": "no_straight_on",
+      "from": [],
+      "to": [],
+      "via_nodes": [],
+      "via_ways": [],
+      "status": "uncovered",
+      "reason": "list index out of range"
+    },
+    {
+      "id": 19506953,
+      "restriction": "no_u_turn",
+      "from": [
+        606477371
+      ],
+      "to": [
+        606477369
+      ],
+      "via_nodes": [],
+      "via_ways": [
+        699278428
+      ],
+      "query": [
+        {
+          "lon": 103.40861367431569,
+          "lat": 14.630582821430805,
+          "heading": 254,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.40866270135136,
+          "lat": 14.630724839104296,
+          "heading": 74,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 755.0
+    },
+    {
+      "id": 19506954,
+      "restriction": "no_u_turn",
+      "from": [
+        606477369
+      ],
+      "to": [
+        606477371
+      ],
+      "via_nodes": [],
+      "via_ways": [
+        699278427
+      ],
+      "query": [
+        {
+          "lon": 103.40861933288288,
+          "lat": 14.630712786965235,
+          "heading": 74,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.40857097705292,
+          "lat": 14.630570635707583,
+          "heading": 254,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1113.0
+    },
+    {
+      "id": 19506955,
+      "restriction": "no_u_turn",
+      "from": [
+        699278428
+      ],
+      "to": [
+        699278427
+      ],
+      "via_nodes": [],
+      "via_ways": [
+        606477369
+      ],
+      "query": [
+        {
+          "lon": 103.4085433701356,
+          "lat": 14.630644933145224,
+          "heading": 342,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.4087047,
+          "lat": 14.6306088,
+          "heading": 161,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 697.0
+    },
+    {
+      "id": 19506956,
+      "restriction": "no_u_turn",
+      "from": [
+        699278427
+      ],
+      "to": [
+        699278428
+      ],
+      "via_nodes": [],
+      "via_ways": [
+        606477371
+      ],
+      "query": [
+        {
+          "lon": 103.40868980660386,
+          "lat": 14.630651394381108,
+          "heading": 161,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.4085287,
+          "lat": 14.6306876,
+          "heading": 342,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1024.0
+    },
+    {
+      "id": 19533002,
+      "restriction": "no_right_turn",
+      "from": [
+        1425496548
+      ],
+      "to": [
+        606468855
+      ],
+      "via_nodes": [
+        5750009594
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.54837954433347,
+          "lat": 14.83831922470408,
+          "heading": 323,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.54843916831067,
+          "lat": 14.838460056285808,
+          "heading": 39,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1784.0
+    },
+    {
+      "id": 20508886,
+      "restriction": "no_right_turn",
+      "from": [
+        1501226251
+      ],
+      "to": [
+        1501226249
+      ],
+      "via_nodes": [
+        668769260
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.35086379076094,
+          "lat": 14.61538242191637,
+          "heading": 255,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.3507881991215,
+          "lat": 14.61550238629695,
+          "heading": 347,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1410.0
+    },
+    {
+      "id": 20613951,
+      "restriction": "no_u_turn",
+      "from": [
+        1507747423,
+        554116352
+      ],
+      "to": [
+        460748749
+      ],
+      "via_nodes": [
+        5213235215,
+        5213235214
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.08243761000072,
+          "lat": 14.609650889262763,
+          "heading": 275,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.08279996226929,
+          "lat": 14.609775588160481,
+          "heading": 73,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 67.0
+    },
+    {
+      "id": 20613952,
+      "restriction": "no_u_turn",
+      "from": [
+        1507747432,
+        554116352
+      ],
+      "to": [
+        1507747433
+      ],
+      "via_nodes": [
+        5213235214,
+        5213235215
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 103.08233514121177,
+          "lat": 14.609823558243242,
+          "heading": 98,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 103.08225300768423,
+          "lat": 14.609671613594111,
+          "heading": 220,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 816.0
+    },
+    {
+      "id": 21037857,
+      "restriction": "no_right_turn",
+      "from": [
+        1533018400
+      ],
+      "to": [
+        81349114
+      ],
+      "via_nodes": [
+        4406400992
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.56917063304876,
+          "lat": 15.639176310088121,
+          "heading": 10,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.5693177130338,
+          "lat": 15.63920394961114,
+          "heading": 97,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1671.0
+    },
+    {
+      "id": 21037858,
+      "restriction": "no_left_turn",
+      "from": [
+        1533018387
+      ],
+      "to": [
+        81349114
+      ],
+      "via_nodes": [
+        4406400992
+      ],
+      "via_ways": [],
+      "query": [
+        {
+          "lon": 102.56918696292463,
+          "lat": 15.63926485639736,
+          "heading": 190,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        },
+        {
+          "lon": 102.5693177130338,
+          "lat": 15.63920394961114,
+          "heading": 97,
+          "heading_tolerance": 15,
+          "radius": 5,
+          "node_snap_tolerance": 0
+        }
+      ],
+      "status": "passed_approach",
+      "examined_transitions": 1,
+      "violations": [],
+      "distance_m": 1671.0
+    }
+  ],
+  "summary": {
+    "passed_approach": 52,
+    "uncovered": 3,
+    "uncovered_approach": 7
+  },
+  "all_rules_gate": false,
+  "physical_verification": false,
+  "limitations": "Direction-constrained OSM member queries; uncovered approaches are never counted as enforcement proof. Exceptions/conditional rules require separate profile/time fixtures."
+}

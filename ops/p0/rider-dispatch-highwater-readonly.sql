@@ -1,0 +1,86 @@
+-- Read-only/aggregate P0 Rider dispatch release gate (safe for authorized QA).
+-- No order IDs, customer/rider IDs, addresses or personal data in result.
+-- Run on a dedicated QA/staging connection; never use this query to modify live orders.
+-- Expected release criterion: overdue_searching_orders = 0, late_active_offers = 0,
+-- and no newly targeted offers to orders whose search window has expired.
+WITH timeout_config AS (
+  SELECT COALESCE(
+    (SELECT CASE
+      WHEN (value->>'orderTimeout') ~ '^[0-9]{1,4}$'
+       AND (value->>'orderTimeout')::integer BETWEEN 1 AND 1440
+      THEN (value->>'orderTimeout')::integer
+      ELSE NULL
+    END FROM public.system_settings WHERE key='app'),
+    30
+  ) AS timeout_minutes
+),
+searching AS (
+  SELECT o.id,
+         o.rider_search_started_at AS started_at,
+         o.created_at,
+         o.merchant_accepted_at,
+         c.timeout_minutes,
+         o.rider_search_started_at
+           + make_interval(mins => c.timeout_minutes) AS deadline
+  FROM public.orders o
+  CROSS JOIN timeout_config c
+  WHERE o.status='searching_rider' AND o.rider_id IS NULL
+),
+invalid_search_clocks AS (
+  SELECT id FROM searching
+  WHERE started_at IS NULL OR started_at > now()
+     OR created_at IS NULL OR started_at < created_at
+     OR (merchant_accepted_at IS NOT NULL AND started_at < merchant_accepted_at)
+),
+overdue AS (
+  SELECT id, started_at, deadline
+  FROM searching
+  WHERE deadline IS NULL OR now() >= deadline
+),
+stats AS (
+  SELECT
+    (SELECT timeout_minutes FROM timeout_config) AS configured_timeout_minutes,
+    (SELECT count(*) FROM searching)::integer AS searching_orders,
+    (SELECT count(*) FROM invalid_search_clocks)::integer AS invalid_search_clocks,
+    -- Searching + any recorded assignment is a contradictory live order state.
+    -- Do not hide it by filtering assigned searches out of the normal CTE.
+    (SELECT count(*) FROM public.orders o
+      WHERE o.status='searching_rider'
+        AND (o.rider_id IS NOT NULL OR o.rider_assigned_at IS NOT NULL)
+    )::integer AS invalid_search_assignments,
+    -- The independent max-attempt cap must apply before timeout too.
+    (SELECT count(*) FROM public.qg_rider_order_offers x
+      JOIN searching o ON o.id=x.order_id WHERE x.attempt > 120
+    )::integer AS searching_live_offers_above_120,
+    (SELECT count(*) FROM public.qg_rider_offer_history x
+      JOIN searching o ON o.id=x.order_id WHERE x.attempt > 120
+    )::integer AS searching_historical_offers_above_120,
+    (SELECT count(*) FROM overdue)::integer AS overdue_searching_orders,
+    (SELECT count(*) FROM public.qg_rider_order_offers x
+      JOIN overdue o ON o.id=x.order_id)::integer AS late_active_offers,
+    (SELECT count(*) FROM public.qg_rider_order_offers x
+      JOIN public.orders o ON o.id=x.order_id
+      WHERE o.status<>'searching_rider' OR o.rider_id IS NOT NULL)::integer AS invalid_status_active_offers,
+    (SELECT count(*) FROM public.qg_rider_offer_history x
+      JOIN overdue o ON o.id=x.order_id)::bigint AS overdue_historical_offers,
+    (SELECT count(*) FROM public.qg_rider_offer_history x
+      JOIN overdue o ON o.id=x.order_id
+      WHERE x.offered_at >= now()-interval '1 hour')::integer AS overdue_offers_last_hour,
+    (SELECT count(*) FROM public.notifications n
+      JOIN overdue o ON o.id=n.reference_id
+      WHERE n.created_at >= now()-interval '1 hour')::integer AS overdue_notifications_last_hour,
+    (SELECT count(*) FROM public.qg_rider_offer_history x
+      JOIN overdue o ON o.id=x.order_id
+      WHERE x.attempt > 120)::integer AS overdue_offer_attempts_above_120
+)
+SELECT *,
+  CASE
+    WHEN invalid_search_clocks>0 OR invalid_search_assignments>0
+      OR searching_live_offers_above_120>0 OR searching_historical_offers_above_120>0
+      OR overdue_searching_orders>0 OR late_active_offers>0 OR invalid_status_active_offers>0
+      OR overdue_offers_last_hour>0 OR overdue_notifications_last_hour>0
+      OR overdue_offer_attempts_above_120>0
+    THEN 'NO_GO_DISPATCH_P0'
+    ELSE 'PASS_DISPATCH_OVERTIME'
+  END AS release_gate
+FROM stats;

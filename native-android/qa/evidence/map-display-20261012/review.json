@@ -1,0 +1,167 @@
+{
+  "source_head": "480896500a74ffc634d0a960a5055aa32f9f0b90",
+  "workflow_run": "38193716622",
+  "apk_sha256": "c39654d86e6478e05ea27795b77728be0bac01a9d0434dbb7d507cde53094695",
+  "cases": [
+    {
+      "viewport": "phone-denied",
+      "dimensions": "1080x2280",
+      "density": "440",
+      "location_permission_granted": false,
+      "map_mount_background_recreation": "PASS",
+      "screenshots": [
+        {
+          "state": "initial",
+          "sha256": "4e1917a6944df9a76de705ab356b0f7fe0af1c0a7745e45f9ded60d8b00d65d3",
+          "file": "phone-denied/initial.png"
+        },
+        {
+          "state": "resumed",
+          "sha256": "c9c7686969994defb47c97c74fc303270284ebd34e92e3829bc51e62be248adc",
+          "file": "phone-denied/resumed.png"
+        },
+        {
+          "state": "recreated",
+          "sha256": "b637c7b2f1dd5b9d0fbb73c47bc807d3959b17d81fda50a713f583b00494ab0e",
+          "file": "phone-denied/recreated.png"
+        }
+      ]
+    },
+    {
+      "viewport": "phone-allowed",
+      "dimensions": "1080x2280",
+      "density": "440",
+      "location_permission_granted": true,
+      "map_mount_background_recreation": "PASS",
+      "screenshots": [
+        {
+          "state": "initial",
+          "sha256": "d07b952d1dbde303921c322384760aa358afa63ca923ca136fad9f63fd2529c9",
+          "file": "phone-allowed/initial.png"
+        },
+        {
+          "state": "resumed",
+          "sha256": "3346ca96f6b9b41257fe72d8910cb2b66b2a0a7a110f80f9745d669a383cf66e",
+          "file": "phone-allowed/resumed.png"
+        },
+        {
+          "state": "recreated",
+          "sha256": "3346ca96f6b9b41257fe72d8910cb2b66b2a0a7a110f80f9745d669a383cf66e",
+          "file": "phone-allowed/recreated.png"
+        }
+      ]
+    },
+    {
+      "viewport": "large-allowed",
+      "dimensions": "1600x2560",
+      "density": "240",
+      "location_permission_granted": true,
+      "map_mount_background_recreation": "PASS",
+      "screenshots": [
+        {
+          "state": "initial",
+          "sha256": "d42cb6ee29f10c78dedd9b0a93f8aea1600f5a9361c36abb893149f3afed7fe0",
+          "file": "large-allowed/initial.png"
+        },
+        {
+          "state": "resumed",
+          "sha256": "a90ec611e8d5fe098feb83ea2dceb3758a7fd420cf2bd5d9ecc2db0f884f4cc8",
+          "file": "large-allowed/resumed.png"
+        },
+        {
+          "state": "recreated",
+          "sha256": "a90ec611e8d5fe098feb83ea2dceb3758a7fd420cf2bd5d9ecc2db0f884f4cc8",
+          "file": "large-allowed/recreated.png"
+        }
+      ]
+    }
+  ],
+  "physical_device": false,
+  "gps_injected": false,
+  "sample_jobs_created": false,
+  "production_account_or_order_writes": false,
+  "authenticated_home_parity_certified": false,
+  "physical_gps_positioning_certified": false,
+  "visible_tiles_review_required": true,
+  "image_review": [
+    {
+      "case": "large-allowed",
+      "location_starts": 3,
+      "location_stops": 3,
+      "states": [
+        {
+          "state": "initial",
+          "dominant_fraction": 0.640162037037037,
+          "changed_fraction": 0.0
+        },
+        {
+          "state": "resumed",
+          "dominant_fraction": 0.640162037037037,
+          "changed_fraction": 0.0
+        },
+        {
+          "state": "recreated",
+          "dominant_fraction": 0.640162037037037,
+          "changed_fraction": 0.0
+        }
+      ]
+    },
+    {
+      "case": "phone-allowed",
+      "location_starts": 3,
+      "location_stops": 3,
+      "states": [
+        {
+          "state": "initial",
+          "dominant_fraction": 0.6895833333333333,
+          "changed_fraction": 0.0
+        },
+        {
+          "state": "resumed",
+          "dominant_fraction": 0.7026851851851852,
+          "changed_fraction": 0.032337962962962964
+        },
+        {
+          "state": "recreated",
+          "dominant_fraction": 0.7026851851851852,
+          "changed_fraction": 0.032337962962962964
+        }
+      ]
+    },
+    {
+      "case": "phone-denied",
+      "location_starts": 0,
+      "location_stops": 0,
+      "states": [
+        {
+          "state": "initial",
+          "dominant_fraction": 0.03701388888888889,
+          "changed_fraction": 0.0
+        },
+        {
+          "state": "resumed",
+          "dominant_fraction": 0.03701388888888889,
+          "changed_fraction": 0.0
+        },
+        {
+          "state": "recreated",
+          "dominant_fraction": 0.03701388888888889,
+          "changed_fraction": 0.0
+        }
+      ]
+    }
+  ],
+  "manual_frame_review_count": 9,
+  "all_cold_tiles_certified": false,
+  "first_frame_partial_gray_tile": {
+    "case": "phone-allowed",
+    "state": "initial",
+    "resolved_in": [
+      "resumed",
+      "recreated"
+    ]
+  },
+  "emulator_location_source": "Android emulator virtual OS provider; not physical GPS evidence",
+  "no_apk_aab_published": true,
+  "full_rider_parity_certified": false
+}

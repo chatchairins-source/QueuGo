@@ -24,7 +24,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Thonburi",sans-
 .notif-toast-copy{min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .map-box{height:220px;border:1px solid #dceee6;border-radius:12px;overflow:hidden;margin:10px 0}
 .badge{display:inline-block;padding:3px 8px;border-radius:99px;font-size:11px}.badge-green{background:#e5fbf2;color:#13805f}.badge-yellow{background:#fff7df;color:#a16b00}.badge-gray{background:#f0f4f2;color:#667d72}
-#qt-net-status{display:none;position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:50%;transform:translateX(-50%);z-index:8999;max-width:calc(100vw - 24px);padding:10px 14px;border-radius:12px;background:#9b1c2c;color:#fff;font-size:13px;line-height:1.4;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.18)}#qt-net-status.show{display:block}#qt-net-status.checking{background:#875c00}</style>
+#qt-net-status{display:none;position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:50%;transform:translateX(-50%);z-index:8999;max-width:calc(100vw - 24px);padding:10px 14px;border-radius:12px;background:#9b1c2c;color:#fff;font-size:13px;line-height:1.4;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.18)}#qt-net-status.show{display:block}#qt-net-status.checking{background:#875c00}.qgm-ready-estimate-controls{display:flex;gap:6px;margin-top:8px}.qgm-ready-estimate-controls button{flex:1;min-width:0;min-height:36px;padding:6px 8px;border:1px solid #eadfe3;border-radius:10px;background:#fff;color:#e6002d;font-size:11px;font-weight:800}
+</style>
 
 <script>
 /* Merchant route and data entry point. */
@@ -799,7 +800,7 @@ function qtOrderToRow(o){
   return {id:qtUuidLike(o.id)?o.id:undefined,order_number:String(o.orderNumber||o.orderNo||o.id||uid()),customer_id:o.customerId||null,shop_id:o.shopProfileId||null,technician_id:null,rider_id:o.riderProfileId||null,order_type:'shopping',status:qtOrderStatusToDb(o.status),subtotal:Number(o.subtotal||0),delivery_fee:Number(o.deliveryFee||0),total_amount:Number(o.total||o.totalAmount||0),pickup_address:o.pickupAddress??pickup.address??null,pickup_latitude:o.pickupLat??pickup.lat??null,pickup_longitude:o.pickupLng??pickup.lng??null,delivery_address:o.deliveryAddress??delivery.address??null,delivery_latitude:o.deliveryLat??delivery.lat??null,delivery_longitude:o.deliveryLng??delivery.lng??null,note:(`__QT_ORDER_STATUS__=${o.status}\n`+(o.cancelReason?`__QT_CANCEL_REASON__=${String(o.cancelReason).replace(/\n/g,' ')}\n`:'')+(o.note||'')).trim()||null,created_at:qtIso(o.createdAt),updated_at:qtIso(Date.now())};
 }
 function qtOrderFromRow(r){
-  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),gpAmount:r.gp_amount==null?null:Number(r.gp_amount),gpRate:r.gp_rate==null?null:Number(r.gp_rate),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',cancelReason:(r.note||'').match(/__QT_CANCEL_REASON__=([^\n]+)/)?.[1]||'',readyAt:r.ready_at?new Date(r.ready_at).getTime():null,preparingAt:r.preparing_at?new Date(r.preparing_at).getTime():null,riderAssignedAt:r.rider_assigned_at?new Date(r.rider_assigned_at).getTime():null,riderArrivedShopAt:r.rider_arrived_shop_at||null,riderArrivedCustomerAt:r.rider_arrived_customer_at||null,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
+  return {id:r.id,orderNumber:r.order_number,customerId:r.customer_id,shopProfileId:r.shop_id,riderProfileId:r.rider_id,status:qtOrderStatusFromDb(r.status,r.note),orderType:r.order_type,subtotal:Number(r.subtotal||0),gpAmount:r.gp_amount==null?null:Number(r.gp_amount),gpRate:r.gp_rate==null?null:Number(r.gp_rate),deliveryFee:Number(r.delivery_fee||0),total:Number(r.total_amount||0),pickupAddress:r.pickup_address||'',pickupLat:r.pickup_latitude,pickupLng:r.pickup_longitude,deliveryAddress:r.delivery_address||'',deliveryLat:r.delivery_latitude,deliveryLng:r.delivery_longitude,note:r.note||'',cancelReason:(r.note||'').match(/__QT_CANCEL_REASON__=([^\n]+)/)?.[1]||'',readyAt:r.ready_at?new Date(r.ready_at).getTime():null,readyEstimateAt:r.merchant_ready_estimate_at||null,readyRevision:Number(r.merchant_ready_revision||0),preparingAt:r.preparing_at?new Date(r.preparing_at).getTime():null,riderAssignedAt:r.rider_assigned_at?new Date(r.rider_assigned_at).getTime():null,riderArrivedShopAt:r.rider_arrived_shop_at||null,riderArrivedCustomerAt:r.rider_arrived_customer_at||null,createdAt:new Date(r.created_at).getTime(),updatedAt:new Date(r.updated_at||r.created_at).getTime(),items:[]};
 }
 
 
@@ -866,7 +867,8 @@ async function qtPersistKeyRaw(key,val){
     if(key==='qt_audit_log'){ for(const a of (val||[])){ if(!qtUuidLike(a.id)) continue; await qtSupabaseTable('audit_logs?on_conflict=id',{method:'POST',accessToken:token,body:{id:a.id,user_id:qtUuidLike(a.actorId)?a.actorId:null,action:a.action||'system',entity_type:a.entityType||null,entity_id:qtUuidLike(a.entityId)?a.entityId:null,description:a.description||'',metadata:a,created_at:qtIso(a.at)}}); } return; }
     if(key==='qt_products'){ const shopProfileId=async(userId)=>{if(!qtUuidLike(userId))return null; const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token}); return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('products?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await shopProfileId(p.shopId),name:p.name||'',description:p.description||'',price:Number(p.price||0),image:p.image||null,available:p.available!==false,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
     if(key==='qt_promotions'){ const promoProfileId=async(userId)=>{if(!qtUuidLike(userId))return null;const rows=await qtSupabaseTable('shop_profiles?select=id&user_id=eq.'+encodeURIComponent(userId)+'&archived_at=is.null&order=created_at.desc&limit=1',{accessToken:token});return Array.isArray(rows)&&rows[0]?rows[0].id:null;}; for(const p of (val||[])){ if(!qtUuidLike(p.id)) continue; await qtSupabaseTable('promotions?on_conflict=id',{method:'POST',accessToken:token,body:{id:p.id,shop_id:await promoProfileId(p.shopId),shop_name:p.shopName||null,category:p.category||null,area:p.area||null,bid_price:Number(p.bidPrice||0),max_budget:Number(p.maxBudget||0),period_days:Number(p.periodDays||0),status:p.status||'pending',approved_by:p.approvedBy||null,approved_at:p.approvedAt?qtIso(p.approvedAt):null,payment_status:p.paymentStatus||'pending',activated_at:p.activatedAt?qtIso(p.activatedAt):null,metadata:p,created_at:qtIso(p.createdAt),updated_at:qtIso(Date.now())}}); } return; }
-    if(key==='qt_settlements'){ for(const x of (val||[])){ if(!qtUuidLike(x.id)) continue; await qtSupabaseTable('settlements?on_conflict=id',{method:'POST',accessToken:token,body:{id:x.id,shop_id:x.shopId,date_key:x.dateKey,status:['pending','processing','completed','cancelled'].includes(x.status)?x.status:'pending',amount:Number(x.amount||x.gp||0),metadata:x,created_at:qtIso(x.createdAt),updated_at:qtIso(Date.now())}}); } return; }
+    if(key==='qt_settlements')return; // Legacy settlements are historical/read-only.
+
   }catch(e){ console.warn('qtPersistKey',key,e); throw e; }
 }
 
@@ -2073,7 +2075,7 @@ button.qt-notif-row:active{transform:scale(.995)}
 let qtSupportSelectedShop=null,qtSupportLoading=false;
 function qtSupportTime(value){return new Date(value).toLocaleString('th-TH',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
 function qtSupportBubble(message,me){
-  return `<div class="qt-support-bubble ${message.sender_user_id===me?'mine':'theirs'}"><div>${escapeHtml(message.body)}</div><small>${message.sender_user_id===me?'คุณ':'คู่สนทนา'} · ${qtSupportTime(message.created_at)}</small>${message.slip_path?`<a class="qt-support-slip" href="#" data-gp-slip="${escapeHtml(message.slip_path)}" onclick="qgmOpenGpSlip(event,this)">ดูสลิป GP</a>`:''}</div>`;
+  return `<div class="qt-support-bubble ${message.sender_user_id===me?'mine':'theirs'}"><div>${escapeHtml(message.body)}</div><small>${message.sender_user_id===me?'คุณ':'คู่สนทนา'} · ${qtSupportTime(message.created_at)}</small></div>`;
 }
 
 function renderShopSupport(){
@@ -2723,6 +2725,32 @@ function qgmCanCancelDelivery(o){
  return ['pending_shop','pending','shop_accepted','accepted','searching_rider','rider_to_shop','rider_assigned','assigned'].includes(status)
    && o?.preparingAt==null && o?.preparing_at==null && o?.readyAt==null && o?.ready_at==null;
 }
+function qgmReadyEstimateLabel(order){
+ const now=Date.now(),stored=Date.parse(String(order?.readyEstimateAt||'')),started=Number(order?.preparingAt);
+ const target=Number.isFinite(stored)?stored:(Number.isFinite(started)&&started>0?started+20*60000:now+20*60000);
+ return new Date(target).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})+' น.';
+}
+window.qgmAdjustReadyEstimate=async function(orderId,delta,button){
+ const u=shopUser(),order=(u&&typeof window.shopOrders==='function'?window.shopOrders(u):[]).find(x=>String(x.id)===String(orderId));
+ if(!order)return toast('ไม่พบออเดอร์สำหรับปรับเวลาพร้อม');
+ if(!['searching_rider','rider_to_shop','preparing'].includes(String(order.status||'').toLowerCase()))return toast('ออเดอร์นี้ไม่เปิดให้ปรับเวลาพร้อม');
+ const minutes=Number(delta);if(![-5,5,10].includes(minutes))return toast('ช่วงเวลาที่เลือกไม่ถูกต้อง');
+ const now=Date.now(),stored=Date.parse(String(order.readyEstimateAt||'')),started=Number(order.preparingAt);
+ const current=Number.isFinite(stored)?stored:(Number.isFinite(started)&&started>0?started+20*60000:now+20*60000);
+ const readyAt=Math.max(now,Math.min(now+2*60*60000,current+minutes*60000));
+ if(button?.disabled)return;
+ const label=button?.textContent;if(button){button.disabled=true;button.textContent='กำลังบันทึก...'}
+ try{
+  const token=await qtGetAccessToken();if(!token)throw Error('กรุณาเข้าสู่ระบบใหม่');
+  await qtSupabaseTable('rpc/qg_merchant_set_ready_estimate',{method:'POST',accessToken:token,body:{p_request_id:uid(),p_order_id:order.id,p_ready_at:new Date(readyAt).toISOString(),p_expected_revision:Number(order.readyRevision||0)}});
+  await qtHydrateDatabase({light:true});
+  try{renderShopOrderModern(orderId)}catch(refreshErr){console.warn('merchant readiness post-commit render failed',refreshErr)}
+  toast('อัปเดตเวลาที่คาดว่าจะพร้อมแล้ว');
+ }catch(error){
+  try{await qtHydrateDatabase({light:true});renderShopOrderModern(orderId)}catch(refreshErr){console.warn('merchant readiness recovery refresh failed',refreshErr)}
+  toast(error?.message||'อัปเดตเวลาพร้อมไม่สำเร็จ');
+ }finally{if(button?.isConnected){button.disabled=false;button.textContent=label||'ปรับเวลา'}}
+};
 window.renderShopOrderModern=function(id){
  const u=shopUser(),o=shopOrders(u).find(x=>String(x.id)===String(id));
  if(!o)return navigate('shop-orders');
@@ -2739,6 +2767,7 @@ window.renderShopOrderModern=function(id){
  const arrived=o.riderArrivedShopAt?`<div class="qgm-od-arrived">Rider ถึงร้านแล้ว · ${new Date(o.riderArrivedShopAt).toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'})} น.</div>`:'';
  const stepLabels=['ออเดอร์เข้า','ร้านรับ','เตรียมสินค้า','กำลังจัดส่ง','สำเร็จ'];
  const orderState=String(o.status||'').toLowerCase();
+ const readyControls=['searching_rider','rider_to_shop','preparing'].includes(orderState)?`<div class="qgm-od-action-note"><b>ร้านคาดว่าพร้อม ${esc(qgmReadyEstimateLabel(o))}</b><div class="qgm-ready-estimate-controls"><button type="button" onclick="qgmAdjustReadyEstimate('${esc(o.id)}',-5,this)">−5 นาที</button><button type="button" onclick="qgmAdjustReadyEstimate('${esc(o.id)}',5,this)">+5 นาที</button><button type="button" onclick="qgmAdjustReadyEstimate('${esc(o.id)}',10,this)">+10 นาที</button></div></div>`:'';
  const canReportCompleted=orderState==='completed';
  const showActions=canReportCompleted||!['completed','delivered','cancelled','no_rider_available'].includes(orderState);
  const stage=['completed','delivered'].includes(orderState)?4
@@ -2790,6 +2819,7 @@ window.renderShopOrderModern=function(id){
    </section>
 
    ${waitingNote}
+   ${readyControls}
    ${showActions?`<div class="qgm-od-actions">
      ${primary}
      ${o.status==='rider_to_shop'?`<button class="qgm-od-secondary qgm-od-edit" type="button" onclick="qgmOpenOrderEditor('${o.id}')">แก้ไขรายการ</button>`:''}
@@ -2924,7 +2954,8 @@ function qgmDeliveryRestriction(name,category,description){
 function qgmDeliveryRestrictionLabel(kind){return kind==='tobacco'?'ยาสูบ/บุหรี่':kind==='alcohol'?'แอลกอฮอล์':''}
 window.qgmApplyDeliveryRestriction=function(){
  const name=document.getElementById('qgm-prod-name')?.value||'',category=document.getElementById('qgm-prod-category')?.value||'';
- const restriction=qgmDeliveryRestriction(name,category,'');
+ const description=document.getElementById('qgm-prod-description')?.value||'';
+ const restriction=qgmDeliveryRestriction(name,category,description);
  const delivery=document.getElementById('qgm-delivery-available'),note=document.getElementById('qgm-delivery-restriction-note');
  if(delivery){if(restriction!=='none')delivery.checked=false;delivery.disabled=restriction!=='none'}
  if(note){note.hidden=restriction==='none';note.textContent=restriction==='none'?'':'สินค้ากลุ่ม '+qgmDeliveryRestrictionLabel(restriction)+' ขายหน้าร้าน POS ได้ แต่ QueueGo จะไม่เปิดขายผ่าน Delivery'}
@@ -3027,9 +3058,9 @@ window.renderShopProductEditor=function(id){
   ?qgmRestaurantOptionsHtml(qgmRestaurantOptionState(p?.variants))
   :`<div class="qgm-field"><label>ตัวเลือกเพิ่มเติม (คั่นด้วยเครื่องหมายจุลภาค)</label><input id="qgm-prod-variants" value="${esc(Array.isArray(p?.variants)?p.variants.map(x=>typeof x==='string'?x:x.name).filter(Boolean).join(', '):'')}"></div>`;
  if(id==='new')window.qgmNewProductCategory='';
- layout(p?'แก้ไขสินค้า':(qgmShopCategory(u)==='grocery'?'เพิ่มสินค้าเอง':'เพิ่มสินค้าเข้าร้าน'),`<div class="qgm-unified-page qgm-unified-editor"><div class="qgm-unified-intro"><b>${p?'แก้ไขสินค้า':(qgmShopCategory(u)==='grocery'?'เพิ่มสินค้าเอง':'เพิ่มสินค้า')}</b><small>ข้อมูลสินค้า ราคา สต็อก และช่องทางการขาย</small></div><form class="qgm-card qgm-form-card" data-product-request-id="${requestProductId}" onsubmit="return qgmSaveProduct(event,'${p?.id||''}','${requestProductId}')"><div class="qgm-product-head"><img id="qgm-prod-preview" src="${esc(img(p?.image||p?.catalog_preview_image||p?.image_url))}"><div><b>${esc(p?.name||'สินค้าใหม่')}</b><small style="display:block;color:#8b9098;margin-top:4px">${esc(p?.category||'เลือกหมวดหมู่')}</small></div></div><div class="qgm-field"><label>ชื่อสินค้า *</label><input id="qgm-prod-name" required value="${esc(p?.name||'')}"></div><div class="qgm-field"><label>หมวดหมู่ *</label>${categoryControl}</div><div class="qgm-inline"><div class="qgm-field"><label>ราคาขายหน้าร้าน *</label><input id="qgm-prod-price" type="number" min="0" step="0.01" required value="${storePrice}" oninput="qgmRefreshDeliveryPricePreview()"></div><div class="qgm-field"><label>จำนวนสินค้าที่ขายได้ *</label><input id="qgm-prod-stock" type="number" min="0" step="1" required ${p?.inventoryStockTracking?'readonly aria-readonly="true"':''} value="${Number(p?.stock??p?.metadata?.stock??0)}"></div><small style="grid-column:1/-1">เมื่อเปิดติดตาม ตัวเลขนี้คือจำนวนที่ยังขายได้ ออเดอร์ค้างจะถูกกันออกจากจำนวนนี้</small></div>${p?.inventoryStockTracking?`<div class="qgm-stock-audit-tools"><button type="button" onclick="qgmOpenInventoryAdjustment('${esc(p.id)}',${Number(p.stock||0)})">ปรับสต็อก</button><details ontoggle="if(this.open)qgmLoadInventoryAdjustmentHistory('${esc(p.id)}')"><summary>ประวัติการเคลื่อนไหว</summary><div id="qgm-stock-history-${esc(p.id)}" class="qgm-stock-history"><small>กำลังโหลดประวัติ…</small></div></details></div>`:''}${p?.grocery_master_id?`<div class="qgm-form-row"><span>สต็อก: จัดการผ่าน Grocery Master</span><small>ระบบติดตามสต็อกกลางของชำทำงานอยู่</small></div>`:`<div class="qgm-form-row"><span>ติดตามและกันสต็อกอัตโนมัติ</span><label class="qgm-switch"><input id="qgm-stock-tracking" type="checkbox" ${p?.inventoryStockTracking===true?'checked':''}><span></span></label><small>เมื่อติดตาม ระบบจะกันสต็อกทุกช่องทางและคืนเมื่อยกเลิกก่อนสำเร็จ; การคืนเงินหลังขายไม่เติมสต็อกอัตโนมัติ เพราะต้องตรวจรับของคืนก่อน</small></div>`}<div class="qgm-field"><label>รูปสินค้า</label><label class="qgm-upload-action">${svg('camera')} เลือกรูปจากเครื่อง<input id="qgm-prod-file" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgm-prod-preview')"></label><small>รูปจะเก็บในคลังรูปภาพของร้าน</small><div class="qgm-upload-status" data-upload-status-for="qgm-prod-preview" ${p?.image||p?.image_url?'':'hidden'}><img src="${esc(img(p?.image||p?.catalog_preview_image||p?.image_url))}" alt="รูปสินค้าที่เลือก"><div class="qgm-upload-status-copy"><b data-upload-name>${p?.image||p?.image_url?'รูปสินค้าปัจจุบัน':'ยังไม่ได้เลือกรูป'}</b><small data-upload-meta>${p?.image||p?.image_url?'มีรูปบันทึกอยู่แล้ว':'รองรับ JPG, PNG, WEBP'}</small><small class="ok" data-upload-state>${p?.image||p?.image_url?'บันทึกอยู่ในระบบแล้ว':'เลือกรูปแล้วกดบันทึกเพื่ออัปโหลด'}</small></div></div><input id="qgm-prod-image" type="hidden" value="${esc(p?.image||p?.image_url||'')}"></div><div class="qgm-form-row"><span>สถานะการขาย</span><label class="qgm-switch"><input id="qgm-prod-available" type="checkbox" ${p?.available!==false?'checked':''}><span></span></label></div>${optionControl}<div class="qg-pos-product-fields"><label><input id="qgm-pos-available" type="checkbox" ${p?.posAvailable!==false?'checked':''}> ขายหน้าร้าน</label><label><input id="qgm-delivery-available" type="checkbox" ${p?.deliveryAvailable!==false&&String(p?.delivery_restriction||'none')==='none'?'checked':''}> เดลิเวอรี่ลูกค้า</label><small id="qgm-delivery-restriction-note" class="qgm-restriction-note" hidden></small><div class="qgm-delivery-price-lock"><div class="qgm-delivery-price-head"><span>ราคา Delivery</span><label>บวกจากหน้าร้าน <strong><span id="qgm-delivery-markup">${Number(p?.deliveryMarkupPercent??10)}</span>%</strong></label></div><input id="qgm-delivery-price-locked" type="number" step="0.01" readonly aria-readonly="true" tabindex="-1"><small>ใช้เปอร์เซ็นต์ Delivery ระดับร้าน (มาตรฐาน 10%) · GP แยกจากราคาสินค้า</small></div></div><button class="qgm-primary" type="submit">เพิ่มเข้าร้าน / บันทึก</button>${p?`<button class="qgm-outline qgm-danger-action" type="button" onclick="qgmDeleteProduct('${p.id}',this)">ลบสินค้า</button>`:''}</form>${p?.inventoryStockTracking?`<div id="qgm-inventory-adjustment-dialog" class="qgm-stock-modal" role="dialog" aria-modal="true" aria-labelledby="qgm-stock-dialog-title" hidden onclick="if(event.target===this)qgmCloseInventoryAdjustment()"><section class="qgm-stock-modal-card"><h2 id="qgm-stock-dialog-title">ปรับสต็อกสินค้า</h2><p>จำนวนปัจจุบัน ${Number(p.stock||0)} ชิ้น · การเปลี่ยนแปลงต้องระบุเหตุผลและจะบันทึกประวัติ</p><form id="qgm-inventory-adjustment-form" onsubmit="return qgmSubmitInventoryAdjustment(event,'${esc(p.id)}')"><label>เพิ่ม / ลดจำนวน<input id="qgm-stock-delta" type="number" min="-100000" max="100000" step="1" required inputmode="numeric" placeholder="เช่น 5 หรือ -2"></label><label>เหตุผล<select id="qgm-stock-reason" required><option value="receiving">รับสินค้าเข้า</option><option value="count_correction">แก้ยอดจากการตรวจนับ</option><option value="damage">สินค้าเสียหาย</option><option value="loss">สูญหาย</option><option value="return_restock">รับคืนและตรวจสภาพแล้ว</option><option value="other">อื่น ๆ</option></select></label><label>รายละเอียด<input id="qgm-stock-note" type="text" minlength="3" maxlength="300" required placeholder="ระบุเอกสารอ้างอิงหรือสาเหตุ"></label><div id="qgm-stock-adjustment-status" class="qgm-stock-modal-status" role="status" aria-live="polite"></div><div class="qgm-stock-modal-actions"><button type="button" onclick="qgmCloseInventoryAdjustment()">ปิด</button><button type="submit">บันทึกการปรับ</button></div></form></section></div>`:''}</div>`,'shop-products',{back:true});
+ layout(p?'แก้ไขสินค้า':(qgmShopCategory(u)==='grocery'?'เพิ่มสินค้าเอง':'เพิ่มสินค้าเข้าร้าน'),`<div class="qgm-unified-page qgm-unified-editor"><div class="qgm-unified-intro"><b>${p?'แก้ไขสินค้า':(qgmShopCategory(u)==='grocery'?'เพิ่มสินค้าเอง':'เพิ่มสินค้า')}</b><small>ข้อมูลสินค้า ราคา สต็อก และช่องทางการขาย</small></div><form class="qgm-card qgm-form-card" data-product-request-id="${requestProductId}" onsubmit="return qgmSaveProduct(event,'${p?.id||''}','${requestProductId}')"><div class="qgm-product-head"><img id="qgm-prod-preview" src="${esc(img(p?.image||p?.catalog_preview_image||p?.image_url))}"><div><b>${esc(p?.name||'สินค้าใหม่')}</b><small style="display:block;color:#8b9098;margin-top:4px">${esc(p?.category||'เลือกหมวดหมู่')}</small></div></div><div class="qgm-field"><label>ชื่อสินค้า *</label><input id="qgm-prod-name" required value="${esc(p?.name||'')}"></div><div class="qgm-field"><label>หมวดหมู่ *</label>${categoryControl}</div><div class="qgm-field"><label for="qgm-prod-description">รายละเอียด</label><textarea id="qgm-prod-description" rows="3">${esc(p?.description||'')}</textarea></div><div class="qgm-inline"><div class="qgm-field"><label>ราคาขายหน้าร้าน *</label><input id="qgm-prod-price" type="number" min="0" step="0.01" required value="${storePrice}" oninput="qgmRefreshDeliveryPricePreview()"></div><div class="qgm-field"><label>จำนวนสินค้าที่ขายได้ *</label><input id="qgm-prod-stock" type="number" min="0" step="1" required ${p?.inventoryStockTracking?'readonly aria-readonly="true"':''} value="${Number(p?.stock??p?.metadata?.stock??0)}"></div><small style="grid-column:1/-1">เมื่อเปิดติดตาม ตัวเลขนี้คือจำนวนที่ยังขายได้ ออเดอร์ค้างจะถูกกันออกจากจำนวนนี้</small></div>${p?.inventoryStockTracking?`<div class="qgm-stock-audit-tools"><button type="button" onclick="qgmOpenInventoryAdjustment('${esc(p.id)}',${Number(p.stock||0)})">ปรับสต็อก</button><details ontoggle="if(this.open)qgmLoadInventoryAdjustmentHistory('${esc(p.id)}')"><summary>ประวัติการเคลื่อนไหว</summary><div id="qgm-stock-history-${esc(p.id)}" class="qgm-stock-history"><small>กำลังโหลดประวัติ…</small></div></details></div>`:''}${p?.grocery_master_id?`<div class="qgm-form-row"><span>สต็อก: จัดการผ่าน Grocery Master</span><small>ระบบติดตามสต็อกกลางของชำทำงานอยู่</small></div>`:`<div class="qgm-form-row"><span>ติดตามและกันสต็อกอัตโนมัติ</span><label class="qgm-switch"><input id="qgm-stock-tracking" type="checkbox" ${p?.inventoryStockTracking===true?'checked':''}><span></span></label><small>เมื่อติดตาม ระบบจะกันสต็อกทุกช่องทางและคืนเมื่อยกเลิกก่อนสำเร็จ; การคืนเงินหลังขายไม่เติมสต็อกอัตโนมัติ เพราะต้องตรวจรับของคืนก่อน</small></div>`}<div class="qgm-field"><label>รูปสินค้า</label><label class="qgm-upload-action">${svg('camera')} เลือกรูปจากเครื่อง<input id="qgm-prod-file" type="file" accept="image/jpeg,image/png,image/webp" onchange="qgmPreviewUpload(this,'qgm-prod-preview')"></label><small>รูปจะเก็บในคลังรูปภาพของร้าน</small><div class="qgm-upload-status" data-upload-status-for="qgm-prod-preview" ${p?.image||p?.image_url?'':'hidden'}><img src="${esc(img(p?.image||p?.catalog_preview_image||p?.image_url))}" alt="รูปสินค้าที่เลือก"><div class="qgm-upload-status-copy"><b data-upload-name>${p?.image||p?.image_url?'รูปสินค้าปัจจุบัน':'ยังไม่ได้เลือกรูป'}</b><small data-upload-meta>${p?.image||p?.image_url?'มีรูปบันทึกอยู่แล้ว':'รองรับ JPG, PNG, WEBP'}</small><small class="ok" data-upload-state>${p?.image||p?.image_url?'บันทึกอยู่ในระบบแล้ว':'เลือกรูปแล้วกดบันทึกเพื่ออัปโหลด'}</small></div></div><input id="qgm-prod-image" type="hidden" value="${esc(p?.image||p?.image_url||'')}"></div><div class="qgm-form-row"><span>สถานะการขาย</span><label class="qgm-switch"><input id="qgm-prod-available" type="checkbox" ${p?.available!==false?'checked':''}><span></span></label></div>${optionControl}<div class="qg-pos-product-fields"><label><input id="qgm-pos-available" type="checkbox" ${p?.posAvailable!==false?'checked':''}> ขายหน้าร้าน</label><label><input id="qgm-delivery-available" type="checkbox" ${p?.deliveryAvailable!==false&&String(p?.delivery_restriction||'none')==='none'?'checked':''}> เดลิเวอรี่ลูกค้า</label><small id="qgm-delivery-restriction-note" class="qgm-restriction-note" hidden></small><div class="qgm-delivery-price-lock"><div class="qgm-delivery-price-head"><span>ราคา Delivery</span><label>บวกจากหน้าร้าน <strong><span id="qgm-delivery-markup">${Number(p?.deliveryMarkupPercent??10)}</span>%</strong></label></div><input id="qgm-delivery-price-locked" type="number" step="0.01" readonly aria-readonly="true" tabindex="-1"><small>ใช้เปอร์เซ็นต์ Delivery ระดับร้าน (มาตรฐาน 10%) · GP แยกจากราคาสินค้า</small></div></div><button class="qgm-primary" type="submit">เพิ่มเข้าร้าน / บันทึก</button>${p?`<button class="qgm-outline qgm-danger-action" type="button" onclick="qgmDeleteProduct('${p.id}',this)">ลบสินค้า</button>`:''}</form>${p?.inventoryStockTracking?`<div id="qgm-inventory-adjustment-dialog" class="qgm-stock-modal" role="dialog" aria-modal="true" aria-labelledby="qgm-stock-dialog-title" hidden onclick="if(event.target===this)qgmCloseInventoryAdjustment()"><section class="qgm-stock-modal-card"><h2 id="qgm-stock-dialog-title">ปรับสต็อกสินค้า</h2><p>จำนวนปัจจุบัน ${Number(p.stock||0)} ชิ้น · การเปลี่ยนแปลงต้องระบุเหตุผลและจะบันทึกประวัติ</p><form id="qgm-inventory-adjustment-form" onsubmit="return qgmSubmitInventoryAdjustment(event,'${esc(p.id)}')"><label>เพิ่ม / ลดจำนวน<input id="qgm-stock-delta" type="number" min="-100000" max="100000" step="1" required inputmode="numeric" placeholder="เช่น 5 หรือ -2"></label><label>เหตุผล<select id="qgm-stock-reason" required><option value="receiving">รับสินค้าเข้า</option><option value="count_correction">แก้ยอดจากการตรวจนับ</option><option value="damage">สินค้าเสียหาย</option><option value="loss">สูญหาย</option><option value="return_restock">รับคืนและตรวจสภาพแล้ว</option><option value="other">อื่น ๆ</option></select></label><label>รายละเอียด<input id="qgm-stock-note" type="text" minlength="3" maxlength="300" required placeholder="ระบุเอกสารอ้างอิงหรือสาเหตุ"></label><div id="qgm-stock-adjustment-status" class="qgm-stock-modal-status" role="status" aria-live="polite"></div><div class="qgm-stock-modal-actions"><button type="button" onclick="qgmCloseInventoryAdjustment()">ปิด</button><button type="submit">บันทึกการปรับ</button></div></form></section></div>`:''}</div>`,'shop-products',{back:true});
  qgmRefreshDeliveryPricePreview();
- const restrictionInputs=[document.getElementById('qgm-prod-name'),document.getElementById('qgm-prod-category')].filter(Boolean);
+ const restrictionInputs=[document.getElementById('qgm-prod-name'),document.getElementById('qgm-prod-category'),document.getElementById('qgm-prod-description')].filter(Boolean);
  restrictionInputs.forEach(el=>{el.addEventListener('input',qgmApplyDeliveryRestriction);el.addEventListener('change',qgmApplyDeliveryRestriction)});
  qgmApplyDeliveryRestriction();
 };
@@ -3097,7 +3128,7 @@ window.qgmSaveProduct=async function(e,id,requestProductId){
  qgmProductSaveBusy=true;
  const submit=e.currentTarget?.querySelector('button[type="submit"]');if(submit){submit.disabled=true;submit.textContent='กำลังบันทึก...'}
  const u=shopUser(),pid=profileId(u);
- const nameControl=$('#qgm-prod-name'),categoryControl=$('#qgm-prod-category'),priceControl=$('#qgm-prod-price'),stockControl=$('#qgm-prod-stock'),availableControl=$('#qgm-prod-available'),imageControl=$('#qgm-prod-image');
+ const nameControl=$('#qgm-prod-name'),categoryControl=$('#qgm-prod-category'),descriptionControl=$('#qgm-prod-description'),priceControl=$('#qgm-prod-price'),stockControl=$('#qgm-prod-stock'),availableControl=$('#qgm-prod-available'),imageControl=$('#qgm-prod-image');
  const isRestaurant=['food','cafe'].includes(String(u?.category||'')),isMarketProduct=qgmIsMarketProductShop(u),isShoppingProduct=qgmTopLevelShopCategory(u?.category)==='shopping';
  try{
   if(!pid)throw new Error('ไม่พบ Shop Profile ID');
@@ -3115,7 +3146,7 @@ window.qgmSaveProduct=async function(e,id,requestProductId){
   const deliveryMarkup=Number($('#qgm-delivery-markup')?.textContent||10);
   const deliveryPrice=qgmDeliveryPriceFromStore(price,deliveryMarkup);
   const selected=$('#qgm-prod-file')?.files?.[0];if(selected)image=await qtUploadMerchantImage(selected,'product');
-  const description=existingProduct?.description||'',restriction=qgmDeliveryRestriction(name,category,description);
+  const description=descriptionControl?String(descriptionControl.value||'').trim():(existingProduct?.description||''),restriction=qgmDeliveryRestriction(name,category,description);
   const posControl=$('#qgm-pos-available'),deliveryControl=$('#qgm-delivery-available');
   const posAvailable=posControl?posControl.checked:(existingProduct?existingProduct.posAvailable!==false:true);
   const deliveryRequested=deliveryControl?deliveryControl.checked:(existingProduct?existingProduct.deliveryAvailable!==false:true);
@@ -3752,33 +3783,7 @@ window.qgmSetShopOpen=async function(toggle){
  try{if(label){label.textContent=desired?'● เปิดร้านอยู่':'● ปิดร้านอยู่';label.style.color=desired?'#17a779':'#8b929c'}}catch(uiErr){console.warn('merchant shop-open post-commit UI failed',uiErr)}
  finally{toggle.disabled=false}
 };
-// Read the exact daily GP from orders. A settlement is written only when the slip is submitted.
-window.qgmSubmitGpSlip=async function(date,input){
- const file=input.files?.[0],u=currentUser();if(!file||!u)return;
- if(file.size>5242880){toast('สลิปต้องไม่เกิน 5 MB');input.value='';return}
- const types={'image/png':'png','image/jpeg':'jpg','image/webp':'webp','application/pdf':'pdf'};
- if(!types[file.type]){toast('รองรับ JPG, PNG, WebP หรือ PDF');input.value='';return}
- input.disabled=true;
- try{
-  const token=await qtGetAccessToken(),session=qtSessionRead();if(!token||!session?.authUserId)throw Error('กรุณาเข้าสู่ระบบอีกครั้ง');
-  const path=session.authUserId+'/'+date.replace(/[^0-9-]/g,'')+'-'+crypto.randomUUID()+'.'+types[file.type];
-  const response=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':file.type},body:file});
-  if(!response.ok){const err=await response.json().catch(()=>({}));throw Error(err.message||'อัปโหลดสลิปไม่สำเร็จ')}
-  await qtSupabaseTable('rpc/report_shop_gp',{method:'POST',accessToken:token,body:{p_date:date,p_slip_path:path}});
-  toast('ส่งสลิปและแจ้งโอนให้แอดมินแล้ว');
-  Promise.resolve().then(()=>qtHydrateDatabase({light:false})).then(()=>{if(location.hash==='#shop-revenue'&&typeof qgmLoadRevenue==='function')qgmLoadRevenue(date);else window.renderShopSettlement()}).catch(refreshErr=>console.warn('merchant GP post-commit refresh failed',refreshErr));
- }catch(e){toast('แจ้งโอนไม่สำเร็จ: '+(e.message||e))}
- finally{input.disabled=false;input.value=''}
-};
-window.qgmOpenGpSlip=async function(event,link){
- event.preventDefault();
- try{
-  const token=await qtGetAccessToken(),path=link.dataset.gpSlip;
-  const res=await fetch(QT_SUPABASE_CONFIG.URL+'/storage/v1/object/sign/gp-slips/'+path,{method:'POST',headers:{apikey:QT_SUPABASE_CONFIG.KEY,Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify({expiresIn:300})});
-  const data=await res.json();if(!res.ok||!data.signedURL)throw Error(data.message||'เปิดสลิปไม่สำเร็จ');
-  window.open(QT_SUPABASE_CONFIG.URL+'/storage/v1'+data.signedURL,'_blank','noopener');
- }catch(e){toast(e.message||'เปิดสลิปไม่สำเร็จ')}
-};
+// Retired legacy GP slips: merchant credit-ledger authority is now the supported collection flow.
 })();
 </script>
 <style id="qgm-shop-location-v14">
@@ -3935,7 +3940,7 @@ window.qgmLoadRevenuePeriod=async function(days,end){
    ${qgmRevenueMetric('gp','GP ที่หักจากเครดิต',money(creditGp))}
    ${qgmRevenueMetric('cash','เงินสดที่ได้รับ',money(cash))}
   </section>
-  ${legacy>0?'<div class="qgm-revenue-legacy">GP ค้างชำระเดิมก่อนระบบเครดิต: '+money(legacy)+'</div>':''}`;
+  ${legacy>0?'<div class="qgm-revenue-legacy">GP เดิมก่อนระบบเครดิต (ค้างชำระ): '+money(legacy)+'</div>':''}`;
  }catch(e){box.innerHTML='<div class="qgm-revenue-loading">โหลดรายได้ไม่สำเร็จ: '+escapeHtml(e.message||e)+'</div>'}
 };
 window.qgmLoadRevenue=async function(date){
@@ -4235,6 +4240,10 @@ window.shopCancelOrder=function shopCancelOrder(orderId,button){
 (function(){
 
 
+function qgmThailandDateKey(date=new Date()){
+ const parts=Object.fromEntries(new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Bangkok',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(date).map(x=>[x.type,x.value]));
+ return `${parts.year}-${parts.month}-${parts.day}`;
+}
 window.qgmRenderHours=async function(){
  const u=currentUser();if(!u||u.type!=='shop')return navigate('login');
  const days=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัส','ศุกร์','เสาร์'];
@@ -4248,7 +4257,7 @@ window.qgmRenderHours=async function(){
   const token=await qtGetAccessToken(),pid=qtCurrentShopProfileId(u);if(!token||!pid)throw Error('ไม่พบข้อมูลร้าน');
   const [rows,special]=await Promise.all([
    qtSupabaseTable('shop_business_hours?select=weekday,opens_at,closes_at,is_closed&shop_id=eq.'+encodeURIComponent(pid),{accessToken:token}),
-   qtSupabaseTable('shop_special_hours?select=day,is_closed,opens_at,closes_at&shop_id=eq.'+encodeURIComponent(pid)+'&day=gte.'+new Date().toISOString().slice(0,10)+'&order=day.asc&limit=1',{accessToken:token})
+   qtSupabaseTable('shop_special_hours?select=day,is_closed,opens_at,closes_at&shop_id=eq.'+encodeURIComponent(pid)+'&day=gte.'+qgmThailandDateKey()+'&order=day.asc&limit=1',{accessToken:token})
   ]);
   for(const x of rows||[]){const row=document.querySelector('.qgm-hours-row[data-day="'+x.weekday+'"]');if(row){row.querySelector('.open').value=String(x.opens_at).slice(0,5);row.querySelector('.close').value=String(x.closes_at).slice(0,5);row.querySelector('.closed').checked=x.is_closed}}
   const sp=special?.[0];if(sp){document.getElementById('qgm-special-day').value=sp.day;document.getElementById('qgm-special-closed').checked=sp.is_closed;document.getElementById('qgm-special-open').value=String(sp.opens_at||'06:00').slice(0,5);document.getElementById('qgm-special-close').value=String(sp.closes_at||'22:00').slice(0,5)}

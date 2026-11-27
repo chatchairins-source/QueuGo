@@ -17,5 +17,20 @@ select jsonb_build_object(
   'public.qg_user_blocks',(select count(*) from public.qg_user_blocks),
   'public.qg_ugc_reports',(select count(*) from public.qg_ugc_reports),
   'storage.buckets',(select count(*) from storage.buckets),
-  'storage.objects',(select count(*) from storage.objects)
+  'storage.objects',(select count(*) from storage.objects),
+  'public.payments',(select count(*) from public.payments),
+  'public.pos_register_cash_events',(select count(*) from public.pos_register_cash_events),
+  'public.pos_register_shifts',(select count(*) from public.pos_register_shifts),
+  'public.merchant_cash_receipts',(select count(*) from public.merchant_cash_receipts),
+  'public.qg_rider_cash_return_refunds',(select count(*) from public.qg_rider_cash_return_refunds),
+  'public.queuego_cash_order_locks',(select count(*) from public.queuego_cash_order_locks),
+  'public.rider_cash_advances',(select count(*) from public.rider_cash_advances),
+  'public.grocery_stock_reservations',(select count(*) from public.grocery_stock_reservations),
+  'public.market_stock_movements',(select count(*) from public.market_stock_movements),
+  'public.qg_rider_offer_history',(select count(*) from public.qg_rider_offer_history),
+  'public.qg_rider_order_offers',(select count(*) from public.qg_rider_order_offers),
+  'qg_private.credit_accounts',(select count(*) from qg_private.credit_accounts),
+  'qg_private.credit_entries',(select count(*) from qg_private.credit_entries),
+  'qg_private.credit_holds',(select count(*) from qg_private.credit_holds),
+  'qg_private.credit_topups',(select count(*) from qg_private.credit_topups)
 );

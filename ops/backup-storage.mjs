@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { storageBackupBucket, storageBackupPath } from './storage-backup-path.mjs';
 
 const url=process.env.QG_SUPABASE_URL;
 const key=process.env.QG_SUPABASE_SERVICE_ROLE_KEY;
@@ -31,11 +32,11 @@ async function walk(bucketId,prefix=''){
     const rows=Array.isArray(data)?data:[];
     for(const item of rows){
       const objectPath=prefix?prefix+'/'+item.name:item.name;
+      const filePath=storageBackupPath(root,bucketId,objectPath);
       if(item.id){
         const {data:blob,error:downloadError}=await supabase.storage.from(bucketId).download(objectPath);
         if(downloadError)throw downloadError;
         const bytes=Buffer.from(await blob.arrayBuffer());
-        const filePath=path.join(root,bucketId,...objectPath.split('/'));
         await mkdir(path.dirname(filePath),{recursive:true});
         await writeFile(filePath,bytes);
         manifest.objects.push({
@@ -55,6 +56,7 @@ async function walk(bucketId,prefix=''){
 }
 
 for(const bucket of buckets||[]){
+  storageBackupBucket(bucket.id);
   manifest.buckets.push({
     id:bucket.id,
     name:bucket.name,

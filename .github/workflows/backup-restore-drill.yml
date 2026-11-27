@@ -21,9 +21,9 @@ jobs:
       QG_BACKUP_PASSPHRASE: ${{ secrets.QG_BACKUP_PASSPHRASE }}
       QG_STORAGE_BACKUP_DIR: backup/storage
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
 
@@ -64,10 +64,14 @@ jobs:
           npx --yes supabase@2.120.0 db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/schema.sql
           npx --yes supabase@2.120.0 db dump --db-url "$QG_SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only
 
-          psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -f ops/backup-inventory.sql > backup/source-inventory.json
+          # Expectations come from the COPY dump's own snapshot. Live rows may
+          # legitimately change after pg_dump; never excuse missing restore rows.
+          node ops/inventory-from-copy-dump.mjs backup/data.sql > backup/source-inventory.json
+          PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=10000' \
+            psql "$QG_SUPABASE_DB_URL" -X -A -t -v ON_ERROR_STOP=1 -f ops/backup-inventory.sql > backup/observed-live-inventory.json
           node ops/backup-storage.mjs
 
-          sha256sum backup/roles.sql backup/schema.sql backup/data.sql backup/storage-manifest.json > backup/core.sha256
+          sha256sum backup/roles.sql backup/schema.sql backup/data.sql backup/source-inventory.json backup/storage-manifest.json > backup/core.sha256
 
       - name: Start clean local Supabase
         shell: bash
@@ -163,7 +167,7 @@ jobs:
           rm -rf backup restore-lab local-supabase.env "${NAME}.tar.gz" verify-backup.tar.gz
 
       - name: Upload encrypted backup
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ${{ env.QG_BACKUP_ARTIFACT }}
           path: |

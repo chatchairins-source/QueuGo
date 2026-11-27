@@ -1,0 +1,64 @@
+{
+  "source_head": "e39090ca228caf278a386569554f1fed03745be0",
+  "candidate_head": "0a0cda702b4f06dd87a71bbeab80c43fd0030782",
+  "exact_head_pilot": 38249450248,
+  "production_migration_version": "20261012124318",
+  "production_migration_name": "native_voice_block_revocation",
+  "missing_session_denial_verified": true,
+  "new_security_advisory_keys": [],
+  "physical_device": false,
+  "voice_audio_certified": false,
+  "cached_realtime_revocation_certified": false,
+  "forced_turn_certified": false,
+  "verification": {
+    "trigger": "CREATE TRIGGER qg_voice_revoke_on_block BEFORE INSERT OR UPDATE ON public.qg_user_blocks FOR EACH ROW EXECUTE FUNCTION qg_private.qg_voice_revoke_on_block()",
+    "block_rls": true,
+    "functions": [
+      {
+        "name": "public.qg_call_active",
+        "digest": "ec0af00bc08632975d4881161b2a3d22",
+        "anon_execute": false,
+        "security_definer": true,
+        "authenticated_execute": true
+      },
+      {
+        "name": "qg_private.qg_voice_realtime_allowed",
+        "digest": "5fe76e6da0fe3483a0db57d8a0b0bac7",
+        "anon_execute": false,
+        "security_definer": true,
+        "authenticated_execute": true
+      },
+      {
+        "name": "qg_private.qg_voice_lock_pair",
+        "digest": "a4bd29c6529ff32f0f82f9ca1ee51352",
+        "anon_execute": false,
+        "security_definer": false,
+        "authenticated_execute": false
+      },
+      {
+        "name": "qg_private.qg_voice_revoke_on_block",
+        "digest": "28547fa8700366c5462a00afc3942b60",
+        "anon_execute": false,
+        "security_definer": true,
+        "authenticated_execute": false
+      },
+      {
+        "name": "public.qg_call_ice_config",
+        "digest": "e39c4c5418362e6e5e72b8bea3371bf9",
+        "anon_execute": false,
+        "security_definer": true,
+        "authenticated_execute": true
+      },
+      {
+        "name": "public.qg_call_start",
+        "digest": "5fcd2c026ca195c45cddcc8d60bedac4",
+        "anon_execute": false,
+        "security_definer": true,
+        "authenticated_execute": true
+      }
+    ],
+    "active_blocked_calls": 0
+  },
+  "recorded_at_utc": "2026-10-12T12:46:55.299610+00:00",
+  "migration_sql_sha256": "b8dcc4fb26ddf1c35829547d2ef022c4b34ff9a7ea3e22b943731acc66ba1de2"
+}
