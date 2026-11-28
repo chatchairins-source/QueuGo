@@ -32,6 +32,23 @@ if (debugBackendUrl.isNotEmpty() || debugBackendPublicKey.isNotEmpty()) {
     require(publishable || anon) { "Debug backend key must be public; server keys cannot enter APKs" }
 }
 
+// A separate build type only accepts the dedicated Testing project. Never
+// share debug overrides or silently fall back to Production in Play Testing.
+val playTestingEnabled = providers.environmentVariable("QG_ENABLE_PLAY_TESTING_VARIANT").orNull == "1"
+val playTestingBackendUrl = providers.environmentVariable("QG_PLAY_TESTING_BACKEND_URL").orNull.orEmpty().trim().trimEnd('/')
+val playTestingBackendPublicKey = providers.environmentVariable("QG_PLAY_TESTING_BACKEND_PUBLISHABLE_KEY").orNull.orEmpty().trim()
+if (playTestingEnabled) {
+    require(playTestingBackendUrl == "https://ddauuodnxnclabevwmgu.supabase.co") {
+        "Play Testing requires the dedicated isolated HTTPS project"
+    }
+    require(playTestingBackendPublicKey.startsWith("sb_publishable_") &&
+        playTestingBackendPublicKey.length in 24..4096 &&
+        playTestingBackendPublicKey.none(Char::isWhitespace) &&
+        playTestingBackendPublicKey != "sb_publishable_Vn2Il4jp-iBtzNsGRNY8Lg_Tpvk2Vre") {
+        "Play Testing requires a separate public publishable key"
+    }
+}
+
 fun backendBuildConfigLiteral(value: String): String = "\"" + value
     .replace("\\", "\\\\").replace("\"", "\\\"")
     .replace("\n", "\\n").replace("\r", "\\r") + "\""
@@ -43,11 +60,23 @@ android {
         minSdk = 26
         buildConfigField("String", "QG_DEBUG_BACKEND_URL", "\"\"")
         buildConfigField("String", "QG_DEBUG_BACKEND_PUBLISHABLE_KEY", "\"\"")
+        buildConfigField("boolean", "QG_PLAY_TESTING", "false")
+        buildConfigField("String", "QG_PLAY_TESTING_BACKEND_URL", "\"\"")
+        buildConfigField("String", "QG_PLAY_TESTING_BACKEND_PUBLISHABLE_KEY", "\"\"")
     }
     buildTypes {
         getByName("debug") {
             buildConfigField("String", "QG_DEBUG_BACKEND_URL", backendBuildConfigLiteral(debugBackendUrl))
             buildConfigField("String", "QG_DEBUG_BACKEND_PUBLISHABLE_KEY", backendBuildConfigLiteral(debugBackendPublicKey))
+        }
+        if (playTestingEnabled) {
+            create("playTesting") {
+                initWith(getByName("release"))
+                matchingFallbacks += listOf("release")
+                buildConfigField("boolean", "QG_PLAY_TESTING", "true")
+                buildConfigField("String", "QG_PLAY_TESTING_BACKEND_URL", backendBuildConfigLiteral(playTestingBackendUrl))
+                buildConfigField("String", "QG_PLAY_TESTING_BACKEND_PUBLISHABLE_KEY", backendBuildConfigLiteral(playTestingBackendPublicKey))
+            }
         }
     }
     buildFeatures { compose = true; buildConfig = true }
