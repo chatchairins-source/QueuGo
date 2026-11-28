@@ -45,6 +45,26 @@ internal fun queueGoBackendConfiguration(
     return QueueGoBackendConfiguration(origin, key)
 }
 
+// Play Testing is deliberately separate from the existing certified Release path.
+// A missing/incorrect isolated configuration must never fall back to Production.
+internal const val QUEUEGO_PLAY_TESTING_BACKEND = "https://ddauuodnxnclabevwmgu.supabase.co"
+
+internal fun queueGoPlayTestingBackendConfiguration(
+    overrideUrl: String?,
+    overrideKey: String?
+): QueueGoBackendConfiguration {
+    val url = overrideUrl.orEmpty().trim().trimEnd('/')
+    val key = overrideKey.orEmpty().trim()
+    require(url == QUEUEGO_PLAY_TESTING_BACKEND) {
+        "Play Testing requires the dedicated QueueGo-Testing HTTPS origin"
+    }
+    require(key.startsWith("sb_publishable_") && key.length in 24..4096 &&
+        key.none(Char::isWhitespace) && key != QUEUEGO_PRODUCTION_PUBLISHABLE_KEY) {
+        "Play Testing requires its own public publishable key"
+    }
+    return QueueGoBackendConfiguration(url, key)
+}
+
 object QueueGoBackendEnvironment {
     private val configuration by lazy {
         queueGoBackendConfiguration(BuildConfig.DEBUG, BuildConfig.QG_DEBUG_BACKEND_URL, BuildConfig.QG_DEBUG_BACKEND_PUBLISHABLE_KEY)

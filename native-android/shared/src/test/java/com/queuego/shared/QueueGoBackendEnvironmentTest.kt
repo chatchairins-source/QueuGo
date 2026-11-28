@@ -64,4 +64,27 @@ class QueueGoBackendEnvironmentTest {
             }
         }
     }
+    @Test fun playTestingRequiresExactIsolatedOriginAndPublicKey() {
+        val result = queueGoPlayTestingBackendConfiguration(QUEUEGO_PLAY_TESTING_BACKEND, publicKey)
+        assertEquals(QUEUEGO_PLAY_TESTING_BACKEND, result.baseUrl)
+        assertEquals("wss://ddauuodnxnclabevwmgu.supabase.co", result.websocketOrigin)
+        assertEquals(publicKey, result.publishableKey)
+    }
+
+    @Test fun playTestingNeverFallsBackOrAcceptsProductionOrPrivilegedCredentials() {
+        for ((url, key) in listOf(
+            null to publicKey,
+            QUEUEGO_PLAY_TESTING_BACKEND to null,
+            QUEUEGO_PRODUCTION_BACKEND to publicKey,
+            QUEUEGO_PLAY_TESTING_BACKEND to QUEUEGO_PRODUCTION_PUBLISHABLE_KEY,
+            QUEUEGO_PLAY_TESTING_BACKEND to serverKeyPrefix + "never_embed_this",
+            "https://other.example.invalid" to publicKey,
+            "http://ddauuodnxnclabevwmgu.supabase.co" to publicKey,
+            QUEUEGO_PLAY_TESTING_BACKEND + "/rest/v1" to publicKey
+        )) {
+            assertThrows(IllegalArgumentException::class.java) {
+                queueGoPlayTestingBackendConfiguration(url, key)
+            }
+        }
+    }
 }
