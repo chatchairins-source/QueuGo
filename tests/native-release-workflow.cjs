@@ -73,6 +73,13 @@ ok(!/gh release|create-release|softprops\/action-gh-release|ncipollo\/release-ac
 ok(workflow.includes('if: always()')&&workflow.includes('queuego-release.keystore'),'decoded release credentials must be cleaned on every exit');
 ok(!/assembleDebug|bundleDebug/.test(workflow),'certified release workflow must not package debug artifacts');
 
+const playExportAt=workflow.indexOf('python3 ops/play/export-certified-play-aabs.py');
+const playUploadAt=workflow.indexOf('Retain Play upload package internally');
+ok(playExportAt>artifactAt&&playUploadAt>playExportAt,'Play export must follow actual certified AAB verification and precede upload');
+ok(workflow.includes('--expected-source-sha "$GITHUB_SHA"'),'Play export must require exact release source SHA');
+ok(workflow.includes('sha256sum -c SHA256SUMS.txt'),'Play handoff must verify exported file checksums');
+ok(workflow.includes('queuego-play-upload-${{ inputs.version_name }}-${{ github.sha }}'),'Play handoff artifact must identify version and source');
+
 console.log(JSON.stringify({checks,failures:0,scope:'Fail-closed Native certified release workflow'}));
 
 const manifestRuntime=require('child_process').spawnSync('python3',['tests/test-native-aab-runtime-manifest.py'],{encoding:'utf8',timeout:15000,env:{...process.env,PYTHONDONTWRITEBYTECODE:'1'}});

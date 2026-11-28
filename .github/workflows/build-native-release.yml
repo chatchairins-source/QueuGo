@@ -477,6 +477,25 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      - name: Export verified Play upload package from exact certified source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ops/play/export-certified-play-aabs.py \
+            --artifact-dir "$RUNNER_TEMP/queuego-native-certified-release" \
+            --output-dir "$RUNNER_TEMP/queuego-play-upload" \
+            --expected-source-sha "$GITHUB_SHA"
+          (cd "$RUNNER_TEMP/queuego-play-upload" && sha256sum -c SHA256SUMS.txt)
+
+      - name: Retain Play upload package internally
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: queuego-play-upload-${{ inputs.version_name }}-${{ github.sha }}
+          path: ${{ runner.temp }}/queuego-play-upload/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
       - name: Remove decoded credentials and evidence
         if: always()
         shell: bash
