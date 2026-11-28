@@ -25,6 +25,15 @@ val releaseKeyPassword = providers.environmentVariable("QG_ANDROID_KEY_PASSWORD"
 val signingAvailable = listOf(releaseKeystore, releaseStorePassword, releaseKeyAlias, releaseKeyPassword)
     .all { !it.isNullOrBlank() }
 
+// Dedicated non-production variant. Keep packaging fail-closed until the
+// separate verified Testing Release certification gate is implemented.
+val playTestingEnabled = providers.environmentVariable("QG_ENABLE_PLAY_TESTING_VARIANT").orNull == "1"
+val verifyNativePlayTestingGate = tasks.register("verifyNativePlayTestingGate") {
+    doLast {
+        throw GradleException("Play Testing packaging blocked: verified isolated backend certification is not yet available")
+    }
+}
+
 val verifyNativeReleaseGate = tasks.register<Exec>("verifyNativeReleaseGate") {
     workingDir(rootProject.projectDir.parentFile)
     commandLine("python3", rootProject.file("qa/verify-native-release-gate.py").absolutePath)
@@ -64,11 +73,22 @@ subprojects {
                 isDebuggable = false
                 signingConfig = nativeReleaseSigning
             }
+            if (playTestingEnabled) {
+                buildTypes.create("playTesting") {
+                    initWith(buildTypes.getByName("release"))
+                    matchingFallbacks += listOf("release")
+                    isDebuggable = false
+                    signingConfig = nativeReleaseSigning
+                }
+            }
         }
         tasks.configureEach {
             // Guard direct internal release tasks too, not just assemble/bundle entry points.
             if (name.contains("Release")) {
                 dependsOn(verifyNativeReleaseGate)
+            }
+            if (name.contains("PlayTesting")) {
+                dependsOn(verifyNativePlayTestingGate)
             }
         }
     }

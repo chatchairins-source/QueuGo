@@ -87,4 +87,18 @@ class QueueGoBackendEnvironmentTest {
             }
         }
     }
+    @Test fun buildSelectorKeepsCertifiedReleaseOnProductionAndTestingIsolated() {
+        val release = queueGoBackendConfigurationForBuild(
+            false, null, null, false, QUEUEGO_PLAY_TESTING_BACKEND, publicKey
+        )
+        assertEquals(QUEUEGO_PRODUCTION_BACKEND, release.baseUrl)
+        val testing = queueGoBackendConfigurationForBuild(
+            false, QUEUEGO_PRODUCTION_BACKEND, QUEUEGO_PRODUCTION_PUBLISHABLE_KEY,
+            true, QUEUEGO_PLAY_TESTING_BACKEND, publicKey
+        )
+        assertEquals(QUEUEGO_PLAY_TESTING_BACKEND, testing.baseUrl)
+        assertThrows(IllegalArgumentException::class.java) {
+            queueGoBackendConfigurationForBuild(false, null, null, true, null, null)
+        }
+    }
 }

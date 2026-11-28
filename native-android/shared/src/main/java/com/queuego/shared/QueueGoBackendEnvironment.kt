@@ -65,9 +65,24 @@ internal fun queueGoPlayTestingBackendConfiguration(
     return QueueGoBackendConfiguration(url, key)
 }
 
+internal fun queueGoBackendConfigurationForBuild(
+    debug: Boolean,
+    debugUrl: String?,
+    debugKey: String?,
+    playTesting: Boolean,
+    testingUrl: String?,
+    testingKey: String?
+): QueueGoBackendConfiguration =
+    if (playTesting) queueGoPlayTestingBackendConfiguration(testingUrl, testingKey)
+    else queueGoBackendConfiguration(debug, debugUrl, debugKey)
+
 object QueueGoBackendEnvironment {
     private val configuration by lazy {
-        queueGoBackendConfiguration(BuildConfig.DEBUG, BuildConfig.QG_DEBUG_BACKEND_URL, BuildConfig.QG_DEBUG_BACKEND_PUBLISHABLE_KEY)
+        queueGoBackendConfigurationForBuild(
+            BuildConfig.DEBUG, BuildConfig.QG_DEBUG_BACKEND_URL, BuildConfig.QG_DEBUG_BACKEND_PUBLISHABLE_KEY,
+            BuildConfig.QG_PLAY_TESTING, BuildConfig.QG_PLAY_TESTING_BACKEND_URL,
+            BuildConfig.QG_PLAY_TESTING_BACKEND_PUBLISHABLE_KEY
+        )
     }
     val baseUrl: String get() = configuration.baseUrl
     val publishableKey: String get() = configuration.publishableKey
